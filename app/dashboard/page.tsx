@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [totalClientes, setTotalClientes] = useState(0)
 
   useEffect(() => {
     async function loadUser() {
@@ -18,13 +19,23 @@ export default function Dashboard() {
         return
       }
       setUser(user)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      setProfile(profile)
-      setLoading(false)
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', user.id)
+  .single()
+
+setProfile(profile)
+
+const { count } = await supabase
+  .from('clientes')
+  .select('*', { count: 'exact', head: true })
+  .eq('consultor_id', user.id)
+  .eq('ativo', true)
+
+setTotalClientes(count || 0)
+setLoading(false)
+
     }
     loadUser()
   }, [router])
@@ -88,7 +99,7 @@ export default function Dashboard() {
           gap: '20px', marginBottom: '32px'
         }}>
           {[
-            { label: 'Clientes ativos', value: '0', icon: '👤', color: '#1D4ED8' },
+            { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8' },
             { label: 'Consultas realizadas', value: '0', icon: '📋', color: '#15803D' },
             { label: 'Rituais pendentes', value: '0', icon: '🌙', color: '#7C3AED' },
             { label: 'Plano atual', value: profile?.plano || 'Freemium', icon: '⭐', color: '#B8860B' },
@@ -110,12 +121,12 @@ export default function Dashboard() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {[
-              { label: 'Nova consulta', desc: 'Iniciar novo diagnostico Ba Gua', icon: '✨', color: '#7C3AED' },
-              { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8' },
-              { label: 'Ver relatorios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D' },
-              { label: 'Calendario lunar', desc: 'Proximos rituais agendados', icon: '🌙', color: '#B8860B' },
+                { label: 'Nova consulta', desc: 'Iniciar novo diagnostico Ba Gua', icon: '✨', color: '#7C3AED', link: '/consultas/nova' },
+                { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8', link: '/clientes' },
+                { label: 'Ver relatorios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
+                { label: 'Calendario lunar', desc: 'Proximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
             ].map((action, i) => (
-              <div key={i} style={{
+            <div key={i} onClick={() => router.push(action.link)} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '20px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
                 borderTop: `3px solid ${action.color}`
