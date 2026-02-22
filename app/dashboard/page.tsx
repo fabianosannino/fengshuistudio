@@ -1,0 +1,159 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../../src/lib/supabase'
+import { useRouter } from 'next/navigation'
+
+export default function Dashboard() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/')
+        return
+      }
+      setUser(user)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      setProfile(profile)
+      setLoading(false)
+    }
+    loadUser()
+  }, [router])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+
+      <header style={{
+        background: '#1E3A5F', padding: '0 32px', height: '64px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '28px' }}>☯</span>
+          <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ color: '#ffffff', fontSize: '14px' }}>
+            Ola, {profile?.nome_completo || user?.email}
+          </span>
+          <button onClick={handleLogout} style={{
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
+            color: '#ffffff', padding: '6px 16px', borderRadius: '6px',
+            cursor: 'pointer', fontSize: '14px'
+          }}>Sair</button>
+        </div>
+      </header>
+
+      <main style={{ padding: '32px', maxWidth: '1200px', margin: '0 auto' }}>
+
+        <div style={{ marginBottom: '32px' }}>
+          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            Bem-vindo ao FengShui Studio
+          </h1>
+          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
+            Gerencie seus clientes e consultas de Feng Shui
+          </p>
+        </div>
+
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px', marginBottom: '32px'
+        }}>
+          {[
+            { label: 'Clientes ativos', value: '0', icon: '👤', color: '#1D4ED8' },
+            { label: 'Consultas realizadas', value: '0', icon: '📋', color: '#15803D' },
+            { label: 'Rituais pendentes', value: '0', icon: '🌙', color: '#7C3AED' },
+            { label: 'Plano atual', value: profile?.plano || 'Freemium', icon: '⭐', color: '#B8860B' },
+          ].map((kpi, i) => (
+            <div key={i} style={{
+              background: '#ffffff', borderRadius: '12px', padding: '24px',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`
+            }}>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}>{kpi.icon}</div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', color: kpi.color, marginBottom: '4px' }}>{kpi.value}</div>
+              <div style={{ color: '#6B7280', fontSize: '13px' }}>{kpi.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
+            Acoes rapidas
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            {[
+              { label: 'Nova consulta', desc: 'Iniciar novo diagnostico Ba Gua', icon: '✨', color: '#7C3AED' },
+              { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8' },
+              { label: 'Ver relatorios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D' },
+              { label: 'Calendario lunar', desc: 'Proximos rituais agendados', icon: '🌙', color: '#B8860B' },
+            ].map((action, i) => (
+              <div key={i} style={{
+                background: '#ffffff', borderRadius: '12px', padding: '20px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                borderTop: `3px solid ${action.color}`
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>{action.icon}</div>
+                <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{action.label}</div>
+                <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{action.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {profile?.plano === 'freemium' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
+            borderRadius: '12px', padding: '24px 32px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: '16px'
+          }}>
+            <div>
+              <p style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '16px', margin: '0 0 4px 0' }}>
+                Voce esta no plano Freemium
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', margin: '0' }}>
+                Faca upgrade para acessar relatorios PDF, cronograma lunar e clientes ilimitados
+              </p>
+            </div>
+            <button style={{
+              background: '#B8860B', color: '#ffffff', border: 'none',
+              padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
+              fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
+            }}>
+              Fazer upgrade
+            </button>
+          </div>
+        )}
+
+      </main>
+    </div>
+  )
+}
