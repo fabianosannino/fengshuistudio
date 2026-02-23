@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [totalClientes, setTotalClientes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
+  const [totalRituais, setTotalRituais] = useState(0)
 
   useEffect(() => {
     async function loadUser() {
@@ -118,7 +119,7 @@ setLoading(false)
           {[
                 { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
                 { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
-                { label: 'Rituais pendentes', value: '0', icon: '🌙', color: '#7C3AED', link: '/consultas' },
+                { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#7C3AED', link: '/calendario' },
                 { label: 'Plano atual', value: profile?.plano === 'pro' ? 'Pro' : 'Free', icon: '⭐', color: '#B8860B', link: '/planos' },
           ].map((kpi, i) => (
                 <div key={i} onClick={() => window.location.href = kpi.link} style={{
