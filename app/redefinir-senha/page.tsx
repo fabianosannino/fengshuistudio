@@ -97,7 +97,7 @@ export default function RedefinirSenha() {
             <p style={{ color: '#374151', fontSize: '15px', marginBottom: '24px' }}>
               Agora você pode fazer login com sua nova senha.
             </p>
-            <button onClick={() => window.location.href = '/'} style={{
+            <button onClick={() => window.location.href = '/login'} style={{
               width: '100%', padding: '14px', background: '#7C3AED',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'

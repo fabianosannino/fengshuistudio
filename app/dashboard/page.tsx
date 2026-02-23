@@ -15,7 +15,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { window.location.href = '/login'; return }
       setUser(user)
 
       const { data: profile } = await supabase

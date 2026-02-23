@@ -33,7 +33,7 @@ export default function ConsultaDetalhe() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { window.location.href = '/login'; return }
 
       const { data: consulta } = await supabase
         .from('consultas')

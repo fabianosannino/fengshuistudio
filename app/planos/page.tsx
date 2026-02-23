@@ -40,7 +40,7 @@ export default function Planos() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { window.location.href = '/login'; return }
       setUser(user)
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(data)

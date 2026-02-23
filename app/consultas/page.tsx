@@ -11,7 +11,7 @@ export default function Consultas() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { window.location.href = '/login'; return }
       const { data } = await supabase
         .from('consultas')
         .select(`*, clientes(nome_completo)`)

@@ -71,7 +71,7 @@ export default function AppShell({
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    window.location.href = '/'
+    window.location.href = '/login'
   }
 
   const t = {

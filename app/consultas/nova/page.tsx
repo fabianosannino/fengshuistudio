@@ -41,7 +41,7 @@ export default function NovaConsulta() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { window.location.href = '/login'; return }
       setUser(user)
       const { data } = await supabase
         .from('clientes')
