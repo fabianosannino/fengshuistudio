@@ -231,7 +231,7 @@ export default function Calendario() {
     )
   }
 
-  cconst rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
+  const rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
 
   if (profile?.plano !== 'pro') {
     return (
