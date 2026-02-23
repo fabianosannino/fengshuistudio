@@ -111,7 +111,7 @@ export default function Home() {
           </div>
           {!isSignUp && (
             <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
-              <a href="#" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
+              <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
             </div>
           )}
           <button type="submit" disabled={loading} style={{
