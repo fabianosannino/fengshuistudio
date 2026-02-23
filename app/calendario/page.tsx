@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../../../src/lib/supabase'
+import { supabase } from '../../src/lib/supabase'
 
 // Calculo das fases da lua
 function getMoonPhase(date: Date): { fase: string; emoji: string; percentual: number } {

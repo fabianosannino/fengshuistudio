@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../../../src/lib/supabase'
-import AppShell from '../../components/AppShell'
+import { supabase } from '../../src/lib/supabase'
+import AppShell from '../components/AppShell'
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
