@@ -218,13 +218,13 @@ export default function Clientes() {
                 {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>✉ {cliente.email}</p>}
                 {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📱 {cliente.telefone}</p>}
                 {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
-                <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                  <button style={{
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                  <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
                     flex: 1, padding: '8px', background: '#7C3AED', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
                   }}>Nova consulta</button>
-                  <button style={{
+                  <button onClick={() => window.location.href = `/clientes/${cliente.id}`} style={{
                     padding: '8px 12px', background: '#F3F4F6', color: '#374151',
                     border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                   }}>Ver</button>
