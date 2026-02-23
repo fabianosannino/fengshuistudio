@@ -89,6 +89,7 @@ export default function Calendario() {
   const [clientes, setClientes] = useState<any[]>([])
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [profile, setProfile] = useState<any>(null)
   const [message, setMessage] = useState('')
   const [faseSelecionada, setFaseSelecionada] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -110,6 +111,12 @@ export default function Calendario() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       setUser(user)
+      const { data: prof } = await supabase
+          .from('profiles')
+          .select('plano')
+          .eq('id', user.id)
+          .single()
+        setProfile(prof)
 
       const inicioMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-01`
       const fimMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-${new Date(anoAtual, mesAtual + 1, 0).getDate()}`
@@ -224,8 +231,41 @@ export default function Calendario() {
     )
   }
 
-  const rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
+  cconst rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
 
+  if (profile?.plano !== 'pro') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+        <header style={{
+          background: '#1E3A5F', padding: '0 32px', height: '64px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '28px', cursor: 'pointer' }} onClick={() => window.location.href = '/dashboard'}>☯</span>
+            <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
+          </div>
+        </header>
+        <main style={{ padding: '32px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '16px', padding: '48px 32px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '40px'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🌙</div>
+            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calendário Lunar</h1>
+            <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
+              O Calendário Lunar com rituais está disponível no plano Pro. Faça upgrade para acessar fases da lua, rituais sugeridos e agendamento personalizado.
+            </p>
+            <button onClick={() => window.location.href = '/planos'} style={{
+              padding: '14px 32px', background: '#7C3AED', color: '#fff',
+              border: 'none', borderRadius: '10px', fontSize: '16px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>Ver planos e fazer upgrade</button>
+          </div>
+        </main>
+      </div>
+    )
+  }
   return (
     <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
       <header style={{

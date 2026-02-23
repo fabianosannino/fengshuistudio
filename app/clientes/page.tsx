@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 export default function Clientes() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [clientes, setClientes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -26,6 +27,12 @@ export default function Clientes() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
       setUser(user)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('plano')
+        .eq('id', user.id)
+        .single()
+      setProfile(prof)
       await loadClientes(user.id)
       setLoading(false)
     }
@@ -106,7 +113,13 @@ export default function Clientes() {
             <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meus Clientes</h1>
             <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{clientes.length} cliente(s) cadastrado(s)</p>
           </div>
-          <button onClick={() => { setShowForm(!showForm); setMessage('') }} style={{
+         <button onClick={() => {
+            if (profile?.plano !== 'pro' && clientes.length >= 5) {
+              setMessage('Limite de 5 clientes no plano Free. Faça upgrade para cadastrar mais.')
+              return
+            }
+            setShowForm(!showForm); setMessage('')
+          }} style={{
             background: '#7C3AED', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'

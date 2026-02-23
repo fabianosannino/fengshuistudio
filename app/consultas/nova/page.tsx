@@ -24,6 +24,8 @@ export default function NovaConsulta() {
   const [saving, setSaving] = useState(false)
   const [step, setStep] = useState(1)
   const [message, setMessage] = useState('')
+  const [profile, setProfile] = useState<any>(null)
+  const [consultasMes, setConsultasMes] = useState(0)
 
   const [form, setForm] = useState({
     cliente_id: '',
@@ -49,6 +51,20 @@ export default function NovaConsulta() {
         .eq('ativo', true)
         .order('nome_completo')
       setClientes(data || [])
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('plano')
+          .eq('id', user.id)
+          .single()
+        setProfile(prof)
+
+        const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+        const { count } = await supabase
+          .from('consultas')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id)
+          .gte('criado_em', inicioMes)
+        setConsultasMes(count || 0)
       setLoading(false)
     }
     load()
@@ -61,6 +77,10 @@ export default function NovaConsulta() {
   async function handleStep1(e: React.FormEvent) {
     e.preventDefault()
     if (!form.cliente_id) { setMessage('Selecione um cliente.'); return }
+    if (profile?.plano !== 'pro' && consultasMes >= 3) {
+      setMessage('Limite de 3 consultas/mês no plano Free. Faça upgrade para continuar.')
+      return
+    }
     setSaving(true)
     setMessage('')
     const { data, error } = await supabase.from('consultas').insert({

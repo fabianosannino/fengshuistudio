@@ -28,6 +28,7 @@ export default function ConsultaDetalhe() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [profile, setProfile] = useState<any>(null)
 
   useEffect(() => {
     async function load() {
@@ -42,6 +43,12 @@ export default function ConsultaDetalhe() {
 
       if (!consulta) { router.push('/consultas'); return }
       setConsulta(consulta)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('plano')
+        .eq('id', user.id)
+        .single()
+      setProfile(prof)
 
       const { data: setoresData } = await supabase
         .from('setores_bagua')
@@ -161,7 +168,13 @@ export default function ConsultaDetalhe() {
               Cliente: {consulta.clientes?.nome_completo} • {consulta.tipo_imovel} {consulta.area_total_m2 ? `• ${consulta.area_total_m2}m²` : ''}
             </p>
           </div>
-          <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
+          <button onClick={() => {
+            if (profile?.plano !== 'pro') {
+              setMessage('Erro: Geração de relatório PDF disponível apenas no plano Pro.')
+              return
+            }
+            window.location.href = `/consultas/${id}/relatorio`
+          }} style={{
             background: '#1D4ED8', color: '#ffffff', border: 'none',
             padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer'
