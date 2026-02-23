@@ -92,8 +92,8 @@ export default function LandingPage() {
             <a href="#depoimentos" className="nav-link">Depoimentos</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => window.location.href = '/login'} className="nav-link hide-mobile">Entrar</button>
-            <button onClick={() => window.location.href = '/login'} style={{
+            <button onClick={() => window.location.href = '/'} className="nav-link hide-mobile">Entrar</button>
+            <button onClick={() => window.location.href = '/'} style={{
               background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', color: '#fff', border: 'none', padding: '10px 24px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
             }}>Comecar gratis</button>
@@ -130,7 +130,7 @@ export default function LandingPage() {
               </p>
 
               <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
-                <button className="btn-primary" onClick={() => window.location.href = '/login'}>Comecar gratuitamente</button>
+                <button className="btn-primary" onClick={() => window.location.href = '/'}>Comecar gratuitamente</button>
                 <a href="#como-funciona" className="btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Ver como funciona</a>
               </div>
 
@@ -319,7 +319,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Comecar gratis</button>
+              <button onClick={() => window.location.href = '/'} style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Comecar gratis</button>
             </div>
             <div className="pricing-card" style={{ background: 'linear-gradient(145deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05))', border: '2px solid rgba(124,58,237,0.4)', borderRadius: '24px', padding: '40px 32px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: '16px', right: '16px', background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', borderRadius: '100px', padding: '6px 16px' }}>
@@ -339,7 +339,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} className="btn-primary" style={{ width: '100%' }}>Assinar plano Pro</button>
+              <button onClick={() => window.location.href = '/'} className="btn-primary" style={{ width: '100%' }}>Assinar plano Pro</button>
             </div>
           </div>
         </div>
@@ -403,7 +403,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 40px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Pronto para transformar suas consultas?</h2>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>Junte-se a centenas de consultores que ja usam o FengShui Studio para elevar a qualidade do seu trabalho.</p>
-          <button onClick={() => window.location.href = '/login'} style={{ background: '#ffffff', color: '#7C3AED', border: 'none', padding: '16px 48px', borderRadius: '12px', fontSize: '17px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Criar minha conta gratis</button>
+          <button onClick={() => window.location.href = '/'} style={{ background: '#ffffff', color: '#7C3AED', border: 'none', padding: '16px 48px', borderRadius: '12px', fontSize: '17px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Criar minha conta gratis</button>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '16px' }}>Sem cartao de credito. Cancele quando quiser.</p>
         </div>
       </section>
