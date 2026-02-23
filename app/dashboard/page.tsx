@@ -42,6 +42,14 @@ const { count: countConsultas } = await supabase
   .eq('consultor_id', user.id)
 
 setTotalConsultas(countConsultas || 0)
+
+const { count: countRituais } = await supabase
+  .from('rituais')
+  .select('*', { count: 'exact', head: true })
+  .eq('consultor_id', user.id)
+  .eq('status', 'pendente')
+
+setTotalRituais(countRituais || 0)
 setLoading(false)
 
 
