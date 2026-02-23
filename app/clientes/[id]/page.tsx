@@ -10,6 +10,17 @@ export default function ClienteDetalhe() {
   const [cliente, setCliente] = useState<any>(null)
   const [consultas, setConsultas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [form, setForm] = useState({
+    nome_completo: '',
+    email: '',
+    telefone: '',
+    cidade: '',
+    estado: '',
+    notas: ''
+  })
 
   useEffect(() => {
     async function load() {
@@ -25,6 +36,14 @@ export default function ClienteDetalhe() {
 
       if (!cli) { window.location.href = '/clientes'; return }
       setCliente(cli)
+      setForm({
+        nome_completo: cli.nome_completo || '',
+        email: cli.email || '',
+        telefone: cli.telefone || '',
+        cidade: cli.cidade || '',
+        estado: cli.estado || '',
+        notas: cli.notas || ''
+      })
 
       const { data: cons } = await supabase
         .from('consultas')
@@ -38,6 +57,42 @@ export default function ClienteDetalhe() {
     }
     load()
   }, [params.id])
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage('')
+    const { error } = await supabase
+      .from('clientes')
+      .update(form)
+      .eq('id', params.id)
+    if (error) {
+      setMessage('Erro ao salvar: ' + error.message)
+    } else {
+      setCliente({ ...cliente, ...form })
+      setEditing(false)
+      setMessage('Cliente atualizado com sucesso!')
+      setTimeout(() => setMessage(''), 3000)
+    }
+    setSaving(false)
+  }
+
+  async function handleDelete() {
+    if (!confirm('Tem certeza que deseja excluir este cliente? As consultas associadas serao mantidas.')) return
+    const { error } = await supabase
+      .from('clientes')
+      .update({ ativo: false })
+      .eq('id', params.id)
+    if (error) {
+      setMessage('Erro ao excluir: ' + error.message)
+    } else {
+      window.location.href = '/clientes'
+    }
+  }
 
   if (loading) {
     return (
@@ -74,57 +129,147 @@ export default function ClienteDetalhe() {
 
       <main style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
 
-        {/* Voltar */}
         <div style={{ marginBottom: '24px' }}>
           <span onClick={() => window.location.href = '/clientes'} style={{ color: '#7C3AED', fontSize: '14px', cursor: 'pointer' }}>← Voltar para clientes</span>
         </div>
 
-        {/* Card do cliente */}
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '28px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7C3AED',
-          marginBottom: '32px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-            <div style={{
-              width: '56px', height: '56px', borderRadius: '50%',
-              background: '#7C3AED', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px'
-            }}>
-              {cliente.nome_completo?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{cliente.nome_completo}</h1>
-              <span style={{
-                background: '#F0FDF4', color: '#15803D', padding: '2px 10px',
-                borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-              }}>Ativo</span>
-            </div>
-          </div>
+        {message && (
+          <div style={{
+            marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
+            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
+            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
+            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+          }}>{message}</div>
+        )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {cliente.email && (
-              <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>E-mail</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>✉ {cliente.email}</p></div>
-            )}
-            {cliente.telefone && (
-              <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Telefone</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>📱 {cliente.telefone}</p></div>
-            )}
-            {cliente.cidade && (
-              <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Localidade</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p></div>
-            )}
-            {cliente.notas && (
-              <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Observações</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>{cliente.notas}</p></div>
-            )}
-          </div>
+        {/* Card do cliente - modo visualização */}
+        {!editing && (
+          <div style={{
+            background: '#ffffff', borderRadius: '12px', padding: '28px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7C3AED',
+            marginBottom: '32px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '56px', height: '56px', borderRadius: '50%',
+                  background: '#7C3AED', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px'
+                }}>
+                  {cliente.nome_completo?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{cliente.nome_completo}</h1>
+                  <span style={{
+                    background: '#F0FDF4', color: '#15803D', padding: '2px 10px',
+                    borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
+                  }}>Ativo</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setEditing(true)} style={{
+                  padding: '8px 20px', background: '#F3F4F6', color: '#374151',
+                  border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+                }}>✏️ Editar</button>
+                <button onClick={handleDelete} style={{
+                  padding: '8px 20px', background: '#FEF2F2', color: '#DC2626',
+                  border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+                }}>🗑️ Excluir</button>
+              </div>
+            </div>
 
-          <div style={{ marginTop: '20px', display: 'flex', gap: '8px' }}>
-            <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
-              padding: '10px 24px', background: '#7C3AED', color: '#fff',
-              border: 'none', borderRadius: '8px', fontSize: '14px',
-              fontWeight: 'bold', cursor: 'pointer'
-            }}>+ Nova consulta</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {cliente.email && (
+                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>E-mail</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>✉ {cliente.email}</p></div>
+              )}
+              {cliente.telefone && (
+                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Telefone</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>📱 {cliente.telefone}</p></div>
+              )}
+              {cliente.cidade && (
+                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Localidade</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p></div>
+              )}
+              {cliente.notas && (
+                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Observações</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>{cliente.notas}</p></div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+              <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
+                padding: '10px 24px', background: '#7C3AED', color: '#fff',
+                border: 'none', borderRadius: '8px', fontSize: '14px',
+                fontWeight: 'bold', cursor: 'pointer'
+              }}>+ Nova consulta</button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Card do cliente - modo edição */}
+        {editing && (
+          <div style={{
+            background: '#ffffff', borderRadius: '12px', padding: '28px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderTop: '3px solid #7C3AED',
+            marginBottom: '32px'
+          }}>
+            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginTop: '0', marginBottom: '24px' }}>Editar Cliente</h2>
+            <form onSubmit={handleSave}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>
+                  <input name="nome_completo" value={form.nome_completo} onChange={handleChange} required
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
+                  <input name="email" value={form.email} onChange={handleChange} type="email"
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
+                  <input name="telefone" value={form.telefone} onChange={handleChange}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
+                  <input name="cidade" value={form.cidade} onChange={handleChange}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
+                  <select name="estado" value={form.estado} onChange={handleChange}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
+                    <option value="">Selecione...</option>
+                    {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observações</label>
+                  <input name="notas" value={form.notas} onChange={handleChange}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" onClick={() => { setEditing(false); setForm({
+                  nome_completo: cliente.nome_completo || '',
+                  email: cliente.email || '',
+                  telefone: cliente.telefone || '',
+                  cidade: cliente.cidade || '',
+                  estado: cliente.estado || '',
+                  notas: cliente.notas || ''
+                }) }} style={{
+                  padding: '10px 24px', background: '#F3F4F6', color: '#374151',
+                  border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
+                }}>Cancelar</button>
+                <button type="submit" disabled={saving} style={{
+                  padding: '10px 32px', background: saving ? '#9CA3AF' : '#7C3AED',
+                  color: '#ffffff', border: 'none', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
+                }}>{saving ? 'Salvando...' : 'Salvar alterações'}</button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Consultas do cliente */}
         <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
