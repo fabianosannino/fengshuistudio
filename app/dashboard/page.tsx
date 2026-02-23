@@ -111,9 +111,9 @@ setLoading(false)
                 { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
                 { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
                 { label: 'Rituais pendentes', value: '0', icon: '🌙', color: '#7C3AED', link: '/consultas' },
-                { label: 'Plano atual', value: profile?.plano || 'Freemium', icon: '⭐', color: '#B8860B', link: '/consultas' },
+                { label: 'Plano atual', value: profile?.plano === 'pro' ? 'Pro' : 'Free', icon: '⭐', color: '#B8860B', link: '/planos' },
           ].map((kpi, i) => (
-                <div key={i} onClick={() => router.push(kpi.link)} style={{
+                <div key={i} onClick={() => window.location.href = kpi.link} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '24px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`,
                 cursor: 'pointer'
@@ -136,7 +136,7 @@ setLoading(false)
                 { label: 'Ver relatorios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
                 { label: 'Calendario lunar', desc: 'Proximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
                 ].map((kpi, i) => (
-                <div key={i} onClick={() => router.push(kpi.link)} style={{
+                <div key={i} onClick={() => window.location.href = kpi.link} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '20px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
                 borderTop: `3px solid ${kpi.color}`
@@ -164,7 +164,7 @@ setLoading(false)
                 Faca upgrade para acessar relatorios PDF, cronograma lunar e clientes ilimitados
               </p>
             </div>
-            <button style={{
+            <button onClick={() => window.location.href = '/planos'} style={{
               background: '#B8860B', color: '#ffffff', border: 'none',
               padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
