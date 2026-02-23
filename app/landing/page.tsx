@@ -279,77 +279,184 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Hero visual - App mockup */}
-            <div className="hide-mobile" style={{ flex: 1, position: 'relative' }}>
-              <div className="fade-up fade-up-d3" style={{
-                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                borderRadius: '20px', padding: '24px',
-                boxShadow: '0 40px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                animation: 'float 6s ease-in-out infinite',
+            {/* Hero visual - Bagua & I Ching */}
+            <div className="hide-mobile" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              
+              {/* Bagua principal */}
+              <div className="fade-up fade-up-d3" style={{ position: 'relative', animation: 'float 6s ease-in-out infinite' }}>
+                <svg width="420" height="420" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
+                  {/* Glow effect */}
+                  <defs>
+                    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                    </radialGradient>
+                    <filter id="goldGlow">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  
+                  <circle cx="210" cy="210" r="210" fill="url(#bgGlow)" />
+                  
+                  {/* Outer octagon ring */}
+                  <polygon 
+                    points="210,30 330,80 380,200 330,320 210,370 90,320 40,200 90,80" 
+                    fill="none" stroke="#C9A84C" strokeWidth="2" opacity="0.6"
+                  />
+                  
+                  {/* Inner octagon ring */}
+                  <polygon 
+                    points="210,70 305,108 340,200 305,292 210,330 115,292 80,200 115,108" 
+                    fill="none" stroke="#C9A84C" strokeWidth="1.5" opacity="0.3"
+                  />
+                  
+                  {/* Sector labels and trigrams around the octagon */}
+                  {/* S - Fama (top) */}
+                  <g filter="url(#goldGlow)">
+                    <rect x="180" y="38" width="60" height="4" rx="2" fill="#DC2626" opacity="0.9" />
+                    <rect x="180" y="46" width="60" height="4" rx="2" fill="#DC2626" opacity="0.9" />
+                    <rect x="180" y="54" width="60" height="4" rx="2" fill="#DC2626" opacity="0.9" />
+                  </g>
+                  <text x="210" y="22" textAnchor="middle" fill="#DC2626" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">FAMA</text>
+                  
+                  {/* SE - Prosperidade */}
+                  <g transform="translate(320, 75)">
+                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
+                    <rect x="0" y="8" width="40" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
+                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
+                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
+                  </g>
+                  <text x="345" y="68" textAnchor="middle" fill="#7C3AED" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">PROSPERIDADE</text>
+                  
+                  {/* E - Familia */}
+                  <g transform="translate(365, 188)">
+                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#15803D" opacity="0.9" />
+                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#15803D" opacity="0.9" />
+                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#15803D" opacity="0.9" />
+                    <rect x="0" y="16" width="40" height="4" rx="2" fill="#15803D" opacity="0.9" />
+                  </g>
+                  <text x="385" y="225" textAnchor="middle" fill="#15803D" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">FAMILIA</text>
+                  
+                  {/* NE - Conhecimento */}
+                  <g transform="translate(320, 310)">
+                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#92400E" opacity="0.9" />
+                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
+                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
+                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
+                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
+                  </g>
+                  <text x="340" y="345" textAnchor="middle" fill="#92400E" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">CONHECIMENTO</text>
+                  
+                  {/* N - Carreira (bottom) */}
+                  <g filter="url(#goldGlow)">
+                    <rect x="180" y="362" width="60" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
+                    <rect x="180" y="370" width="25" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
+                    <rect x="215" y="370" width="25" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
+                    <rect x="180" y="378" width="60" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
+                  </g>
+                  <text x="210" y="400" textAnchor="middle" fill="#1D4ED8" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">CARREIRA</text>
+                  
+                  {/* NO - Pessoas Uteis */}
+                  <g transform="translate(55, 310)">
+                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#6B7280" opacity="0.9" />
+                    <rect x="0" y="8" width="40" height="4" rx="2" fill="#6B7280" opacity="0.9" />
+                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#6B7280" opacity="0.9" />
+                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#6B7280" opacity="0.9" />
+                  </g>
+                  <text x="75" y="345" textAnchor="middle" fill="#6B7280" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">AMIGOS</text>
+                  
+                  {/* O - Filhos */}
+                  <g transform="translate(12, 188)">
+                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#B45309" opacity="0.9" />
+                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
+                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
+                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
+                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
+                  </g>
+                  <text x="32" y="225" textAnchor="middle" fill="#B45309" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">FILHOS</text>
+                  
+                  {/* SO - Relacionamentos */}
+                  <g transform="translate(55, 75)">
+                    <rect x="0" y="0" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
+                    <rect x="23" y="0" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
+                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
+                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
+                    <rect x="0" y="16" width="40" height="4" rx="2" fill="#BE185D" opacity="0.9" />
+                  </g>
+                  <text x="75" y="68" textAnchor="middle" fill="#BE185D" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">AMOR</text>
+                  
+                  {/* Center - Yin Yang */}
+                  <circle cx="210" cy="210" r="55" fill="none" stroke="#C9A84C" strokeWidth="2" opacity="0.5" />
+                  
+                  {/* Yin Yang symbol */}
+                  <circle cx="210" cy="210" r="42" fill="#0f172a" stroke="#C9A84C" strokeWidth="1.5" />
+                  {/* White half */}
+                  <path d="M210,168 A42,42 0 0,1 210,252 A21,21 0 0,0 210,210 A21,21 0 0,1 210,168" fill="#f0e6d0" />
+                  {/* Small dots */}
+                  <circle cx="210" cy="189" r="6" fill="#0f172a" />
+                  <circle cx="210" cy="231" r="6" fill="#f0e6d0" />
+                  
+                  {/* Centro label */}
+                  <text x="210" y="270" textAnchor="middle" fill="#C9A84C" fontSize="10" fontWeight="700" fontFamily="Outfit, sans-serif" opacity="0.8">CENTRO</text>
+                  
+                  {/* Decorative dots at octagon vertices */}
+                  {[
+                    [210, 30], [330, 80], [380, 200], [330, 320],
+                    [210, 370], [90, 320], [40, 200], [90, 80]
+                  ].map(([cx, cy], i) => (
+                    <circle key={i} cx={cx} cy={cy} r="4" fill="#C9A84C" opacity="0.6" />
+                  ))}
+                </svg>
+              </div>
+
+              {/* Floating I Ching hexagram card */}
+              <div className="fade-up fade-up-d5" style={{
+                position: 'absolute', bottom: '10px', left: '-10px',
+                background: 'rgba(255,255,255,0.95)', borderRadius: '16px',
+                padding: '16px 20px', boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                display: 'flex', alignItems: 'center', gap: '14px',
+                animation: 'float 5s ease-in-out infinite',
+                animationDelay: '1s', backdropFilter: 'blur(10px)',
               }}>
-                {/* Mock app header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }} />
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#eab308' }} />
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#22c55e' }} />
-                  <div style={{ flex: 1, height: '28px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginLeft: '12px' }} />
-                </div>
-                {/* Mock sidebar + content */}
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ width: '60px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {['#7C3AED', '#334155', '#334155', '#334155', '#334155'].map((bg, i) => (
-                      <div key={i} style={{ width: '40px', height: '40px', borderRadius: '10px', background: bg, margin: '0 auto' }} />
-                    ))}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: '20px', width: '60%', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', marginBottom: '16px' }} />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                      {[
-                        { label: 'Clientes', val: '24', color: '#3B82F6' },
-                        { label: 'Consultas', val: '12', color: '#7C3AED' },
-                      ].map((card, i) => (
-                        <div key={i} style={{
-                          background: 'rgba(255,255,255,0.04)', borderRadius: '12px',
-                          padding: '16px', border: '1px solid rgba(255,255,255,0.06)'
-                        }}>
-                          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: '0 0 8px 0' }}>{card.label}</p>
-                          <p style={{ color: card.color, fontSize: '24px', fontWeight: 800, margin: 0 }}>{card.val}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Mock Ba Gua grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                      {['#DC2626', '#7C3AED', '#BE185D', '#15803D', '#D97706', '#6B7280', '#1D4ED8', '#92400E', '#B45309'].map((c, i) => (
-                        <div key={i} style={{
-                          height: '32px', borderRadius: '6px',
-                          background: `${c}30`, border: `1px solid ${c}50`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <div style={{ width: '16px', height: '4px', borderRadius: '2px', background: c, opacity: 0.6 }} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                <svg width="36" height="52" viewBox="0 0 36 52" xmlns="http://www.w3.org/2000/svg">
+                  {/* I Ching Hexagram 11 - Tai (Peace) */}
+                  <rect x="0" y="0" width="36" height="5" rx="2" fill="#1E3A5F" />
+                  <rect x="0" y="9" width="36" height="5" rx="2" fill="#1E3A5F" />
+                  <rect x="0" y="18" width="36" height="5" rx="2" fill="#1E3A5F" />
+                  <rect x="0" y="29" width="15" height="5" rx="2" fill="#C9A84C" />
+                  <rect x="21" y="29" width="15" height="5" rx="2" fill="#C9A84C" />
+                  <rect x="0" y="38" width="15" height="5" rx="2" fill="#C9A84C" />
+                  <rect x="21" y="38" width="15" height="5" rx="2" fill="#C9A84C" />
+                  <rect x="0" y="47" width="15" height="5" rx="2" fill="#C9A84C" />
+                  <rect x="21" y="47" width="15" height="5" rx="2" fill="#C9A84C" />
+                </svg>
+                <div>
+                  <p style={{ color: '#1E3A5F', fontWeight: 700, fontSize: '14px', margin: 0, fontFamily: "'Playfair Display', serif" }}>泰 Tai</p>
+                  <p style={{ color: '#7C3AED', fontSize: '12px', margin: '2px 0 0 0', fontWeight: 600 }}>Paz &amp; Harmonia</p>
+                  <p style={{ color: '#94a3b8', fontSize: '11px', margin: '1px 0 0 0' }}>Hexagrama 11</p>
                 </div>
               </div>
 
-              {/* Floating badge */}
-              <div className="fade-up fade-up-d5" style={{
-                position: 'absolute', bottom: '-20px', left: '-20px',
-                background: '#ffffff', borderRadius: '16px',
-                padding: '16px 20px', boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-                display: 'flex', alignItems: 'center', gap: '12px',
-                animation: 'float 5s ease-in-out infinite',
-                animationDelay: '1s',
+              {/* Floating element badge */}
+              <div className="fade-up fade-up-d6" style={{
+                position: 'absolute', top: '20px', right: '-10px',
+                background: 'rgba(255,255,255,0.95)', borderRadius: '12px',
+                padding: '12px 16px', boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                animation: 'float 7s ease-in-out infinite',
+                animationDelay: '2s', backdropFilter: 'blur(10px)',
               }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
-                  📊
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>🔥</span>
+                  <span style={{ fontSize: '20px' }}>💧</span>
+                  <span style={{ fontSize: '20px' }}>🌿</span>
+                  <span style={{ fontSize: '20px' }}>⛰️</span>
+                  <span style={{ fontSize: '20px' }}>🪙</span>
                 </div>
-                <div>
-                  <p style={{ color: '#15803D', fontWeight: 700, fontSize: '14px', margin: 0 }}>Relatorio gerado!</p>
-                  <p style={{ color: '#6B7280', fontSize: '12px', margin: 0 }}>PDF pronto para enviar</p>
-                </div>
+                <p style={{ color: '#64748b', fontSize: '11px', margin: '6px 0 0 0', textAlign: 'center', fontWeight: 600 }}>5 Elementos</p>
               </div>
             </div>
           </div>
