@@ -88,7 +88,7 @@ export default function EsqueciSenha() {
         )}
 
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <a href="/" style={{ color: '#7C3AED', fontSize: '14px', textDecoration: 'none' }}>← Voltar para o login</a>
+          <a href="/login" style={{ color: '#7C3AED', fontSize: '14px', textDecoration: 'none' }}>← Voltar para o login</a>
         </div>
       </div>
     </div>
