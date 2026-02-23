@@ -140,7 +140,7 @@ export default function Consultas() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button style={{
+                  <button onClick={() => router.push(`/consultas/${consulta.id}`)} style={{
                     padding: '8px 20px', background: '#7C3AED', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
