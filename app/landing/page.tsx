@@ -179,8 +179,8 @@ export default function LandingPage() {
             <a href="#depoimentos" className="nav-link">Depoimentos</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => window.location.href = '/login'} className="nav-link hide-mobile">Entrar</button>
-            <button onClick={() => window.location.href = '/cadastro'} style={{
+            <button onClick={() => window.location.href = '/'} className="nav-link hide-mobile">Entrar</button>
+            <button onClick={() => window.location.href = '/'} style={{
               background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
               color: '#fff', border: 'none', padding: '10px 24px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 700,
@@ -257,7 +257,7 @@ export default function LandingPage() {
               </p>
 
               <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
-                <button className="btn-primary" onClick={() => window.location.href = '/cadastro'}>
+                <button className="btn-primary" onClick={() => window.location.href = '/'}>
                   Comecar gratuitamente
                 </button>
                 <a href="#como-funciona" className="btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
@@ -649,7 +649,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/cadastro'} style={{
+              <button onClick={() => window.location.href = '/'} style={{
                 width: '100%', padding: '14px',
                 background: 'rgba(255,255,255,0.1)', color: '#ffffff',
                 border: '1px solid rgba(255,255,255,0.2)',
@@ -698,7 +698,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/cadastro'} className="btn-primary" style={{ width: '100%' }}>
+              <button onClick={() => window.location.href = '/'} className="btn-primary" style={{ width: '100%' }}>
                 Assinar plano Pro
               </button>
             </div>
@@ -845,7 +845,7 @@ export default function LandingPage() {
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>
             Junte-se a centenas de consultores que ja usam o FengShui Studio para elevar a qualidade do seu trabalho.
           </p>
-          <button onClick={() => window.location.href = '/cadastro'} style={{
+          <button onClick={() => window.location.href = '/'} style={{
             background: '#ffffff', color: '#7C3AED', border: 'none',
             padding: '16px 48px', borderRadius: '12px', fontSize: '17px',
             fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
