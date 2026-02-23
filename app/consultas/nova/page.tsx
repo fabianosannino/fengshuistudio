@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
-import { useRouter } from 'next/navigation'
+import AppShell from '../../components/AppShell'
 
 const SETORES_BAGUA = [
   { numero: 1, nome: 'Carreira', elemento: 'Agua', cor: '#1D4ED8', posicao: 'Centro-Norte' },
@@ -17,7 +17,6 @@ const SETORES_BAGUA = [
 ]
 
 export default function NovaConsulta() {
-  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [clientes, setClientes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +41,7 @@ export default function NovaConsulta() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/'); return }
+      if (!user) { window.location.href = '/'; return }
       setUser(user)
       const { data } = await supabase
         .from('clientes')
@@ -51,24 +50,24 @@ export default function NovaConsulta() {
         .eq('ativo', true)
         .order('nome_completo')
       setClientes(data || [])
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('plano')
-          .eq('id', user.id)
-          .single()
-        setProfile(prof)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('plano')
+        .eq('id', user.id)
+        .single()
+      setProfile(prof)
 
-        const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-        const { count } = await supabase
-          .from('consultas')
-          .select('*', { count: 'exact', head: true })
-          .eq('consultor_id', user.id)
-          .gte('criado_em', inicioMes)
-        setConsultasMes(count || 0)
+      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      const { count } = await supabase
+        .from('consultas')
+        .select('*', { count: 'exact', head: true })
+        .eq('consultor_id', user.id)
+        .gte('criado_em', inicioMes)
+      setConsultasMes(count || 0)
       setLoading(false)
     }
     load()
-  }, [router])
+  }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -134,7 +133,7 @@ export default function NovaConsulta() {
       return
     }
     setSaving(false)
-    router.push('/consultas')
+    window.location.href = '/consultas'
   }
 
   if (loading) {
@@ -149,32 +148,14 @@ export default function NovaConsulta() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+    <AppShell currentPage="consultas">
 
-      <header style={{
-        background: '#1E3A5F', padding: '0 32px', height: '64px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '28px', cursor: 'pointer' }} onClick={() => router.push('/dashboard')}>☯</span>
-          <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span onClick={() => router.push('/dashboard')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Dashboard</span>
-          <span onClick={() => router.push('/clientes')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Clientes</span>
-          <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>Nova Consulta</span>
-        </div>
-      </header>
-
-      <main style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
-
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Nova Consulta Ba Gua</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>Preencha os dados para iniciar o diagnostico</p>
         </div>
 
-        {/* Steps indicator */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px', gap: '0' }}>
           {['Dados do Imovel', 'Setores Ba Gua'].map((label, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < 1 ? 'none' : 1 }}>
@@ -199,7 +180,6 @@ export default function NovaConsulta() {
           }}>{message}</div>
         )}
 
-        {/* Step 1 */}
         {step === 1 && (
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <form onSubmit={handleStep1}>
@@ -207,7 +187,7 @@ export default function NovaConsulta() {
                 <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
                 {clientes.length === 0 ? (
                   <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', color: '#92400E', fontSize: '14px' }}>
-                    Nenhum cliente cadastrado. <span style={{ color: '#7C3AED', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/clientes')}>Cadastre um cliente primeiro.</span>
+                    Nenhum cliente cadastrado. <span style={{ color: '#7C3AED', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
                   </div>
                 ) : (
                   <select name="cliente_id" value={form.cliente_id} onChange={handleChange} required
@@ -257,7 +237,7 @@ export default function NovaConsulta() {
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button type="button" onClick={() => router.push('/dashboard')} style={{
+                <button type="button" onClick={() => window.location.href = '/dashboard'} style={{
                   padding: '12px 24px', background: '#F3F4F6', color: '#374151',
                   border: 'none', borderRadius: '8px', fontSize: '15px', cursor: 'pointer'
                 }}>Cancelar</button>
@@ -271,7 +251,6 @@ export default function NovaConsulta() {
           </div>
         )}
 
-        {/* Step 2 - Ba Gua */}
         {step === 2 && (
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', marginTop: '0' }}>Selecione os setores a avaliar</h2>
@@ -325,8 +304,8 @@ export default function NovaConsulta() {
             </div>
           </div>
         )}
+      </div>
 
-      </main>
-    </div>
+    </AppShell>
   )
 }
