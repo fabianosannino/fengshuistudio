@@ -1,6 +1,7 @@
 'use client'
+
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
 import { supabase } from '../src/lib/supabase'
 
 export default function Home() {
@@ -11,7 +12,16 @@ export default function Home() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
   const router = useRouter()
-  
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.push('/dashboard')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -22,7 +32,6 @@ export default function Home() {
       setLoading(false)
     } else {
       setMessage('Login realizado! Redirecionando...')
-      router.push('/dashboard')
     }
   }
 
