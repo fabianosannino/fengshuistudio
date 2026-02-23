@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../../../src/lib/supabase'
+import { supabase } from '../../../../src/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 const SETORES_BAGUA = [

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { supabase } from '../../../../src/lib/supabase'
+import { supabase } from '../../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 
 export default function Relatorio() {
