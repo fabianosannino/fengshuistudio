@@ -280,19 +280,29 @@ export default function LandingPage() {
             </div>
 
             {/* Hero visual - Bagua & I Ching */}
-            <div className="hide-mobile" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="hide-mobile" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '500px' }}>
               
+              {/* Glow background behind Bagua */}
+              <div style={{
+                position: 'absolute', width: '460px', height: '460px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(201,168,76,0.15) 0%, rgba(124,58,237,0.08) 50%, transparent 75%)',
+                top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              }} />
+
               {/* Bagua principal */}
               <div className="fade-up fade-up-d3" style={{ position: 'relative', animation: 'float 6s ease-in-out infinite' }}>
-                <svg width="420" height="420" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
-                  {/* Glow effect */}
+                <svg width="440" height="440" viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg">
                   <defs>
-                    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.15" />
-                      <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-                    </radialGradient>
-                    <filter id="goldGlow">
-                      <feGaussianBlur stdDeviation="3" result="blur" />
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="4" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                    <filter id="softGlow">
+                      <feGaussianBlur stdDeviation="2" result="blur" />
                       <feMerge>
                         <feMergeNode in="blur" />
                         <feMergeNode in="SourceGraphic" />
@@ -300,163 +310,173 @@ export default function LandingPage() {
                     </filter>
                   </defs>
                   
-                  <circle cx="210" cy="210" r="210" fill="url(#bgGlow)" />
-                  
-                  {/* Outer octagon ring */}
+                  {/* Outer octagon - bright gold */}
                   <polygon 
-                    points="210,30 330,80 380,200 330,320 210,370 90,320 40,200 90,80" 
-                    fill="none" stroke="#C9A84C" strokeWidth="2" opacity="0.6"
+                    points="220,25 345,78 395,210 345,342 220,395 95,342 45,210 95,78" 
+                    fill="none" stroke="#C9A84C" strokeWidth="2.5" opacity="0.8"
+                    filter="url(#softGlow)"
                   />
+                  
+                  {/* Sector fills - colored octagon segments */}
+                  <polygon points="220,25 345,78 283,144 220,120 157,144 95,78" fill="#DC262615" stroke="#DC2626" strokeWidth="1" opacity="0.5" />
+                  <polygon points="345,78 395,210 340,210 305,144" fill="#7C3AED10" stroke="#7C3AED" strokeWidth="1" opacity="0.4" />
+                  <polygon points="395,210 345,342 305,276 340,210" fill="#15803D10" stroke="#15803D" strokeWidth="1" opacity="0.4" />
+                  <polygon points="345,342 220,395 220,300 283,276" fill="#92400E10" stroke="#92400E" strokeWidth="1" opacity="0.4" />
+                  <polygon points="220,395 95,342 135,276 220,300" fill="#1D4ED810" stroke="#1D4ED8" strokeWidth="1" opacity="0.4" />
+                  <polygon points="95,342 45,210 100,210 135,276" fill="#6B728010" stroke="#6B7280" strokeWidth="1" opacity="0.4" />
+                  <polygon points="45,210 95,78 135,144 100,210" fill="#B4530910" stroke="#B45309" strokeWidth="1" opacity="0.4" />
+                  <polygon points="95,78 220,25 157,144 135,144" fill="#BE185D10" stroke="#BE185D" strokeWidth="1" opacity="0.4" />
                   
                   {/* Inner octagon ring */}
                   <polygon 
-                    points="210,70 305,108 340,200 305,292 210,330 115,292 80,200 115,108" 
-                    fill="none" stroke="#C9A84C" strokeWidth="1.5" opacity="0.3"
+                    points="220,80 310,115 345,210 310,305 220,340 130,305 95,210 130,115" 
+                    fill="none" stroke="#C9A84C" strokeWidth="1.5" opacity="0.4"
                   />
-                  
-                  {/* Sector labels and trigrams around the octagon */}
-                  {/* S - Fama (top) */}
-                  <g filter="url(#goldGlow)">
-                    <rect x="180" y="38" width="60" height="4" rx="2" fill="#DC2626" opacity="0.9" />
-                    <rect x="180" y="46" width="60" height="4" rx="2" fill="#DC2626" opacity="0.9" />
-                    <rect x="180" y="54" width="60" height="4" rx="2" fill="#DC2626" opacity="0.9" />
+
+                  {/* FAMA - Sul (top) - Trigram: ☲ Li */}
+                  <g filter="url(#softGlow)">
+                    <rect x="195" y="38" width="50" height="6" rx="2" fill="#FF4444" />
+                    <rect x="195" y="50" width="20" height="6" rx="2" fill="#FF4444" />
+                    <rect x="225" y="50" width="20" height="6" rx="2" fill="#FF4444" />
+                    <rect x="195" y="62" width="50" height="6" rx="2" fill="#FF4444" />
                   </g>
-                  <text x="210" y="22" textAnchor="middle" fill="#DC2626" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">FAMA</text>
+                  <text x="220" y="30" textAnchor="middle" fill="#FF6B6B" fontSize="13" fontWeight="800" fontFamily="Outfit, sans-serif" filter="url(#softGlow)">FAMA</text>
                   
-                  {/* SE - Prosperidade */}
-                  <g transform="translate(320, 75)">
-                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
-                    <rect x="0" y="8" width="40" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
-                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
-                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#7C3AED" opacity="0.9" />
+                  {/* PROSPERIDADE - Sudeste */}
+                  <g transform="translate(335, 80)" filter="url(#softGlow)">
+                    <rect x="0" y="0" width="45" height="6" rx="2" fill="#A78BFA" />
+                    <rect x="0" y="10" width="45" height="6" rx="2" fill="#A78BFA" />
+                    <rect x="0" y="20" width="18" height="6" rx="2" fill="#A78BFA" />
+                    <rect x="27" y="20" width="18" height="6" rx="2" fill="#A78BFA" />
                   </g>
-                  <text x="345" y="68" textAnchor="middle" fill="#7C3AED" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">PROSPERIDADE</text>
+                  <text x="358" y="72" textAnchor="middle" fill="#C4B5FD" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">PROSPERIDADE</text>
                   
-                  {/* E - Familia */}
-                  <g transform="translate(365, 188)">
-                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#15803D" opacity="0.9" />
-                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#15803D" opacity="0.9" />
-                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#15803D" opacity="0.9" />
-                    <rect x="0" y="16" width="40" height="4" rx="2" fill="#15803D" opacity="0.9" />
+                  {/* FAMILIA - Leste */}
+                  <g transform="translate(378, 195)" filter="url(#softGlow)">
+                    <rect x="0" y="0" width="45" height="6" rx="2" fill="#4ADE80" />
+                    <rect x="0" y="10" width="18" height="6" rx="2" fill="#4ADE80" />
+                    <rect x="27" y="10" width="18" height="6" rx="2" fill="#4ADE80" />
+                    <rect x="0" y="20" width="45" height="6" rx="2" fill="#4ADE80" />
                   </g>
-                  <text x="385" y="225" textAnchor="middle" fill="#15803D" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">FAMILIA</text>
+                  <text x="400" y="235" textAnchor="middle" fill="#86EFAC" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">FAMILIA</text>
                   
-                  {/* NE - Conhecimento */}
-                  <g transform="translate(320, 310)">
-                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#92400E" opacity="0.9" />
-                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
-                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
-                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
-                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#92400E" opacity="0.9" />
+                  {/* CONHECIMENTO - Nordeste */}
+                  <g transform="translate(335, 325)" filter="url(#softGlow)">
+                    <rect x="0" y="0" width="45" height="6" rx="2" fill="#D97706" />
+                    <rect x="0" y="10" width="18" height="6" rx="2" fill="#D97706" />
+                    <rect x="27" y="10" width="18" height="6" rx="2" fill="#D97706" />
+                    <rect x="0" y="20" width="18" height="6" rx="2" fill="#D97706" />
+                    <rect x="27" y="20" width="18" height="6" rx="2" fill="#D97706" />
                   </g>
-                  <text x="340" y="345" textAnchor="middle" fill="#92400E" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">CONHECIMENTO</text>
+                  <text x="358" y="365" textAnchor="middle" fill="#FCD34D" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">SABER</text>
                   
-                  {/* N - Carreira (bottom) */}
-                  <g filter="url(#goldGlow)">
-                    <rect x="180" y="362" width="60" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
-                    <rect x="180" y="370" width="25" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
-                    <rect x="215" y="370" width="25" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
-                    <rect x="180" y="378" width="60" height="4" rx="2" fill="#1D4ED8" opacity="0.9" />
+                  {/* CARREIRA - Norte (bottom) */}
+                  <g filter="url(#softGlow)">
+                    <rect x="195" y="370" width="50" height="6" rx="2" fill="#60A5FA" />
+                    <rect x="195" y="382" width="20" height="6" rx="2" fill="#60A5FA" />
+                    <rect x="225" y="382" width="20" height="6" rx="2" fill="#60A5FA" />
+                    <rect x="195" y="394" width="50" height="6" rx="2" fill="#60A5FA" />
                   </g>
-                  <text x="210" y="400" textAnchor="middle" fill="#1D4ED8" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">CARREIRA</text>
+                  <text x="220" y="420" textAnchor="middle" fill="#93C5FD" fontSize="13" fontWeight="800" fontFamily="Outfit, sans-serif" filter="url(#softGlow)">CARREIRA</text>
                   
-                  {/* NO - Pessoas Uteis */}
-                  <g transform="translate(55, 310)">
-                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#6B7280" opacity="0.9" />
-                    <rect x="0" y="8" width="40" height="4" rx="2" fill="#6B7280" opacity="0.9" />
-                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#6B7280" opacity="0.9" />
-                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#6B7280" opacity="0.9" />
+                  {/* AMIGOS - Noroeste */}
+                  <g transform="translate(55, 325)" filter="url(#softGlow)">
+                    <rect x="0" y="0" width="45" height="6" rx="2" fill="#9CA3AF" />
+                    <rect x="0" y="10" width="45" height="6" rx="2" fill="#9CA3AF" />
+                    <rect x="0" y="20" width="18" height="6" rx="2" fill="#9CA3AF" />
+                    <rect x="27" y="20" width="18" height="6" rx="2" fill="#9CA3AF" />
                   </g>
-                  <text x="75" y="345" textAnchor="middle" fill="#6B7280" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">AMIGOS</text>
+                  <text x="78" y="365" textAnchor="middle" fill="#D1D5DB" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">AMIGOS</text>
                   
-                  {/* O - Filhos */}
-                  <g transform="translate(12, 188)">
-                    <rect x="0" y="0" width="40" height="4" rx="2" fill="#B45309" opacity="0.9" />
-                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
-                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
-                    <rect x="0" y="16" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
-                    <rect x="23" y="16" width="17" height="4" rx="2" fill="#B45309" opacity="0.9" />
+                  {/* CRIATIVIDADE - Oeste */}
+                  <g transform="translate(10, 195)" filter="url(#softGlow)">
+                    <rect x="0" y="0" width="45" height="6" rx="2" fill="#FBBF24" />
+                    <rect x="0" y="10" width="18" height="6" rx="2" fill="#FBBF24" />
+                    <rect x="27" y="10" width="18" height="6" rx="2" fill="#FBBF24" />
+                    <rect x="0" y="20" width="18" height="6" rx="2" fill="#FBBF24" />
+                    <rect x="27" y="20" width="18" height="6" rx="2" fill="#FBBF24" />
                   </g>
-                  <text x="32" y="225" textAnchor="middle" fill="#B45309" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">FILHOS</text>
+                  <text x="32" y="235" textAnchor="middle" fill="#FDE68A" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">FILHOS</text>
                   
-                  {/* SO - Relacionamentos */}
-                  <g transform="translate(55, 75)">
-                    <rect x="0" y="0" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
-                    <rect x="23" y="0" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
-                    <rect x="0" y="8" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
-                    <rect x="23" y="8" width="17" height="4" rx="2" fill="#BE185D" opacity="0.9" />
-                    <rect x="0" y="16" width="40" height="4" rx="2" fill="#BE185D" opacity="0.9" />
+                  {/* AMOR - Sudoeste */}
+                  <g transform="translate(55, 80)" filter="url(#softGlow)">
+                    <rect x="0" y="0" width="18" height="6" rx="2" fill="#F472B6" />
+                    <rect x="27" y="0" width="18" height="6" rx="2" fill="#F472B6" />
+                    <rect x="0" y="10" width="18" height="6" rx="2" fill="#F472B6" />
+                    <rect x="27" y="10" width="18" height="6" rx="2" fill="#F472B6" />
+                    <rect x="0" y="20" width="45" height="6" rx="2" fill="#F472B6" />
                   </g>
-                  <text x="75" y="68" textAnchor="middle" fill="#BE185D" fontSize="10" fontWeight="600" fontFamily="Outfit, sans-serif">AMOR</text>
+                  <text x="78" y="72" textAnchor="middle" fill="#F9A8D4" fontSize="11" fontWeight="700" fontFamily="Outfit, sans-serif">AMOR</text>
                   
-                  {/* Center - Yin Yang */}
-                  <circle cx="210" cy="210" r="55" fill="none" stroke="#C9A84C" strokeWidth="2" opacity="0.5" />
+                  {/* Center circle - golden glow */}
+                  <circle cx="220" cy="210" r="62" fill="none" stroke="#C9A84C" strokeWidth="2" opacity="0.6" filter="url(#softGlow)" />
                   
-                  {/* Yin Yang symbol */}
-                  <circle cx="210" cy="210" r="42" fill="#0f172a" stroke="#C9A84C" strokeWidth="1.5" />
+                  {/* Yin Yang symbol - larger and brighter */}
+                  <circle cx="220" cy="210" r="48" fill="#0f172a" stroke="#C9A84C" strokeWidth="2.5" filter="url(#glow)" />
                   {/* White half */}
-                  <path d="M210,168 A42,42 0 0,1 210,252 A21,21 0 0,0 210,210 A21,21 0 0,1 210,168" fill="#f0e6d0" />
+                  <path d="M220,162 A48,48 0 0,1 220,258 A24,24 0 0,0 220,210 A24,24 0 0,1 220,162" fill="#E8D48B" />
                   {/* Small dots */}
-                  <circle cx="210" cy="189" r="6" fill="#0f172a" />
-                  <circle cx="210" cy="231" r="6" fill="#f0e6d0" />
+                  <circle cx="220" cy="186" r="7" fill="#0f172a" />
+                  <circle cx="220" cy="234" r="7" fill="#E8D48B" />
                   
-                  {/* Centro label */}
-                  <text x="210" y="270" textAnchor="middle" fill="#C9A84C" fontSize="10" fontWeight="700" fontFamily="Outfit, sans-serif" opacity="0.8">CENTRO</text>
+                  {/* Centro text */}
+                  <text x="220" y="280" textAnchor="middle" fill="#C9A84C" fontSize="12" fontWeight="800" fontFamily="Outfit, sans-serif" opacity="0.9">CENTRO</text>
+                  <text x="220" y="294" textAnchor="middle" fill="#C9A84C" fontSize="9" fontWeight="500" fontFamily="Outfit, sans-serif" opacity="0.6">Terra</text>
                   
-                  {/* Decorative dots at octagon vertices */}
+                  {/* Golden dots at octagon vertices */}
                   {[
-                    [210, 30], [330, 80], [380, 200], [330, 320],
-                    [210, 370], [90, 320], [40, 200], [90, 80]
+                    [220, 25], [345, 78], [395, 210], [345, 342],
+                    [220, 395], [95, 342], [45, 210], [95, 78]
                   ].map(([cx, cy], i) => (
-                    <circle key={i} cx={cx} cy={cy} r="4" fill="#C9A84C" opacity="0.6" />
+                    <circle key={i} cx={cx} cy={cy} r="5" fill="#C9A84C" opacity="0.9" filter="url(#softGlow)" />
                   ))}
                 </svg>
               </div>
 
               {/* Floating I Ching hexagram card */}
               <div className="fade-up fade-up-d5" style={{
-                position: 'absolute', bottom: '10px', left: '-10px',
-                background: 'rgba(255,255,255,0.95)', borderRadius: '16px',
-                padding: '16px 20px', boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                position: 'absolute', bottom: '20px', left: '-20px',
+                background: '#ffffff', borderRadius: '16px',
+                padding: '18px 22px', boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
                 display: 'flex', alignItems: 'center', gap: '14px',
                 animation: 'float 5s ease-in-out infinite',
-                animationDelay: '1s', backdropFilter: 'blur(10px)',
+                animationDelay: '1s',
               }}>
-                <svg width="36" height="52" viewBox="0 0 36 52" xmlns="http://www.w3.org/2000/svg">
+                <svg width="40" height="56" viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">
                   {/* I Ching Hexagram 11 - Tai (Peace) */}
-                  <rect x="0" y="0" width="36" height="5" rx="2" fill="#1E3A5F" />
-                  <rect x="0" y="9" width="36" height="5" rx="2" fill="#1E3A5F" />
-                  <rect x="0" y="18" width="36" height="5" rx="2" fill="#1E3A5F" />
-                  <rect x="0" y="29" width="15" height="5" rx="2" fill="#C9A84C" />
-                  <rect x="21" y="29" width="15" height="5" rx="2" fill="#C9A84C" />
-                  <rect x="0" y="38" width="15" height="5" rx="2" fill="#C9A84C" />
-                  <rect x="21" y="38" width="15" height="5" rx="2" fill="#C9A84C" />
-                  <rect x="0" y="47" width="15" height="5" rx="2" fill="#C9A84C" />
-                  <rect x="21" y="47" width="15" height="5" rx="2" fill="#C9A84C" />
+                  <rect x="0" y="0" width="40" height="6" rx="2" fill="#1E3A5F" />
+                  <rect x="0" y="10" width="40" height="6" rx="2" fill="#1E3A5F" />
+                  <rect x="0" y="20" width="40" height="6" rx="2" fill="#1E3A5F" />
+                  <rect x="0" y="32" width="16" height="6" rx="2" fill="#C9A84C" />
+                  <rect x="24" y="32" width="16" height="6" rx="2" fill="#C9A84C" />
+                  <rect x="0" y="42" width="16" height="6" rx="2" fill="#C9A84C" />
+                  <rect x="24" y="42" width="16" height="6" rx="2" fill="#C9A84C" />
+                  <rect x="0" y="52" width="16" height="6" rx="2" fill="#C9A84C" />
+                  <rect x="24" y="52" width="16" height="6" rx="2" fill="#C9A84C" />
                 </svg>
                 <div>
-                  <p style={{ color: '#1E3A5F', fontWeight: 700, fontSize: '14px', margin: 0, fontFamily: "'Playfair Display', serif" }}>泰 Tai</p>
-                  <p style={{ color: '#7C3AED', fontSize: '12px', margin: '2px 0 0 0', fontWeight: 600 }}>Paz &amp; Harmonia</p>
-                  <p style={{ color: '#94a3b8', fontSize: '11px', margin: '1px 0 0 0' }}>Hexagrama 11</p>
+                  <p style={{ color: '#1E3A5F', fontWeight: 700, fontSize: '16px', margin: 0, fontFamily: "'Playfair Display', serif" }}>泰 Tai</p>
+                  <p style={{ color: '#7C3AED', fontSize: '13px', margin: '2px 0 0 0', fontWeight: 600 }}>Paz &amp; Harmonia</p>
+                  <p style={{ color: '#94a3b8', fontSize: '11px', margin: '2px 0 0 0' }}>I Ching • Hexagrama 11</p>
                 </div>
               </div>
 
-              {/* Floating element badge */}
+              {/* Floating 5 elements badge */}
               <div className="fade-up fade-up-d6" style={{
-                position: 'absolute', top: '20px', right: '-10px',
-                background: 'rgba(255,255,255,0.95)', borderRadius: '12px',
-                padding: '12px 16px', boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                position: 'absolute', top: '10px', right: '-15px',
+                background: '#ffffff', borderRadius: '14px',
+                padding: '14px 18px', boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
                 animation: 'float 7s ease-in-out infinite',
-                animationDelay: '2s', backdropFilter: 'blur(10px)',
+                animationDelay: '2s',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '20px' }}>🔥</span>
-                  <span style={{ fontSize: '20px' }}>💧</span>
-                  <span style={{ fontSize: '20px' }}>🌿</span>
-                  <span style={{ fontSize: '20px' }}>⛰️</span>
-                  <span style={{ fontSize: '20px' }}>🪙</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '22px' }}>🔥</span>
+                  <span style={{ fontSize: '22px' }}>💧</span>
+                  <span style={{ fontSize: '22px' }}>🌿</span>
+                  <span style={{ fontSize: '22px' }}>⛰️</span>
+                  <span style={{ fontSize: '22px' }}>🪙</span>
                 </div>
-                <p style={{ color: '#64748b', fontSize: '11px', margin: '6px 0 0 0', textAlign: 'center', fontWeight: 600 }}>5 Elementos</p>
+                <p style={{ color: '#1E3A5F', fontSize: '12px', margin: '8px 0 0 0', textAlign: 'center', fontWeight: 700 }}>5 Elementos</p>
               </div>
             </div>
           </div>
