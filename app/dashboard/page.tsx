@@ -70,8 +70,7 @@ setLoading(false)
 
   return (
     <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-
-      <header style={{
+         <header style={{
         background: '#1E3A5F', padding: '0 32px', height: '64px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
@@ -80,15 +79,16 @@ setLoading(false)
           <span style={{ fontSize: '28px' }}>☯</span>
           <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ color: '#ffffff', fontSize: '14px' }}>
-            Ola, {profile?.nome_completo || user?.email}
-          </span>
-          <button onClick={handleLogout} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
-            color: '#ffffff', padding: '6px 16px', borderRadius: '6px',
-            cursor: 'pointer', fontSize: '14px'
-          }}>Sair</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ color: '#ffffff', fontSize: '14px' }}>
+                Ola, {profile?.nome_completo || user?.email}
+            </span>
+            <span onClick={() => router.push('/perfil')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Perfil</span>
+            <button onClick={handleLogout} style={{
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
+                color: '#ffffff', padding: '6px 16px', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '14px'
+            }}>Sair</button>
         </div>
       </header>
 
