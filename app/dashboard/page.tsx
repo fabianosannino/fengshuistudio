@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [totalClientes, setTotalClientes] = useState(0)
+  const [totalConsultas, setTotalConsultas] = useState(0)
 
   useEffect(() => {
     async function loadUser() {
@@ -34,7 +35,15 @@ const { count } = await supabase
   .eq('ativo', true)
 
 setTotalClientes(count || 0)
+
+const { count: countConsultas } = await supabase
+  .from('consultas')
+  .select('*', { count: 'exact', head: true })
+  .eq('consultor_id', user.id)
+
+setTotalConsultas(countConsultas || 0)
 setLoading(false)
+
 
     }
     loadUser()
@@ -99,15 +108,16 @@ setLoading(false)
           gap: '20px', marginBottom: '32px'
         }}>
           {[
-            { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8' },
-            { label: 'Consultas realizadas', value: '0', icon: '📋', color: '#15803D' },
-            { label: 'Rituais pendentes', value: '0', icon: '🌙', color: '#7C3AED' },
-            { label: 'Plano atual', value: profile?.plano || 'Freemium', icon: '⭐', color: '#B8860B' },
+                { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
+                { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
+                { label: 'Rituais pendentes', value: '0', icon: '🌙', color: '#7C3AED', link: '/consultas' },
+                { label: 'Plano atual', value: profile?.plano || 'Freemium', icon: '⭐', color: '#B8860B', link: '/consultas' },
           ].map((kpi, i) => (
-            <div key={i} style={{
-              background: '#ffffff', borderRadius: '12px', padding: '24px',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`
-            }}>
+                <div key={i} onClick={() => router.push(kpi.link)} style={{
+                background: '#ffffff', borderRadius: '12px', padding: '24px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`,
+                cursor: 'pointer'
+                }}>
               <div style={{ fontSize: '28px', marginBottom: '8px' }}>{kpi.icon}</div>
               <div style={{ fontSize: '28px', fontWeight: 'bold', color: kpi.color, marginBottom: '4px' }}>{kpi.value}</div>
               <div style={{ color: '#6B7280', fontSize: '13px' }}>{kpi.label}</div>
@@ -125,15 +135,15 @@ setLoading(false)
                 { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8', link: '/clientes' },
                 { label: 'Ver relatorios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
                 { label: 'Calendario lunar', desc: 'Proximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
-            ].map((action, i) => (
-            <div key={i} onClick={() => router.push(action.link)} style={{
+                ].map((kpi, i) => (
+                <div key={i} onClick={() => router.push(kpi.link)} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '20px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
-                borderTop: `3px solid ${action.color}`
+                borderTop: `3px solid ${kpi.color}`
               }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>{action.icon}</div>
-                <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{action.label}</div>
-                <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{action.desc}</div>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>{kpi.icon}</div>
+                <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{kpi.label}</div>
+                <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{kpi.desc}</div>
               </div>
             ))}
           </div>
