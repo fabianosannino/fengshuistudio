@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import AppShell from '../../components/AppShell'
 
 export default function ClienteDetalhe() {
-  const router = useRouter()
   const params = useParams()
   const [cliente, setCliente] = useState<any>(null)
   const [consultas, setConsultas] = useState<any[]>([])
@@ -106,28 +106,8 @@ export default function ClienteDetalhe() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-      <header style={{
-        background: '#1E3A5F', padding: '0 32px', height: '64px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '28px', cursor: 'pointer' }} onClick={() => window.location.href = '/dashboard'}>☯</span>
-          <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span onClick={() => window.location.href = '/dashboard'} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Dashboard</span>
-          <span onClick={() => window.location.href = '/clientes'} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Clientes</span>
-          <span onClick={() => window.location.href = '/consultas'} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Consultas</span>
-          <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/' }} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
-            color: '#ffffff', padding: '6px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
-          }}>Sair</button>
-        </div>
-      </header>
-
-      <main style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
+    <AppShell currentPage="clientes">
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         <div style={{ marginBottom: '24px' }}>
           <span onClick={() => window.location.href = '/clientes'} style={{ color: '#7C3AED', fontSize: '14px', cursor: 'pointer' }}>← Voltar para clientes</span>
@@ -142,7 +122,6 @@ export default function ClienteDetalhe() {
           }}>{message}</div>
         )}
 
-        {/* Card do cliente - modo visualização */}
         {!editing && (
           <div style={{
             background: '#ffffff', borderRadius: '12px', padding: '28px',
@@ -203,7 +182,6 @@ export default function ClienteDetalhe() {
           </div>
         )}
 
-        {/* Card do cliente - modo edição */}
         {editing && (
           <div style={{
             background: '#ffffff', borderRadius: '12px', padding: '28px',
@@ -271,7 +249,6 @@ export default function ClienteDetalhe() {
           </div>
         )}
 
-        {/* Consultas do cliente */}
         <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
           Consultas ({consultas.length})
         </h2>
@@ -309,7 +286,7 @@ export default function ClienteDetalhe() {
           </div>
         )}
 
-      </main>
-    </div>
+      </div>
+    </AppShell>
   )
 }
