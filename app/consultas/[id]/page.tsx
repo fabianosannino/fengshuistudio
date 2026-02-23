@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
+import {
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ResponsiveContainer, Tooltip,
+} from 'recharts'
 
 const CRITERIOS = [
   'Limpeza e organizacao',
@@ -29,6 +33,7 @@ export default function ConsultaDetalhe() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [profile, setProfile] = useState<any>(null)
+  const [radarData, setRadarData] = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
@@ -71,6 +76,9 @@ export default function ConsultaDetalhe() {
       setCriterios(cMap)
       setNotas(nMap)
 
+      // Build radar data
+      buildRadarData(setoresData || [])
+
       if (setoresData && setoresData.length > 0) {
         setSetorAtivo(setoresData[0].id)
       }
@@ -80,6 +88,15 @@ export default function ConsultaDetalhe() {
     load()
   }, [id])
 
+  function buildRadarData(setoresArr: any[]) {
+    const data = setoresArr.map(s => ({
+      setor: s.nome,
+      score: s.score_percentual ?? 0,
+      fullMark: 100,
+    }))
+    setRadarData(data)
+  }
+
   function getScore(setorId: string) {
     const scores = Object.values(criterios[setorId] || {})
     if (scores.length === 0) return null
@@ -87,11 +104,25 @@ export default function ConsultaDetalhe() {
     return Math.round((total / (scores.length * 3)) * 100)
   }
 
+  function getScoreGeral() {
+    const avaliados = setores.filter(s => s.score_percentual !== null && s.score_percentual !== undefined)
+    if (avaliados.length === 0) return null
+    const soma = avaliados.reduce((a, s) => a + s.score_percentual, 0)
+    return Math.round(soma / avaliados.length)
+  }
+
   function scoreColor(pct: number | null) {
     if (pct === null) return '#D1D5DB'
     if (pct >= 70) return '#15803D'
     if (pct >= 40) return '#D97706'
     return '#DC2626'
+  }
+
+  function scoreLabel(pct: number | null) {
+    if (pct === null) return 'Não avaliado'
+    if (pct >= 70) return 'Bom'
+    if (pct >= 40) return 'Regular'
+    return 'Crítico'
   }
 
   async function handleSaveSetor(setorId: string) {
@@ -113,7 +144,9 @@ export default function ConsultaDetalhe() {
     } else {
       const pct = getScore(setorId)
       await supabase.from('setores_bagua').update({ score_percentual: pct }).eq('id', setorId)
-      setSetores(prev => prev.map(s => s.id === setorId ? { ...s, score_percentual: pct } : s))
+      const updatedSetores = setores.map(s => s.id === setorId ? { ...s, score_percentual: pct } : s)
+      setSetores(updatedSetores)
+      buildRadarData(updatedSetores)
       setMessage('Setor salvo com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
@@ -138,10 +171,13 @@ export default function ConsultaDetalhe() {
   }
 
   const setorAtivoData = setores.find(s => s.id === setorAtivo)
+  const scoreGeral = getScoreGeral()
+  const hasAnyScore = radarData.some(d => d.score > 0)
 
   return (
     <AppShell currentPage="consultas">
 
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
@@ -151,17 +187,26 @@ export default function ConsultaDetalhe() {
             Cliente: {consulta.clientes?.nome_completo} • {consulta.tipo_imovel} {consulta.area_total_m2 ? `• ${consulta.area_total_m2}m²` : ''}
           </p>
         </div>
-        <button onClick={() => {
-          if (profile?.plano !== 'pro') {
-            setMessage('Erro: Geração de relatório PDF disponível apenas no plano Pro.')
-            return
-          }
-          window.location.href = `/consultas/${id}/relatorio`
-        }} style={{
-          background: '#1D4ED8', color: '#ffffff', border: 'none',
-          padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
-          fontWeight: 'bold', cursor: 'pointer'
-        }}>Ver relatorio</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {consulta.status !== 'finalizada' && (
+            <button onClick={handleFinalizar} style={{
+              background: '#15803D', color: '#ffffff', border: 'none',
+              padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>Finalizar consulta</button>
+          )}
+          <button onClick={() => {
+            if (profile?.plano !== 'pro') {
+              setMessage('Erro: Geração de relatório PDF disponível apenas no plano Pro.')
+              return
+            }
+            window.location.href = `/consultas/${id}/relatorio`
+          }} style={{
+            background: '#1D4ED8', color: '#ffffff', border: 'none',
+            padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
+            fontWeight: 'bold', cursor: 'pointer'
+          }}>Ver relatorio</button>
+        </div>
       </div>
 
       {message && (
@@ -173,8 +218,101 @@ export default function ConsultaDetalhe() {
         }}>{message}</div>
       )}
 
+      {/* Radar + Score Geral Card */}
+      <div style={{
+        background: '#ffffff', borderRadius: '12px', padding: '24px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
+            Perfil Energetico do Imovel
+          </h3>
+          {scoreGeral !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ color: '#6B7280', fontSize: '14px' }}>Score geral:</span>
+              <div style={{
+                background: scoreColor(scoreGeral), color: '#fff',
+                borderRadius: '20px', padding: '6px 16px',
+                fontSize: '16px', fontWeight: 'bold',
+              }}>{scoreGeral}% — {scoreLabel(scoreGeral)}</div>
+            </div>
+          )}
+        </div>
+
+        {hasAnyScore ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+            {/* Radar Chart */}
+            <div style={{ flex: '1 1 400px', minWidth: '300px' }}>
+              <ResponsiveContainer width="100%" height={320}>
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
+                  <PolarGrid stroke="#E5E7EB" />
+                  <PolarAngleAxis
+                    dataKey="setor"
+                    tick={{ fontSize: 11, fill: '#374151', fontWeight: 600 }}
+                  />
+                  <PolarRadiusAxis
+                    angle={90}
+                    domain={[0, 100]}
+                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    axisLine={false}
+                  />
+                  <Radar
+                    name="Score %"
+                    dataKey="score"
+                    stroke="#7C3AED"
+                    fill="#7C3AED"
+                    fillOpacity={0.25}
+                    strokeWidth={2.5}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`${value}%`, 'Score']}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Mini score list */}
+            <div style={{ flex: '1 1 280px', minWidth: '250px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {radarData.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', borderRadius: '8px', background: '#F9FAFB',
+                  }}>
+                    <span style={{ color: '#374151', fontSize: '13px', fontWeight: 600 }}>{item.setor}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '60px', height: '6px', background: '#E5E7EB',
+                        borderRadius: '3px', overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          width: `${item.score}%`, height: '100%',
+                          background: scoreColor(item.score),
+                          borderRadius: '3px',
+                        }} />
+                      </div>
+                      <span style={{
+                        color: scoreColor(item.score), fontSize: '13px',
+                        fontWeight: 'bold', minWidth: '36px', textAlign: 'right',
+                      }}>{item.score}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Avalie os setores abaixo para ver o perfil energetico</p>
+          </div>
+        )}
+      </div>
+
+      {/* Setores + Avaliação */}
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px' }}>
 
+        {/* Sidebar setores */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Setores Ba Gua
@@ -209,6 +347,7 @@ export default function ConsultaDetalhe() {
           })}
         </div>
 
+        {/* Formulário de avaliação */}
         {setorAtivoData && (
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
