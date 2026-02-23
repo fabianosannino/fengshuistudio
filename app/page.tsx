@@ -1,5 +1,5 @@
 'use client'
-
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { supabase } from '../src/lib/supabase'
 
@@ -10,7 +10,8 @@ export default function Home() {
   const [message, setMessage] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
-
+  const router = useRouter()
+  
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -21,7 +22,7 @@ export default function Home() {
       setLoading(false)
     } else {
       setMessage('Login realizado! Redirecionando...')
-      window.location.href = '/dashboard'
+      router.push('/dashboard')
     }
   }
 
