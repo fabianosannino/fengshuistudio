@@ -269,7 +269,7 @@ export default function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number, name: string) => [`${value} consulta(s)`, name]}
+                  formatter={(value: any, name: any) => [`${value} consulta(s)`, name]}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Legend
@@ -317,7 +317,7 @@ export default function Dashboard() {
                   strokeWidth={2}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value}%`, 'Score']}
+                  formatter={(value: any) => [`${value}%`, 'Score']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
               </RadarChart>
@@ -358,7 +358,7 @@ export default function Dashboard() {
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value}`, 'Consultas']}
+                  formatter={(value: any) => [`${value}`, 'Consultas']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Line
@@ -403,7 +403,7 @@ export default function Dashboard() {
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value}`, 'Clientes']}
+                  formatter={(value: any) => [`${value}`, 'Clientes']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Bar
