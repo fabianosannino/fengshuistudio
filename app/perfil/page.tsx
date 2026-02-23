@@ -2,49 +2,35 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
-import { useRouter } from 'next/navigation'
+import AppShell from '../components/AppShell'
 
 export default function Perfil() {
-  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({
-    nome_completo: '',
-    nome_empresa: '',
-    telefone: '',
-    cidade: '',
-    estado: '',
-    bio: '',
-    site: '',
+    nome_completo: '', nome_empresa: '', telefone: '',
+    cidade: '', estado: '', bio: '', site: '',
   })
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/'); return }
+      if (!user) { window.location.href = '/'; return }
       setUser(user)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profile) {
         setForm({
-          nome_completo: profile.nome_completo || '',
-          nome_empresa: profile.nome_empresa || '',
-          telefone: profile.telefone || '',
-          cidade: profile.cidade || '',
-          estado: profile.estado || '',
-          bio: profile.bio || '',
-          site: profile.site || '',
+          nome_completo: profile.nome_completo || '', nome_empresa: profile.nome_empresa || '',
+          telefone: profile.telefone || '', cidade: profile.cidade || '',
+          estado: profile.estado || '', bio: profile.bio || '', site: profile.site || '',
         })
       }
       setLoading(false)
     }
     load()
-  }, [router])
+  }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -54,16 +40,9 @@ export default function Perfil() {
     e.preventDefault()
     setSaving(true)
     setMessage('')
-    const { error } = await supabase
-      .from('profiles')
-      .update(form)
-      .eq('id', user.id)
-    if (error) {
-      setMessage('Erro ao salvar: ' + error.message)
-    } else {
-      setMessage('Perfil atualizado com sucesso!')
-      setTimeout(() => setMessage(''), 3000)
-    }
+    const { error } = await supabase.from('profiles').update(form).eq('id', user.id)
+    if (error) { setMessage('Erro ao salvar: ' + error.message) }
+    else { setMessage('Perfil atualizado com sucesso!'); setTimeout(() => setMessage(''), 3000) }
     setSaving(false)
   }
 
@@ -79,37 +58,14 @@ export default function Perfil() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+    <AppShell currentPage="perfil">
 
-      <header style={{
-        background: '#1E3A5F', padding: '0 32px', height: '64px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '28px', cursor: 'pointer' }} onClick={() => router.push('/dashboard')}>☯</span>
-          <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span onClick={() => router.push('/dashboard')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Dashboard</span>
-          <span onClick={() => router.push('/clientes')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Clientes</span>
-          <span onClick={() => router.push('/consultas')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>Consultas</span>
-          <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>Perfil</span>
-          <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/' }} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
-            color: '#ffffff', padding: '6px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
-          }}>Sair</button>
-        </div>
-      </header>
-
-      <main style={{ padding: '32px', maxWidth: '700px', margin: '0 auto' }}>
-
+      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meu Perfil</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>Seus dados aparecem no relatório PDF enviado ao cliente</p>
         </div>
 
-        {/* Avatar */}
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '50%',
@@ -119,9 +75,7 @@ export default function Perfil() {
             {form.nome_completo?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div>
-            <p style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>
-              {form.nome_completo || 'Seu nome'}
-            </p>
+            <p style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>{form.nome_completo || 'Seu nome'}</p>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>{user?.email}</p>
             {form.nome_empresa && <p style={{ color: '#7C3AED', fontSize: '13px', margin: '0' }}>{form.nome_empresa}</p>}
           </div>
@@ -142,20 +96,17 @@ export default function Perfil() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
-                <input name="nome_completo" value={form.nome_completo} onChange={handleChange}
-                  placeholder="Seu nome completo"
+                <input name="nome_completo" value={form.nome_completo} onChange={handleChange} placeholder="Seu nome completo"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
-                <input name="telefone" value={form.telefone} onChange={handleChange}
-                  placeholder="(11) 99999-9999"
+                <input name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
-                <input name="cidade" value={form.cidade} onChange={handleChange}
-                  placeholder="Sua cidade"
+                <input name="cidade" value={form.cidade} onChange={handleChange} placeholder="Sua cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
@@ -176,22 +127,18 @@ export default function Perfil() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome da empresa</label>
-                <input name="nome_empresa" value={form.nome_empresa} onChange={handleChange}
-                  placeholder="Seu consultorio ou empresa"
+                <input name="nome_empresa" value={form.nome_empresa} onChange={handleChange} placeholder="Seu consultorio ou empresa"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Site</label>
-                <input name="site" value={form.site} onChange={handleChange}
-                  placeholder="www.seusite.com.br"
+                <input name="site" value={form.site} onChange={handleChange} placeholder="www.seusite.com.br"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
             <div>
               <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bio / Apresentacao</label>
-              <textarea name="bio" value={form.bio} onChange={handleChange}
-                placeholder="Descreva sua experiencia como consultor de Feng Shui..."
-                rows={4}
+              <textarea name="bio" value={form.bio} onChange={handleChange} placeholder="Descreva sua experiencia como consultor de Feng Shui..." rows={4}
                 style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
             </div>
           </div>
@@ -206,8 +153,8 @@ export default function Perfil() {
             {saving ? 'Salvando...' : 'Salvar perfil'}
           </button>
         </form>
+      </div>
 
-      </main>
-    </div>
+    </AppShell>
   )
 }
