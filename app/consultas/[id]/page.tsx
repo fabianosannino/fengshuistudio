@@ -161,11 +161,11 @@ export default function ConsultaDetalhe() {
               Cliente: {consulta.clientes?.nome_completo} • {consulta.tipo_imovel} {consulta.area_total_m2 ? `• ${consulta.area_total_m2}m²` : ''}
             </p>
           </div>
-          <button onClick={handleFinalizar} style={{
-            background: '#15803D', color: '#ffffff', border: 'none',
+          <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
+            background: '#1D4ED8', color: '#ffffff', border: 'none',
             padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer'
-          }}>Finalizar consulta ✓</button>
+          }}>Ver relatorio</button>
         </div>
 
         {message && (
