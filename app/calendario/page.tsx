@@ -143,13 +143,21 @@ export default function Calendario() {
 
   async function toggleStatus(id: string, statusAtual: string) {
     const novoStatus = statusAtual === 'pendente' ? 'concluido' : 'pendente'
-    await supabase.from('rituais').update({ status: novoStatus }).eq('id', id)
+    const { error } = await supabase.from('rituais').update({ status: novoStatus }).eq('id', id)
+    if (error) {
+      setMessage('Erro ao atualizar status: ' + error.message)
+      return
+    }
     setRituais(rituais.map(r => r.id === id ? { ...r, status: novoStatus } : r))
   }
 
   async function deleteRitual(id: string) {
     if (!confirm('Excluir este ritual?')) return
-    await supabase.from('rituais').delete().eq('id', id)
+    const { error } = await supabase.from('rituais').delete().eq('id', id)
+    if (error) {
+      setMessage('Erro ao excluir ritual: ' + error.message)
+      return
+    }
     setRituais(rituais.filter(r => r.id !== id))
   }
 

@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 export default function Relatorio() {
   const router = useRouter()
@@ -14,6 +16,9 @@ export default function Relatorio() {
   const [setores, setSetores] = useState<any[]>([])
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
+
+  const isFree = profile?.plano !== 'pro'
 
   useEffect(() => {
     async function load() {
@@ -67,6 +72,63 @@ export default function Relatorio() {
     window.print()
   }
 
+  async function handleDownloadPDF() {
+    if (!printRef.current) return
+    setDownloading(true)
+
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      })
+
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 297 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      let heightLeft = imgHeight
+      let position = 0
+
+      // First page
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      // Additional pages if content overflows
+      while (heightLeft > 0) {
+        position = position - pageHeight
+        pdf.addPage()
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      // Watermark for Free plan
+      if (isFree) {
+        const totalPages = pdf.getNumberOfPages()
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i)
+          pdf.setFontSize(50)
+          pdf.setTextColor(200, 200, 200)
+          pdf.saveGraphicsState()
+          const centerX = imgWidth / 2
+          const centerY = pageHeight / 2
+          pdf.text('VERSAO GRATUITA', centerX, centerY, { align: 'center', angle: 45 })
+          pdf.restoreGraphicsState()
+        }
+      }
+
+      const nomeArquivo = `relatorio-${consulta.nome_imovel?.replace(/[^a-zA-Z0-9]/g, '-') || 'consulta'}.pdf`
+      pdf.save(nomeArquivo)
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err)
+      alert('Erro ao gerar PDF. Tente usar a opcao Imprimir.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
@@ -99,16 +161,25 @@ export default function Relatorio() {
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => router.push(`/consultas/${id}`)}>☯</span>
           <span style={{ color: '#B8860B', fontSize: '18px', fontWeight: 'bold' }}>FengShui Studio</span>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {isFree && (
+            <span style={{ color: '#FBBF24', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
+              Plano Free — PDF com marca d&apos;agua
+            </span>
+          )}
           <button onClick={() => router.push(`/consultas/${id}`)} style={{
             background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
             color: '#ffffff', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
           }}>← Voltar</button>
           <button onClick={handlePrint} style={{
-            background: '#7C3AED', border: 'none',
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
+            color: '#ffffff', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
+          }}>Imprimir</button>
+          <button onClick={handleDownloadPDF} disabled={downloading} style={{
+            background: downloading ? '#9CA3AF' : '#7C3AED', border: 'none',
             color: '#ffffff', padding: '8px 24px', borderRadius: '6px',
-            cursor: 'pointer', fontSize: '14px', fontWeight: 'bold'
-          }}>Imprimir / Salvar PDF</button>
+            cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 'bold'
+          }}>{downloading ? 'Gerando PDF...' : 'Baixar PDF'}</button>
         </div>
       </div>
 
@@ -116,8 +187,22 @@ export default function Relatorio() {
       <div ref={printRef} className="print-area" style={{
         background: '#ffffff', maxWidth: '800px', margin: '32px auto',
         padding: '48px', fontFamily: 'Arial, sans-serif',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)', borderRadius: '8px'
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)', borderRadius: '8px',
+        position: 'relative', overflow: 'hidden'
       }}>
+
+        {/* Watermark visual for Free plan */}
+        {isFree && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%) rotate(-45deg)',
+            fontSize: '60px', fontWeight: 'bold', color: 'rgba(124, 58, 237, 0.08)',
+            whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 1,
+            userSelect: 'none', letterSpacing: '8px'
+          }}>
+            VERSAO GRATUITA
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ borderBottom: '3px solid #1E3A5F', paddingBottom: '24px', marginBottom: '32px' }}>

@@ -7,6 +7,7 @@ import AppShell from '../components/AppShell'
 export default function Consultas() {
   const [consultas, setConsultas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -58,6 +59,14 @@ export default function Consultas() {
           fontWeight: 'bold', cursor: 'pointer'
         }}>+ Nova consulta</button>
       </div>
+
+      {message && (
+        <div style={{
+          marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
+          background: '#FEF2F2', border: '1px solid #FECACA',
+          color: '#DC2626', fontSize: '14px'
+        }}>{message}</div>
+      )}
 
       {consultas.length === 0 ? (
         <div style={{
@@ -112,7 +121,11 @@ export default function Consultas() {
                 }}>Abrir</button>
                 <button onClick={async () => {
                   if (confirm('Deseja excluir esta consulta?')) {
-                    await supabase.from('consultas').delete().eq('id', consulta.id)
+                    const { error } = await supabase.from('consultas').delete().eq('id', consulta.id)
+                    if (error) {
+                      setMessage('Erro ao excluir consulta: ' + error.message)
+                      return
+                    }
                     setConsultas(consultas.filter(c => c.id !== consulta.id))
                   }
                 }} style={{

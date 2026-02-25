@@ -156,7 +156,11 @@ export default function Pagamentos() {
 
   async function handleDelete(id: string) {
     if (!confirm('Deseja excluir este pagamento?')) return
-    await supabase.from('pagamentos').delete().eq('id', id)
+    const { error } = await supabase.from('pagamentos').delete().eq('id', id)
+    if (error) {
+      setMessage('Erro ao excluir pagamento: ' + error.message)
+      return
+    }
     setPagamentos(pagamentos.filter(p => p.id !== id))
   }
 
@@ -166,9 +170,11 @@ export default function Pagamentos() {
       status: 'pago',
       data_pagamento: hoje,
     }).eq('id', pag.id)
-    if (!error) {
-      setPagamentos(pagamentos.map(p => p.id === pag.id ? { ...p, status: 'pago', data_pagamento: hoje } : p))
+    if (error) {
+      setMessage('Erro ao marcar como pago: ' + error.message)
+      return
     }
+    setPagamentos(pagamentos.map(p => p.id === pag.id ? { ...p, status: 'pago', data_pagamento: hoje } : p))
   }
 
   function formatCurrency(value: number) {
