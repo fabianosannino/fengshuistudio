@@ -196,16 +196,12 @@ export default function ConsultaDetalhe() {
             }}>Finalizar consulta</button>
           )}
           <button onClick={() => {
-            if (profile?.plano !== 'pro') {
-              setMessage('Erro: Geração de relatório PDF disponível apenas no plano Pro.')
-              return
-            }
             window.location.href = `/consultas/${id}/relatorio`
           }} style={{
             background: '#1D4ED8', color: '#ffffff', border: 'none',
             padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer'
-          }}>Ver relatorio</button>
+          }}>{profile?.plano === 'pro' ? 'Ver relatorio' : 'Ver relatorio (Free)'}</button>
         </div>
       </div>
 
