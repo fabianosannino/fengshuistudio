@@ -29,6 +29,7 @@ export default function PlantasPage() {
   const [activeResultTab, setActiveResultTab] = useState<'tubete' | 'adubos' | 'solo' | 'manejo' | 'resumo'>('tubete')
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [metodoIdentificacao, setMetodoIdentificacao] = useState<'ia' | 'manual' | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('agroadubo-dark')
@@ -116,7 +117,10 @@ export default function PlantasPage() {
 
       if (data.identified && data.plantId && data.confidence >= 0.7) {
         const matched = PLANT_DATABASE.find(p => p.id === data.plantId)
-        if (matched) setPlantaSelecionada(matched)
+        if (matched) {
+          setPlantaSelecionada(matched)
+          setMetodoIdentificacao('ia')
+        }
       }
     } catch {
       setAiError('Falha na conexao. Verifique sua internet e tente novamente.')
@@ -245,6 +249,7 @@ export default function PlantasPage() {
     setBusca('')
     setAiResult(null)
     setAiError(null)
+    setMetodoIdentificacao(null)
   }
 
   const canAdvance = () => {
@@ -475,8 +480,11 @@ export default function PlantasPage() {
 
             {aiError && !identificando && (
               <div style={{ marginBottom: '20px', padding: '14px', borderRadius: '12px', background: darkMode ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: '1px solid rgba(239,68,68,0.2)', animation: 'slideIn 0.3s ease-out' }}>
-                <p style={{ color: '#dc2626', fontSize: '14px', fontWeight: 600, margin: 0 }}>{aiError}</p>
-                <p style={{ color: t.textSoft, fontSize: '13px', margin: '4px 0 0 0' }}>Selecione a planta manualmente abaixo.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '14px' }}>{'\uD83D\uDCCB'}</span>
+                  <p style={{ color: '#dc2626', fontSize: '14px', fontWeight: 600, margin: 0 }}>{aiError}</p>
+                </div>
+                <p style={{ color: t.textSoft, fontSize: '13px', margin: 0 }}>Selecione a planta manualmente no banco de dados interno abaixo.</p>
               </div>
             )}
 
@@ -490,7 +498,7 @@ export default function PlantasPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
               {plantasFiltradas.map(planta => (
-                <div key={planta.id} onClick={() => setPlantaSelecionada(planta)} className="selectable-card" style={selectableCard(plantaSelecionada?.id === planta.id)}>
+                <div key={planta.id} onClick={() => { setPlantaSelecionada(planta); setMetodoIdentificacao('manual') }} className="selectable-card" style={selectableCard(plantaSelecionada?.id === planta.id)}>
                   {plantaSelecionada?.id === planta.id && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '22px', height: '22px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>{'\u2713'}</div>}
                   <div style={{ fontSize: '36px', marginBottom: '8px' }}>{planta.icon}</div>
                   <p style={{ color: t.text, fontSize: '15px', fontWeight: 700, margin: '0 0 2px 0' }}>{planta.nome}</p>
@@ -504,10 +512,28 @@ export default function PlantasPage() {
               <div style={{ marginTop: '20px', padding: '16px', borderRadius: '12px', background: darkMode ? 'rgba(22,163,74,0.1)' : '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', animation: 'slideIn 0.3s ease-out' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                   <span style={{ fontSize: '24px' }}>{plantaSelecionada.icon}</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <p style={{ color: t.text, fontWeight: 700, fontSize: '16px', margin: 0 }}>{plantaSelecionada.nome}</p>
                     <p style={{ color: t.textSoft, fontSize: '12px', margin: 0 }}>{plantaSelecionada.nomeCientifico}</p>
                   </div>
+                  {metodoIdentificacao && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      background: metodoIdentificacao === 'ia'
+                        ? (darkMode ? 'rgba(139,92,246,0.15)' : '#f5f3ff')
+                        : (darkMode ? 'rgba(59,130,246,0.15)' : '#eff6ff'),
+                      border: `1px solid ${metodoIdentificacao === 'ia' ? 'rgba(139,92,246,0.3)' : 'rgba(59,130,246,0.3)'}`,
+                      padding: '4px 12px', borderRadius: '20px', flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: '13px' }}>{metodoIdentificacao === 'ia' ? '\uD83E\uDD16' : '\uD83D\uDCCB'}</span>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700,
+                        color: metodoIdentificacao === 'ia' ? '#7c3aed' : '#2563eb',
+                      }}>
+                        {metodoIdentificacao === 'ia' ? 'Identificada pela IA' : 'Banco de dados interno'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <p style={{ color: t.textSoft, fontSize: '13px', lineHeight: 1.6, margin: '0 0 8px 0' }}>{plantaSelecionada.descricao}</p>
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
@@ -634,6 +660,11 @@ export default function PlantasPage() {
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>{'\uD83D\uDCCD'} {resultado.regiao.nome}</span>
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>{resultado.solo.icon} {resultado.solo.nome}</span>
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>{resultado.producao.icon} {resultado.producao.nome}</span>
+                    {metodoIdentificacao && (
+                      <span style={{ background: 'rgba(255,255,255,0.25)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>
+                        {metodoIdentificacao === 'ia' ? '\uD83E\uDD16 Identificada pela IA' : '\uD83D\uDCCB Banco de dados'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
