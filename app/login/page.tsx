@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 
 export default function Login() {
@@ -12,15 +12,17 @@ export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        router.push('/dashboard')
+        router.push(redirectTo)
       }
     })
     return () => subscription.unsubscribe()
-  }, [router])
+  }, [router, redirectTo])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()

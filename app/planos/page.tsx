@@ -52,14 +52,46 @@ export default function Planos() {
   async function handleSelectPlan(planoId: string) {
     if (planoId === profile?.plano) return
     if (planoId === 'pro') {
-      const { error } = await supabase.from('profiles').update({ plano: 'pro' }).eq('id', user.id)
-      if (error) { setMessage('Erro ao atualizar plano: ' + error.message) }
-      else { setProfile({ ...profile, plano: 'pro' }); setMessage('Parabéns! Seu plano foi atualizado para Pro!'); setTimeout(() => setMessage(''), 4000) }
+      try {
+        const res = await fetch('/api/planos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plano: 'pro' }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          if (data.requiresPayment) {
+            setMessage('Para fazer upgrade para o plano Pro, é necessário efetuar o pagamento. Em breve a integração com pagamento estará disponível.')
+          } else {
+            setMessage('Erro ao atualizar plano: ' + data.error)
+          }
+          return
+        }
+        setProfile({ ...profile, plano: 'pro' })
+        setMessage('Parabéns! Seu plano foi atualizado para Pro!')
+        setTimeout(() => setMessage(''), 4000)
+      } catch {
+        setMessage('Erro de conexão ao atualizar plano.')
+      }
     } else {
       if (!confirm('Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos Pro.')) return
-      const { error } = await supabase.from('profiles').update({ plano: 'freemium' }).eq('id', user.id)
-      if (error) { setMessage('Erro ao atualizar plano: ' + error.message) }
-      else { setProfile({ ...profile, plano: 'freemium' }); setMessage('Plano alterado para Free.'); setTimeout(() => setMessage(''), 4000) }
+      try {
+        const res = await fetch('/api/planos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plano: 'freemium' }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setMessage('Erro ao atualizar plano: ' + data.error)
+          return
+        }
+        setProfile({ ...profile, plano: 'freemium' })
+        setMessage('Plano alterado para Free.')
+        setTimeout(() => setMessage(''), 4000)
+      } catch {
+        setMessage('Erro de conexão ao atualizar plano.')
+      }
     }
   }
 

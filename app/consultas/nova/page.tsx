@@ -76,30 +76,33 @@ export default function NovaConsulta() {
   async function handleStep1(e: React.FormEvent) {
     e.preventDefault()
     if (!form.cliente_id) { setMessage('Selecione um cliente.'); return }
-    if (profile?.plano !== 'pro' && consultasMes >= 3) {
-      setMessage('Limite de 3 consultas/mês no plano Free. Faça upgrade para continuar.')
-      return
-    }
     setSaving(true)
     setMessage('')
-    const { data, error } = await supabase.from('consultas').insert({
-      consultor_id: user.id,
-      cliente_id: form.cliente_id,
-      nome_imovel: form.nome_imovel || 'Imovel',
-      tipo_imovel: form.tipo_imovel,
-      area_total_m2: form.area_total_m2 ? parseFloat(form.area_total_m2) : null,
-      endereco_imovel: form.endereco_imovel,
-      porta_posicao: form.porta_posicao,
-      status: 'em_andamento'
-    }).select().single()
-
-    if (error) {
-      setMessage('Erro ao criar consulta: ' + error.message)
-      setSaving(false)
-      return
+    try {
+      const res = await fetch('/api/consultas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente_id: form.cliente_id,
+          nome_imovel: form.nome_imovel || 'Imovel',
+          tipo_imovel: form.tipo_imovel,
+          area_total_m2: form.area_total_m2 ? parseFloat(form.area_total_m2) : null,
+          endereco_imovel: form.endereco_imovel,
+          porta_posicao: form.porta_posicao,
+          status: 'em_andamento',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Erro ao criar consulta.')
+        setSaving(false)
+        return
+      }
+      setConsultaId(data.id)
+      setStep(2)
+    } catch {
+      setMessage('Erro de conexão ao criar consulta.')
     }
-    setConsultaId(data.id)
-    setStep(2)
     setSaving(false)
   }
 

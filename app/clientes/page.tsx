@@ -52,17 +52,23 @@ export default function Clientes() {
     e.preventDefault()
     setSaving(true)
     setMessage('')
-    const { error } = await supabase.from('clientes').insert({
-      ...form,
-      consultor_id: user.id
-    })
-    if (error) {
-      setMessage('Erro ao salvar: ' + error.message)
-    } else {
-      setMessage('Cliente cadastrado com sucesso!')
-      setForm({ nome_completo: '', email: '', telefone: '', cidade: '', estado: '', notas: '' })
-      setShowForm(false)
-      await loadClientes(user.id)
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Erro ao salvar cliente.')
+      } else {
+        setMessage('Cliente cadastrado com sucesso!')
+        setForm({ nome_completo: '', email: '', telefone: '', cidade: '', estado: '', notas: '' })
+        setShowForm(false)
+        await loadClientes(user.id)
+      }
+    } catch {
+      setMessage('Erro de conexão ao salvar cliente.')
     }
     setSaving(false)
   }
