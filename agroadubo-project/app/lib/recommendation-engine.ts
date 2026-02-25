@@ -87,6 +87,26 @@ export function gerarRecomendacao(
       frequencia: 'No plantio + cobertura aos 90 dias',
       icon: '\uD83C\uDF3F',
     })
+  } else if (planta.categoria === 'Erva') {
+    adubos.push({
+      nome: 'NPK 10-10-10 (diluido)',
+      tipo: 'Mineral - Formulado',
+      npk: '10-10-10',
+      aplicacao: 'Fertirrigacao leve',
+      dosagem: producao.id === 'vaso' ? '1-2g por litro de agua' : '50-80 g/m2',
+      frequencia: 'A cada 30 dias na primavera/verao',
+      icon: '\uD83C\uDF3F',
+    })
+  } else if (planta.categoria === 'Industrial') {
+    adubos.push({
+      nome: 'NPK 20-10-20',
+      tipo: 'Mineral - Formulado',
+      npk: '20-10-20',
+      aplicacao: 'Plantio e cobertura parcelada',
+      dosagem: producao.id === 'larga' ? '300-500 kg/ha' : '150-200 g/m2',
+      frequencia: 'Parcelado em 3-4 aplicacoes no ciclo',
+      icon: '\uD83C\uDF3F',
+    })
   } else {
     adubos.push({
       nome: 'NPK 20-05-20',
@@ -235,6 +255,18 @@ export function gerarRecomendacao(
     tubeteSubstrato = 'Substrato organico + vermiculita (70/30)'
     tubeteAdubo = 'NPK 10-10-10 liberacao lenta - 1.5g por tubete + humus de minhoca'
     tubeteTempoMuda = '15-25 dias'
+  } else if (planta.categoria === 'Erva') {
+    tubeteTamanho = '40 cm3'
+    tubeteVolume = '40 ml'
+    tubeteSubstrato = 'Substrato leve + perlita + areia (60/20/20)'
+    tubeteAdubo = 'NPK 10-10-10 liberacao lenta - 1g por tubete'
+    tubeteTempoMuda = '20-30 dias'
+  } else if (planta.categoria === 'Industrial') {
+    tubeteTamanho = '120 cm3'
+    tubeteVolume = '120 ml'
+    tubeteSubstrato = 'Substrato comercial + vermiculita (70/30)'
+    tubeteAdubo = 'NPK 14-14-14 liberacao lenta - 3g por tubete'
+    tubeteTempoMuda = '30-45 dias'
   }
 
   const tubete: TubeteRecomendado = {
