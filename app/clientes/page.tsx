@@ -111,6 +111,21 @@ export default function Clientes() {
         </button>
       </div>
 
+      {profile?.plano !== 'pro' && (
+        <div style={{
+          marginBottom: '16px', padding: '8px 16px', borderRadius: '8px',
+          background: clientes.length >= 5 ? '#FEF3C7' : '#F5F0FF',
+          border: `1px solid ${clientes.length >= 5 ? '#FDE68A' : '#E9D5FF'}`,
+          color: clientes.length >= 5 ? '#92400E' : '#6B21A8',
+          fontSize: '13px'
+        }}>
+          {clientes.length >= 5
+            ? <>Limite de 5 clientes atingido no plano Free. <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Faca upgrade para Pro</a> para cadastrar mais.</>
+            : <>Plano Free: {clientes.length}/5 clientes cadastrados.</>
+          }
+        </div>
+      )}
+
       {message && (
         <div style={{
           marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',

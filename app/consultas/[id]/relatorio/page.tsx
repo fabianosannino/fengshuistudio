@@ -119,7 +119,7 @@ export default function Relatorio() {
         }
       }
 
-      const nomeArquivo = `relatorio-${consulta.nome_imovel?.replace(/[^a-zA-Z0-9]/g, '-') || 'consulta'}.pdf`
+      const nomeArquivo = `relatorio-${consulta.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
       pdf.save(nomeArquivo)
     } catch (err) {
       console.error('Erro ao gerar PDF:', err)

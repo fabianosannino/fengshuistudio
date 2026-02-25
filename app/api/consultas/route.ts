@@ -34,9 +34,27 @@ export async function POST(request: Request) {
     }
   }
 
-  const body = await request.json()
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  }
+
+  const ALLOWED_FIELDS = ['cliente_id', 'nome_imovel', 'tipo_imovel', 'area_total_m2', 'endereco_imovel', 'porta_posicao', 'status'] as const
+  const sanitized: Record<string, unknown> = {}
+  for (const key of ALLOWED_FIELDS) {
+    if (body[key] !== undefined) {
+      sanitized[key] = body[key]
+    }
+  }
+
+  if (!sanitized.cliente_id || typeof sanitized.cliente_id !== 'string') {
+    return NextResponse.json({ error: 'cliente_id é obrigatório' }, { status: 400 })
+  }
+
   const { error, data } = await supabase.from('consultas').insert({
-    ...body,
+    ...sanitized,
     consultor_id: user.id,
   }).select().single()
 

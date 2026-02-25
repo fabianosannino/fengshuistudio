@@ -176,6 +176,24 @@ export default function NovaConsulta() {
           ))}
         </div>
 
+        {profile?.plano !== 'pro' && consultasMes >= 3 && (
+          <div style={{
+            marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
+            background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
+          }}>
+            Limite de 3 consultas/mes atingido no plano Free. <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Faca upgrade para Pro</a> para continuar.
+          </div>
+        )}
+
+        {profile?.plano !== 'pro' && consultasMes < 3 && (
+          <div style={{
+            marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
+            background: '#F5F0FF', border: '1px solid #E9D5FF', color: '#6B21A8', fontSize: '13px'
+          }}>
+            Plano Free: {consultasMes}/3 consultas usadas este mes.
+          </div>
+        )}
+
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
