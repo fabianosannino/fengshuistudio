@@ -7,7 +7,6 @@ const NAV_ITEMS = [
   { label: 'Dashboard', icon: '📊', href: '/dashboard' },
   { label: 'Clientes', icon: '👤', href: '/clientes' },
   { label: 'Consultas', icon: '📋', href: '/consultas' },
-  { label: 'AgroAdubo', icon: '🌱', href: '/plantas' },
   { label: 'Pagamentos', icon: '💰', href: '/pagamentos' },
   { label: 'Calendário', icon: '🌙', href: '/calendario' },
   { label: 'Planos', icon: '⭐', href: '/planos' },
