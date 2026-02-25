@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { PlantInfo, RegiaoInfo, SoloInfo, ProducaoInfo, ProblemaInfo, Resultado, AIIdentificationResult } from '../lib/types'
 import { PLANT_DATABASE, REGIOES, TIPOS_SOLO, TIPOS_PRODUCAO, PROBLEMAS } from '../lib/data'
 import { gerarRecomendacao } from '../lib/recommendation-engine'
@@ -18,6 +18,8 @@ export default function PlantasPage() {
   const [identificando, setIdentificando] = useState(false)
   const [geolocalizando, setGeolocalizando] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const [darkMode, setDarkMode] = useState(false)
   const [aiResult, setAiResult] = useState<AIIdentificationResult | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -25,11 +27,103 @@ export default function PlantasPage() {
   const [transitioning, setTransitioning] = useState(false)
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left')
   const [activeResultTab, setActiveResultTab] = useState<'tubete' | 'adubos' | 'solo' | 'manejo' | 'resumo'>('tubete')
+  const [cameraActive, setCameraActive] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('agroadubo-dark')
     if (saved === 'true') setDarkMode(true)
   }, [])
+
+  // Cleanup camera stream when component unmounts or step changes
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop())
+      streamRef.current = null
+    }
+    setCameraActive(false)
+    setCameraError(null)
+  }, [])
+
+  useEffect(() => {
+    return () => { stopCamera() }
+  }, [stopCamera])
+
+  async function startCamera() {
+    setCameraError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      })
+      streamRef.current = stream
+      setCameraActive(true)
+      // Wait for video ref to be rendered
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play()
+        }
+      }, 100)
+    } catch (err) {
+      const error = err as Error
+      if (error.name === 'NotAllowedError') {
+        setCameraError('Permissao para camera negada. Habilite nas configuracoes do navegador.')
+      } else if (error.name === 'NotFoundError') {
+        setCameraError('Nenhuma camera encontrada neste dispositivo.')
+      } else {
+        setCameraError('Nao foi possivel acessar a camera. Tente enviar uma foto do arquivo.')
+      }
+    }
+  }
+
+  function captureFromCamera() {
+    if (!videoRef.current) return
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(video, 0, 0)
+    const base64 = canvas.toDataURL('image/jpeg', 0.8)
+    stopCamera()
+    // Process the captured image
+    processImage(base64)
+  }
+
+  async function processImage(base64: string) {
+    setFotoPreview(base64)
+    setIdentificando(true)
+    setAiError(null)
+    setAiResult(null)
+
+    try {
+      const compressed = await compressImage(base64)
+      const response = await fetch('/api/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: compressed }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setAiError(data.error || 'Erro ao identificar a planta')
+        setIdentificando(false)
+        return
+      }
+
+      setAiResult(data)
+
+      if (data.identified && data.plantId && data.confidence >= 0.7) {
+        const matched = PLANT_DATABASE.find(p => p.id === data.plantId)
+        if (matched) setPlantaSelecionada(matched)
+      }
+    } catch {
+      setAiError('Falha na conexao. Verifique sua internet e tente novamente.')
+    } finally {
+      setIdentificando(false)
+    }
+  }
 
   const t = {
     bg: darkMode ? '#0f172a' : '#F9FAFB',
@@ -72,38 +166,7 @@ export default function PlantasPage() {
     const reader = new FileReader()
     reader.onloadend = async () => {
       const base64 = reader.result as string
-      setFotoPreview(base64)
-      setIdentificando(true)
-      setAiError(null)
-      setAiResult(null)
-
-      try {
-        const compressed = await compressImage(base64)
-        const response = await fetch('/api/identify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: compressed }),
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          setAiError(data.error || 'Erro ao identificar a planta')
-          setIdentificando(false)
-          return
-        }
-
-        setAiResult(data)
-
-        if (data.identified && data.plantId && data.confidence >= 0.7) {
-          const matched = PLANT_DATABASE.find(p => p.id === data.plantId)
-          if (matched) setPlantaSelecionada(matched)
-        }
-      } catch {
-        setAiError('Falha na conexao. Verifique sua internet e tente novamente.')
-      } finally {
-        setIdentificando(false)
-      }
+      processImage(base64)
     }
     reader.readAsDataURL(file)
   }
@@ -170,6 +233,7 @@ export default function PlantasPage() {
   }
 
   function resetar() {
+    stopCamera()
     setStep(0)
     setPlantaSelecionada(null)
     setRegiaoSelecionada(null)
@@ -303,50 +367,81 @@ export default function PlantasPage() {
             <h2 style={{ color: t.text, fontSize: '20px', fontWeight: 700, marginBottom: '6px' }}>{'\uD83D\uDCF7'} Identificar Planta</h2>
             <p style={{ color: t.textSoft, fontSize: '14px', marginBottom: '24px' }}>Tire uma foto para identificacao por IA ou selecione na lista abaixo</p>
 
-            <div
-              style={{
-                border: `2px dashed ${dragOver ? '#16a34a' : t.border}`, borderRadius: '14px', padding: '32px', textAlign: 'center', marginBottom: '24px',
-                background: dragOver ? (darkMode ? 'rgba(22,163,74,0.08)' : 'rgba(22,163,74,0.04)') : (darkMode ? 'rgba(255,255,255,0.02)' : '#fafafa'),
-                cursor: 'pointer', transition: 'all 0.2s ease',
-              }}
-              onClick={() => !fotoPreview && fileInputRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-            >
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFotoCaptura} style={{ display: 'none' }} />
+            {/* Live Camera View */}
+            {cameraActive && (
+              <div style={{ borderRadius: '14px', overflow: 'hidden', marginBottom: '24px', position: 'relative', background: '#000' }}>
+                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                  <button onClick={captureFromCamera} style={{ background: '#fff', color: '#111', border: 'none', padding: '12px 28px', borderRadius: '30px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {'\uD83D\uDCF8'} Capturar Foto
+                  </button>
+                  <button onClick={stopCamera} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '12px 20px', borderRadius: '30px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
 
-              {identificando ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <img src={fotoPreview!} alt="Analisando" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', objectFit: 'cover', filter: 'brightness(0.7)' }} />
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: '12px', overflow: 'hidden' }}>
-                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(180deg, transparent 40%, rgba(22,163,74,0.3) 50%, transparent 60%)', animation: 'scanLine 2s ease-in-out infinite' }} />
+            {/* Photo Upload / Camera Area */}
+            {!cameraActive && (
+              <div
+                style={{
+                  border: `2px dashed ${dragOver ? '#16a34a' : t.border}`, borderRadius: '14px', padding: '32px', textAlign: 'center', marginBottom: '24px',
+                  background: dragOver ? (darkMode ? 'rgba(22,163,74,0.08)' : 'rgba(22,163,74,0.04)') : (darkMode ? 'rgba(255,255,255,0.02)' : '#fafafa'),
+                  transition: 'all 0.2s ease',
+                }}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+              >
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFotoCaptura} style={{ display: 'none' }} />
+
+                {identificando ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ position: 'relative' }}>
+                      <img src={fotoPreview!} alt="Analisando" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', objectFit: 'cover', filter: 'brightness(0.7)' }} />
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: '100%', background: 'linear-gradient(180deg, transparent 40%, rgba(22,163,74,0.3) 50%, transparent 60%)', animation: 'scanLine 2s ease-in-out infinite' }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '20px', height: '20px', border: '3px solid rgba(22,163,74,0.2)', borderTopColor: '#16a34a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '14px' }}>Identificando planta com IA...</span>
+                    </div>
+                    <p style={{ color: t.textSoft, fontSize: '12px', margin: 0 }}>A imagem esta sendo analisada por inteligencia artificial</p>
+                  </div>
+                ) : fotoPreview ? (
+                  <div>
+                    <img src={fotoPreview} alt="Foto da planta" style={{ maxWidth: '250px', maxHeight: '250px', borderRadius: '12px', marginBottom: '12px', objectFit: 'cover', border: `3px solid ${t.accent}` }} />
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
+                      <button onClick={() => startCamera()} style={{ ...btnSecondary, padding: '8px 20px', fontSize: '13px' }}>{'\uD83D\uDCF8'} Abrir camera</button>
+                      <button onClick={() => fileInputRef.current?.click()} style={{ ...btnSecondary, padding: '8px 20px', fontSize: '13px' }}>{'\uD83D\uDCC2'} Escolher arquivo</button>
+                      <button onClick={() => { setFotoPreview(null); setAiResult(null); setAiError(null) }} style={{ ...btnSecondary, padding: '8px 20px', fontSize: '13px', color: '#dc2626' }}>Remover foto</button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '20px', height: '20px', border: '3px solid rgba(22,163,74,0.2)', borderTopColor: '#16a34a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '14px' }}>Identificando planta com IA...</span>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>{'\uD83C\uDF31'}</div>
+                    <p style={{ color: t.text, fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Identifique sua planta</p>
+                    <p style={{ color: t.textSoft, fontSize: '14px', marginBottom: '20px' }}>Use a camera ou envie uma foto para identificacao por IA</p>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <button onClick={() => startCamera()} className="btn-hover" style={{ ...btnPrimary, padding: '12px 24px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {'\uD83D\uDCF8'} Abrir Camera
+                      </button>
+                      <button onClick={() => fileInputRef.current?.click()} style={{ ...btnSecondary, padding: '12px 24px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {'\uD83D\uDCC2'} Enviar Foto
+                      </button>
+                    </div>
+                    <p style={{ color: t.textSoft, fontSize: '12px', marginTop: '16px', opacity: 0.7 }}>ou arraste uma imagem para esta area</p>
+                    {cameraError && (
+                      <div style={{ marginTop: '16px', padding: '12px', borderRadius: '10px', background: darkMode ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{cameraError}</p>
+                      </div>
+                    )}
                   </div>
-                  <p style={{ color: t.textSoft, fontSize: '12px', margin: 0 }}>A imagem esta sendo analisada por inteligencia artificial</p>
-                </div>
-              ) : fotoPreview ? (
-                <div>
-                  <img src={fotoPreview} alt="Foto da planta" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', marginBottom: '12px', objectFit: 'cover' }} />
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px' }}>
-                    <button onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }} style={{ ...btnSecondary, padding: '8px 20px', fontSize: '13px' }}>{'\uD83D\uDCF7'} Tirar outra foto</button>
-                    <button onClick={(e) => { e.stopPropagation(); setFotoPreview(null); setAiResult(null); setAiError(null) }} style={{ ...btnSecondary, padding: '8px 20px', fontSize: '13px', color: '#dc2626' }}>Remover foto</button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>{'\uD83D\uDCF1'}</div>
-                  <p style={{ color: t.text, fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>Toque para tirar uma foto</p>
-                  <p style={{ color: t.textSoft, fontSize: '13px', marginBottom: '8px' }}>ou arraste uma imagem aqui</p>
-                  <p style={{ color: t.textSoft, fontSize: '11px', opacity: 0.7 }}>A imagem sera enviada para analise por IA</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* AI Result Banner */}
             {aiResult && !identificando && (
