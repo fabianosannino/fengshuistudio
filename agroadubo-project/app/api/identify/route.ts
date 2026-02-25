@@ -81,9 +81,18 @@ Se a imagem nao contem uma planta, retorne identified: false com description exp
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      console.error('OpenAI API error:', errorData)
+      console.error('OpenAI API error:', response.status, errorData)
+      const detail = errorData?.error?.message || errorData?.error?.code || `HTTP ${response.status}`
+      let userMessage = 'Erro ao comunicar com o servico de IA'
+      if (response.status === 401) {
+        userMessage = 'Chave da API OpenAI invalida ou expirada'
+      } else if (response.status === 429) {
+        userMessage = 'Limite de uso da API OpenAI atingido. Tente novamente em alguns minutos'
+      } else if (response.status === 402 || detail.includes('quota') || detail.includes('billing')) {
+        userMessage = 'Sem creditos na conta OpenAI. Verifique seu plano em platform.openai.com'
+      }
       return NextResponse.json(
-        { error: 'Erro ao comunicar com o servico de IA', code: 'AI_ERROR' },
+        { error: `${userMessage} (${detail})`, code: 'AI_ERROR' },
         { status: 502 }
       )
     }
