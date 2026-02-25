@@ -9,9 +9,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  const { plano } = await request.json()
+  let plano: string
+  try {
+    const body = await request.json()
+    plano = body.plano
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  }
 
-  if (!['freemium', 'pro'].includes(plano)) {
+  if (!plano || !['freemium', 'pro'].includes(plano)) {
     return NextResponse.json({ error: 'Plano inválido' }, { status: 400 })
   }
 

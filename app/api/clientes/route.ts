@@ -33,9 +33,29 @@ export async function POST(request: Request) {
     }
   }
 
-  const body = await request.json()
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  }
+
+  const { nome_completo, email, telefone, cidade, estado, notas } = body as {
+    nome_completo?: string; email?: string; telefone?: string;
+    cidade?: string; estado?: string; notas?: string
+  }
+
+  if (!nome_completo || typeof nome_completo !== 'string' || nome_completo.trim().length === 0) {
+    return NextResponse.json({ error: 'Nome completo é obrigatório' }, { status: 400 })
+  }
+
   const { error, data } = await supabase.from('clientes').insert({
-    ...body,
+    nome_completo: nome_completo.trim(),
+    email: email || null,
+    telefone: telefone || null,
+    cidade: cidade || null,
+    estado: estado || null,
+    notas: notas || null,
     consultor_id: user.id,
   }).select().single()
 
