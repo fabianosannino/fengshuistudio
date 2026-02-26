@@ -19,6 +19,12 @@ export interface AduboRecomendado {
   dosagem: string
   frequencia: string
   icon: string
+  // Campos Yara
+  brand?: string
+  linha?: string
+  sku?: string
+  embalagens?: string[]
+  diferencial?: string
 }
 
 export interface TubeteRecomendado {
@@ -28,6 +34,57 @@ export interface TubeteRecomendado {
   aduboBase: string
   tempoMuda: string
   instrucoes: string[]
+  // Campos Tamoios + Yara
+  brand?: string
+  receitaId?: string
+  receitaNome?: string
+  tecnologiaPodaAerea?: boolean
+  biodegradavel?: boolean
+  biomassa?: string
+  nutrientesImpregnados?: string[]
+  liberacaoGradualDias?: number
+  arquiteturaRadicular?: string
+}
+
+// --- Produtos e Catalogo Yara/Tamoios ---
+
+export type ProductCategory = 'Fertilizante' | 'Tubete' | 'Bioestimulante' | 'Corretivo'
+
+export interface Product {
+  id: string
+  brand: 'Yara' | 'Tamoios' | 'Generico'
+  linha: string
+  nome: string
+  category: ProductCategory
+  composicao: { N?: number; P?: number; K?: number; [micro: string]: number | undefined }
+  embalagens: string[]
+  esgScore: number
+  diferencial: string
+}
+
+// --- Receitas de Tubetes (Fertilizacao On-Delivery) ---
+
+export interface TubeteFormulation {
+  id: string
+  culturaAlvo: string
+  categoriaPlanta: string
+  biomassaTipo: string
+  nutrientesImpregnados: string[] // IDs de Product
+  receitaYara: string
+  liberacaoDias: number
+  porosidade: string
+  tamanhoTubete: string
+  volumeTubete: string
+}
+
+// --- ESG / Sustentabilidade ---
+
+export interface ESGMetrics {
+  plasticoEvitadoKg: number
+  reducaoCO2Percent: number
+  conformidadeEUDR: boolean
+  origemBiomassa: string
+  spinoffUSP: boolean
 }
 
 export interface RegiaoInfo {
@@ -73,6 +130,7 @@ export interface Resultado {
   tubete: TubeteRecomendado
   correcoesSolo: string[]
   manejo: string[]
+  esg?: ESGMetrics
 }
 
 export interface AIIdentificationResult {

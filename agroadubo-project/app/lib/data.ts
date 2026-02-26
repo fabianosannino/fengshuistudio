@@ -525,5 +525,6 @@ export const PROBLEMAS: ProblemaInfo[] = [
   { id: 'compactacao', nome: 'Solo Compactado', descricao: 'Dificuldade de drenagem e raizes', icon: '\uD83E\uDDF1', categoria: 'solo' },
   { id: 'excesso_agua', nome: 'Excesso de Agua', descricao: 'Encharcamento, raizes apodrecendo', icon: '\uD83D\uDCA7', categoria: 'manejo' },
   { id: 'seca', nome: 'Estresse Hidrico (Seca)', descricao: 'Murcha, folhas enrolando', icon: '\u2600\uFE0F', categoria: 'manejo' },
+  { id: 'deficiencia_micro', nome: 'Deficiencia de Micronutrientes', descricao: 'Clorose internerval, folhas deformadas, baixa frutificacao (B, Zn, Mn, Fe)', icon: '\uD83D\uDD2C', categoria: 'nutricional' },
   { id: 'nenhum', nome: 'Nenhum Problema', descricao: 'Planta saudavel, apenas busca otimizacao', icon: '\u2705', categoria: 'nenhum' },
 ]
