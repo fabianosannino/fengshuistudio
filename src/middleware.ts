@@ -1,33 +1,11 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { createSupabaseMiddlewareClient } from './lib/supabase-server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha']
-
+// Middleware desabilitado - @supabase/ssr nao esta instalado
+// Reabilitar quando Supabase estiver configurado no projeto
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Allow public routes
-  if (PUBLIC_ROUTES.includes(pathname)) {
-    return NextResponse.next()
-  }
-
-  const { supabase, response } = createSupabaseMiddlewareClient(request)
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  return response
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
-  ],
+  matcher: [],
 }

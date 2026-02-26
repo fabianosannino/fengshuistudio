@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PLANT_DATABASE } from '@/app/lib/data'
+import { PLANT_DATABASE } from '../../lib/data'
 
 export async function POST(request: NextRequest) {
   try {

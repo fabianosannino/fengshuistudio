@@ -24,8 +24,7 @@ export default function PlantasPage() {
   const [aiResult, setAiResult] = useState<AIIdentificationResult | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [transitioning, setTransitioning] = useState(false)
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left')
+  // transitioning/slideDirection removed - instant step changes prevent Chrome crash
   const [activeResultTab, setActiveResultTab] = useState<'tubete' | 'adubos' | 'solo' | 'manejo' | 'resumo'>('tubete')
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -392,27 +391,17 @@ export default function PlantasPage() {
     if (step === 4) {
       gerarResultado()
     } else if (canAdvance()) {
-      setSlideDirection('left')
-      setTransitioning(true)
       // Liberar base64 pesada da memoria ao sair do step 0
       if (step === 0 && fotoPreview) {
         setFotoPreview(null)
         setAiResult(null)
       }
-      setTimeout(() => {
-        setStep(step + 1)
-        setTransitioning(false)
-      }, 200)
+      setStep(step + 1)
     }
   }
 
   function handleBack() {
-    setSlideDirection('right')
-    setTransitioning(true)
-    setTimeout(() => {
-      setStep(Math.max(0, step - 1))
-      setTransitioning(false)
-    }, 200)
+    setStep(Math.max(0, step - 1))
   }
 
   const plantasFiltradas = PLANT_DATABASE.filter(p =>
@@ -433,18 +422,6 @@ export default function PlantasPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: t.bg, transition: 'background 0.3s ease' }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(200%); } }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes successPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(22,163,74,0.4); } 50% { box-shadow: 0 0 0 12px rgba(22,163,74,0); } }
-        .selectable-card:hover { border-color: rgba(22,163,74,0.4) !important; box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important; }
-        .btn-hover:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(22,163,74,0.3); }
-        .btn-hover:active { transform: translateY(0); }
-        .result-tab:hover { transform: translateY(-1px); }
-        @media (min-width: 768px) { .step-label { display: inline !important; } }
-      `}</style>
-
       <header style={{ background: darkMode ? '#1e293b' : '#ffffff', borderBottom: `1px solid ${t.border}`, padding: '0 24px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 30 }}>
         <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
           <span style={{ fontSize: '24px' }}>{'\uD83C\uDF31'}</span>
@@ -489,13 +466,8 @@ export default function PlantasPage() {
           </div>
         )}
 
-        {/* Step Content with Transition */}
-        <div style={{
-          opacity: transitioning ? 0 : 1,
-          transform: transitioning ? `translateX(${slideDirection === 'left' ? '-20px' : '20px'})` : 'translateX(0)',
-          transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
-          willChange: 'opacity, transform',
-        }}>
+        {/* Step Content */}
+        <div>
 
         {/* STEP 0 */}
         {step === 0 && (
