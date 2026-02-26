@@ -10,12 +10,7 @@
   --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #e2e8f0;
-  }
-}
+/* Dark mode gerenciado via React state em cada pagina - sem media query para evitar flash */
 
 * {
   margin: 0;

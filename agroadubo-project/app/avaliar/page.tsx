@@ -394,6 +394,11 @@ export default function PlantasPage() {
     } else if (canAdvance()) {
       setSlideDirection('left')
       setTransitioning(true)
+      // Liberar base64 pesada da memoria ao sair do step 0
+      if (step === 0 && fotoPreview) {
+        setFotoPreview(null)
+        setAiResult(null)
+      }
       setTimeout(() => {
         setStep(step + 1)
         setTransitioning(false)
@@ -417,12 +422,12 @@ export default function PlantasPage() {
   )
 
   const cardStyle: React.CSSProperties = { background: t.card, borderRadius: '16px', padding: '24px', border: `1px solid ${t.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }
-  const btnPrimary: React.CSSProperties = { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease' }
-  const btnSecondary: React.CSSProperties = { background: 'transparent', color: t.textSoft, border: `1px solid ${t.border}`, padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' }
+  const btnPrimary: React.CSSProperties = { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }
+  const btnSecondary: React.CSSProperties = { background: 'transparent', color: t.textSoft, border: `1px solid ${t.border}`, padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'border-color 0.15s ease' }
   const selectableCard = (selected: boolean): React.CSSProperties => ({
     background: selected ? t.accentLight : t.card, borderRadius: '16px', padding: '20px',
     border: `2px solid ${selected ? '#16a34a' : t.border}`, cursor: 'pointer',
-    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative',
+    transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease', position: 'relative',
     boxShadow: selected ? '0 0 0 3px rgba(22,163,74,0.12), 0 4px 16px rgba(22,163,74,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
   })
 
@@ -473,7 +478,7 @@ export default function PlantasPage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '14px', fontWeight: 700,
                       boxShadow: i === step ? '0 4px 12px rgba(22,163,74,0.3)' : 'none',
-                      transition: 'all 0.3s ease', flexShrink: 0,
+                      transition: 'background 0.3s ease, box-shadow 0.3s ease', flexShrink: 0,
                     }}>{i < step ? '\u2713' : i + 1}</div>
                     <span style={{ color: i === step ? t.text : t.textSoft, fontSize: '11px', fontWeight: i === step ? 700 : 400, display: 'none', whiteSpace: 'nowrap' }} className="step-label">{s}</span>
                   </div>
@@ -488,7 +493,8 @@ export default function PlantasPage() {
         <div style={{
           opacity: transitioning ? 0 : 1,
           transform: transitioning ? `translateX(${slideDirection === 'left' ? '-20px' : '20px'})` : 'translateX(0)',
-          transition: 'all 0.2s ease-out',
+          transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+          willChange: 'opacity, transform',
         }}>
 
         {/* STEP 0 */}
@@ -518,7 +524,7 @@ export default function PlantasPage() {
                 style={{
                   border: `2px dashed ${dragOver ? '#16a34a' : t.border}`, borderRadius: '14px', padding: '32px', textAlign: 'center', marginBottom: '24px',
                   background: dragOver ? (darkMode ? 'rgba(22,163,74,0.08)' : 'rgba(22,163,74,0.04)') : (darkMode ? 'rgba(255,255,255,0.02)' : '#fafafa'),
-                  transition: 'all 0.2s ease',
+                  transition: 'border-color 0.2s ease, background 0.2s ease',
                 }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
@@ -808,7 +814,7 @@ export default function PlantasPage() {
                   style={{ padding: '10px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
                     border: activeResultTab === tab.id ? '2px solid #16a34a' : `1px solid ${t.border}`,
                     background: activeResultTab === tab.id ? t.accentLight : t.card,
-                    color: activeResultTab === tab.id ? '#16a34a' : t.textSoft, transition: 'all 0.2s ease' }}>
+                    color: activeResultTab === tab.id ? '#16a34a' : t.textSoft, transition: 'border-color 0.2s ease, background 0.2s ease, color 0.2s ease' }}>
                   {tab.icon} {tab.label}
                 </button>
               ))}
