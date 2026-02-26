@@ -50,6 +50,14 @@ export default function PlantasPage() {
     return () => { stopCamera() }
   }, [stopCamera])
 
+  // Auto-trigger geolocation when entering step 1
+  useEffect(() => {
+    if (step === 1 && !regiaoSelecionada && !geolocalizando) {
+      handleGeolocalizar()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
   async function startCamera() {
     setCameraError(null)
     try {
@@ -191,26 +199,41 @@ export default function PlantasPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude
+          const lng = position.coords.longitude
           let regiao
-          if (lat < -5) {
-            if (lat > -15) regiao = REGIOES.find(r => r.id === 'nordeste')
-            else if (lat > -20) regiao = REGIOES.find(r => r.id === 'centro-oeste')
-            else if (lat > -24) regiao = REGIOES.find(r => r.id === 'sudeste')
-            else regiao = REGIOES.find(r => r.id === 'sul')
-          } else {
+          // Improved region detection using lat/lng boundaries for Brazil
+          if (lat >= -5 && lat <= 5 && lng >= -74 && lng <= -44) {
             regiao = REGIOES.find(r => r.id === 'norte')
+          } else if (lat >= -18 && lat < -5 && lng >= -49 && lng <= -35) {
+            regiao = REGIOES.find(r => r.id === 'nordeste')
+          } else if (lat >= -18 && lat < -5 && lng < -49) {
+            // Nordeste states like MA/PI have western longitudes
+            if (lng >= -49 || lat >= -10) regiao = REGIOES.find(r => r.id === 'nordeste')
+            else regiao = REGIOES.find(r => r.id === 'centro-oeste')
+          } else if (lat >= -24 && lat < -14 && lng >= -61 && lng < -46) {
+            regiao = REGIOES.find(r => r.id === 'centro-oeste')
+          } else if (lat >= -24 && lat < -14 && lng >= -53 && lng < -40) {
+            regiao = REGIOES.find(r => r.id === 'sudeste')
+          } else if (lat < -22 && lng >= -58 && lng <= -48) {
+            regiao = REGIOES.find(r => r.id === 'sul')
+          } else {
+            // Fallback: use simple latitude bands
+            if (lat >= -5) regiao = REGIOES.find(r => r.id === 'norte')
+            else if (lat >= -14) regiao = REGIOES.find(r => r.id === 'nordeste')
+            else if (lat >= -20) regiao = REGIOES.find(r => r.id === 'centro-oeste')
+            else if (lat >= -24) regiao = REGIOES.find(r => r.id === 'sudeste')
+            else regiao = REGIOES.find(r => r.id === 'sul')
           }
           if (regiao) setRegiaoSelecionada(regiao)
           setGeolocalizando(false)
         },
         () => {
           setGeolocalizando(false)
-          alert('Nao foi possivel obter sua localizacao. Selecione manualmente.')
-        }
+        },
+        { timeout: 10000, enableHighAccuracy: false }
       )
     } else {
       setGeolocalizando(false)
-      alert('Geolocalizacao nao suportada neste navegador.')
     }
   }
 
@@ -250,6 +273,108 @@ export default function PlantasPage() {
     setAiResult(null)
     setAiError(null)
     setMetodoIdentificacao(null)
+  }
+
+  function exportarPDF() {
+    if (!resultado) return
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    const adubosHTML = resultado.adubos.map(a => `
+      <div style="border:1px solid #e5e7eb;border-left:4px solid ${a.tipo.includes('Corretivo') ? '#d97706' : a.tipo.includes('Organico') ? '#78716c' : '#16a34a'};border-radius:8px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div><strong style="font-size:15px;">${a.nome}</strong><br/><span style="color:#6b7280;font-size:12px;">${a.tipo}</span></div>
+          <span style="background:#f0fdf4;color:#16a34a;padding:4px 12px;border-radius:8px;font-size:13px;font-weight:700;">NPK ${a.npk}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;">
+          <div><span style="color:#6b7280;font-size:11px;">Aplicacao</span><br/>${a.aplicacao}</div>
+          <div><span style="color:#6b7280;font-size:11px;">Dosagem</span><br/><strong>${a.dosagem}</strong></div>
+          <div><span style="color:#6b7280;font-size:11px;">Frequencia</span><br/>${a.frequencia}</div>
+        </div>
+      </div>
+    `).join('')
+
+    const instrucoesHTML = resultado.tubete.instrucoes.map((inst, i) => `<li style="margin-bottom:4px;">${inst}</li>`).join('')
+    const correcoesHTML = resultado.correcoesSolo.map(c => `<li style="margin-bottom:6px;">${c}</li>`).join('')
+    const manejoHTML = resultado.manejo.map(m => `<li style="margin-bottom:6px;">${m}</li>`).join('')
+    const problemasText = resultado.problemas.map(p => p.nome).join(', ')
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>AgroAdubo - Recomendacao - ${resultado.planta.nome}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:#111827; padding:32px; max-width:800px; margin:0 auto; }
+        h1 { font-size:24px; color:#16a34a; margin-bottom:4px; }
+        h2 { font-size:18px; color:#052e16; margin:24px 0 12px; padding-bottom:8px; border-bottom:2px solid #e5e7eb; }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #16a34a; }
+        .badge { display:inline-block; background:#f0fdf4; color:#16a34a; padding:4px 12px; border-radius:6px; font-size:12px; font-weight:600; margin-right:8px; }
+        .info-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:16px; }
+        .info-box { background:#fafafa; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+        .info-box .label { color:#6b7280; font-size:11px; font-weight:600; }
+        .info-box .value { font-size:15px; font-weight:700; margin-top:4px; }
+        @media print { body { padding:16px; } }
+        .footer { margin-top:32px; padding-top:16px; border-top:1px solid #e5e7eb; text-align:center; color:#6b7280; font-size:12px; }
+      </style></head><body>
+      <div class="header">
+        <div>
+          <h1>AgroAdubo - Recomendacao Completa</h1>
+          <p style="color:#6b7280;font-size:14px;">${resultado.planta.nome} (${resultado.planta.nomeCientifico})</p>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#6b7280;">
+          <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <span class="badge">Regiao: ${resultado.regiao.nome}</span>
+        <span class="badge">Solo: ${resultado.solo.nome}</span>
+        <span class="badge">Producao: ${resultado.producao.nome}</span>
+        <span class="badge">Problemas: ${problemasText}</span>
+      </div>
+
+      <h2>Resumo da Planta</h2>
+      <div class="info-grid">
+        <div class="info-box"><div class="label">pH Ideal</div><div class="value">${resultado.planta.phIdeal}</div></div>
+        <div class="info-box"><div class="label">Temperatura</div><div class="value">${resultado.planta.tempIdeal}</div></div>
+        <div class="info-box"><div class="label">Ciclo</div><div class="value">${resultado.planta.ciclo}</div></div>
+        <div class="info-box"><div class="label">Nitrogenio (N)</div><div class="value">${resultado.planta.nutrientes.N}</div></div>
+        <div class="info-box"><div class="label">Fosforo (P)</div><div class="value">${resultado.planta.nutrientes.P}</div></div>
+        <div class="info-box"><div class="label">Potassio (K)</div><div class="value">${resultado.planta.nutrientes.K}</div></div>
+      </div>
+
+      <h2>Tubete de Polpa Moldada</h2>
+      <div class="info-grid">
+        <div class="info-box"><div class="label">Tamanho</div><div class="value">${resultado.tubete.tamanho}</div></div>
+        <div class="info-box"><div class="label">Volume</div><div class="value">${resultado.tubete.volume}</div></div>
+        <div class="info-box"><div class="label">Tempo Muda</div><div class="value">${resultado.tubete.tempoMuda}</div></div>
+      </div>
+      <p style="margin-bottom:6px;"><strong>Substrato:</strong> ${resultado.tubete.substrato}</p>
+      <p style="margin-bottom:12px;"><strong>Adubo Base:</strong> ${resultado.tubete.aduboBase}</p>
+      <p style="font-weight:600;margin-bottom:6px;">Instrucoes:</p>
+      <ol style="padding-left:20px;font-size:13px;line-height:1.8;">${instrucoesHTML}</ol>
+
+      <h2>Adubos Recomendados</h2>
+      ${adubosHTML}
+
+      <h2>Correcoes de Solo</h2>
+      <ul style="padding-left:20px;font-size:14px;line-height:1.8;">${correcoesHTML}</ul>
+
+      <h2>Manejo e Cuidados</h2>
+      <ul style="padding-left:20px;font-size:14px;line-height:1.8;">${manejoHTML}</ul>
+
+      <div class="footer">
+        <p>Documento gerado por AgroAdubo em ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR')}</p>
+        <p style="margin-top:4px;">As recomendacoes sao baseadas em dados gerais. Consulte um agronomo para orientacao especifica.</p>
+      </div>
+    </body></html>`)
+
+    printWindow.document.close()
+    setTimeout(() => { printWindow.print() }, 500)
+  }
+
+  function irParaPedido() {
+    if (!resultado) return
+    localStorage.setItem('agroadubo-pedido', JSON.stringify(resultado))
+    window.location.href = '/pedido'
   }
 
   const canAdvance = () => {
@@ -764,7 +889,9 @@ export default function PlantasPage() {
               </div>
             )}
 
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '20px 0', flexWrap: 'wrap' }}>
+              <button onClick={exportarPDF} className="btn-hover" style={{ ...btnPrimary, background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>{'\uD83D\uDCC4'} Exportar PDF</button>
+              <button onClick={irParaPedido} className="btn-hover" style={{ ...btnPrimary, background: 'linear-gradient(135deg, #d97706, #b45309)' }}>{'\uD83D\uDED2'} Gerar Pedido de Compra</button>
               <button onClick={resetar} className="btn-hover" style={btnPrimary}>{'\uD83D\uDD04'} Nova Avaliacao</button>
             </div>
           </div>
