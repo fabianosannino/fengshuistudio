@@ -816,23 +816,61 @@ export default function PlantasPage() {
 
             {activeResultTab === 'tubete' && (
               <div style={{ ...cardStyle, marginBottom: '20px', borderLeft: '4px solid #16a34a', background: darkMode ? 'rgba(22,163,74,0.08)' : '#f0fdf4' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{'\uD83C\uDF31'}</div>
-                  <div>
-                    <h3 style={{ color: t.text, fontSize: '18px', fontWeight: 800, margin: 0 }}>Tubete de Polpa Moldada</h3>
-                    <p style={{ color: '#16a34a', fontSize: '13px', fontWeight: 600, margin: 0 }}>Recomendacao personalizada para fase inicial</p>
+                {/* Selo Tecnologia Tamoios + Yara */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{'\uD83C\uDF31'}</div>
+                    <div>
+                      <h3 style={{ color: t.text, fontSize: '18px', fontWeight: 800, margin: 0 }}>Tubete Bio Tamoios</h3>
+                      <p style={{ color: '#16a34a', fontSize: '13px', fontWeight: 600, margin: 0 }}>Polpa moldada biodegradavel + Nutricao Yara on-delivery</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700 }}>Tecnologia Tamoios + Yara</span>
+                    <span style={{ background: darkMode ? 'rgba(22,163,74,0.2)' : '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>Spin-off USP</span>
                   </div>
                 </div>
+
+                {/* Descricao on-delivery */}
+                <div style={{ background: darkMode ? 'rgba(22,163,74,0.12)' : '#dcfce7', borderRadius: '10px', padding: '14px', marginBottom: '20px', border: '1px solid rgba(22,163,74,0.2)' }}>
+                  <p style={{ color: darkMode ? '#86efac' : '#14532d', fontSize: '13px', lineHeight: 1.7, margin: 0 }}>
+                    Este tubete de polpa biodegradavel utiliza a tecnologia de <strong>Poda Aerea Natural</strong> para eliminar o enovelamento radicular e ja entrega a nutricao Yara de forma gradual (on-delivery).
+                    {resultado.tubete.liberacaoGradualDias && ` Liberacao controlada por ${resultado.tubete.liberacaoGradualDias} dias.`}
+                  </p>
+                </div>
+
+                {/* Specs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-                  {[{ label: 'Tamanho', value: resultado.tubete.tamanho }, { label: 'Volume', value: resultado.tubete.volume }, { label: 'Tempo Muda', value: resultado.tubete.tempoMuda }].map((item, i) => (
+                  {[
+                    { label: 'Tamanho', value: resultado.tubete.tamanho },
+                    { label: 'Arquitetura Radicular', value: 'Superior - Poda Aerea' },
+                    { label: 'Tempo Muda', value: resultado.tubete.tempoMuda },
+                  ].map((item, i) => (
                     <div key={i} style={{ background: darkMode ? 'rgba(255,255,255,0.05)' : '#fff', borderRadius: '10px', padding: '14px', border: `1px solid ${t.border}` }}>
                       <p style={{ color: t.textSoft, fontSize: '12px', margin: '0 0 4px 0', fontWeight: 600 }}>{item.label}</p>
                       <p style={{ color: t.text, fontSize: '16px', fontWeight: 700, margin: 0 }}>{item.value}</p>
                     </div>
                   ))}
                 </div>
+
+                {/* Receita on-delivery */}
+                {resultado.tubete.receitaNome && (
+                  <div style={{ background: darkMode ? 'rgba(255,255,255,0.05)' : '#fff', borderRadius: '10px', padding: '14px', border: `1px solid ${t.border}`, marginBottom: '16px' }}>
+                    <p style={{ color: t.textSoft, fontSize: '12px', margin: '0 0 4px 0', fontWeight: 600 }}>Nutricao On-Delivery (impregnada na polpa):</p>
+                    <p style={{ color: '#16a34a', fontSize: '15px', fontWeight: 700, margin: 0 }}>{resultado.tubete.receitaNome}</p>
+                    <p style={{ color: t.text, fontSize: '13px', margin: '4px 0 0 0' }}>{resultado.tubete.aduboBase}</p>
+                  </div>
+                )}
+
                 <div style={{ marginBottom: '16px' }}><p style={{ color: t.textSoft, fontSize: '13px', fontWeight: 600, margin: '0 0 6px 0' }}>Substrato:</p><p style={{ color: t.text, fontSize: '14px', margin: 0 }}>{resultado.tubete.substrato}</p></div>
-                <div style={{ marginBottom: '16px' }}><p style={{ color: t.textSoft, fontSize: '13px', fontWeight: 600, margin: '0 0 6px 0' }}>Adubo Base:</p><p style={{ color: t.text, fontSize: '14px', margin: 0, fontWeight: 600 }}>{resultado.tubete.aduboBase}</p></div>
+
+                {/* Diferenciais */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  {resultado.tubete.biodegradavel && <span style={{ background: darkMode ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: '#16a34a', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, border: '1px solid rgba(22,163,74,0.2)' }}>{'\u2705'} Biodegradavel</span>}
+                  {resultado.tubete.tecnologiaPodaAerea && <span style={{ background: darkMode ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: '#16a34a', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, border: '1px solid rgba(22,163,74,0.2)' }}>{'\uD83C\uDF3F'} Poda Aerea Natural</span>}
+                  <span style={{ background: darkMode ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: '#16a34a', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, border: '1px solid rgba(22,163,74,0.2)' }}>{'\u267B\uFE0F'} Biomassa Brasileira</span>
+                </div>
+
                 <div><p style={{ color: t.textSoft, fontSize: '13px', fontWeight: 600, margin: '0 0 10px 0' }}>Instrucoes:</p>
                   <ol style={{ margin: 0, paddingLeft: '20px' }}>{resultado.tubete.instrucoes.map((inst, i) => <li key={i} style={{ color: t.text, fontSize: '13px', lineHeight: 1.8, marginBottom: '4px' }}>{inst}</li>)}</ol>
                 </div>
@@ -844,17 +882,44 @@ export default function PlantasPage() {
                 <h3 style={{ color: t.text, fontSize: '18px', fontWeight: 700, margin: '0 0 16px 0' }}>{'\uD83E\uDDEA'} Adubos Recomendados</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {resultado.adubos.map((adubo, i) => (
-                    <div key={i} style={{ borderRadius: '12px', padding: '16px', border: `1px solid ${t.border}`, borderLeft: `4px solid ${adubo.tipo.includes('Corretivo') ? '#d97706' : adubo.tipo.includes('Organico') ? '#78716c' : '#16a34a'}`, background: darkMode ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                    <div key={i} style={{
+                      borderRadius: '12px', padding: '16px',
+                      border: `1px solid ${adubo.brand === 'Yara' ? 'rgba(0,91,170,0.25)' : t.border}`,
+                      borderLeft: `4px solid ${adubo.tipo.includes('Corretivo') ? '#d97706' : adubo.tipo.includes('Organico') ? '#78716c' : adubo.tipo.includes('Bioestimulante') ? '#7c3aed' : adubo.tipo.includes('Foliar') ? '#0891b2' : '#16a34a'}`,
+                      background: darkMode ? 'rgba(255,255,255,0.03)' : '#fafafa',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '20px' }}>{adubo.icon}</span>
-                        <div style={{ flex: 1 }}><p style={{ color: t.text, fontSize: '15px', fontWeight: 700, margin: 0 }}>{adubo.nome}</p><p style={{ color: t.textSoft, fontSize: '12px', margin: 0 }}>{adubo.tipo}</p></div>
-                        <span style={{ background: darkMode ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: '#16a34a', padding: '4px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}>NPK {adubo.npk}</span>
+                        <div style={{ flex: 1, minWidth: '150px' }}>
+                          <p style={{ color: t.text, fontSize: '15px', fontWeight: 700, margin: 0 }}>{adubo.nome}</p>
+                          <p style={{ color: t.textSoft, fontSize: '12px', margin: 0 }}>{adubo.tipo}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {adubo.brand && (
+                            <span style={{
+                              background: adubo.brand === 'Yara' ? 'linear-gradient(135deg, #005baa, #003d73)' : darkMode ? 'rgba(255,255,255,0.1)' : '#e5e7eb',
+                              color: adubo.brand === 'Yara' ? '#fff' : t.textSoft,
+                              padding: '3px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
+                            }}>{adubo.brand === 'Yara' ? 'YARA' : adubo.brand.toUpperCase()}</span>
+                          )}
+                          {adubo.npk !== '-' && <span style={{ background: darkMode ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: '#16a34a', padding: '4px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}>NPK {adubo.npk}</span>}
+                        </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
                         <div><span style={{ color: t.textSoft, fontSize: '11px', fontWeight: 600 }}>Aplicacao</span><p style={{ color: t.text, fontSize: '13px', margin: '2px 0 0 0' }}>{adubo.aplicacao}</p></div>
                         <div><span style={{ color: t.textSoft, fontSize: '11px', fontWeight: 600 }}>Dosagem</span><p style={{ color: t.text, fontSize: '13px', margin: '2px 0 0 0', fontWeight: 600 }}>{adubo.dosagem}</p></div>
                         <div><span style={{ color: t.textSoft, fontSize: '11px', fontWeight: 600 }}>Frequencia</span><p style={{ color: t.text, fontSize: '13px', margin: '2px 0 0 0' }}>{adubo.frequencia}</p></div>
                       </div>
+                      {adubo.diferencial && (
+                        <p style={{ color: darkMode ? '#93c5fd' : '#1d4ed8', fontSize: '12px', margin: '10px 0 0 0', fontStyle: 'italic', lineHeight: 1.5 }}>{adubo.diferencial}</p>
+                      )}
+                      {adubo.embalagens && adubo.embalagens.length > 0 && (
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' }}>
+                          {adubo.embalagens.map((emb, j) => (
+                            <span key={j} style={{ background: darkMode ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: t.textSoft, padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600 }}>{emb}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -885,6 +950,38 @@ export default function PlantasPage() {
                       <p style={{ color: t.text, fontSize: '15px', fontWeight: 700, margin: 0 }}>{item.value}</p>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Widget ESG - Sustentabilidade */}
+            {resultado.esg && (
+              <div style={{ ...cardStyle, marginBottom: '20px', background: darkMode ? 'rgba(22,101,52,0.15)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1px solid rgba(22,163,74,0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '24px' }}>{'\u267B\uFE0F'}</span>
+                  <h3 style={{ color: darkMode ? '#86efac' : '#14532d', fontSize: '16px', fontWeight: 800, margin: 0 }}>Impacto Sustentavel</h3>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                  {/* Plastico evitado */}
+                  <div style={{ background: darkMode ? 'rgba(255,255,255,0.06)' : '#fff', borderRadius: '10px', padding: '14px', border: `1px solid ${t.border}`, textAlign: 'center' }}>
+                    <p style={{ color: '#16a34a', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>{resultado.esg.plasticoEvitadoKg.toFixed(1)} kg</p>
+                    <p style={{ color: t.textSoft, fontSize: '12px', margin: 0, fontWeight: 600 }}>Plastico evitado</p>
+                  </div>
+                  {/* Reducao CO2 */}
+                  <div style={{ background: darkMode ? 'rgba(255,255,255,0.06)' : '#fff', borderRadius: '10px', padding: '14px', border: `1px solid ${t.border}`, textAlign: 'center' }}>
+                    <p style={{ color: '#16a34a', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>-{resultado.esg.reducaoCO2Percent}%</p>
+                    <p style={{ color: t.textSoft, fontSize: '12px', margin: 0, fontWeight: 600 }}>Emissoes de CO2</p>
+                  </div>
+                  {/* EUDR */}
+                  <div style={{ background: darkMode ? 'rgba(255,255,255,0.06)' : '#fff', borderRadius: '10px', padding: '14px', border: `1px solid ${t.border}`, textAlign: 'center' }}>
+                    <p style={{ color: '#16a34a', fontSize: '24px', margin: '0 0 4px 0' }}>{'\u2705'}</p>
+                    <p style={{ color: t.textSoft, fontSize: '12px', margin: 0, fontWeight: 600 }}>Aderente EUDR (UE)</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {resultado.esg.spinoffUSP && <span style={{ background: darkMode ? 'rgba(22,163,74,0.2)' : '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>Spin-off USP</span>}
+                  <span style={{ background: darkMode ? 'rgba(22,163,74,0.2)' : '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>Biomassa Brasileira</span>
+                  <span style={{ background: darkMode ? 'rgba(22,163,74,0.2)' : '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>Net Zero</span>
                 </div>
               </div>
             )}
