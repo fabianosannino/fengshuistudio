@@ -637,6 +637,57 @@ export default function BaguaPlanta() {
                 {scAtivo.falta  &&<div style={{padding:'5px 8px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'11px',marginBottom:'7px',borderLeft:'3px solid #DC2626'}}>⚠ Área faltante detectada</div>}
                 {scAtivo.excesso&&<div style={{padding:'5px 8px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'11px',marginBottom:'7px',borderLeft:'3px solid #EA580C'}}>↑ Área em excesso detectada</div>}
 
+                {/* ── Recomendações dinâmicas ── */}
+                {(()=>{
+                  const rec = gerarRecomendacoes(stAtivo, scAtivo)
+                  const hasRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0
+                  if (!hasRec) return null
+                  return (
+                    <div style={{marginBottom:'12px',borderTop:'1px solid #F3F4F6',paddingTop:'10px'}}>
+                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px'}}>💡 Recomendações</div>
+                      {rec.urgente.length>0&&(
+                        <div style={{marginBottom:'8px'}}>
+                          <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{background:'#DC2626',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>URGENTE</span>
+                          </div>
+                          {rec.urgente.map((d:string,i:number)=>(
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
+                              <span style={{color:'#DC2626',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#7F1D1D',lineHeight:'1.45'}}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {rec.melhoria.length>0&&(
+                        <div style={{marginBottom:'8px'}}>
+                          <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{background:'#D97706',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MELHORIA</span>
+                          </div>
+                          {rec.melhoria.map((d:string,i:number)=>(
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FFFBEB',borderRadius:'5px',borderLeft:'3px solid #D97706'}}>
+                              <span style={{color:'#D97706',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#78350F',lineHeight:'1.45'}}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {rec.manutencao.length>0&&(
+                        <div>
+                          <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{background:'#15803D',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MANUTENÇÃO</span>
+                          </div>
+                          {rec.manutencao.map((d:string,i:number)=>(
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
+                              <span style={{color:'#15803D',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#14532D',lineHeight:'1.45'}}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 {/* Critérios */}
                 <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
                   Avaliação física
