@@ -41,4 +41,5 @@ body {
 .btn-hover:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(22,163,74,0.3); }
 .btn-hover:active { transform: translateY(0); }
 .result-tab:hover { transform: translateY(-1px); }
+.search-input:focus { border-color: #16a34a !important; }
 @media (min-width: 768px) { .step-label { display: inline !important; } }

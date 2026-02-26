@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { PlantInfo, RegiaoInfo, SoloInfo, ProducaoInfo, ProblemaInfo, Resultado, AIIdentificationResult } from '../lib/types'
 import { PLANT_DATABASE, REGIOES, TIPOS_SOLO, TIPOS_PRODUCAO, PROBLEMAS } from '../lib/data'
 import { gerarRecomendacao } from '../lib/recommendation-engine'
@@ -136,7 +136,7 @@ export default function PlantasPage() {
     }
   }
 
-  const t = {
+  const t = useMemo(() => ({
     bg: darkMode ? '#0f172a' : '#F9FAFB',
     card: darkMode ? '#1e293b' : '#ffffff',
     text: darkMode ? '#e2e8f0' : '#111827',
@@ -145,7 +145,7 @@ export default function PlantasPage() {
     accent: '#16a34a',
     accentLight: darkMode ? 'rgba(22, 163, 74, 0.15)' : 'rgba(22, 163, 74, 0.08)',
     accentBorder: darkMode ? 'rgba(22, 163, 74, 0.4)' : 'rgba(22, 163, 74, 0.25)',
-  }
+  }), [darkMode])
 
   const STEPS = ['Identificar Planta', 'Regiao', 'Tipo de Solo', 'Tipo de Producao', 'Problemas', 'Resultado']
 
@@ -404,24 +404,43 @@ export default function PlantasPage() {
     setStep(Math.max(0, step - 1))
   }
 
-  const plantasFiltradas = PLANT_DATABASE.filter(p =>
+  const plantasFiltradas = useMemo(() => PLANT_DATABASE.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
     p.categoria.toLowerCase().includes(busca.toLowerCase()) ||
     p.nomeCientifico.toLowerCase().includes(busca.toLowerCase())
-  )
+  ), [busca])
 
-  const cardStyle: React.CSSProperties = { background: t.card, borderRadius: '16px', padding: '24px', border: `1px solid ${t.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }
-  const btnPrimary: React.CSSProperties = { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }
-  const btnSecondary: React.CSSProperties = { background: 'transparent', color: t.textSoft, border: `1px solid ${t.border}`, padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'border-color 0.15s ease' }
-  const selectableCard = (selected: boolean): React.CSSProperties => ({
-    background: selected ? t.accentLight : t.card, borderRadius: '16px', padding: '20px',
-    border: `2px solid ${selected ? '#16a34a' : t.border}`, cursor: 'pointer',
-    transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease', position: 'relative',
-    boxShadow: selected ? '0 0 0 3px rgba(22,163,74,0.12), 0 4px 16px rgba(22,163,74,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
-  })
+  // Memoizar estilos para evitar recriacao a cada render (Chrome crash fix)
+  const cardStyle: React.CSSProperties = useMemo(() => ({
+    background: t.card, borderRadius: '16px', padding: '24px',
+    border: `1px solid ${t.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+  }), [t.card, t.border])
+
+  const btnPrimary: React.CSSProperties = useMemo(() => ({
+    background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none',
+    padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+  }), [])
+
+  const btnSecondary: React.CSSProperties = useMemo(() => ({
+    background: 'transparent', color: t.textSoft, border: `1px solid ${t.border}`,
+    padding: '14px 36px', borderRadius: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+  }), [t.textSoft, t.border])
+
+  // Estilos pre-calculados para cards selecionados/nao-selecionados (evita 60+ objetos novos por render)
+  const cardSelected: React.CSSProperties = useMemo(() => ({
+    background: t.accentLight, borderRadius: '16px', padding: '20px',
+    border: '2px solid #16a34a', cursor: 'pointer', position: 'relative' as const,
+    boxShadow: '0 0 0 3px rgba(22,163,74,0.12), 0 4px 16px rgba(22,163,74,0.08)',
+  }), [t.accentLight])
+
+  const cardUnselected: React.CSSProperties = useMemo(() => ({
+    background: t.card, borderRadius: '16px', padding: '20px',
+    border: `2px solid ${t.border}`, cursor: 'pointer', position: 'relative' as const,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+  }), [t.card, t.border])
 
   return (
-    <div style={{ minHeight: '100vh', background: t.bg, transition: 'background 0.3s ease' }}>
+    <div style={{ minHeight: '100vh', background: t.bg }}>
       <header style={{ background: darkMode ? '#1e293b' : '#ffffff', borderBottom: `1px solid ${t.border}`, padding: '0 24px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 30 }}>
         <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
           <span style={{ fontSize: '24px' }}>{'\uD83C\uDF31'}</span>
@@ -594,14 +613,14 @@ export default function PlantasPage() {
             <div style={{ position: 'relative', marginBottom: '20px' }}>
               <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '16px' }}>{'\uD83D\uDD0D'}</span>
               <input type="text" placeholder="Buscar planta pelo nome, categoria..." value={busca} onChange={e => setBusca(e.target.value)}
-                style={{ width: '100%', padding: '14px 14px 14px 42px', borderRadius: '12px', border: `1px solid ${t.border}`, background: darkMode ? '#0f172a' : '#fff', color: t.text, fontSize: '15px', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s ease' }}
-                onFocus={(e) => e.target.style.borderColor = '#16a34a'} onBlur={(e) => e.target.style.borderColor = t.border}
+                className="search-input"
+                style={{ width: '100%', padding: '14px 14px 14px 42px', borderRadius: '12px', border: `1px solid ${t.border}`, background: darkMode ? '#0f172a' : '#fff', color: t.text, fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
               {plantasFiltradas.map(planta => (
-                <div key={planta.id} onClick={() => { setPlantaSelecionada(planta); setMetodoIdentificacao('manual') }} className="selectable-card" style={selectableCard(plantaSelecionada?.id === planta.id)}>
+                <div key={planta.id} onClick={() => { setPlantaSelecionada(planta); setMetodoIdentificacao('manual') }} className="selectable-card" style={plantaSelecionada?.id === planta.id ? cardSelected : cardUnselected}>
                   {plantaSelecionada?.id === planta.id && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '22px', height: '22px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>{'\u2713'}</div>}
                   <div style={{ fontSize: '36px', marginBottom: '8px' }}>{planta.icon}</div>
                   <p style={{ color: t.text, fontSize: '15px', fontWeight: 700, margin: '0 0 2px 0' }}>{planta.nome}</p>
@@ -660,7 +679,7 @@ export default function PlantasPage() {
             <div style={{ textAlign: 'center', color: t.textSoft, fontSize: '13px', marginBottom: '20px' }}>ou selecione manualmente</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {REGIOES.map(regiao => (
-                <div key={regiao.id} onClick={() => setRegiaoSelecionada(regiao)} className="selectable-card" style={selectableCard(regiaoSelecionada?.id === regiao.id)}>
+                <div key={regiao.id} onClick={() => setRegiaoSelecionada(regiao)} className="selectable-card" style={regiaoSelecionada?.id === regiao.id ? cardSelected : cardUnselected}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
                       <p style={{ color: t.text, fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0' }}>{regiao.nome}</p>
@@ -689,7 +708,7 @@ export default function PlantasPage() {
             {regiaoSelecionada && <p style={{ color: '#16a34a', fontSize: '13px', marginBottom: '24px', background: darkMode ? 'rgba(22,163,74,0.1)' : '#f0fdf4', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(22,163,74,0.15)' }}>{'\uD83D\uDCA1'} Solo tipico da regiao <strong>{regiaoSelecionada.nome}</strong>: {regiaoSelecionada.soloTipico}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {TIPOS_SOLO.map(solo => (
-                <div key={solo.id} onClick={() => setSoloSelecionado(solo)} className="selectable-card" style={selectableCard(soloSelecionado?.id === solo.id)}>
+                <div key={solo.id} onClick={() => setSoloSelecionado(solo)} className="selectable-card" style={soloSelecionado?.id === solo.id ? cardSelected : cardUnselected}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                     <span style={{ fontSize: '28px', flexShrink: 0 }}>{solo.icon}</span>
                     <div style={{ flex: 1 }}>
@@ -712,7 +731,7 @@ export default function PlantasPage() {
             <p style={{ color: t.textSoft, fontSize: '14px', marginBottom: '24px' }}>Informe o tipo e escala da sua producao</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
               {TIPOS_PRODUCAO.map(prod => (
-                <div key={prod.id} onClick={() => setProducaoSelecionada(prod)} className="selectable-card" style={selectableCard(producaoSelecionada?.id === prod.id)}>
+                <div key={prod.id} onClick={() => setProducaoSelecionada(prod)} className="selectable-card" style={producaoSelecionada?.id === prod.id ? cardSelected : cardUnselected}>
                   {producaoSelecionada?.id === prod.id && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '22px', height: '22px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>{'\u2713'}</div>}
                   <div style={{ fontSize: '32px', marginBottom: '8px' }}>{prod.icon}</div>
                   <p style={{ color: t.text, fontSize: '15px', fontWeight: 700, margin: '0 0 4px 0' }}>{prod.nome}</p>
@@ -733,7 +752,7 @@ export default function PlantasPage() {
               {PROBLEMAS.map(prob => {
                 const selected = problemasSelecionados.some(p => p.id === prob.id)
                 return (
-                  <div key={prob.id} onClick={() => toggleProblema(prob)} className="selectable-card" style={selectableCard(selected)}>
+                  <div key={prob.id} onClick={() => toggleProblema(prob)} className="selectable-card" style={selected ? cardSelected : cardUnselected}>
                     {selected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '22px', height: '22px', borderRadius: '50%', background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>{'\u2713'}</div>}
                     <div style={{ fontSize: '28px', marginBottom: '8px' }}>{prob.icon}</div>
                     <p style={{ color: t.text, fontSize: '14px', fontWeight: 700, margin: '0 0 4px 0' }}>{prob.nome}</p>
