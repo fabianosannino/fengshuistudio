@@ -497,7 +497,7 @@ export default function BaguaPlanta() {
       consulta_id:consultaId,
       numero:orderIdx+1,
       nome:stDef.nome,
-      elemento:stDef.elemento,
+      elemento:stDef.elem,
       posicao_grid:String(orderIdx+1),
       score_percentual:Math.round(sc.geo*0.4+(sc.criterios.reduce((a:number,b:number)=>a+b,0)/24*100)*0.6)
     },{onConflict:'consulta_id,numero'}).select('id').single()
