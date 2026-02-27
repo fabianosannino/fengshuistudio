@@ -124,6 +124,11 @@ export default function ConsultaDetalhe() {
       setLoading(false)
     }
     load()
+
+    // Recarrega ao voltar do bagua-planta
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [id, router])
 
   function getScore(setorId: string) {
@@ -331,15 +336,26 @@ export default function ConsultaDetalhe() {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-            style={{
-              background: '#B8860B', color: '#fff', border: 'none',
-              padding: '12px 28px', borderRadius: '10px', fontSize: '14px',
-              fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
-            }}>
-            Abrir Planta ↗
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
+                padding: '12px 18px', borderRadius: '10px', fontSize: '14px',
+                fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
+              }}>
+              🔄 Atualizar
+            </button>
+            <button
+              onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+              style={{
+                background: '#B8860B', color: '#fff', border: 'none',
+                padding: '12px 28px', borderRadius: '10px', fontSize: '14px',
+                fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
+              }}>
+              Abrir Planta ↗
+            </button>
+          </div>
         </div>
 
         {/* ── Grid principal ───────────────────────────────────────────────────── */}
