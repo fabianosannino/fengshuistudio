@@ -489,6 +489,7 @@ export default function BaguaPlanta() {
   // ── salvar setor no banco ──────────────────────────────────────────────────
   async function salvarSetorDB(orderIdx:number){
     if(!consultaId) return
+    console.log('ativo:', ativo, 'setores[ativo]:', ativo !== null ? setores[ativo] : null)
     const stDef=SETORES[order[orderIdx]]
     const sc=setores[orderIdx]
     // upsert setor_bagua
@@ -500,7 +501,7 @@ export default function BaguaPlanta() {
       posicao_grid:String(orderIdx+1),
       score_percentual:Math.round(sc.geo*0.4+(sc.criterios.reduce((a:number,b:number)=>a+b,0)/24*100)*0.6)
     },{onConflict:'consulta_id,numero'}).select('id').single()
-    if(e1||!setorRow){setMsg('Erro ao salvar setor');return}
+    if(e1||!setorRow){setMsg('Erro: '+(e1?.message||JSON.stringify(e1)||'sem retorno'));return}
     // salvar criterios
     const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
     const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
