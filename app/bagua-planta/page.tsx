@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -18,16 +18,114 @@ const CRITERIOS = [
 ]
 
 const SETORES = [
-  { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#7C3AED' },
-  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626' },
-  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D' },
-  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D' },
-  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#D97706' },
-  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#B45309' },
-  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#92400E' },
-  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1D4ED8' },
-  { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280' },
+  { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#7C3AED',
+    dicas:['Adicione plantas saudáveis e viçosas','Use tons roxo, verde e dourado','Coloque objetos de madeira ou formas altas','Remova objetos quebrados ou murchos','Mantenha a área iluminada e organizada'] },
+  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626',
+    dicas:['Use tons vermelhos e alaranjados','Instale iluminação forte ou velas','Exponha diplomas, troféus e conquistas','Evite elementos de água neste setor','Adicione símbolos de fênix ou pássaros'] },
+  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D',
+    dicas:['Coloque objetos em pares','Use cores rosa, branco e bege','Adicione cristal de quartzo rosa','Exponha imagens de casais ou parceria','Mantenha o espaço acolhedor e convidativo'] },
+  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D',
+    dicas:['Coloque fotos de família em molduras','Use tons verdes e formas retangulares','Adicione plantas ou flores frescas','Inclua objetos de madeira natural','Organize fotos em ordem cronológica'] },
+  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#D97706',
+    dicas:['Mantenha o centro completamente livre','Use tons amarelos e terrosos','Evite móveis pesados no centro','Adicione cristais amarelos ou cerâmicas','Este setor influencia todos os demais'] },
+  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#B45309',
+    dicas:['Use tons brancos, cinza e metálicos','Adicione objetos redondos ou ovais','Crie um espaço inspirador e lúdico','Exponha arte, músicas ou materiais criativos','Inclua elementos metálicos decorativos'] },
+  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#92400E',
+    dicas:['Crie um cantinho de meditação ou estudo','Use tons azul escuro e preto','Adicione livros, cristais e pedras naturais','Mantenha o espaço silencioso e ordenado','Exponha símbolos espirituais significativos'] },
+  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1D4ED8',
+    dicas:['Use tons pretos e azuis escuros','Adicione elemento água (espelho, fonte ou aquário)','Mantenha os caminhos livres e fluidos','Exponha imagens de água, lagos ou rios','Inclua objetos ondulados ou irregulares'] },
+  { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280',
+    dicas:['Use tons cinza, prata e metálico','Adicione objetos de viagem ou mapas','Crie um espaço acolhedor para receber visitas','Instale sinos de vento metálicos','Exponha imagens de mentores ou referências'] },
 ]
+
+// ─── RECOMENDAÇÕES DINÂMICAS ──────────────────────────────────────────────────
+
+const CRITERIO_DICAS: Record<number, string[]> = {
+  0: [ // Limpeza e organização
+    'Faça uma limpeza profunda e reorganize completamente este setor',
+    'Descarte objetos desnecessários — a desordem bloqueia o fluxo de energia',
+    'Use caixas organizadoras e mantenha superfícies livres',
+  ],
+  1: [ // Iluminação
+    'Aumente a iluminação com luminárias adicionais ou spots direcionados',
+    'Substitua lâmpadas fracas por luz branca quente (3000-4000K)',
+    'Considere luz natural — abra cortinas ou adicione espelhos estratégicos',
+  ],
+  2: [ // Ventilação
+    'Melhore a circulação de ar — abra janelas regularmente',
+    'Adicione plantas purificadoras como espada-de-são-jorge ou lírio-da-paz',
+    'Evite objetos que acumulem poeira e bloqueiem o fluxo de ar',
+  ],
+  3: [ // Cores harmônicas
+    'Repinte as paredes com a cor do elemento associado a este setor',
+    'Adicione almofadas, tapetes ou obras de arte nas cores recomendadas',
+    'Remova objetos com cores que conflitem com o elemento do setor',
+  ],
+  4: [ // Mobiliário
+    'Reposicione os móveis para criar caminhos de circulação livres',
+    'Remova móveis com cantos apontados diretamente para áreas de descanso',
+    'Escolha formas de móveis alinhadas com o elemento do setor',
+  ],
+  5: [ // Plantas e elementos naturais
+    'Adicione plantas vivas e saudáveis — evite plantas artificiais ou murchas',
+    'Inclua elementos naturais como pedras, cristais ou madeira bruta',
+    'Mantenha as plantas adubadas, podadas e sem folhas secas',
+  ],
+  6: [ // Ausência de objetos quebrados
+    'Remova imediatamente todos os objetos quebrados, lascados ou com defeito',
+    'Conserte ou descarte itens danificados — eles simbolizam energia estagnada',
+    'Revise tomadas, lâmpadas queimadas e torneiras com vazamento',
+  ],
+  7: [ // Fluxo de energia
+    'Desobstrua os cantos — use plantas ou luminárias para ativar energia estagnada',
+    'Garanta que as portas abram completamente sem obstáculos',
+    'Reorganize o layout para criar um fluxo natural de circulação',
+  ],
+}
+
+function gerarRecomendacoes(
+  setor: typeof SETORES[0],
+  sc: Setor
+): { urgente: string[]; melhoria: string[]; manutencao: string[] } {
+  const urgente:    string[] = []
+  const melhoria:   string[] = []
+  const manutencao: string[] = []
+
+  // Problemas geométricos
+  if (sc.falta) {
+    urgente.push(`⚠ Setor com área construída insuficiente — a energia de ${setor.nome} está enfraquecida neste imóvel`)
+    urgente.push('Compense com ativação energética intensa: mais objetos do elemento, cores e intenção')
+  }
+  if (sc.excesso) {
+    melhoria.push(`↑ Setor com projeção além dos limites — excesso pode gerar desequilíbrio em ${setor.nome}`)
+    melhoria.push('Use divisórias simbólicas ou espelhos para definir limites energéticos claros')
+  }
+
+  // Critérios físicos com score baixo (0 = crítico, 1 = ruim)
+  sc.criterios.forEach((val, ci) => {
+    const dicas = CRITERIO_DICAS[ci] || []
+    if (val === 0) urgente.push(...dicas.slice(0,2))
+    else if (val === 1) melhoria.push(dicas[0])
+  })
+
+  // Dicas específicas do setor se score total baixo
+  const ts = total(sc.geo, sc.criterios)
+  const dicasSetor = setor.dicas ?? []
+  if (ts < 40) {
+    urgente.push(...dicasSetor.slice(0,3))
+  } else if (ts < 70) {
+    melhoria.push(...dicasSetor.slice(0,2))
+  } else {
+    manutencao.push(...dicasSetor.slice(3,5))
+  }
+
+  // Deduplicar
+  return {
+    urgente:    [...new Set(urgente)].slice(0,4),
+    melhoria:   [...new Set(melhoria)].slice(0,4),
+    manutencao: [...new Set(manutencao)].slice(0,3),
+  }
+}
 
 function gridOrder(escola: string, lado: string): number[] {
   if (escola === 'btb' && lado === 'direita') return [2,1,0,5,4,3,8,7,6]
@@ -118,7 +216,10 @@ function lbl(s:number){return s>=80?'Excelente':s>=60?'Bom':s>=40?'Regular':s>=2
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
 export default function BaguaPlanta() {
-  const router   = useRouter()
+  const router      = useRouter()
+  const searchParams = useSearchParams()
+  const consultaId  = searchParams.get('consultaId')
+  const [consultaNome, setConsultaNome] = useState('')
   const cvRef    = useRef<HTMLCanvasElement>(null)
   const fileRef  = useRef<HTMLInputElement>(null)
   const rotRef   = useRef<HTMLCanvasElement|null>(null)
@@ -145,8 +246,33 @@ export default function BaguaPlanta() {
       if(!user){router.push('/login');return}
       supabase.from('consultas').select('id,nome_imovel').eq('consultor_id',user.id)
         .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[]))
+      // Se veio com consultaId, carrega nome e dados existentes
+      if(consultaId){
+        supabase.from('consultas').select('nome_imovel').eq('id',consultaId).single()
+          .then(({data})=>{ if(data) setConsultaNome(data.nome_imovel) })
+        supabase.from('setores_bagua')
+          .select('numero,score_percentual,diagnostico_criterios(criterio,score)')
+          .eq('consulta_id',consultaId).order('numero')
+          .then(({data})=>{
+            if(!data||data.length===0) return
+            setSetores(prev=>{
+              const next=[...prev]
+              data.forEach((s:any)=>{
+                const idx=(s.numero||1)-1
+                if(idx<0||idx>8) return
+                const cMap:number[]=Array(8).fill(0)
+                s.diagnostico_criterios?.forEach((c:any)=>{
+                  const ci=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre'].indexOf(c.criterio)
+                  if(ci>=0) cMap[ci]=c.score
+                })
+                next[idx]={...next[idx],criterios:cMap}
+              })
+              return next
+            })
+          })
+      }
     })
-  },[router])
+  },[router,consultaId])
 
   // ── reconstruir imagem rotacionada + redimensionar canvas ─────────────────
   // ÚNICA vez que o canvas é redimensionado = quando image ou rotacao muda
@@ -360,6 +486,30 @@ export default function BaguaPlanta() {
   }
 
   // ── critério ───────────────────────────────────────────────────────────────
+  // ── salvar setor no banco ──────────────────────────────────────────────────
+  async function salvarSetorDB(orderIdx:number){
+    if(!consultaId) return
+    const stDef=SETORES[order[orderIdx]]
+    const sc=setores[orderIdx]
+    // upsert setor_bagua
+    const {data:setorRow,error:e1}=await supabase.from('setores_bagua').upsert({
+      consulta_id:consultaId,
+      numero:orderIdx+1,
+      nome:stDef.nome,
+      elemento:stDef.elemento,
+      posicao_grid:String(orderIdx+1),
+      score_percentual:Math.round(sc.geo*0.4+(sc.criterios.reduce((a:number,b:number)=>a+b,0)/24*100)*0.6)
+    },{onConflict:'consulta_id,numero'}).select('id').single()
+    if(e1||!setorRow){setMsg('Erro ao salvar setor');return}
+    // salvar criterios
+    const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
+    const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
+    await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
+    await supabase.from('diagnostico_criterios').insert(inserts)
+    setMsg(`"${stDef.nome}" salvo!`)
+    setTimeout(()=>setMsg(''),3000)
+  }
+
   function setCrit(si:number,ci:number,val:number){
     setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,criterios:sc.criterios.map((v,j)=>j===ci?val:v)}))
   }
@@ -378,7 +528,10 @@ export default function BaguaPlanta() {
           <span style={{fontSize:'22px',cursor:'pointer'}} onClick={()=>router.push('/dashboard')}>☯</span>
           <span style={{color:'#B8860B',fontSize:'17px',fontWeight:'bold'}}>FengShui Studio</span>
         </div>
-        <div style={{display:'flex',gap:'14px'}}>
+        <div style={{display:'flex',gap:'14px',alignItems:'center'}}>
+          {consultaId && (
+            <span onClick={()=>router.push(`/consultas/${consultaId}`)} style={{color:'#B8860B',fontSize:'13px',cursor:'pointer',fontWeight:'bold'}}>← {consultaNome||'Consulta'}</span>
+          )}
           <span onClick={()=>router.push('/dashboard')} style={{color:'rgba(255,255,255,0.7)',fontSize:'13px',cursor:'pointer'}}>Dashboard</span>
           <span onClick={()=>router.push('/consultas')} style={{color:'rgba(255,255,255,0.7)',fontSize:'13px',cursor:'pointer'}}>Consultas</span>
         </div>
@@ -603,6 +756,60 @@ export default function BaguaPlanta() {
                 {scAtivo.falta  &&<div style={{padding:'5px 8px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'11px',marginBottom:'7px',borderLeft:'3px solid #DC2626'}}>⚠ Área faltante detectada</div>}
                 {scAtivo.excesso&&<div style={{padding:'5px 8px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'11px',marginBottom:'7px',borderLeft:'3px solid #EA580C'}}>↑ Área em excesso detectada</div>}
 
+                {/* ── Recomendações dinâmicas (ACIMA dos critérios) ── */}
+                {(()=>{
+                  const rec = gerarRecomendacoes(stAtivo, scAtivo)
+                  const hasRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0
+                  if (!hasRec) return null
+                  return (
+                    <div style={{marginBottom:'12px',borderTop:'1px solid #F3F4F6',paddingTop:'10px'}}>
+                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px'}}>💡 Recomendações</div>
+
+                      {rec.urgente.length>0&&(
+                        <div style={{marginBottom:'8px'}}>
+                          <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{background:'#DC2626',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>URGENTE</span>
+                          </div>
+                          {rec.urgente.map((d,i)=>(
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
+                              <span style={{color:'#DC2626',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#7F1D1D',lineHeight:'1.45'}}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {rec.melhoria.length>0&&(
+                        <div style={{marginBottom:'8px'}}>
+                          <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{background:'#D97706',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MELHORIA</span>
+                          </div>
+                          {rec.melhoria.map((d,i)=>(
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FFFBEB',borderRadius:'5px',borderLeft:'3px solid #D97706'}}>
+                              <span style={{color:'#D97706',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#78350F',lineHeight:'1.45'}}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {rec.manutencao.length>0&&(
+                        <div>
+                          <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{background:'#15803D',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MANUTENÇÃO</span>
+                          </div>
+                          {rec.manutencao.map((d,i)=>(
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
+                              <span style={{color:'#15803D',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#14532D',lineHeight:'1.45'}}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 {/* Critérios */}
                 <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
                   Avaliação física
@@ -631,10 +838,11 @@ export default function BaguaPlanta() {
                   </div>
                 ))}
 
-                <button onClick={()=>{setMsg(`"${stAtivo.nome}" salvo!`);setTimeout(()=>setMsg(''),3000)}}
-                  style={{width:'100%',marginTop:'8px',background:'#1E3A5F',color:'#fff',border:'none',padding:'9px',borderRadius:'7px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
-                  💾 Salvar avaliação
+                <button onClick={()=>salvarSetorDB(ativo!)}
+                  style={{width:'100%',marginTop:'8px',background:consultaId?'#7C3AED':'#1E3A5F',color:'#fff',border:'none',padding:'9px',borderRadius:'7px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  💾 Salvar avaliação{consultaId?' no banco':''}
                 </button>
+
               </div>
             )}
           </div>
