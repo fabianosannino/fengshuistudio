@@ -32,6 +32,8 @@ export default function Clientes() {
     notas: ''
   })
   const [cepLoading, setCepLoading] = useState(false)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -74,8 +76,17 @@ export default function Clientes() {
       if (!res.ok) {
         setMessage(data.error || 'Erro ao salvar cliente.')
       } else {
+        // Upload photo if selected
+        if (fotoFile && data.id) {
+          const fd = new FormData()
+          fd.append('foto', fotoFile)
+          fd.append('cliente_id', data.id)
+          await fetch('/api/clientes/foto', { method: 'POST', body: fd })
+        }
         setMessage('Cliente cadastrado com sucesso!')
         setForm({ nome_completo: '', email: '', telefone: '', cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil', notas: '' })
+        setFotoFile(null)
+        setFotoPreview(null)
         setShowForm(false)
         if (user) await loadClientes(user.id)
       }
@@ -115,6 +126,21 @@ export default function Clientes() {
       }
     } catch { /* ignore network errors */ }
     setCepLoading(false)
+  }
+
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('Formato inválido. Use JPG, PNG ou WEBP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Arquivo muito grande. Máximo 5MB.')
+      return
+    }
+    setFotoFile(file)
+    setFotoPreview(URL.createObjectURL(file))
   }
 
   if (loading) {
@@ -189,6 +215,34 @@ export default function Clientes() {
             Novo Cliente
           </h2>
           <form onSubmit={handleSave}>
+            {/* Foto de perfil */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{
+                width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
+                background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px dashed #D1D5DB', flexShrink: 0,
+              }}>
+                {fotoPreview ? (
+                  <img src={fotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
+                )}
+              </div>
+              <div>
+                <label htmlFor="input-foto" style={{ display: 'inline-block', padding: '8px 16px', background: '#F3F4F6', color: '#374151', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  {fotoPreview ? 'Trocar foto' : 'Adicionar foto'}
+                </label>
+                <input id="input-foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFotoChange} style={{ display: 'none' }} />
+                {fotoPreview && (
+                  <button type="button" onClick={() => { setFotoFile(null); setFotoPreview(null) }} style={{
+                    marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                    border: 'none', fontSize: '13px', cursor: 'pointer'
+                  }}>Remover</button>
+                )}
+                <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 5MB.</p>
+              </div>
+            </div>
+
             {/* Dados pessoais */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
@@ -298,11 +352,16 @@ export default function Clientes() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div style={{
-                  width: '40px', height: '40px', borderRadius: '50%',
+                  width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
                   background: '#7C3AED', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px'
+                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
+                  flexShrink: 0,
                 }}>
-                  {cliente.nome_completo.charAt(0).toUpperCase()}
+                  {cliente.foto_url ? (
+                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    cliente.nome_completo.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <span style={{
                   background: '#F0FDF4', color: '#15803D', padding: '2px 10px',

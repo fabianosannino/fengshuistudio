@@ -32,6 +32,9 @@ export default function ClienteDetalhe() {
     notas: ''
   })
   const [cepLoading, setCepLoading] = useState(false)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [uploadingFoto, setUploadingFoto] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -106,10 +109,84 @@ export default function ClienteDetalhe() {
     setCepLoading(false)
   }
 
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('Formato inválido. Use JPG, PNG ou WEBP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Arquivo muito grande. Máximo 5MB.')
+      return
+    }
+    setFotoFile(file)
+    setFotoPreview(URL.createObjectURL(file))
+  }
+
+  async function handleFotoUpload() {
+    if (!fotoFile || !cliente) return
+    setUploadingFoto(true)
+    const fd = new FormData()
+    fd.append('foto', fotoFile)
+    fd.append('cliente_id', cliente.id)
+    try {
+      const res = await fetch('/api/clientes/foto', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (res.ok) {
+        setCliente({ ...cliente, foto_url: data.foto_url })
+        setFotoFile(null)
+        setFotoPreview(null)
+        setMessage('Foto atualizada com sucesso!')
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        setMessage(data.error || 'Erro ao enviar foto.')
+      }
+    } catch {
+      setMessage('Erro de conexão ao enviar foto.')
+    }
+    setUploadingFoto(false)
+  }
+
+  async function handleFotoRemove() {
+    if (!cliente) return
+    setUploadingFoto(true)
+    try {
+      const res = await fetch('/api/clientes/foto', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: cliente.id }),
+      })
+      if (res.ok) {
+        setCliente({ ...cliente, foto_url: null })
+        setFotoFile(null)
+        setFotoPreview(null)
+        setMessage('Foto removida com sucesso!')
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch {
+      setMessage('Erro ao remover foto.')
+    }
+    setUploadingFoto(false)
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     setMessage('')
+
+    // Upload new photo if selected
+    if (fotoFile) {
+      const fd = new FormData()
+      fd.append('foto', fotoFile)
+      fd.append('cliente_id', params.id as string)
+      const fotoRes = await fetch('/api/clientes/foto', { method: 'POST', body: fd })
+      const fotoData = await fotoRes.json()
+      if (fotoRes.ok) {
+        setCliente(prev => prev ? { ...prev, foto_url: fotoData.foto_url } : prev)
+      }
+    }
+
     const { error } = await supabase
       .from('clientes')
       .update(form)
@@ -117,8 +194,10 @@ export default function ClienteDetalhe() {
     if (error) {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
-      setCliente({ ...cliente!, ...form })
+      setCliente(prev => prev ? { ...prev, ...form } : prev)
       setEditing(false)
+      setFotoFile(null)
+      setFotoPreview(null)
       setMessage('Cliente atualizado com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
@@ -185,11 +264,16 @@ export default function ClienteDetalhe() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{
-                  width: '56px', height: '56px', borderRadius: '50%',
+                  width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
                   background: '#7C3AED', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px'
+                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px',
+                  flexShrink: 0,
                 }}>
-                  {cliente.nome_completo?.charAt(0).toUpperCase()}
+                  {cliente.foto_url ? (
+                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    cliente.nome_completo?.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div>
                   <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{cliente.nome_completo}</h1>
@@ -256,6 +340,39 @@ export default function ClienteDetalhe() {
           }}>
             <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginTop: '0', marginBottom: '24px' }}>Editar Cliente</h2>
             <form onSubmit={handleSave}>
+              {/* Foto de perfil */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                <div style={{
+                  width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
+                  background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '2px dashed #D1D5DB', flexShrink: 0,
+                }}>
+                  {fotoPreview ? (
+                    <img src={fotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : cliente.foto_url ? (
+                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="input-foto-edit" style={{ display: 'inline-block', padding: '8px 16px', background: '#F3F4F6', color: '#374151', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    {cliente.foto_url || fotoPreview ? 'Trocar foto' : 'Adicionar foto'}
+                  </label>
+                  <input id="input-foto-edit" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFotoChange} style={{ display: 'none' }} />
+                  {(cliente.foto_url || fotoPreview) && (
+                    <button type="button" onClick={() => {
+                      if (fotoPreview) { setFotoFile(null); setFotoPreview(null) }
+                      else { handleFotoRemove() }
+                    }} disabled={uploadingFoto} style={{
+                      marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                      border: 'none', fontSize: '13px', cursor: 'pointer'
+                    }}>Remover</button>
+                  )}
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 5MB.</p>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
                   <label htmlFor="input-nome-completo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>

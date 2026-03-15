@@ -73,6 +73,7 @@ export interface Cliente {
   estado?: string | null
   pais?: string | null
   notas?: string | null
+  foto_url?: string | null
   ativo: boolean
   criado_em: string
   atualizado_em?: string
