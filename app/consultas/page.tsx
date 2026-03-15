@@ -4,15 +4,30 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 
+const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+
 export default function Consultas() {
   const [consultas, setConsultas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [isProfessional, setIsProfessional] = useState(true)
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
+
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('tipo_usuario, role')
+        .eq('id', user.id)
+        .single()
+
+      const isProf = prof?.tipo_usuario
+        ? PROF_TYPES.includes(prof.tipo_usuario)
+        : (prof?.role === 'consultor')
+      setIsProfessional(isProf)
+
       const { data } = await supabase
         .from('consultas')
         .select(`*, clientes(nome_completo)`)
@@ -50,14 +65,18 @@ export default function Consultas() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Consultas</h1>
-          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{consultas.length} consulta(s) registrada(s)</p>
+          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            {isProfessional ? 'Consultas' : 'Meus Imoveis'}
+          </h1>
+          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
+            {consultas.length} {isProfessional ? 'consulta(s) registrada(s)' : 'imovel(is) cadastrado(s)'}
+          </p>
         </div>
         <button onClick={() => window.location.href = '/consultas/nova'} style={{
           background: '#7C3AED', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer'
-        }}>+ Nova consulta</button>
+        }}>{isProfessional ? '+ Nova consulta' : '+ Novo imovel'}</button>
       </div>
 
       {message && (
@@ -73,14 +92,20 @@ export default function Consultas() {
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>Nenhuma consulta registrada</h3>
-          <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>Clique em "Nova consulta" para comecar um diagnostico Ba Gua</p>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{isProfessional ? '📋' : '🏠'}</div>
+          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>
+            {isProfessional ? 'Nenhuma consulta registrada' : 'Nenhum imovel cadastrado'}
+          </h3>
+          <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>
+            {isProfessional
+              ? 'Clique em "Nova consulta" para comecar um diagnostico Ba Gua'
+              : 'Cadastre seu imovel para receber o diagnostico Feng Shui personalizado'}
+          </p>
           <button onClick={() => window.location.href = '/consultas/nova'} style={{
             background: '#7C3AED', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
-          }}>Iniciar primeira consulta</button>
+          }}>{isProfessional ? 'Iniciar primeira consulta' : 'Cadastrar meu imovel'}</button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -104,9 +129,11 @@ export default function Consultas() {
                     fontSize: '12px', fontWeight: 'bold'
                   }}>{statusLabel(consulta.status)}</span>
                 </div>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
-                  👤 {consulta.clientes?.nome_completo}
-                </p>
+                {isProfessional && consulta.clientes?.nome_completo && (
+                  <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
+                    👤 {consulta.clientes.nome_completo}
+                  </p>
+                )}
                 <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
                   📅 {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
                   {consulta.tipo_imovel && ` • ${consulta.tipo_imovel}`}
@@ -124,13 +151,13 @@ export default function Consultas() {
                     padding: '8px 20px', background: '#1E3A5F', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
-                  }}>Relatório</button>
+                  }}>Relatorio</button>
                 )}
                 <button onClick={async () => {
-                  if (confirm('Deseja excluir esta consulta?')) {
+                  if (confirm(isProfessional ? 'Deseja excluir esta consulta?' : 'Deseja excluir este imovel?')) {
                     const { error } = await supabase.from('consultas').delete().eq('id', consulta.id)
                     if (error) {
-                      setMessage('Erro ao excluir consulta: ' + error.message)
+                      setMessage('Erro ao excluir: ' + error.message)
                       return
                     }
                     setConsultas(consultas.filter(c => c.id !== consulta.id))
