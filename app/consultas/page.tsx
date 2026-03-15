@@ -5,15 +5,18 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import ConfirmModal from '../components/ConfirmModal'
+import type { Consulta } from '../../src/lib/types'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+const PAGE_SIZE = 10
 
 export default function Consultas() {
-  const [consultas, setConsultas] = useState<any[]>([])
+  const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [isProfessional, setIsProfessional] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     async function load() {
@@ -43,12 +46,12 @@ export default function Consultas() {
   }, [])
 
   function statusColor(status: string) {
-    const map: any = { rascunho: '#6B7280', em_andamento: '#D97706', finalizada: '#15803D', arquivada: '#9CA3AF' }
+    const map: Record<string, string> = { rascunho: '#6B7280', em_andamento: '#D97706', finalizada: '#15803D', arquivada: '#9CA3AF' }
     return map[status] || '#6B7280'
   }
 
   function statusLabel(status: string) {
-    const map: any = { rascunho: 'Rascunho', em_andamento: 'Em andamento', finalizada: 'Finalizada', arquivada: 'Arquivada' }
+    const map: Record<string, string> = { rascunho: 'Rascunho', em_andamento: 'Em andamento', finalizada: 'Finalizada', arquivada: 'Arquivada' }
     return map[status] || status
   }
 
@@ -73,6 +76,9 @@ export default function Consultas() {
       </AppShell>
     )
   }
+
+  const totalPages = Math.ceil(consultas.length / PAGE_SIZE)
+  const paginatedItems = consultas.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <AppShell currentPage="consultas">
@@ -123,7 +129,7 @@ export default function Consultas() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {consultas.map(consulta => (
+          {paginatedItems.map(consulta => (
             <div key={consulta.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px 24px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -175,6 +181,39 @@ export default function Consultas() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: '8px', marginTop: '24px',
+        }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 1 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >← Anterior</button>
+          <span style={{ color: '#6B7280', fontSize: '13px' }}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >Próximo →</button>
         </div>
       )}
 

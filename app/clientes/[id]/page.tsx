@@ -6,11 +6,12 @@ import { useParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
 import Skeleton from '../../components/Skeleton'
+import type { Cliente, Consulta } from '../../../src/lib/types'
 
 export default function ClienteDetalhe() {
   const params = useParams()
-  const [cliente, setCliente] = useState<any>(null)
-  const [consultas, setConsultas] = useState<any[]>([])
+  const [cliente, setCliente] = useState<Cliente | null>(null)
+  const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -76,7 +77,7 @@ export default function ClienteDetalhe() {
     if (error) {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
-      setCliente({ ...cliente, ...form })
+      setCliente({ ...cliente!, ...form })
       setEditing(false)
       setMessage('Cliente atualizado com sucesso!')
       setTimeout(() => setMessage(''), 3000)
@@ -115,6 +116,8 @@ export default function ClienteDetalhe() {
       </AppShell>
     )
   }
+
+  if (!cliente) return null
 
   return (
     <AppShell currentPage="clientes">

@@ -2,18 +2,12 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import type { Profile } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────
-interface Profile {
-  nome_completo: string
-  plano: string
-  tipo_usuario: string
-  role: string
-  [key: string]: any
-}
-
 interface AppState {
-  user: any | null
+  user: User | null
   profile: Profile | null
   darkMode: boolean
   loading: boolean
@@ -40,7 +34,7 @@ export function getCached<T>(key: string): T | null {
   return null
 }
 
-export function setCache(key: string, data: any) {
+export function setCache(key: string, data: unknown) {
   queryCache.set(key, { data, ts: Date.now() })
 }
 
@@ -70,7 +64,7 @@ export async function fetchWithRetry<T>(
 
 // ─── Provider ────────────────────────────────────────────────
 export default function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [darkMode, setDarkMode] = useState(false)
   const [loading, setLoading] = useState(true)

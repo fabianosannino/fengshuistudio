@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import type { Profile } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 // Professional user types (have client management, dashboard, payments, etc.)
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
@@ -39,8 +41,8 @@ export default function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [profile, setProfile] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
 
   const isProfessional = profile?.tipo_usuario

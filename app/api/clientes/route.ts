@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
+import { rateLimit } from '../../../src/lib/rate-limit'
 
 const MAX_CLIENTES_FREE = 5
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success, remaining } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  if (!success) {
+    return Response.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()

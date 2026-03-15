@@ -3,15 +3,20 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import type { Cliente, Profile } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
+
+const PAGE_SIZE = 10
 
 export default function Clientes() {
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
-  const [clientes, setClientes] = useState<any[]>([])
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Pick<Profile, 'plano'> | null>(null)
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [form, setForm] = useState({
     nome_completo: '',
     email: '',
@@ -65,7 +70,7 @@ export default function Clientes() {
         setMessage('Cliente cadastrado com sucesso!')
         setForm({ nome_completo: '', email: '', telefone: '', cidade: '', estado: '', notas: '' })
         setShowForm(false)
-        await loadClientes(user.id)
+        if (user) await loadClientes(user.id)
       }
     } catch {
       setMessage('Erro de conexão ao salvar cliente.')
@@ -87,6 +92,9 @@ export default function Clientes() {
       </div>
     )
   }
+
+  const totalPages = Math.ceil(clientes.length / PAGE_SIZE)
+  const paginatedItems = clientes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <AppShell currentPage="clientes">
@@ -205,7 +213,7 @@ export default function Clientes() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-          {clientes.map(cliente => (
+          {paginatedItems.map(cliente => (
             <div key={cliente.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7C3AED'
@@ -242,6 +250,39 @@ export default function Clientes() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: '8px', marginTop: '24px',
+        }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 1 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >← Anterior</button>
+          <span style={{ color: '#6B7280', fontSize: '13px' }}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >Próximo →</button>
         </div>
       )}
 

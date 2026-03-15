@@ -5,6 +5,8 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import ConfirmModal from '../components/ConfirmModal'
 import Skeleton from '../components/Skeleton'
+import type { Pagamento, Cliente, Consulta } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> = {
   pendente: { label: 'Pendente', cor: '#D97706', bg: '#FFFBEB' },
@@ -12,6 +14,8 @@ const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> 
   atrasado: { label: 'Atrasado', cor: '#DC2626', bg: '#FEF2F2' },
   cancelado: { label: 'Cancelado', cor: '#6B7280', bg: '#F3F4F6' },
 }
+
+const PAGE_SIZE = 10
 
 const METODOS: Record<string, string> = {
   pix: 'Pix',
@@ -23,11 +27,11 @@ const METODOS: Record<string, string> = {
 }
 
 export default function Pagamentos() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [pagamentos, setPagamentos] = useState<any[]>([])
-  const [clientes, setClientes] = useState<any[]>([])
-  const [consultas, setConsultas] = useState<any[]>([])
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
+  const [consultas, setConsultas] = useState<Pick<Consulta, 'id' | 'nome_imovel'>[]>([])
 
   // Modal
   const [showModal, setShowModal] = useState(false)
@@ -39,6 +43,7 @@ export default function Pagamentos() {
 
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState<string>('todos')
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Form
   const [form, setForm] = useState({
@@ -103,7 +108,7 @@ export default function Pagamentos() {
     setShowModal(true)
   }
 
-  function openEdit(pag: any) {
+  function openEdit(pag: Pagamento) {
     setForm({
       descricao: pag.descricao || '',
       valor: String(pag.valor) || '',
@@ -125,7 +130,7 @@ export default function Pagamentos() {
     setMessage('')
 
     const payload = {
-      consultor_id: user.id,
+      consultor_id: user!.id,
       descricao: form.descricao,
       valor: parseFloat(form.valor),
       status: form.status,
@@ -149,7 +154,7 @@ export default function Pagamentos() {
     const { data: pags } = await supabase
       .from('pagamentos')
       .select('*, clientes(nome_completo), consultas(nome_imovel)')
-      .eq('consultor_id', user.id)
+      .eq('consultor_id', user!.id)
       .order('data_vencimento', { ascending: false })
     setPagamentos(pags || [])
 
@@ -169,7 +174,7 @@ export default function Pagamentos() {
     setDeleteTarget(null)
   }
 
-  async function handleMarcarPago(pag: any) {
+  async function handleMarcarPago(pag: Pagamento) {
     const hoje = new Date().toISOString().split('T')[0]
     const { error } = await supabase.from('pagamentos').update({
       status: 'pago',
@@ -192,7 +197,7 @@ export default function Pagamentos() {
     return d.toLocaleDateString('pt-BR')
   }
 
-  function isVencido(pag: any) {
+  function isVencido(pag: Pagamento) {
     if (pag.status !== 'pendente') return false
     return new Date(pag.data_vencimento) < new Date(new Date().toISOString().split('T')[0])
   }
@@ -201,6 +206,9 @@ export default function Pagamentos() {
   const pagsFiltrados = filtroStatus === 'todos'
     ? pagamentos
     : pagamentos.filter(p => p.status === filtroStatus)
+
+  const totalPages = Math.ceil(pagsFiltrados.length / PAGE_SIZE)
+  const paginatedItems = pagsFiltrados.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   // Totais
   const totalRecebido = pagamentos.filter(p => p.status === 'pago').reduce((a, p) => a + Number(p.valor), 0)
@@ -259,7 +267,7 @@ export default function Pagamentos() {
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {['todos', 'pendente', 'pago', 'atrasado', 'cancelado'].map(f => (
-          <button key={f} onClick={() => setFiltroStatus(f)} style={{
+          <button key={f} onClick={() => { setFiltroStatus(f); setCurrentPage(1) }} style={{
             padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold',
             cursor: 'pointer', border: 'none',
             background: filtroStatus === f ? '#1E3A5F' : '#F3F4F6',
@@ -287,7 +295,7 @@ export default function Pagamentos() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {pagsFiltrados.map(pag => {
+          {paginatedItems.map(pag => {
             const st = STATUS_CONFIG[pag.status] || STATUS_CONFIG.pendente
             const vencido = isVencido(pag)
             return (
@@ -352,6 +360,39 @@ export default function Pagamentos() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: '8px', marginTop: '24px',
+        }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 1 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >← Anterior</button>
+          <span style={{ color: '#6B7280', fontSize: '13px' }}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >Próximo →</button>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
+import { rateLimit } from '../../../src/lib/rate-limit'
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a.trim())
@@ -10,6 +11,15 @@ function safeCompare(a: string, b: string): boolean {
 }
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success, remaining } = rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  if (!success) {
+    return Response.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()

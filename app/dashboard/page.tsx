@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
+import type { Profile, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -31,26 +33,26 @@ const COR_PENDENTE = '#F59E0B'
 const COR_ATRASADO = '#DC2626'
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [totalClientes, setTotalClientes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
   const [totalRituais, setTotalRituais] = useState(0)
 
   // Chart data
-  const [statusData, setStatusData] = useState<any[]>([])
-  const [consultasMesData, setConsultasMesData] = useState<any[]>([])
-  const [clientesMesData, setClientesMesData] = useState<any[]>([])
+  const [statusData, setStatusData] = useState<StatusChartEntry[]>([])
+  const [consultasMesData, setConsultasMesData] = useState<ConsultaMesChartEntry[]>([])
+  const [clientesMesData, setClientesMesData] = useState<ClienteMesChartEntry[]>([])
 
   // Pagamentos
-  const [pagamentosData, setPagamentosData] = useState<any[]>([])
+  const [pagamentosData, setPagamentosData] = useState<PagamentoMesChartEntry[]>([])
   const [totalRecebido, setTotalRecebido] = useState(0)
   const [totalPendente, setTotalPendente] = useState(0)
   const [totalAtrasado, setTotalAtrasado] = useState(0)
 
   // Agenda
-  const [agenda, setAgenda] = useState<any[]>([])
+  const [agenda, setAgenda] = useState<AgendaItem[]>([])
 
   useEffect(() => {
     async function loadAll() {
@@ -207,7 +209,7 @@ export default function Dashboard() {
       }
 
       // ── AGENDA: Próximos rituais + consultas em andamento ──
-      const agendaItems: any[] = []
+      const agendaItems: AgendaItem[] = []
 
       // Rituais pendentes (próximos 30 dias)
       const hoje = new Date().toISOString().split('T')[0]
