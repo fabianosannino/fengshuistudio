@@ -176,34 +176,91 @@ function calcBounds(src: HTMLCanvasElement): Bounds {
 function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): Setor[] {
   const ctx=src.getContext('2d')!, W=src.width, H=src.height
   const d=ctx.getImageData(0,0,W,H).data
-  function dens(x0:number,y0:number,x1:number,y1:number, dark:boolean){
-    let n=0,t=0
-    for(let y=Math.max(0,Math.floor(y0));y<Math.min(H,Math.ceil(y1));y++)
-    for(let x=Math.max(0,Math.floor(x0));x<Math.min(W,Math.ceil(x1));x++){
+
+  // Detect "construction" pixels: walls, furniture, fixtures, floors with patterns
+  // Uses multiple heuristics to distinguish built areas from empty/outdoor areas
+  function contentDensity(x0:number,y0:number,x1:number,y1:number){
+    let structural=0, total=0
+    const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
+    const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
+    // Sample every 2nd pixel for performance on large images
+    const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 200))
+    for(let y=sy;y<ey;y+=step) for(let x=sx;x<ex;x+=step){
       const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
-      if(a>30){t++; if(dark?r<160&&g<160&&bv<160:!(r>230&&g>230&&bv>230))n++}
+      if(a<30) continue
+      total++
+      // Count as structural/construction if:
+      // 1. Dark pixels (walls, dark furniture): any channel < 120
+      // 2. Strongly colored pixels (colored walls, fixtures): high saturation
+      // 3. Non-uniform/textured (not a plain light background)
+      const maxC=Math.max(r,g,bv), minC=Math.min(r,g,bv)
+      const saturation = maxC > 0 ? (maxC-minC)/maxC : 0
+      const brightness = (r+g+bv)/3
+      const isDark = brightness < 140
+      const isColored = saturation > 0.25 && brightness < 210
+      const isStructural = brightness < 200 // not very light/white
+      if(isDark || isColored || isStructural) structural++
     }
-    return t>0?n/t:0
+    return total>0 ? structural/total : 0
   }
+
+  // Detect any visible content outside boundary (for excesso)
+  function outsideDensity(x0:number,y0:number,x1:number,y1:number){
+    let content=0, total=0
+    const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
+    const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
+    const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 150))
+    for(let y=sy;y<ey;y+=step) for(let x=sx;x<ex;x+=step){
+      const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
+      if(a<30) continue
+      total++
+      // Any non-white pixel with some substance
+      const brightness = (r+g+bv)/3
+      const maxC=Math.max(r,g,bv), minC=Math.min(r,g,bv)
+      const saturation = maxC > 0 ? (maxC-minC)/maxC : 0
+      if(brightness < 180 || saturation > 0.2) content++
+    }
+    return total>0 ? content/total : 0
+  }
+
+  // Calculate content density for each of the 9 grid sectors
   const wd:number[]=[]
   for(let row=0;row<3;row++) for(let col=0;col<3;col++){
     const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
     const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
-    wd.push(dens(x0,y0,x1,y1,true))
+    wd.push(contentDensity(x0,y0,x1,y1))
   }
-  const avg=wd.reduce((a,c)=>a+c,0)/9, mg=Math.min(b.w,b.h)*0.09
+
+  // Compute statistics for falta detection
+  const sorted = [...wd].sort((a,c)=>a-c)
+  const median = sorted[4] // median of 9 values
+  const avg = wd.reduce((a,c)=>a+c,0)/9
+  // Use wider margin for excesso detection (15% of boundary dimensions)
+  const mgW = b.w * 0.15, mgH = b.h * 0.15
+
   return Array(9).fill(0).map((_,idx)=>{
     const row=Math.floor(idx/3),col=idx%3
     const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
     const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
+
+    // Check for excesso: construction outside boundary in adjacent edge direction
     let ex=0
-    if(row===0) ex=Math.max(ex,dens(x0,b.y-mg,x1,b.y,false))
-    if(row===2) ex=Math.max(ex,dens(x0,b.y+b.h,x1,b.y+b.h+mg,false))
-    if(col===0) ex=Math.max(ex,dens(b.x-mg,y0,b.x,y1,false))
-    if(col===2) ex=Math.max(ex,dens(b.x+b.w,y0,b.x+b.w+mg,y1,false))
-    const falta=avg>0.002&&wd[idx]<avg*0.3
-    const excesso=ex>0.12
-    const geo=falta?20:excesso?55:Math.round(Math.min(100,70+(wd[idx]/(avg||1))*15))
+    if(row===0) ex=Math.max(ex,outsideDensity(x0,b.y-mgH,x1,b.y))
+    if(row===2) ex=Math.max(ex,outsideDensity(x0,b.y+b.h,x1,b.y+b.h+mgH))
+    if(col===0) ex=Math.max(ex,outsideDensity(b.x-mgW,y0,b.x,y1))
+    if(col===2) ex=Math.max(ex,outsideDensity(b.x+b.w,y0,b.x+b.w+mgW,y1))
+
+    // Falta: sector has significantly less content than average/median
+    // A sector is "falta" when its density is less than 40% of the median
+    // (meaning it's mostly empty - garden, patio, no construction)
+    const refDensity = Math.max(median, avg) // use whichever is higher as reference
+    const falta = refDensity > 0.05 && wd[idx] < refDensity * 0.45
+
+    // Excesso: significant construction exists outside the boundary
+    const excesso = ex > 0.15
+
+    // Geo score based on analysis
+    const geo = falta ? 20 : excesso ? 55 : Math.round(Math.min(100, 70 + (wd[idx] / (avg || 1)) * 15))
     return {criterios:Array(8).fill(1),geo,falta,excesso}
   })
 }
@@ -240,6 +297,17 @@ function BaguaPlantaContent() {
   const [ativo,    setAtivo]    = useState<number|null>(null)
   const [msg,      setMsg]      = useState('')
   const [consultas,setConsultas]= useState<{id:string;nome_imovel:string}[]>([])
+  const [fullscreen,setFullscreen] = useState(false)
+  const fsCvRef = useRef<HTMLCanvasElement>(null)
+
+  // ESC key to exit fullscreen
+  useEffect(()=>{
+    function handleKey(e:KeyboardEvent){
+      if(e.key==='Escape'&&fullscreen){setModo('nenhum');setFullscreen(false)}
+    }
+    window.addEventListener('keydown',handleKey)
+    return ()=>window.removeEventListener('keydown',handleKey)
+  },[fullscreen])
 
   useEffect(()=>{
     supabase.auth.getUser().then(({data:{user}})=>{
@@ -382,6 +450,146 @@ function BaguaPlantaContent() {
   // redesenha quando step muda (ex: configurar → entrada)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{ draw() },[step])
+
+  // ── fullscreen canvas draw ──────────────────────────────────────────────────
+  const drawFS = useCallback(()=>{
+    const cv=fsCvRef.current, r=rotRef.current; if(!cv||!r||!fullscreen) return
+    const ctx=cv.getContext('2d')!
+    // Size fullscreen canvas to fill viewport with some padding
+    const maxW = window.innerWidth - 60
+    const maxH = window.innerHeight - 160
+    const s = Math.min(maxW/r.width, maxH/r.height)
+    cv.width = r.width*s; cv.height = r.height*s
+    cv.style.width = cv.width+'px'; cv.style.height = cv.height+'px'
+
+    ctx.clearRect(0,0,cv.width,cv.height)
+    ctx.drawImage(r,0,0,cv.width,cv.height)
+
+    if(!bounds) return
+    const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
+    const order2=gridOrder(escola,lado)
+
+    // Draw sectors
+    for(let row=0;row<3;row++) for(let col=0;col<3;col++){
+      const idx=row*3+col, st=SETORES[order2[idx]], sc=setores[idx]
+      const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
+      const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
+      const fw=x1-x0,fh=y1-y0
+      const c=sc?cor(total(sc.geo,sc.criterios)):st.cor
+      ctx.fillStyle=c+'28'; ctx.fillRect(x0,y0,fw,fh)
+      ctx.strokeStyle=c; ctx.lineWidth=1.5; ctx.strokeRect(x0,y0,fw,fh)
+      const fs=Math.max(10,Math.min(16,fw/9))
+      ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
+      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.7:0))
+      if(sc){
+        const ts=total(sc.geo,sc.criterios)
+        ctx.font=`bold ${fs+2}px Arial`; ctx.fillStyle=cor(ts)
+        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs+2)
+        if(sc.falta){ctx.font=`${fs}px Arial`;ctx.fillStyle='#DC2626';ctx.fillText('⚠ falta',x0+fw/2,y0+fh/2+fs*2+6)}
+        if(sc.excesso){ctx.font=`${fs}px Arial`;ctx.fillStyle='#EA580C';ctx.fillText('↑ excesso',x0+fw/2,y0+fh/2+fs*2+6)}
+      }
+    }
+
+    // Boundary
+    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#1E3A5F'
+    ctx.lineWidth=modo==='bordas'?3:2.5
+    ctx.setLineDash(modo==='bordas'?[8,5]:[])
+    ctx.strokeRect(bx,by,bw,bh); ctx.setLineDash([])
+
+    // Border handles
+    if(modo==='bordas'){
+      [[bx+bw/2,by],[bx+bw/2,by+bh],[bx,by+bh/2],[bx+bw,by+bh/2]].forEach(([hx,hy])=>{
+        ctx.beginPath(); ctx.arc(hx,hy,14,0,Math.PI*2)
+        ctx.fillStyle='#FF4500'; ctx.fill()
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
+      })
+    }
+
+    // Grid lines
+    if(modo==='grid'){
+      ctx.strokeStyle='#FF4500'; ctx.lineWidth=2.5; ctx.setLineDash([8,5])
+      lh.forEach(h=>{
+        const ly=by+bh*h
+        ctx.beginPath(); ctx.moveTo(bx,ly); ctx.lineTo(bx+bw,ly); ctx.stroke()
+        ctx.beginPath(); ctx.arc(bx+bw/2,ly,14,0,Math.PI*2)
+        ctx.fillStyle='#FF4500'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
+      })
+      lv.forEach(v=>{
+        const lx=bx+bw*v
+        ctx.beginPath(); ctx.moveTo(lx,by); ctx.lineTo(lx,by+bh); ctx.stroke()
+        ctx.beginPath(); ctx.arc(lx,by+bh/2,14,0,Math.PI*2)
+        ctx.fillStyle='#FF4500'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
+      })
+      ctx.setLineDash([])
+    }
+
+    // Entry arrow
+    if(entrada){
+      const ex2=entrada.x*s,ey2=entrada.y*s,aw=18,ah=26
+      ctx.fillStyle='#22C55E'
+      ctx.beginPath(); ctx.moveTo(ex2,ey2-ah*0.6); ctx.lineTo(ex2+aw*0.5,ey2); ctx.lineTo(ex2-aw*0.5,ey2); ctx.closePath(); ctx.fill()
+      ctx.fillRect(ex2-aw*0.25,ey2,aw*0.5,ah*0.45)
+      ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.textAlign='center'; ctx.fillText('E',ex2,ey2+ah*0.4)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[fullscreen,bounds,entrada,lado,escola,lh,lv,modo,setores])
+
+  useEffect(()=>{ drawFS() },[drawFS])
+
+  // ── fullscreen canvas event helpers ─────────────────────────────────────────
+  function fsScale(){
+    const cv=fsCvRef.current, r=rotRef.current
+    return(cv&&r)?cv.width/r.width:1
+  }
+  function fsCC(e:React.MouseEvent<HTMLCanvasElement>){
+    const cv=fsCvRef.current!,rect=cv.getBoundingClientRect()
+    return{cx:(e.clientX-rect.left)*(cv.width/rect.width),cy:(e.clientY-rect.top)*(cv.height/rect.height)}
+  }
+  function fsFindDrag(cx:number,cy:number):Drag|null{
+    if(!bounds) return null
+    const s=fsScale(),T=DRAG+4
+    const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
+    if(modo==='bordas'){
+      if(Math.abs(cy-by)<T&&cx>=bx-T&&cx<=bx+bw+T) return{tipo:'borda',lado:'top'}
+      if(Math.abs(cy-by-bh)<T&&cx>=bx-T&&cx<=bx+bw+T) return{tipo:'borda',lado:'bottom'}
+      if(Math.abs(cx-bx)<T&&cy>=by-T&&cy<=by+bh+T) return{tipo:'borda',lado:'left'}
+      if(Math.abs(cx-bx-bw)<T&&cy>=by-T&&cy<=by+bh+T) return{tipo:'borda',lado:'right'}
+    }
+    if(modo==='grid'){
+      for(let i=0;i<lh.length;i++) if(Math.abs(cy-(by+bh*lh[i]))<T) return{tipo:'linhaH',index:i}
+      for(let i=0;i<lv.length;i++) if(Math.abs(cx-(bx+bw*lv[i]))<T) return{tipo:'linhaV',index:i}
+    }
+    return null
+  }
+  function onFsMD(e:React.MouseEvent<HTMLCanvasElement>){
+    if(modo==='nenhum') return
+    const{cx,cy}=fsCC(e); const t=fsFindDrag(cx,cy)
+    if(t){dragRef.current=t; isDrag.current=false}
+  }
+  function onFsMM(e:React.MouseEvent<HTMLCanvasElement>){
+    if(!dragRef.current||!bounds) return
+    isDrag.current=true
+    const{cx,cy}=fsCC(e); const s=fsScale()
+    const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
+    const t=dragRef.current
+    if(t.tipo==='borda'){
+      const ix=cx/s,iy=cy/s
+      setBounds(prev=>{
+        if(!prev) return prev; const nb={...prev}
+        if(t.lado==='top'){const dd=nb.y-iy;nb.y=iy;nb.h+=dd}
+        if(t.lado==='bottom'){nb.h=iy-nb.y}
+        if(t.lado==='left'){const dd=nb.x-ix;nb.x=ix;nb.w+=dd}
+        if(t.lado==='right'){nb.w=ix-nb.x}
+        if(nb.w<30)nb.w=30; if(nb.h<30)nb.h=30; return nb
+      })
+    }
+    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>p.map((v,i)=>i===t.index?rel:v))}
+    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>p.map((v,i)=>i===t.index?rel:v))}
+  }
+  function onFsMU(){
+    if(isDrag.current) recalcular()
+    dragRef.current=null; setTimeout(()=>{isDrag.current=false},50)
+  }
 
   // ── coords canvas (independente de CSS scale) ──────────────────────────────
   function cc(e:React.MouseEvent<HTMLCanvasElement>){
@@ -690,6 +898,10 @@ function BaguaPlantaContent() {
                       style={{background:'#1D4ED8',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       🔄 Recalcular
                     </button>
+                    <button onClick={()=>setFullscreen(true)}
+                      style={{background:'#15803D',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      🔍 Tela cheia
+                    </button>
                     <button onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null)}}
                       style={{background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>
                       ↩ Nova planta
@@ -848,6 +1060,90 @@ function BaguaPlantaContent() {
             )}
           </div>
         )}
+
+        {/* ════ FULLSCREEN OVERLAY ════ */}
+        {fullscreen && step==='resultado' && (
+          <div style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.92)',
+            zIndex:9999, display:'flex', flexDirection:'column',
+            alignItems:'center', justifyContent:'center', padding:'20px'
+          }}>
+            {/* Top bar */}
+            <div style={{
+              position:'absolute', top:0, left:0, right:0,
+              padding:'12px 24px', display:'flex', alignItems:'center',
+              justifyContent:'space-between', background:'rgba(0,0,0,0.5)'
+            }}>
+              <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                <span style={{color:'#B8860B',fontSize:'16px',fontWeight:'bold'}}>☯ FengShui Studio</span>
+                <span style={{color:'rgba(255,255,255,0.5)',fontSize:'12px'}}>— Tela cheia</span>
+              </div>
+              <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                <button onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
+                  style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  {modo==='bordas'?'🔒 Finalizar bordas':'⬜ Ajustar bordas'}
+                </button>
+                <button onClick={()=>setModo(modo==='grid'?'nenhum':'grid')}
+                  style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  {modo==='grid'?'🔒 Finalizar grid':'⊞ Ajustar grid'}
+                </button>
+                <button onClick={recalcular}
+                  style={{background:'#1D4ED8',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  🔄 Recalcular
+                </button>
+                <button onClick={()=>{setModo('nenhum');setFullscreen(false)}}
+                  style={{background:'#15803D',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+                  ✓ OK — Voltar
+                </button>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            {modo==='bordas'&&(
+              <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
+                padding:'6px 16px',background:'#FEF3C7',borderRadius:'6px',color:'#92400E',fontSize:'12px',zIndex:1}}>
+                Arraste as alças laranja para ajustar os limites da construcao (fronteira Feng Shui)
+              </div>
+            )}
+            {modo==='grid'&&(
+              <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
+                padding:'6px 16px',background:'#EDE9FE',borderRadius:'6px',color:'#5B21B6',fontSize:'12px',zIndex:1}}>
+                Arraste as linhas para reposicionar as divisoes dos setores Ba Gua
+              </div>
+            )}
+
+            {/* Fullscreen canvas */}
+            <canvas ref={fsCvRef}
+              onMouseDown={onFsMD}
+              onMouseMove={onFsMM}
+              onMouseUp={onFsMU}
+              onMouseLeave={onFsMU}
+              style={{
+                display:'block', borderRadius:'8px',
+                border:'2px solid rgba(255,255,255,0.2)',
+                cursor:modo!=='nenhum'?'move':'default',
+                userSelect:'none', maxWidth:'95vw', maxHeight:'80vh'
+              }}
+            />
+
+            {/* Bottom info */}
+            <div style={{
+              position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
+              display:'flex', gap:'16px', alignItems:'center'
+            }}>
+              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
+                Escola: <strong style={{color:'#fff'}}>{escola==='btb'?'BTB':'Bussola'}</strong>
+              </span>
+              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
+                Entrada: <strong style={{color:'#fff'}}>{lado}</strong>
+              </span>
+              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
+                Pressione ESC ou clique OK para sair
+              </span>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   )
