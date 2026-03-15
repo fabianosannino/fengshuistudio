@@ -108,6 +108,111 @@ function gerarRecomendacoes(nomeSetor: string, scorePct: number, criteriosSetor:
   }
 }
 
+type CustomRec = { tipo: 'urgente' | 'melhoria' | 'manutencao'; texto: string; produtos: string[] }
+
+const PRODUTO_CATEGORIAS = [
+  { value: 'espelhos', label: 'Espelhos Ba Gua' },
+  { value: 'cristais', label: 'Cristais e Pedras' },
+  { value: 'fontes', label: 'Fontes de Agua' },
+  { value: 'plantas', label: 'Plantas e Vasos' },
+  { value: 'sinos', label: 'Sinos de Vento' },
+  { value: 'velas', label: 'Velas e Incensos' },
+  { value: 'decoracao', label: 'Decoracao e Simbolos' },
+]
+
+function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
+  const [tipo, setTipo] = useState<'urgente' | 'melhoria' | 'manutencao'>('melhoria')
+  const [texto, setTexto] = useState('')
+  const [produtos, setProdutos] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+
+  function handleAdd() {
+    if (!texto.trim()) return
+    onAdd({ tipo, texto: texto.trim(), produtos })
+    setTexto('')
+    setProdutos([])
+    setOpen(false)
+  }
+
+  function toggleProduto(val: string) {
+    setProdutos(prev => prev.includes(val) ? prev.filter(p => p !== val) : [...prev, val])
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{
+        width: '100%', padding: '10px', background: '#7C3AED', color: '#fff',
+        border: 'none', borderRadius: '8px', cursor: 'pointer',
+        fontSize: '13px', fontWeight: 'bold'
+      }}>+ Adicionar recomendação</button>
+    )
+  }
+
+  return (
+    <div style={{ background: '#ffffff', borderRadius: '8px', padding: '14px', border: '1px solid #E9D5FF' }}>
+      {/* Tipo */}
+      <div style={{ marginBottom: '10px' }}>
+        <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Classificação</label>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {([['urgente', 'Urgente', '#DC2626'], ['melhoria', 'Melhoria', '#D97706'], ['manutencao', 'Manutenção', '#15803D']] as const).map(([val, label, color]) => (
+            <button key={val} onClick={() => setTipo(val)} style={{
+              padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
+              border: 'none', cursor: 'pointer',
+              background: tipo === val ? color : '#F3F4F6',
+              color: tipo === val ? '#fff' : '#6B7280'
+            }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Texto */}
+      <div style={{ marginBottom: '10px' }}>
+        <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Orientação ao cliente</label>
+        <textarea
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          placeholder="Descreva a recomendação, orientação ou direcionamento para o cliente..."
+          rows={3}
+          style={{
+            width: '100%', padding: '10px', border: '1px solid #D1D5DB',
+            borderRadius: '6px', fontSize: '13px', resize: 'vertical',
+            outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
+          }}
+        />
+      </div>
+
+      {/* Produtos */}
+      <div style={{ marginBottom: '14px' }}>
+        <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Produtos sugeridos (opcional)</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {PRODUTO_CATEGORIAS.map(cat => (
+            <button key={cat.value} onClick={() => toggleProduto(cat.value)} style={{
+              padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold',
+              border: produtos.includes(cat.value) ? '2px solid #7C3AED' : '1px solid #D1D5DB',
+              background: produtos.includes(cat.value) ? '#EDE9FE' : '#fff',
+              color: produtos.includes(cat.value) ? '#7C3AED' : '#6B7280',
+              cursor: 'pointer'
+            }}>{cat.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Ações */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={handleAdd} disabled={!texto.trim()} style={{
+          flex: 1, padding: '10px', background: texto.trim() ? '#7C3AED' : '#D1D5DB',
+          color: '#fff', border: 'none', borderRadius: '8px', cursor: texto.trim() ? 'pointer' : 'not-allowed',
+          fontSize: '13px', fontWeight: 'bold'
+        }}>Adicionar</button>
+        <button onClick={() => { setOpen(false); setTexto(''); setProdutos([]) }} style={{
+          padding: '10px 16px', background: '#F3F4F6', color: '#6B7280',
+          border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px'
+        }}>Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
 export default function ConsultaDetalhe() {
   const router = useRouter()
   const params = useParams()
@@ -117,8 +222,9 @@ export default function ConsultaDetalhe() {
   const [setores, setSetores] = useState<any[]>([])
   const [criterios, setCriterios] = useState<Record<string, Record<string, number>>>({})
   const [notas, setNotas] = useState<Record<string, Record<string, string>>>({})
+  const [customRecs, setCustomRecs] = useState<Record<string, CustomRec[]>>({})
   const [setorAtivo, setSetorAtivo] = useState<string | null>(null)
-  const [recModal, setRecModal] = useState<string | null>(null) // setorId do modal de recomendações
+  const [recModal, setRecModal] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -147,9 +253,11 @@ export default function ConsultaDetalhe() {
 
       const cMap: Record<string, Record<string, number>> = {}
       const nMap: Record<string, Record<string, string>> = {}
+      const rMap: Record<string, CustomRec[]> = {}
       setoresData?.forEach(setor => {
         cMap[setor.id] = {}
         nMap[setor.id] = {}
+        rMap[setor.id] = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom : []
         setor.diagnostico_criterios?.forEach((c: any) => {
           cMap[setor.id][c.criterio] = c.score
           nMap[setor.id][c.criterio] = c.notas || ''
@@ -157,6 +265,7 @@ export default function ConsultaDetalhe() {
       })
       setCriterios(cMap)
       setNotas(nMap)
+      setCustomRecs(rMap)
 
       if (setoresData && setoresData.length > 0) {
         setSetorAtivo(setoresData[0].id)
@@ -204,8 +313,11 @@ export default function ConsultaDetalhe() {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
       const pct = getScore(setorId)
-      await supabase.from('setores_bagua').update({ score_percentual: pct }).eq('id', setorId)
-      setSetores(prev => prev.map(s => s.id === setorId ? { ...s, score_percentual: pct } : s))
+      await supabase.from('setores_bagua').update({
+        score_percentual: pct,
+        recomendacoes_custom: customRecs[setorId] || [],
+      }).eq('id', setorId)
+      setSetores(prev => prev.map(s => s.id === setorId ? { ...s, score_percentual: pct, recomendacoes_custom: customRecs[setorId] || [] } : s))
       setMessage('Setor salvo com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
@@ -312,11 +424,64 @@ export default function ConsultaDetalhe() {
                 </div>
               )}
 
-              {/* Produtos sugeridos baseados nas recomendações */}
+              {/* Recomendações personalizadas do consultor */}
+              {(() => {
+                const cRecs = customRecs[recSetorData.id] || []
+                if (cRecs.length === 0) return null
+                return (
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ display: 'inline-block', background: '#7C3AED', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
+                      📝 DO CONSULTOR ({cRecs.length})
+                    </div>
+                    {cRecs.map((cr, i) => (
+                      <div key={i} style={{
+                        padding: '10px 12px', background: '#F5F0FF',
+                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
+                        borderRadius: '6px', marginBottom: '6px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span style={{
+                            fontSize: '9px', fontWeight: 'bold', color: '#fff',
+                            padding: '1px 5px', borderRadius: '6px',
+                            background: cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'
+                          }}>{cr.tipo === 'urgente' ? 'URGENTE' : cr.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENÇÃO'}</span>
+                        </div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#374151' }}>{cr.texto}</p>
+                        {cr.produtos.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                            {cr.produtos.map(p => {
+                              const cat = PRODUTO_CATEGORIAS.find(c => c.value === p)
+                              return (
+                                <a key={p} href={`/produtos?categoria=${p}`} style={{
+                                  padding: '3px 8px', background: '#7C3AED', color: '#fff',
+                                  borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
+                                  textDecoration: 'none'
+                                }}>{cat?.label || p}</a>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              {/* Produtos sugeridos baseados nas recomendações automáticas */}
               {(() => {
                 const todasRec = [...rec.urgente, ...rec.melhoria, ...rec.manutencao]
                 const produtos = getProdutosSugeridos(todasRec)
-                if (produtos.length === 0) return null
+                // Also add products from custom recommendations
+                const customProds = (customRecs[recSetorData.id] || []).flatMap(cr => cr.produtos)
+                const allProds = new Map<string, { nome: string; categoria: string }>()
+                produtos.forEach(p => allProds.set(p.categoria, p))
+                customProds.forEach(cat => {
+                  if (!allProds.has(cat)) {
+                    const found = PRODUTO_CATEGORIAS.find(c => c.value === cat)
+                    if (found) allProds.set(cat, { nome: found.label, categoria: cat })
+                  }
+                })
+                if (allProds.size === 0) return null
                 return (
                   <div style={{
                     marginTop: '16px', padding: '14px 16px',
@@ -327,7 +492,7 @@ export default function ConsultaDetalhe() {
                       🛒 Produtos recomendados para este setor
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {produtos.map(p => (
+                      {Array.from(allProds.values()).map(p => (
                         <a key={p.categoria} href={`/produtos?categoria=${p.categoria}`} style={{
                           padding: '6px 12px', background: '#7C3AED', color: '#fff',
                           borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
@@ -552,6 +717,71 @@ export default function ConsultaDetalhe() {
                     />
                   </div>
                 ))}
+              </div>
+
+              {/* ── Recomendações Personalizadas ─────────────────────────── */}
+              <div style={{
+                marginBottom: '24px', padding: '20px', background: '#F5F0FF',
+                borderRadius: '10px', border: '1px solid #E9D5FF'
+              }}>
+                <h3 style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>
+                  📝 Recomendações do Consultor
+                </h3>
+
+                {/* Lista de recomendações existentes */}
+                {(customRecs[setorAtivoData.id] || []).length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    {(customRecs[setorAtivoData.id] || []).map((rec, ri) => (
+                      <div key={ri} style={{
+                        padding: '10px 12px', background: '#ffffff', borderRadius: '8px',
+                        borderLeft: `3px solid ${rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
+                        display: 'flex', gap: '8px', alignItems: 'flex-start'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <span style={{
+                              fontSize: '10px', fontWeight: 'bold', color: '#fff',
+                              padding: '1px 6px', borderRadius: '8px',
+                              background: rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'
+                            }}>{rec.tipo === 'urgente' ? 'URGENTE' : rec.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENÇÃO'}</span>
+                          </div>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#374151' }}>{rec.texto}</p>
+                          {rec.produtos.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {rec.produtos.map(p => {
+                                const cat = PRODUTO_CATEGORIAS.find(c => c.value === p)
+                                return (
+                                  <span key={p} style={{
+                                    fontSize: '10px', padding: '2px 6px', background: '#EDE9FE',
+                                    color: '#7C3AED', borderRadius: '4px', fontWeight: 'bold'
+                                  }}>{cat?.label || p}</span>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        <button onClick={() => {
+                          setCustomRecs(prev => ({
+                            ...prev,
+                            [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, i) => i !== ri)
+                          }))
+                        }} style={{
+                          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px',
+                          padding: '4px 8px', cursor: 'pointer', fontSize: '12px', color: '#DC2626',
+                          flexShrink: 0
+                        }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Formulário para nova recomendação */}
+                <NewRecForm onAdd={(rec: CustomRec) => {
+                  setCustomRecs(prev => ({
+                    ...prev,
+                    [setorAtivoData.id]: [...(prev[setorAtivoData.id] || []), rec]
+                  }))
+                }} />
               </div>
 
               <button onClick={() => handleSaveSetor(setorAtivoData.id)} disabled={saving} style={{

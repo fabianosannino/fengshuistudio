@@ -215,9 +215,10 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     return total>0 ? construction/total : 0
   }
 
-  // Detect construction (NOT vegetation/garden) outside boundary for excesso
+  // Detect WALLS (not garden/paths/fences) outside boundary for excesso
+  // Only very dark pixels count — actual architectural wall lines
   function outsideDensity(x0:number,y0:number,x1:number,y1:number){
-    let construction=0, total=0
+    let walls=0, total=0
     const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
     const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
     const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 150))
@@ -225,10 +226,11 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
       const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
       if(a<30) continue
       total++
-      // Only count wall-like or structural elements, not garden
-      if(isConstruction(r,g,bv) && (r+g+bv)/3 < 150) construction++
+      // Only count wall-like pixels: very dark, non-green
+      const brightness=(r+g+bv)/3
+      if(brightness<80 && !isVegetation(r,g,bv)) walls++
     }
-    return total>0 ? construction/total : 0
+    return total>0 ? walls/total : 0
   }
 
   // Calculate content density for each of the 9 grid sectors
@@ -263,9 +265,9 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     const refDensity = Math.max(median, avg)
     const falta = refDensity > 0.03 && wd[idx] < refDensity * 0.55
 
-    // Excesso: actual building structure extends outside the boundary
-    // (vegetation/garden outside does NOT count as excesso)
-    const excesso = ex > 0.20
+    // Excesso: actual wall lines extend outside the boundary
+    // Only triggers when there are real architectural walls beyond the boundary
+    const excesso = ex > 0.05
 
     // Geo score: falta penalizes more than excesso
     const geo = falta ? 20 : excesso ? 50 : Math.round(Math.min(100, 70 + (wd[idx] / (avg || 1)) * 15))

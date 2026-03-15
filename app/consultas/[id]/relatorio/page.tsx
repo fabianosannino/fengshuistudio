@@ -500,10 +500,20 @@ export default function Relatorio() {
             const temRec = rec ? (rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0) : false
             const energia = setor.avaliacao_geometrica || null
             const enInfo = energiaLabel(energia)
+            const cRecs: { tipo: string; texto: string; produtos: string[] }[] = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom : []
 
             // Collect products for this sector's recommendations
             const todasRec = rec ? [...rec.urgente, ...rec.melhoria, ...rec.manutencao] : []
             const produtos = getProdutosSugeridos(todasRec)
+            // Add custom recommendation products
+            cRecs.forEach(cr => {
+              cr.produtos?.forEach(cat => {
+                if (!produtos.find(p => p.categoria === cat)) {
+                  const CATS: Record<string, string> = { espelhos: 'Espelhos Ba Gua', cristais: 'Cristais e Pedras', fontes: 'Fontes de Agua', plantas: 'Plantas e Vasos', sinos: 'Sinos de Vento', velas: 'Velas e Incensos', decoracao: 'Decoracao e Simbolos' }
+                  if (CATS[cat]) produtos.push({ nome: CATS[cat], categoria: cat })
+                }
+              })
+            })
 
             return (
               <div key={setor.id} style={{
@@ -629,6 +639,44 @@ export default function Relatorio() {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Custom recommendations from consultant */}
+                  {cRecs.length > 0 && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Orientacoes do Consultor
+                      </div>
+                      {cRecs.map((cr, i) => (
+                        <div key={i} style={{
+                          padding: '8px 10px', background: '#F5F0FF',
+                          borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
+                          borderRadius: '4px', marginBottom: '4px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                            <span style={{
+                              fontSize: '9px', fontWeight: 'bold', color: '#fff',
+                              padding: '1px 5px', borderRadius: '6px',
+                              background: cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'
+                            }}>{cr.tipo === 'urgente' ? 'URGENTE' : cr.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENCAO'}</span>
+                          </div>
+                          <p style={{ margin: '0', fontSize: '12px', color: '#374151' }}>{cr.texto}</p>
+                          {cr.produtos?.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                              {cr.produtos.map((cat: string) => {
+                                const CATS: Record<string, string> = { espelhos: 'Espelhos Ba Gua', cristais: 'Cristais e Pedras', fontes: 'Fontes de Agua', plantas: 'Plantas e Vasos', sinos: 'Sinos de Vento', velas: 'Velas e Incensos', decoracao: 'Decoracao e Simbolos' }
+                                return (
+                                  <span key={cat} style={{
+                                    fontSize: '9px', padding: '2px 6px', background: '#EDE9FE',
+                                    color: '#7C3AED', borderRadius: '4px', fontWeight: 'bold'
+                                  }}>{CATS[cat] || cat}</span>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
 
