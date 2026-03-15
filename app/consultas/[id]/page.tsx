@@ -5,8 +5,9 @@ import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import TabRodaDaVida from './TabRodaDaVida'
 import TabFluxoChi from './TabFluxoChi'
+import TabFotos from './TabFotos'
 import { CRITERIOS } from '../../../src/lib/constants'
-import type { Consulta, SetorBagua, DiagnosticoCriterio } from '../../../src/lib/types'
+import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 
 // Cômodo types for room mapping per Guá
 const COMODO_TIPOS = [
@@ -249,6 +250,7 @@ const TABS = [
   { id: 'diagnostico', label: 'Diagnóstico Ba Guá', icon: '☯' },
   { id: 'roda_vida', label: 'Roda da Vida', icon: '◎' },
   { id: 'fluxo_chi', label: 'Fluxo de Chi', icon: '🌊' },
+  { id: 'fotos', label: 'Fotos do Imóvel', icon: '📷' },
 ]
 
 export default function ConsultaDetalhe() {
@@ -274,6 +276,10 @@ export default function ConsultaDetalhe() {
   const [checklistChi, setChecklistChi] = useState<string[]>([])
   const [posicaoComando, setPosicaoComando] = useState<Record<string, string[]>>({})
 
+  // Fotos do imóvel
+  const [fotoGeral, setFotoGeral] = useState<string | null>(null)
+  const [fotosComodos, setFotosComodos] = useState<FotoComodo[]>([])
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -292,6 +298,10 @@ export default function ConsultaDetalhe() {
       setRodaData(consulta.roda_da_vida || {})
       setChecklistChi(consulta.checklist_chi || [])
       setPosicaoComando(consulta.posicao_comando || {})
+
+      // Load fotos
+      setFotoGeral(consulta.foto_geral_url || null)
+      setFotosComodos(Array.isArray(consulta.fotos_comodos) ? consulta.fotos_comodos : [])
 
       const { data: setoresData } = await supabase
         .from('setores_bagua')
@@ -427,6 +437,21 @@ export default function ConsultaDetalhe() {
       setTimeout(() => setMessage(''), 3000)
     }
     setSaving(false)
+  }
+
+  async function handleFotosUpdate(newFotoGeral: string | null, newFotosComodos: FotoComodo[]) {
+    setFotoGeral(newFotoGeral)
+    setFotosComodos(newFotosComodos)
+    // Auto-save to database
+    const { error } = await supabase.from('consultas').update({
+      foto_geral_url: newFotoGeral,
+      fotos_comodos: newFotosComodos,
+    }).eq('id', id)
+    if (error) {
+      console.error('Error saving fotos:', error.message)
+    } else {
+      setConsulta(prev => prev ? { ...prev, foto_geral_url: newFotoGeral, fotos_comodos: newFotosComodos } : prev)
+    }
   }
 
   async function handleFinalizar() {
@@ -629,7 +654,32 @@ export default function ConsultaDetalhe() {
 
       <main style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto' }}>
 
-        {/* Consultation header */}
+        {/* Foto geral banner */}
+        {fotoGeral && (
+          <div style={{
+            marginBottom: '20px', borderRadius: '14px', overflow: 'hidden',
+            maxHeight: '220px', position: 'relative',
+          }}>
+            <img src={fotoGeral} alt={consulta.nome_imovel || 'Imóvel'} style={{
+              width: '100%', height: '220px', objectFit: 'cover',
+            }} />
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+              padding: '20px 24px 16px',
+            }}>
+              <h1 style={{ color: '#ffffff', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                {consulta.nome_imovel}
+              </h1>
+              <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', margin: '0' }}>
+                Cliente: {consulta.clientes?.nome_completo} · {consulta.tipo_imovel} {consulta.area_total_m2 ? `· ${consulta.area_total_m2}m²` : ''}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Consultation header (without photo) */}
+        {!fotoGeral && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
@@ -657,6 +707,28 @@ export default function ConsultaDetalhe() {
             }}>Finalizar consulta ✓</button>
           </div>
         </div>
+        )}
+
+        {/* Action buttons (when foto geral is shown) */}
+        {fotoGeral && (
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
+              background: '#7C3AED', color: '#ffffff', border: 'none',
+              padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>治 Curas & Ativações</button>
+            <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
+              background: '#1E3A5F', color: '#ffffff', border: 'none',
+              padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>Ver Relatório PDF</button>
+            <button onClick={handleFinalizar} style={{
+              background: '#15803D', color: '#ffffff', border: 'none',
+              padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>Finalizar consulta ✓</button>
+          </div>
+        )}
 
         {message && (
           <div style={{
@@ -992,6 +1064,17 @@ export default function ConsultaDetalhe() {
             onChangeChi={setChecklistChi}
             onChangePosicao={setPosicaoComando}
             onSave={handleSaveChi}
+            saving={saving}
+          />
+        )}
+
+        {/* ══════ TAB: Fotos do Imóvel ══════ */}
+        {activeTab === 'fotos' && (
+          <TabFotos
+            consultaId={id}
+            fotoGeral={fotoGeral}
+            fotosComodos={fotosComodos}
+            onUpdate={handleFotosUpdate}
             saving={saving}
           />
         )}
