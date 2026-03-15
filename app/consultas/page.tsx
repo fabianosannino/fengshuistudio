@@ -119,6 +119,13 @@ export default function Consultas() {
                   border: 'none', borderRadius: '6px', fontSize: '13px',
                   fontWeight: 'bold', cursor: 'pointer'
                 }}>Abrir</button>
+                {consulta.status === 'finalizada' && (
+                  <button onClick={() => window.location.href = `/consultas/${consulta.id}/relatorio`} style={{
+                    padding: '8px 20px', background: '#1E3A5F', color: '#fff',
+                    border: 'none', borderRadius: '6px', fontSize: '13px',
+                    fontWeight: 'bold', cursor: 'pointer'
+                  }}>Relatório</button>
+                )}
                 <button onClick={async () => {
                   if (confirm('Deseja excluir esta consulta?')) {
                     const { error } = await supabase.from('consultas').delete().eq('id', consulta.id)

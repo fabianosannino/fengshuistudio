@@ -44,7 +44,10 @@ function LoginForm() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { nome_completo: name, role: 'consultor' } }
+      options: {
+        data: { nome_completo: name, role: 'consultor' },
+        emailRedirectTo: `${window.location.origin}/login`
+      }
     })
     if (error) {
       setMessage('Erro ao criar conta: ' + error.message)
