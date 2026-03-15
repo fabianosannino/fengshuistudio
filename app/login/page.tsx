@@ -53,8 +53,13 @@ function LoginForm() {
     })
     if (error) {
       setMessage('Erro ao criar conta: ' + error.message)
-    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-      setMessage('Erro ao criar conta: Este e-mail já está cadastrado. Tente fazer login.')
+    } else if (
+      (data.user && data.user.identities && data.user.identities.length === 0) ||
+      (data.user && data.user.email_confirmed_at) ||
+      (!data.session && data.user && data.user.created_at &&
+        new Date().getTime() - new Date(data.user.created_at).getTime() > 5000)
+    ) {
+      setMessage('Este e-mail ja esta cadastrado. Use a aba "Entrar" para fazer login, ou clique em "Esqueci minha senha" para recuperar o acesso.')
     } else {
       setSignUpDone(true)
     }
@@ -199,17 +204,20 @@ function LoginForm() {
           </>
         )}
 
-        {message && (
-          <div style={{
-            marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') || message.includes('incorretos') ? '#FEF2F2' : message.includes('reenviado') ? '#F0FDF4' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') || message.includes('incorretos') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') || message.includes('incorretos') ? '#DC2626' : '#15803D',
-            fontSize: '14px', textAlign: 'center'
-          }}>
-            {message}
-          </div>
-        )}
+        {message && (() => {
+          const isError = message.includes('Erro') || message.includes('incorretos') || message.includes('ja esta cadastrado')
+          return (
+            <div style={{
+              marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
+              background: isError ? '#FEF2F2' : '#F0FDF4',
+              border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
+              color: isError ? '#DC2626' : '#15803D',
+              fontSize: '14px', textAlign: 'center'
+            }}>
+              {message}
+            </div>
+          )
+        })()}
 
         <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '12px', marginTop: '32px', marginBottom: '0' }}>
           FengShui Studio 2026 - CollabZ Consultoria
