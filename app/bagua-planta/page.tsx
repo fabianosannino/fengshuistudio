@@ -715,6 +715,14 @@ function BaguaPlantaContent() {
     const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
     await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
     await supabase.from('diagnostico_criterios').insert(inserts)
+    // Save canvas snapshot to consulta (best effort - column may not exist yet)
+    try {
+      const cv=cvRef.current
+      if(cv){
+        const dataUrl=cv.toDataURL('image/png',0.7)
+        await supabase.from('consultas').update({bagua_imagem:dataUrl}).eq('id',consultaId)
+      }
+    } catch{}
     setMsg(`"${stDef.nome}" salvo!`)
     setTimeout(()=>setMsg(''),3000)
   }
