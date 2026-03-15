@@ -79,6 +79,13 @@ export interface Cliente {
   atualizado_em?: string
 }
 
+/** Photo group for a room in the property */
+export interface FotoComodo {
+  comodo: string
+  fotos: string[]
+  ordem: number
+}
+
 /** Consultation from the 'consultas' table */
 export interface Consulta {
   id: string
@@ -90,6 +97,8 @@ export interface Consulta {
   endereco_imovel?: string | null
   porta_posicao?: string | null
   bagua_imagem?: string | null
+  foto_geral_url?: string | null
+  fotos_comodos?: FotoComodo[] | null
   status: ConsultaStatus
   roda_da_vida?: Record<string, number> | null
   checklist_chi?: string[] | null
