@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
+import type { User } from '@supabase/supabase-js'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
 export default function Perfil() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -71,7 +72,7 @@ export default function Perfil() {
     setMessage('')
 
     // Only send professional fields if user is professional
-    const updateData: any = {
+    const updateData: Record<string, string | boolean | null> = {
       nome_completo: form.nome_completo,
       nome_empresa: form.nome_empresa,
       telefone: form.telefone,
@@ -90,7 +91,7 @@ export default function Perfil() {
       updateData.parceiro_visivel = form.parceiro_visivel
     }
 
-    const { error } = await supabase.from('profiles').update(updateData).eq('id', user.id)
+    const { error } = await supabase.from('profiles').update(updateData).eq('id', user!.id)
     if (error) { setMessage('Erro ao salvar: ' + error.message) }
     else { setMessage('Perfil atualizado com sucesso!'); setTimeout(() => setMessage(''), 3000) }
     setSaving(false)

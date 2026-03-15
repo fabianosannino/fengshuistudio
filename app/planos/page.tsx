@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import type { Profile } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 const PLANOS = [
   {
@@ -32,8 +34,8 @@ const PLANOS = [
 ]
 
 export default function Planos() {
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [showKeyInput, setShowKeyInput] = useState(false)
@@ -72,7 +74,7 @@ export default function Planos() {
         setMessage('Erro ao atualizar plano: ' + data.error)
         return
       }
-      setProfile({ ...profile, plano: 'freemium' })
+      setProfile(prev => prev ? { ...prev, plano: 'freemium' } : prev)
       setMessage('Plano alterado para Free.')
       setTimeout(() => setMessage(''), 4000)
     } catch {
@@ -99,7 +101,7 @@ export default function Planos() {
         setUpgrading(false)
         return
       }
-      setProfile({ ...profile, plano: 'pro' })
+      setProfile(prev => prev ? { ...prev, plano: 'pro' } : prev)
       setShowKeyInput(false)
       setChaveAtivacao('')
       setMessage('Parabéns! Seu plano foi atualizado para Pro!')

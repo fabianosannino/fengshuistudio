@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import type { SetorBagua } from '../../../src/lib/types'
 
 // Roda da Vida — Life areas mapped to Ba Gua sectors (Black Hat school)
 const AREAS_VIDA = [
@@ -22,7 +23,7 @@ interface Props {
   onChange: (data: RodaData) => void
   onSave: () => void
   saving: boolean
-  setores: any[]
+  setores: SetorBagua[]
 }
 
 function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {

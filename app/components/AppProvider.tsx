@@ -25,7 +25,7 @@ export function useApp() {
 }
 
 // ─── Simple cache for Supabase queries ───────────────────────
-const queryCache = new Map<string, { data: any; ts: number }>()
+const queryCache = new Map<string, { data: unknown; ts: number }>()
 const CACHE_TTL = 60_000 // 1 minute
 
 export function getCached<T>(key: string): T | null {

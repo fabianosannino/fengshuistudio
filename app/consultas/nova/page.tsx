@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import AppShell from '../../components/AppShell'
 import Skeleton from '../../components/Skeleton'
+import type { Profile, Cliente } from '../../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 
@@ -20,13 +22,13 @@ const SETORES_BAGUA = [
 ]
 
 export default function NovaConsulta() {
-  const [user, setUser] = useState<any>(null)
-  const [clientes, setClientes] = useState<any[]>([])
+  const [user, setUser] = useState<User | null>(null)
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [step, setStep] = useState(1)
   const [message, setMessage] = useState('')
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<Pick<Profile, 'plano' | 'tipo_usuario' | 'role' | 'nome_completo'> | null>(null)
   const [consultasMes, setConsultasMes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
 
@@ -113,8 +115,8 @@ export default function NovaConsulta() {
         const { data: existingClients } = await supabase
           .from('clientes')
           .select('id')
-          .eq('consultor_id', user.id)
-          .eq('email', user.email)
+          .eq('consultor_id', user!.id)
+          .eq('email', user!.email!)
           .limit(1)
 
         if (existingClients && existingClients.length > 0) {
@@ -124,9 +126,9 @@ export default function NovaConsulta() {
           const { data: newClient, error: clientError } = await supabase
             .from('clientes')
             .insert({
-              consultor_id: user.id,
-              nome_completo: profile?.nome_completo || user.email,
-              email: user.email,
+              consultor_id: user!.id,
+              nome_completo: profile?.nome_completo || user!.email,
+              email: user!.email,
               ativo: true,
             })
             .select('id')

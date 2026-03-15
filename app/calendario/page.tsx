@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
+import type { Ritual, Profile, Cliente } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 function getMoonPhase(date: Date): { fase: string; emoji: string; percentual: number } {
   const known = new Date(2000, 0, 6, 18, 14)
@@ -73,15 +75,15 @@ const COR_FASE: Record<string, string> = { nova: '#1E3A5F', crescente: '#7C3AED'
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 export default function Calendario() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [mesAtual, setMesAtual] = useState(new Date().getMonth())
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear())
-  const [rituais, setRituais] = useState<any[]>([])
-  const [clientes, setClientes] = useState<any[]>([])
+  const [rituais, setRituais] = useState<Ritual[]>([])
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<Pick<Profile, 'plano'> | null>(null)
   const [message, setMessage] = useState('')
   const [faseSelecionada, setFaseSelecionada] = useState<string | null>(null)
   const [form, setForm] = useState({ titulo: '', descricao: '', fase_lunar: 'nova', data_ritual: '', horario: '', cliente_id: '' })
@@ -123,7 +125,7 @@ export default function Calendario() {
     setSaving(true)
     setMessage('')
     const { error } = await supabase.from('rituais').insert({
-      consultor_id: user.id, titulo: form.titulo, descricao: form.descricao,
+      consultor_id: user!.id, titulo: form.titulo, descricao: form.descricao,
       fase_lunar: form.fase_lunar, data_ritual: form.data_ritual,
       horario: form.horario || null, cliente_id: form.cliente_id || null,
       tipo: 'customizado', status: 'pendente'
@@ -135,7 +137,7 @@ export default function Calendario() {
       setShowForm(false)
       const inicioMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-01`
       const fimMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-${new Date(anoAtual, mesAtual + 1, 0).getDate()}`
-      const { data: rits } = await supabase.from('rituais').select('*, clientes(nome_completo)').eq('consultor_id', user.id).gte('data_ritual', inicioMes).lte('data_ritual', fimMes).order('data_ritual', { ascending: true })
+      const { data: rits } = await supabase.from('rituais').select('*, clientes(nome_completo)').eq('consultor_id', user!.id).gte('data_ritual', inicioMes).lte('data_ritual', fimMes).order('data_ritual', { ascending: true })
       setRituais(rits || [])
       setTimeout(() => setMessage(''), 3000)
     }

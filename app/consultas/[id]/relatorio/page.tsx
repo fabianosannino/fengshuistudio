@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { CRITERIOS, AREA_META, SETOR_DICAS, CRITERIO_DICAS, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
+import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
@@ -89,9 +90,9 @@ export default function Relatorio() {
   const id = params.id as string
   const printRef = useRef<HTMLDivElement>(null)
 
-  const [consulta, setConsulta] = useState<any>(null)
-  const [setores, setSetores] = useState<any[]>([])
-  const [profile, setProfile] = useState<any>(null)
+  const [consulta, setConsulta] = useState<(Consulta & { clientes?: { nome_completo: string; email?: string; telefone?: string; cidade?: string; estado?: string } | null }) | null>(null)
+  const [setores, setSetores] = useState<SetorBagua[]>([])
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
 
@@ -125,15 +126,15 @@ export default function Relatorio() {
   }, [id, router])
 
   function scoreGeral() {
-    const avaliados = setores.filter(s => s.score_percentual !== null)
+    const avaliados = setores.filter(s => s.score_percentual != null)
     if (avaliados.length === 0) return null
-    const soma = avaliados.reduce((a: number, s: any) => a + s.score_percentual, 0)
+    const soma = avaliados.reduce((a: number, s: SetorBagua) => a + (s.score_percentual ?? 0), 0)
     return Math.round(soma / avaliados.length)
   }
 
-  function getCriteriosMap(setor: any): Record<string, number> {
+  function getCriteriosMap(setor: SetorBagua): Record<string, number> {
     const map: Record<string, number> = {}
-    setor.diagnostico_criterios?.forEach((c: any) => { map[c.criterio] = c.score })
+    setor.diagnostico_criterios?.forEach((c: DiagnosticoCriterio) => { map[c.criterio] = c.score })
     return map
   }
 
@@ -151,7 +152,7 @@ export default function Relatorio() {
 
   function getTop3() {
     return setores
-      .filter(s => s.score_percentual !== null)
+      .filter(s => s.score_percentual != null)
       .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
       .slice(0, 3)
   }
@@ -190,7 +191,7 @@ export default function Relatorio() {
           pdf.restoreGraphicsState()
         }
       }
-      const nomeArquivo = `relatorio-${consulta.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
+      const nomeArquivo = `relatorio-${consulta!.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
       pdf.save(nomeArquivo)
     } catch (err) {
       console.error('Erro ao gerar PDF:', err)
@@ -200,7 +201,7 @@ export default function Relatorio() {
     }
   }
 
-  if (loading) {
+  if (loading || !consulta) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF5', fontFamily: "Georgia, 'Times New Roman', serif" }}>
         <div style={{ textAlign: 'center' }}>
@@ -223,16 +224,16 @@ export default function Relatorio() {
 
   // Sorted sectors for Ki Flow
   const sortedSetores = [...setores]
-    .filter(s => s.score_percentual !== null)
+    .filter(s => s.score_percentual != null)
     .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
 
   // Urgente / Atenção / Manter groups
-  const urgentes = setores.filter(s => s.score_percentual !== null && s.score_percentual < 40)
-  const atencao = setores.filter(s => s.score_percentual !== null && s.score_percentual >= 40 && s.score_percentual < 70)
-  const manterSetores = setores.filter(s => s.score_percentual !== null && s.score_percentual >= 70)
+  const urgentes = setores.filter(s => s.score_percentual != null && s.score_percentual < 40)
+  const atencao = setores.filter(s => s.score_percentual != null && s.score_percentual >= 40 && s.score_percentual < 70)
+  const manterSetores = setores.filter(s => s.score_percentual != null && s.score_percentual >= 70)
 
   // Summary stats
-  const avaliados = setores.filter(s => s.score_percentual !== null)
+  const avaliados = setores.filter(s => s.score_percentual != null)
   const urgentCount = urgentes.length
   const okCount = manterSetores.length
   const lowestSetor = sortedSetores[0]
@@ -514,7 +515,7 @@ export default function Relatorio() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
                 {sortedSetores.map(setor => {
-                  const pct = setor.score_percentual
+                  const pct = setor.score_percentual ?? 0
                   const lvl = scoreLevelLabel(pct)
                   const isUrgent = pct < 40
                   const isWarn = pct >= 40 && pct < 70
@@ -636,7 +637,7 @@ export default function Relatorio() {
                   ) : col.list.map(setor => {
                     const meta = AREA_META[setor.nome]
                     const criteriosMap = getCriteriosMap(setor)
-                    const rec = gerarRecomendacoes(setor.nome, setor.score_percentual, criteriosMap)
+                    const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, criteriosMap)
                     const mainAction = meta?.action || rec.urgente[0] || rec.melhoria[0] || '—'
                     return (
                       <div key={setor.id} style={{ padding: '9px 12px', borderBottom: '1px dashed #EAE5DB' }}>
@@ -686,7 +687,7 @@ export default function Relatorio() {
               </thead>
               <tbody>
                 {sortedSetores.map((setor, idx) => {
-                  const pct = setor.score_percentual
+                  const pct = setor.score_percentual ?? 0
                   const lvl = scoreLevelLabel(pct)
                   const meta = AREA_META[setor.nome]
                   return (
@@ -740,9 +741,9 @@ export default function Relatorio() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {setores.map(setor => {
-              const pct = setor.score_percentual
+              const pct = setor.score_percentual ?? null
               const criteriosMap = getCriteriosMap(setor)
-              const rec = pct !== null ? gerarRecomendacoes(setor.nome, pct, criteriosMap) : null
+              const rec = pct != null ? gerarRecomendacoes(setor.nome, pct, criteriosMap) : null
               const temRec = rec ? (rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0) : false
               const meta = AREA_META[setor.nome]
               const lvl = scoreLevelLabel(pct)
@@ -789,9 +790,9 @@ export default function Relatorio() {
 
                   <div style={{ padding: '12px 14px', background: '#fff' }}>
                     {/* Criteria */}
-                    {setor.diagnostico_criterios?.length > 0 && (
+                    {(setor.diagnostico_criterios?.length ?? 0) > 0 && (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '10px' }}>
-                        {setor.diagnostico_criterios.map((c: any) => (
+                        {setor.diagnostico_criterios!.map((c: DiagnosticoCriterio) => (
                           <div key={c.id} style={{
                             display: 'flex', justifyContent: 'space-between', fontSize: '11px',
                             padding: '4px 8px', background: '#FAFAF5', borderRadius: '3px',
@@ -805,12 +806,12 @@ export default function Relatorio() {
                     )}
 
                     {/* Notes */}
-                    {setor.diagnostico_criterios?.some((c: any) => c.notas) && (
+                    {setor.diagnostico_criterios?.some((c: DiagnosticoCriterio) => c.notas) && (
                       <div style={{ marginBottom: '10px', padding: '8px 10px', background: paperWarm, borderRadius: '3px', border: `1px solid ${border}` }}>
                         <div style={{ fontSize: '9px', fontWeight: 600, color: gold, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                           Observações
                         </div>
-                        {setor.diagnostico_criterios.filter((c: any) => c.notas).map((c: any) => (
+                        {setor.diagnostico_criterios.filter((c: DiagnosticoCriterio) => c.notas).map((c: DiagnosticoCriterio) => (
                           <p key={c.id} style={{ margin: '2px 0', fontSize: '11px', color: '#555', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                             <strong>{c.criterio}:</strong> {c.notas}
                           </p>

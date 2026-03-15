@@ -82,6 +82,7 @@ export interface Consulta {
   area_total_m2?: number | null
   endereco_imovel?: string | null
   porta_posicao?: string | null
+  bagua_imagem?: string | null
   status: ConsultaStatus
   roda_da_vida?: Record<string, number> | null
   checklist_chi?: string[] | null
@@ -98,6 +99,9 @@ export interface SetorBagua {
   consulta_id: string
   nome: string
   numero: number
+  elemento?: string
+  cor_associada?: string
+  posicao_grid?: string
   score_percentual?: number | null
   recomendacoes_custom?: RecomendacaoCustom[] | null
   comodo_tipo?: string | null

@@ -377,7 +377,7 @@ export default function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: any, name: any) => [`${value} consulta(s)`, name]}
+                  formatter={(value) => [`${value} consulta(s)`, '']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '13px', color: '#6B7280' }} />
@@ -430,7 +430,7 @@ export default function Dashboard() {
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
+                  formatter={(value) => [formatCurrency(Number(value)), '']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '12px' }}
                 />
                 <Bar dataKey="Recebido" stackId="a" fill={COR_PAGO} radius={[0, 0, 0, 0]} maxBarSize={28} />
@@ -464,7 +464,7 @@ export default function Dashboard() {
                 <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any) => [`${value}`, 'Consultas']}
+                  formatter={(value) => [`${value}`, 'Consultas']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Line type="monotone" dataKey="consultas" stroke="#15803D" strokeWidth={3}
@@ -551,7 +551,7 @@ export default function Dashboard() {
                 <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any) => [`${value}`, 'Clientes']}
+                  formatter={(value) => [`${value}`, 'Clientes']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Bar dataKey="clientes" fill="#1D4ED8" radius={[6, 6, 0, 0]} maxBarSize={40} />
