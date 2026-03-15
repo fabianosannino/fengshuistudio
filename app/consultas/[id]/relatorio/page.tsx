@@ -20,6 +20,7 @@ const CRITERIOS = [
 const SETOR_DICAS: Record<string, string[]> = {
   'Carreira':       ['Adicione elemento água: aquário, fonte ou imagem de rio','Use tons pretos, azul escuro e ondulados','Coloque espelho estrategicamente para ampliar o espaço','Mantenha o caminho até a porta livre','Adicione cristais negros como obsidiana'],
   'Conhecimento':   ['Crie espaço de estudo ou leitura tranquilo','Use tons azul-escuro, verde e preto','Adicione livros, mapas ou objetos de aprendizado','Iluminação focada e direta para concentração','Elimine distrações e eletrônicos desnecessários'],
+  'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos'],
   'Família':        ['Use tons verdes e azuis para harmonia familiar','Coloque fotos da família em momentos felizes','Adicione plantas de madeira como bambu da sorte','Mantenha a área livre de objetos de conflito','Use madeira natural na decoração'],
   'Prosperidade':   ['Adicione plantas saudáveis e viçosas','Use tons roxo, verde e dourado','Coloque símbolos de abundância como moedas ou peixes','Mantenha este setor sempre limpo e iluminado','Ative com fonte de água pequena ou aquário'],
   'Centro':         ['Adicione cristais amarelos ou cerâmicas','Mantenha sempre limpo — centro irradia para todos os setores','Use tons terrosos: amarelo, ocre, marrom'],
@@ -31,7 +32,6 @@ const SETOR_DICAS: Record<string, string[]> = {
   'Relacionamentos':['Use tons rosa, vermelho e branco em pares','Coloque objetos em duplas: velas, porta-retratos','Adicione cristais de quartzo rosa'],
   'Fama':           ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos'],
   'Fama/Reputação': ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos'],
-  'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos'],
 }
 
 const CRITERIO_DICAS: Record<number, string[]> = {
@@ -104,7 +104,7 @@ function getProdutosSugeridos(recomendacoes: string[]): { nome: string; categori
   return Array.from(found.values())
 }
 
-// Ba Gua sector grid layout (3x3) — position mapping
+// Ba Gua sector grid layout (3x3)
 const BAGUA_GRID: { nome: string; elemento: string; cor: string }[][] = [
   [
     { nome: 'Prosperidade', elemento: 'Madeira', cor: '#6B21A8' },
@@ -122,6 +122,43 @@ const BAGUA_GRID: { nome: string; elemento: string; cor: string }[][] = [
     { nome: 'Pessoas Úteis', elemento: 'Metal', cor: '#64748B' },
   ],
 ]
+
+// Roda da Vida area labels for the report
+const RODA_AREAS = [
+  { key: 'carreira', label: 'Carreira', gua: 'Carreira' },
+  { key: 'espiritualidade', label: 'Espiritualidade', gua: 'Espiritualidade' },
+  { key: 'familia', label: 'Família / Saúde', gua: 'Família' },
+  { key: 'prosperidade', label: 'Prosperidade', gua: 'Prosperidade' },
+  { key: 'fama', label: 'Fama / Reputação', gua: 'Fama' },
+  { key: 'relacionamentos', label: 'Relacionamentos', gua: 'Relacionamentos' },
+  { key: 'criatividade', label: 'Criatividade / Filhos', gua: 'Criatividade' },
+  { key: 'pessoas_uteis', label: 'Pessoas Úteis', gua: 'Pessoas Úteis' },
+  { key: 'saude_centro', label: 'Saúde / Centro', gua: 'Centro' },
+]
+
+// Chi Flow items for the report
+const CHI_ITEMS = [
+  { id: 'porta_abre', label: 'Porta principal abre completamente' },
+  { id: 'entrada_livre', label: 'Entrada livre e acolhedora' },
+  { id: 'sem_corredor_longo', label: 'Sem corredores longos e estreitos' },
+  { id: 'sem_portas_alinhadas', label: 'Sem portas alinhadas (porta-a-porta)' },
+  { id: 'sem_escada_porta', label: 'Sem escada frente à porta principal' },
+  { id: 'banheiro_fora_centro', label: 'Banheiro fora do centro da casa' },
+  { id: 'sem_vigas_expostas', label: 'Sem vigas expostas sobre áreas de estar' },
+  { id: 'espelhos_ok', label: 'Espelhos não refletem a porta de entrada' },
+  { id: 'sem_cantos_agressivos', label: 'Sem cantos agressivos para áreas de estar' },
+  { id: 'fluxo_suave', label: 'Fluxo de circulação suave' },
+  { id: 'luz_natural', label: 'Iluminação natural adequada' },
+]
+
+// Room type labels
+const COMODO_LABELS: Record<string, string> = {
+  sala: 'Sala de Estar', quarto_casal: 'Quarto do Casal', quarto_filho: 'Quarto de Filho(a)',
+  quarto_hospede: 'Quarto de Hóspede', escritorio: 'Escritório', cozinha: 'Cozinha',
+  banheiro: 'Banheiro', lavabo: 'Lavabo', area_servico: 'Área de Serviço',
+  garagem: 'Garagem', varanda: 'Varanda', corredor: 'Corredor', despensa: 'Despensa',
+  jardim: 'Jardim',
+}
 
 export default function Relatorio() {
   const router = useRouter()
@@ -178,6 +215,14 @@ export default function Relatorio() {
     return 'Critico'
   }
 
+  function desvioLabel(pct: number | null): { nivel: string; cor: string } {
+    if (pct === null || pct === undefined) return { nivel: 'N/A', cor: '#9CA3AF' }
+    if (pct >= 70) return { nivel: 'Leve', cor: '#15803D' }
+    if (pct >= 40) return { nivel: 'Moderado', cor: '#D97706' }
+    if (pct >= 20) return { nivel: 'Acentuado', cor: '#DC2626' }
+    return { nivel: 'Ausente', cor: '#7F1D1D' }
+  }
+
   function energiaLabel(energia: string | null) {
     if (!energia) return null
     const map: Record<string, { label: string; cor: string; icon: string }> = {
@@ -191,7 +236,7 @@ export default function Relatorio() {
   function scoreGeral() {
     const avaliados = setores.filter(s => s.score_percentual !== null)
     if (avaliados.length === 0) return null
-    const soma = avaliados.reduce((a, s) => a + s.score_percentual, 0)
+    const soma = avaliados.reduce((a: number, s: any) => a + s.score_percentual, 0)
     return Math.round(soma / avaliados.length)
   }
 
@@ -201,6 +246,14 @@ export default function Relatorio() {
       map[c.criterio] = c.score
     })
     return map
+  }
+
+  // Get Top 3 priority sectors (lowest scores)
+  function getTop3Priorities() {
+    return setores
+      .filter(s => s.score_percentual !== null)
+      .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
+      .slice(0, 3)
   }
 
   function handlePrint() {
@@ -261,7 +314,6 @@ export default function Relatorio() {
     }
   }
 
-  // Find setor data by name for the Ba Gua grid
   function findSetorByName(nome: string) {
     return setores.find(s =>
       s.nome === nome ||
@@ -269,7 +321,8 @@ export default function Relatorio() {
       s.nome === nome.replace('Uteis', 'Úteis') ||
       s.nome === 'Centro/Saúde' && nome === 'Centro' ||
       s.nome === 'Fama/Reputação' && nome === 'Fama' ||
-      s.nome === 'Filhos' && nome === 'Criatividade'
+      s.nome === 'Filhos' && nome === 'Criatividade' ||
+      s.nome === 'Conhecimento' && nome === 'Conhecimento'
     )
   }
 
@@ -285,6 +338,13 @@ export default function Relatorio() {
   }
 
   const geral = scoreGeral()
+  const top3 = getTop3Priorities()
+  const rodaData: Record<string, number> = consulta.roda_da_vida || {}
+  const checklistChi: string[] = consulta.checklist_chi || []
+  const posicaoComando: Record<string, string[]> = consulta.posicao_comando || {}
+  const hasRoda = Object.keys(rodaData).length > 0
+  const hasChi = checklistChi.length > 0
+  const chiScore = Math.round((checklistChi.length / CHI_ITEMS.length) * 100)
 
   return (
     <>
@@ -327,7 +387,7 @@ export default function Relatorio() {
         </div>
       </div>
 
-      {/* Relatorio */}
+      {/* Report */}
       <div ref={printRef} className="print-area" style={{
         background: '#ffffff', maxWidth: '800px', margin: '32px auto',
         padding: '48px', fontFamily: 'Arial, sans-serif',
@@ -335,7 +395,7 @@ export default function Relatorio() {
         position: 'relative', overflow: 'hidden'
       }}>
 
-        {/* Watermark visual for Free plan */}
+        {/* Watermark */}
         {isFree && (
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
@@ -374,7 +434,7 @@ export default function Relatorio() {
           </div>
         </div>
 
-        {/* ══════════════════ DADOS DO IMOVEL / CLIENTE ══════════════════ */}
+        {/* ══════════════════ PROPERTY / CLIENT ══════════════════ */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
           <div style={{ background: '#F9FAFB', borderRadius: '8px', padding: '20px' }}>
             <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0', textTransform: 'uppercase' }}>Imovel</h3>
@@ -418,13 +478,138 @@ export default function Relatorio() {
           </div>
         )}
 
-        {/* ══════════════════ PLANTA BA GUA COM GRID ══════════════════ */}
+        {/* ══════════════════ TOP 3 PRIORITIES ══════════════════ */}
+        {top3.length > 0 && (
+          <div style={{ marginBottom: '32px' }}>
+            <h2 style={{ color: '#DC2626', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+              Top 3 Prioridades de Intervenção
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {top3.map((setor, idx) => {
+                const criteriosMap = getCriteriosMap(setor)
+                const rec = gerarRecomendacoes(setor.nome, setor.score_percentual, criteriosMap)
+                const mainRec = rec.urgente[0] || rec.melhoria[0] || 'Avaliar detalhadamente este setor'
+                const desvio = desvioLabel(setor.score_percentual)
+                return (
+                  <div key={setor.id} style={{
+                    padding: '14px 18px', borderRadius: '10px',
+                    background: idx === 0 ? '#FEF2F2' : idx === 1 ? '#FFFBEB' : '#F9FAFB',
+                    border: `2px solid ${idx === 0 ? '#FECACA' : idx === 1 ? '#FDE68A' : '#E5E7EB'}`,
+                    display: 'flex', alignItems: 'center', gap: '14px'
+                  }}>
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '50%',
+                      background: scoreColor(setor.score_percentual),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: '16px', fontWeight: 'bold', flexShrink: 0
+                    }}>{idx + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#1E3A5F' }}>
+                          {setor.nome}
+                        </span>
+                        <span style={{ fontSize: '12px', color: scoreColor(setor.score_percentual), fontWeight: 'bold' }}>
+                          {setor.score_percentual}%
+                        </span>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 'bold', padding: '2px 8px',
+                          borderRadius: '10px', background: `${desvio.cor}15`, color: desvio.cor
+                        }}>{desvio.nivel}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#6B7280' }}>{mainRec}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════ CONSOLIDATED DIAGNOSTIC TABLE ══════════════════ */}
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+            Tabela Consolidada de Diagnostico
+          </h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: '#1E3A5F' }}>
+                  <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left', fontWeight: 'bold' }}>Guá</th>
+                  <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left', fontWeight: 'bold' }}>Elemento</th>
+                  <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left', fontWeight: 'bold' }}>Cômodo</th>
+                  <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Score</th>
+                  <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Desvio</th>
+                  <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Favorável</th>
+                </tr>
+              </thead>
+              <tbody>
+                {setores.map((setor, idx) => {
+                  const pct = setor.score_percentual
+                  const desvio = desvioLabel(pct)
+                  const comodo = setor.comodo_tipo
+                  const comodoLabel = comodo ? (COMODO_LABELS[comodo] || comodo) : '—'
+                  // Determine favorability
+                  let favLabel = '—'
+                  let favCor = '#9CA3AF'
+                  if (comodo) {
+                    const FAVORAVEL: Record<string, { fav: string[]; prob: string[] }> = {
+                      'Carreira': { fav: ['escritorio', 'sala'], prob: ['banheiro', 'despensa'] },
+                      'Conhecimento': { fav: ['quarto_casal', 'escritorio'], prob: ['banheiro', 'cozinha'] },
+                      'Espiritualidade': { fav: ['quarto_casal', 'escritorio'], prob: ['banheiro', 'cozinha'] },
+                      'Família': { fav: ['sala', 'cozinha', 'quarto_casal'], prob: ['banheiro', 'garagem'] },
+                      'Prosperidade': { fav: ['escritorio', 'sala', 'cozinha'], prob: ['banheiro', 'area_servico'] },
+                      'Centro': { fav: ['sala'], prob: ['banheiro'] },
+                      'Centro/Saúde': { fav: ['sala'], prob: ['banheiro'] },
+                      'Fama': { fav: ['sala', 'escritorio'], prob: ['banheiro', 'garagem'] },
+                      'Fama/Reputação': { fav: ['sala', 'escritorio'], prob: ['banheiro', 'garagem'] },
+                      'Relacionamentos': { fav: ['quarto_casal', 'sala'], prob: ['banheiro', 'area_servico'] },
+                      'Criatividade': { fav: ['quarto_filho', 'escritorio'], prob: ['banheiro', 'despensa'] },
+                      'Filhos': { fav: ['quarto_filho', 'escritorio'], prob: ['banheiro', 'despensa'] },
+                      'Pessoas Úteis': { fav: ['sala', 'escritorio', 'varanda'], prob: ['banheiro', 'area_servico'] },
+                      'Pessoas Uteis': { fav: ['sala', 'escritorio', 'varanda'], prob: ['banheiro', 'area_servico'] },
+                    }
+                    const regra = FAVORAVEL[setor.nome]
+                    if (regra) {
+                      if (regra.fav.includes(comodo)) { favLabel = 'Sim'; favCor = '#15803D' }
+                      else if (regra.prob.includes(comodo)) { favLabel = 'Não'; favCor = '#DC2626' }
+                      else { favLabel = 'Neutro'; favCor = '#D97706' }
+                    }
+                  }
+                  return (
+                    <tr key={setor.id} style={{ background: idx % 2 === 0 ? '#ffffff' : '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 'bold', color: '#374151' }}>{setor.nome}</td>
+                      <td style={{ padding: '8px 10px', color: '#6B7280' }}>{setor.elemento}</td>
+                      <td style={{ padding: '8px 10px', color: '#6B7280' }}>{comodoLabel}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        {pct !== null ? (
+                          <span style={{ fontWeight: 'bold', color: scoreColor(pct) }}>{pct}%</span>
+                        ) : (
+                          <span style={{ color: '#D1D5DB' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 'bold', padding: '2px 8px',
+                          borderRadius: '10px', background: `${desvio.cor}15`, color: desvio.cor
+                        }}>{desvio.nivel}</span>
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <span style={{ fontWeight: 'bold', color: favCor, fontSize: '11px' }}>{favLabel}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ══════════════════ BA GUA MAP ══════════════════ */}
         <div style={{ marginBottom: '32px' }}>
           <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
             Mapa Ba Gua do Imovel
           </h2>
 
-          {/* Ba Gua plant image from canvas */}
           {consulta.bagua_imagem && (
             <div style={{ marginBottom: '16px', textAlign: 'center' }}>
               <img
@@ -442,7 +627,7 @@ export default function Relatorio() {
             </div>
           )}
 
-          {/* 3x3 Ba Gua Grid visual summary */}
+          {/* 3x3 Grid */}
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
             gap: '2px', background: '#E5E7EB', borderRadius: '10px',
@@ -488,6 +673,127 @@ export default function Relatorio() {
           </p>
         </div>
 
+        {/* ══════════════════ RODA DA VIDA ══════════════════ */}
+        {hasRoda && (
+          <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
+            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+              Roda da Vida — Correlação com Ba Guá
+            </h2>
+            <p style={{ color: '#6B7280', fontSize: '12px', margin: '0 0 16px 0' }}>
+              Percepção do cliente sobre cada área da vida (0-10) vs. score energético do Guá correspondente
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              {RODA_AREAS.map(area => {
+                const val = rodaData[area.key]
+                if (val === undefined) return null
+                const setorMatch = findSetorByName(area.gua)
+                const setorPct = setorMatch?.score_percentual ?? null
+                const valNorm = val * 10
+                const diff = setorPct !== null ? Math.abs(valNorm - setorPct) : null
+                let corrLabel = ''
+                let corrCor = '#9CA3AF'
+                if (diff !== null) {
+                  if (diff <= 15) { corrLabel = 'Alta'; corrCor = '#15803D' }
+                  else if (diff <= 35) { corrLabel = 'Moderada'; corrCor = '#D97706' }
+                  else { corrLabel = 'Divergente'; corrCor = '#DC2626' }
+                }
+                return (
+                  <div key={area.key} style={{
+                    padding: '10px 12px', background: '#F9FAFB', borderRadius: '8px',
+                    border: '1px solid #E5E7EB'
+                  }}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '4px' }}>
+                      {area.label}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: `${val * 10}%`, minWidth: '4px', height: '8px',
+                        background: val >= 7 ? '#15803D' : val >= 4 ? '#D97706' : '#DC2626',
+                        borderRadius: '4px', flex: 1, maxWidth: '60%'
+                      }} />
+                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>{val}/10</span>
+                    </div>
+                    {setorPct !== null && (
+                      <div style={{ fontSize: '10px', color: '#6B7280', marginTop: '4px' }}>
+                        Guá: {setorPct}% · <span style={{ color: corrCor, fontWeight: 'bold' }}>Corr. {corrLabel}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════ CHI FLOW + COMMAND POSITION ══════════════════ */}
+        {hasChi && (
+          <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
+            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+              Fluxo de Chi e Posição de Comando
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              {/* Chi Flow */}
+              <div style={{ background: '#F9FAFB', borderRadius: '10px', padding: '16px', border: '1px solid #E5E7EB' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>Checklist de Chi</h3>
+                  <span style={{
+                    fontSize: '14px', fontWeight: 'bold',
+                    color: chiScore >= 70 ? '#15803D' : chiScore >= 40 ? '#D97706' : '#DC2626'
+                  }}>{chiScore}%</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {CHI_ITEMS.map(item => {
+                    const ok = checklistChi.includes(item.id)
+                    return (
+                      <div key={item.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        fontSize: '11px', color: ok ? '#15803D' : '#DC2626',
+                        padding: '3px 0'
+                      }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{ok ? '✓' : '✕'}</span>
+                        <span style={{ color: '#374151' }}>{item.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Command Position */}
+              <div style={{ background: '#F9FAFB', borderRadius: '10px', padding: '16px', border: '1px solid #E5E7EB' }}>
+                <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Posição de Comando</h3>
+                {Object.entries(posicaoComando).filter(([_, checks]) => checks.length > 0).map(([room, checks]) => {
+                  const roomLabels: Record<string, string> = {
+                    quarto: 'Quarto', escritorio: 'Escritório', cozinha: 'Cozinha', sala: 'Sala'
+                  }
+                  const roomChecks: Record<string, number> = {
+                    quarto: 5, escritorio: 5, cozinha: 4, sala: 4
+                  }
+                  const total = roomChecks[room] || checks.length
+                  const pct = Math.round((checks.length / total) * 100)
+                  const cor = pct >= 70 ? '#15803D' : pct >= 40 ? '#D97706' : '#DC2626'
+                  return (
+                    <div key={room} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '6px 0', borderBottom: '1px solid #E5E7EB'
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#374151' }}>{roomLabels[room] || room}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '60px', height: '6px', background: '#E5E7EB', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: cor, borderRadius: '3px' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: cor }}>{pct}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+                {Object.entries(posicaoComando).filter(([_, checks]) => checks.length > 0).length === 0 && (
+                  <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>Nenhum cômodo avaliado</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ══════════════════ DIAGNOSTICO POR SETOR ══════════════════ */}
         <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
           Diagnostico por Setor
@@ -500,14 +806,14 @@ export default function Relatorio() {
             const temRec = rec ? (rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0) : false
             const energia = setor.avaliacao_geometrica || null
             const enInfo = energiaLabel(energia)
+            const desvio = desvioLabel(pct)
             const cRecs: { tipo: string; texto: string; produtos: string[] }[] = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom : []
+            const comodoLabel = setor.comodo_tipo ? (COMODO_LABELS[setor.comodo_tipo] || setor.comodo_tipo) : null
 
-            // Collect products for this sector's recommendations
             const todasRec = rec ? [...rec.urgente, ...rec.melhoria, ...rec.manutencao] : []
             const produtos = getProdutosSugeridos(todasRec)
-            // Add custom recommendation products
             cRecs.forEach(cr => {
-              cr.produtos?.forEach(cat => {
+              cr.produtos?.forEach((cat: string) => {
                 if (!produtos.find(p => p.categoria === cat)) {
                   const CATS: Record<string, string> = { espelhos: 'Espelhos Ba Gua', cristais: 'Cristais e Pedras', fontes: 'Fontes de Agua', plantas: 'Plantas e Vasos', sinos: 'Sinos de Vento', velas: 'Velas e Incensos', decoracao: 'Decoracao e Simbolos' }
                   if (CATS[cat]) produtos.push({ nome: CATS[cat], categoria: cat })
@@ -535,7 +841,10 @@ export default function Relatorio() {
                     }}>{setor.numero}</div>
                     <div>
                       <span style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '15px' }}>{setor.nome}</span>
-                      <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '8px' }}>{setor.elemento} • {setor.posicao_grid}</span>
+                      <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '8px' }}>
+                        {setor.elemento} • {setor.posicao_grid}
+                        {comodoLabel && <span> • {comodoLabel}</span>}
+                      </span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -547,6 +856,10 @@ export default function Relatorio() {
                         {enInfo.icon} {enInfo.label}
                       </span>
                     )}
+                    <span style={{
+                      fontSize: '10px', fontWeight: 'bold', padding: '2px 8px',
+                      borderRadius: '10px', background: `${desvio.cor}15`, color: desvio.cor
+                    }}>{desvio.nivel}</span>
                     {pct !== null && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{
@@ -563,7 +876,7 @@ export default function Relatorio() {
                 </div>
 
                 <div style={{ padding: '14px 18px' }}>
-                  {/* Criteria scores */}
+                  {/* Criteria */}
                   {setor.diagnostico_criterios?.length > 0 && (
                     <div style={{ marginBottom: '14px' }}>
                       <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -580,7 +893,7 @@ export default function Relatorio() {
                     </div>
                   )}
 
-                  {/* User notes/observations */}
+                  {/* Notes */}
                   {setor.diagnostico_criterios?.some((c: any) => c.notas) && (
                     <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#F5F0FF', borderRadius: '8px', border: '1px solid #E9D5FF' }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '6px', textTransform: 'uppercase' }}>
@@ -642,7 +955,7 @@ export default function Relatorio() {
                     </div>
                   )}
 
-                  {/* Custom recommendations from consultant */}
+                  {/* Custom recommendations */}
                   {cRecs.length > 0 && (
                     <div style={{ marginBottom: '14px' }}>
                       <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -680,7 +993,7 @@ export default function Relatorio() {
                     </div>
                   )}
 
-                  {/* Per-sector product suggestions */}
+                  {/* Product suggestions */}
                   {produtos.length > 0 && (
                     <div style={{
                       padding: '10px 12px', background: '#F5F0FF',
@@ -705,9 +1018,8 @@ export default function Relatorio() {
           })}
         </div>
 
-        {/* ══════════════════ RESUMO DE PRODUTOS RECOMENDADOS ══════════════════ */}
+        {/* ══════════════════ PRODUCT SUMMARY ══════════════════ */}
         {(() => {
-          // Collect all unique products across all sectors
           const allProdutos = new Map<string, { nome: string; categoria: string }>()
           setores.forEach(setor => {
             const pct = setor.score_percentual
