@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
+import type { SetorBagua } from '../../src/lib/types'
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CURES & ACTIVATIONS DATA — 9 Elements × 6 Modalities
@@ -590,19 +593,23 @@ const ELEMENTOS: ElementData[] = [
 function CurasPageContent() {
   const searchParams = useSearchParams()
   const consultaId = searchParams.get('consultaId')
-  const [setores, setSetores] = useState<any[]>([])
+  const [setores, setSetores] = useState<SetorBagua[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState(ELEMENTOS[0].id)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   // Load consultation sectors if consultaId provided
   useEffect(() => {
-    if (!consultaId) return
-    supabase
-      .from('setores_bagua')
-      .select('*')
-      .eq('consulta_id', consultaId)
-      .order('numero')
-      .then(({ data }) => { if (data) setSetores(data) })
+    if (consultaId) {
+      supabase
+        .from('setores_bagua')
+        .select('*')
+        .eq('consulta_id', consultaId)
+        .order('numero')
+        .then(({ data }) => { if (data) setSetores(data); setLoading(false) })
+    } else {
+      setLoading(false)
+    }
   }, [consultaId])
 
   // Scroll spy
@@ -644,48 +651,63 @@ function CurasPageContent() {
   }
 
   function scoreLevel(score: number): { label: string; cor: string; bg: string } {
-    if (score >= 70) return { label: 'Equilibrado', cor: '#15803D', bg: 'rgba(21,128,61,0.15)' }
-    if (score >= 40) return { label: 'Atenção', cor: '#D97706', bg: 'rgba(217,119,6,0.15)' }
-    return { label: 'Urgente', cor: '#DC2626', bg: 'rgba(220,38,38,0.15)' }
+    if (score >= 70) return { label: 'Equilibrado', cor: '#15803D', bg: '#F0FDF4' }
+    if (score >= 40) return { label: 'Atenção', cor: '#D97706', bg: '#FFFBEB' }
+    return { label: 'Urgente', cor: '#DC2626', bg: '#FEF2F2' }
+  }
+
+  if (loading) {
+    return (
+      <AppShell currentPage="curas">
+        <div style={{ marginBottom: '32px' }}>
+          <Skeleton width="280px" height="24px" />
+          <div style={{ marginTop: '8px' }}><Skeleton width="400px" height="16px" /></div>
+        </div>
+        <Skeleton variant="card" />
+        <div style={{ marginTop: '20px' }}><Skeleton variant="card" /></div>
+      </AppShell>
+    )
+  }
+
+  // Shared card style matching Dashboard
+  const cardStyle = {
+    background: '#ffffff', borderRadius: '12px', padding: '24px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+  }
+
+  // Shared sub-card style for items inside sections
+  const itemCardStyle = {
+    background: '#F9FAFB', borderRadius: '10px', padding: '14px',
+    border: '1px solid #E5E7EB',
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#e0e0e0', fontFamily: "'Inter', sans-serif" }}>
+    <AppShell currentPage="curas">
 
-      {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-        padding: '40px 24px 30px', textAlign: 'center',
-        borderBottom: '2px solid #b8860b'
-      }}>
-        <p style={{ fontSize: '14px', color: '#b8860b', letterSpacing: '4px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
-          治 · Curas & Ativações
-        </p>
-        <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#f4e4bc', margin: '0 0 8px 0' }}>
-          Guia Completo de Harmonização
+      {/* ── PAGE HEADER ──────────────────────────────────────────────── */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          Curas & Ativações
         </h1>
-        <p style={{ fontSize: '14px', color: '#b0b0b0', margin: 0, maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+        <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
           Cristais, plantas, objetos, mudras, meditações e mantras organizados por elemento e Guá do Ba Guá
         </p>
         {consultaId && setores.length > 0 && (
           <div style={{
-            marginTop: '16px', padding: '10px 20px', background: 'rgba(184,134,11,0.15)',
-            borderRadius: '8px', display: 'inline-block', border: '1px solid rgba(184,134,11,0.3)'
+            marginTop: '12px', padding: '8px 16px', background: '#F5F0FF',
+            borderRadius: '8px', display: 'inline-block', border: '1px solid #E9D5FF'
           }}>
-            <span style={{ color: '#b8860b', fontSize: '12px' }}>
+            <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
               Vinculado à consulta — setores prioritários destacados
             </span>
           </div>
         )}
       </div>
 
-      {/* ── NAVIGATION ──────────────────────────────────────────────────── */}
+      {/* ── NAVIGATION PILLS ─────────────────────────────────────────── */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid #222', padding: '10px 24px',
-        display: 'flex', gap: '6px', overflowX: 'auto',
-        justifyContent: 'center', flexWrap: 'wrap'
+        ...cardStyle, padding: '16px 20px', marginBottom: '20px',
+        display: 'flex', gap: '8px', overflowX: 'auto', flexWrap: 'wrap',
       }}>
         {ELEMENTOS.map(el => {
           const isActive = activeSection === el.id
@@ -693,20 +715,20 @@ function CurasPageContent() {
           const isPriority = score !== null && score < 40
           return (
             <button key={el.id} onClick={() => scrollTo(el.id)} style={{
-              padding: '8px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer',
-              fontSize: '12px', fontWeight: isActive ? 'bold' : 'normal',
-              background: isActive ? el.corPrimaria : 'transparent',
-              color: isActive ? el.corTexto : '#888',
-              outline: isPriority ? '2px solid #DC2626' : isActive ? `1px solid ${el.corTexto}40` : 'none',
+              padding: '8px 16px', borderRadius: '20px', cursor: 'pointer',
+              fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
+              background: isActive ? '#7C3AED' : '#F3F4F6',
+              color: isActive ? '#ffffff' : '#374151',
+              border: isPriority ? '2px solid #DC2626' : isActive ? '1px solid #7C3AED' : '1px solid #E5E7EB',
               transition: 'all 0.2s', whiteSpace: 'nowrap',
-              display: 'flex', alignItems: 'center', gap: '6px'
+              display: 'flex', alignItems: 'center', gap: '6px',
             }}>
               <span>{el.trigramo}</span>
               <span>{el.gua}</span>
               {score !== null && (
                 <span style={{
-                  fontSize: '10px', padding: '1px 6px', borderRadius: '10px',
-                  background: scoreLevel(score).bg, color: scoreLevel(score).cor, fontWeight: 'bold'
+                  fontSize: '10px', padding: '2px 8px', borderRadius: '10px',
+                  background: scoreLevel(score).bg, color: scoreLevel(score).cor, fontWeight: 'bold',
                 }}>{score}%</span>
               )}
             </button>
@@ -714,213 +736,195 @@ function CurasPageContent() {
         })}
       </div>
 
-      {/* ── CONTENT ─────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px 20px' }}>
-        {ELEMENTOS.map(el => {
-          const score = findScore(el.gua)
-          const level = score !== null ? scoreLevel(score) : null
-          return (
-            <div
-              key={el.id}
-              id={el.id}
-              ref={r => { sectionRefs.current[el.id] = r }}
-              style={{ marginBottom: '48px', scrollMarginTop: '70px' }}
-            >
+      {/* ── CONTENT SECTIONS ─────────────────────────────────────────── */}
+      {ELEMENTOS.map(el => {
+        const score = findScore(el.gua)
+        const level = score !== null ? scoreLevel(score) : null
+        return (
+          <div
+            key={el.id}
+            id={el.id}
+            ref={r => { sectionRefs.current[el.id] = r }}
+            style={{ marginBottom: '24px', scrollMarginTop: '70px' }}
+          >
+            <div style={cardStyle}>
               {/* Section Header */}
               <div style={{
-                background: `linear-gradient(135deg, ${el.corPrimaria}, ${el.corSecundaria})`,
-                borderRadius: '12px 12px 0 0', padding: '20px 24px',
-                borderBottom: `2px solid ${el.corTexto}40`,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                paddingBottom: '16px', marginBottom: '20px',
+                borderBottom: '1px solid #E5E7EB',
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '28px', color: el.corTexto }}>{el.trigramo}</span>
-                    <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: el.corTexto, margin: 0 }}>
+                    <span style={{ fontSize: '28px', color: '#7C3AED' }}>{el.trigramo}</span>
+                    <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1E3A5F', margin: 0 }}>
                       {el.gua}
                     </h2>
                   </div>
-                  <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>
+                  <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
                     Elemento: {el.elemento} · Trigramo: {el.trigramo}
                   </p>
                 </div>
                 {level && (
                   <div style={{
-                    padding: '8px 16px', borderRadius: '20px',
-                    background: level.bg, border: `1px solid ${level.cor}40`
+                    padding: '6px 14px', borderRadius: '20px',
+                    background: level.bg, border: `1px solid ${level.cor}30`,
                   }}>
-                    <span style={{ fontSize: '12px', color: level.cor, fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '13px', color: level.cor, fontWeight: 'bold' }}>
                       Score: {score}% — {level.label}
                     </span>
                   </div>
                 )}
               </div>
 
-              <div style={{
-                background: '#111118', borderRadius: '0 0 12px 12px',
-                padding: '24px', border: `1px solid #222`, borderTop: 'none'
-              }}>
-                {/* ── CRISTAIS ──────────────────────────────────────────── */}
-                <div style={{ marginBottom: '28px' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#f4e4bc', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>💎</span> Cristais
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-                    {el.cristais.map(c => (
-                      <div key={c.nome} style={{
-                        background: '#1a1a25', borderRadius: '10px', padding: '14px',
-                        border: '1px solid #2a2a3a', display: 'flex', gap: '10px', alignItems: 'flex-start'
-                      }}>
-                        <div style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: c.cor, flexShrink: 0, border: '2px solid #333',
-                          boxShadow: `0 0 8px ${c.cor}40`
-                        }} />
-                        <div>
-                          <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#e0e0e0', margin: '0 0 2px 0' }}>{c.nome}</p>
-                          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>{c.propriedade}</p>
-                        </div>
+              {/* ── CRISTAIS ──────────────────────────────────────────── */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>💎</span> Cristais
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                  {el.cristais.map(c => (
+                    <div key={c.nome} style={{
+                      ...itemCardStyle, display: 'flex', gap: '10px', alignItems: 'flex-start',
+                    }}>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: c.cor, flexShrink: 0, border: '2px solid #E5E7EB',
+                        boxShadow: `0 0 6px ${c.cor}30`,
+                      }} />
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 2px 0' }}>{c.nome}</p>
+                        <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>{c.propriedade}</p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── PLANTAS ───────────────────────────────────────────── */}
-                <div style={{ marginBottom: '28px' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#f4e4bc', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🌿</span> Plantas
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
-                    {el.plantas.map(p => (
-                      <div key={p.nome} style={{
-                        background: '#1a1a25', borderRadius: '10px', padding: '14px',
-                        border: '1px solid #2a2a3a'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '20px' }}>{p.icon}</span>
-                          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#e0e0e0' }}>{p.nome}</span>
-                        </div>
-                        <p style={{ fontSize: '11px', color: '#aaa', margin: '0 0 4px 0' }}>{p.dica}</p>
-                        <p style={{ fontSize: '10px', color: '#666', margin: 0 }}>📍 {p.posicao}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── OBJETOS ──────────────────────────────────────────── */}
-                <div style={{ marginBottom: '28px' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#f4e4bc', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🏺</span> Objetos & Curas
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-                    {el.objetos.map(o => (
-                      <div key={o.nome} style={{
-                        background: '#1a1a25', borderRadius: '10px', padding: '12px',
-                        border: '1px solid #2a2a3a', display: 'flex', gap: '10px', alignItems: 'center'
-                      }}>
-                        <span style={{ fontSize: '22px' }}>{o.icon}</span>
-                        <div>
-                          <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#e0e0e0', margin: '0 0 2px 0' }}>{o.nome}</p>
-                          <p style={{ fontSize: '10px', color: '#777', margin: 0 }}>📍 {o.posicao}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── MUDRA & MEDITAÇÃO (side by side) ─────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '28px' }}>
-                  {/* Mudra */}
-                  <div style={{
-                    background: `linear-gradient(135deg, ${el.corPrimaria}, #1a1a2e)`,
-                    borderRadius: '12px', padding: '20px',
-                    border: `1px solid ${el.corTexto}20`
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                      <span style={{ fontSize: '24px' }}>{el.mudra.icon}</span>
-                      <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: el.corTexto, margin: 0 }}>
-                        {el.mudra.nome}
-                      </h4>
                     </div>
-                    <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 12px 0' }}>{el.mudra.descricao}</p>
-                    <ol style={{ margin: 0, paddingLeft: '18px' }}>
-                      {el.mudra.passos.map((p, i) => (
-                        <li key={i} style={{ fontSize: '11px', color: '#ccc', marginBottom: '6px', lineHeight: '1.4' }}>{p}</li>
-                      ))}
-                    </ol>
-                  </div>
+                  ))}
+                </div>
+              </div>
 
-                  {/* Meditação */}
-                  <div style={{
-                    background: `linear-gradient(135deg, ${el.corSecundaria}, #1a1a2e)`,
-                    borderRadius: '12px', padding: '20px',
-                    border: `1px solid ${el.corTexto}20`
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '24px' }}>🧘</span>
-                      <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: el.corTexto, margin: 0 }}>
-                        {el.meditacao.nome}
-                      </h4>
+              {/* ── PLANTAS ───────────────────────────────────────────── */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🌿</span> Plantas
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                  {el.plantas.map(p => (
+                    <div key={p.nome} style={itemCardStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '20px' }}>{p.icon}</span>
+                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>{p.nome}</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px 0' }}>{p.dica}</p>
+                      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>📍 {p.posicao}</p>
                     </div>
-                    <p style={{ fontSize: '11px', color: '#888', margin: '0 0 8px 0' }}>Duração: {el.meditacao.duracao}</p>
-                    <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 12px 0' }}>{el.meditacao.descricao}</p>
-                    <ol style={{ margin: 0, paddingLeft: '18px' }}>
-                      {el.meditacao.passos.map((p, i) => (
-                        <li key={i} style={{ fontSize: '11px', color: '#ccc', marginBottom: '6px', lineHeight: '1.4' }}>{p}</li>
-                      ))}
-                    </ol>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── OBJETOS ──────────────────────────────────────────── */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🏺</span> Objetos & Curas
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                  {el.objetos.map(o => (
+                    <div key={o.nome} style={{
+                      ...itemCardStyle, display: 'flex', gap: '10px', alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: '22px' }}>{o.icon}</span>
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 2px 0' }}>{o.nome}</p>
+                        <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>📍 {o.posicao}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── MUDRA & MEDITAÇÃO (side by side) ─────────────────── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                {/* Mudra */}
+                <div style={{
+                  background: '#F5F0FF', borderRadius: '12px', padding: '20px',
+                  border: '1px solid #E9D5FF',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '24px' }}>{el.mudra.icon}</span>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#7C3AED', margin: 0 }}>
+                      {el.mudra.nome}
+                    </h4>
                   </div>
+                  <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 12px 0' }}>{el.mudra.descricao}</p>
+                  <ol style={{ margin: 0, paddingLeft: '18px' }}>
+                    {el.mudra.passos.map((p, i) => (
+                      <li key={i} style={{ fontSize: '12px', color: '#374151', marginBottom: '6px', lineHeight: '1.5' }}>{p}</li>
+                    ))}
+                  </ol>
                 </div>
 
-                {/* ── MANTRAS ──────────────────────────────────────────── */}
-                <div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#f4e4bc', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🕉️</span> Mantras
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    {el.mantras.map((m, i) => (
-                      <div key={i} style={{
-                        background: `linear-gradient(135deg, ${el.corPrimaria}, #0a0a15)`,
-                        borderRadius: '12px', padding: '20px', textAlign: 'center',
-                        border: `1px solid ${el.corTexto}20`
-                      }}>
-                        <p style={{ fontSize: '28px', color: el.corTexto, fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '4px' }}>
-                          {m.caracteres}
-                        </p>
-                        <p style={{ fontSize: '13px', color: '#ccc', margin: '0 0 4px 0', fontStyle: 'italic' }}>
-                          {m.romanizacao}
-                        </p>
-                        <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>
-                          {m.significado}
-                        </p>
-                      </div>
-                    ))}
+                {/* Meditação */}
+                <div style={{
+                  background: '#F0FDF4', borderRadius: '12px', padding: '20px',
+                  border: '1px solid #BBF7D0',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '24px' }}>🧘</span>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#15803D', margin: 0 }}>
+                      {el.meditacao.nome}
+                    </h4>
                   </div>
+                  <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 8px 0' }}>Duração: {el.meditacao.duracao}</p>
+                  <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 12px 0' }}>{el.meditacao.descricao}</p>
+                  <ol style={{ margin: 0, paddingLeft: '18px' }}>
+                    {el.meditacao.passos.map((p, i) => (
+                      <li key={i} style={{ fontSize: '12px', color: '#374151', marginBottom: '6px', lineHeight: '1.5' }}>{p}</li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+
+              {/* ── MANTRAS ──────────────────────────────────────────── */}
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🕉️</span> Mantras
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {el.mantras.map((m, i) => (
+                    <div key={i} style={{
+                      background: '#FFFBEB', borderRadius: '12px', padding: '20px', textAlign: 'center',
+                      border: '1px solid #FDE68A',
+                    }}>
+                      <p style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '4px' }}>
+                        {m.caracteres}
+                      </p>
+                      <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 4px 0', fontStyle: 'italic' }}>
+                        {m.romanizacao}
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>
+                        {m.significado}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )
-        })}
-      </div>
-
-      {/* ── FOOTER ──────────────────────────────────────────────────────── */}
-      <div style={{
-        textAlign: 'center', padding: '30px 24px',
-        borderTop: '1px solid #222', color: '#555', fontSize: '12px'
-      }}>
-        <p style={{ margin: '0 0 4px 0' }}>風水 · FengShui Studio — Curas & Ativações</p>
-        <p style={{ margin: 0 }}>Baseado na escola do Chapéu Negro (Black Hat Sect)</p>
-      </div>
-    </div>
+          </div>
+        )
+      })}
+    </AppShell>
   )
 }
 
 export default function CurasPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#b8860b', fontSize: '16px' }}>Carregando Curas & Ativações...</p>
-      </div>
+      <AppShell currentPage="curas">
+        <div style={{ marginBottom: '32px' }}>
+          <Skeleton width="280px" height="24px" />
+          <div style={{ marginTop: '8px' }}><Skeleton width="400px" height="16px" /></div>
+        </div>
+        <Skeleton variant="card" />
+        <div style={{ marginTop: '20px' }}><Skeleton variant="card" /></div>
+      </AppShell>
     }>
       <CurasPageContent />
     </Suspense>
