@@ -835,12 +835,17 @@ function BaguaPlantaContent() {
                     <div>
                       <label style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>1️⃣ Método</label>
                       <div style={{display:'flex',gap:'7px'}}>
-                        {([['btb','🚪 BTB','Porta como ref.'],['bussola','🧭 Bússola','Cardinais']] as const).map(([v,l,d])=>(
-                          <button key={v} onClick={()=>setEscola(v)} style={{
-                            flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
-                            borderColor:escola===v?'#7C3AED':'#D1D5DB',background:escola===v?'#EDE9FE':'#fff',color:escola===v?'#7C3AED':'#6B7280',
-                          }}>{l}<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>{d}</span></button>
-                        ))}
+                        <button onClick={()=>setEscola('btb')} style={{
+                          flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
+                          borderColor:escola==='btb'?'#7C3AED':'#D1D5DB',background:escola==='btb'?'#EDE9FE':'#fff',color:escola==='btb'?'#7C3AED':'#6B7280',
+                        }}>🚪 BTB<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>Porta como ref.</span></button>
+                        <button
+                          title="Método Bússola — em desenvolvimento. Em breve disponível."
+                          style={{
+                            flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',
+                            cursor:'not-allowed',opacity:0.4,
+                            borderColor:'#D1D5DB',background:'#fff',color:'#6B7280',
+                          }}>🧭 Bússola<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>Cardinais</span></button>
                       </div>
                     </div>
                     <div>
