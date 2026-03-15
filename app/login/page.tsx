@@ -11,6 +11,8 @@ function LoginForm() {
   const [message, setMessage] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
+  const [signUpDone, setSignUpDone] = useState(false)
+  const [resending, setResending] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
@@ -41,17 +43,40 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setMessage('')
-    const { error } = await supabase.auth.signUp({
+    const { error, data } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { nome_completo: name, role: 'consultor' } }
+      options: {
+        data: { nome_completo: name, role: 'consultor' },
+        emailRedirectTo: `${window.location.origin}/login`
+      }
     })
     if (error) {
       setMessage('Erro ao criar conta: ' + error.message)
+    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setMessage('Erro ao criar conta: Este e-mail já está cadastrado. Tente fazer login.')
     } else {
-      setMessage('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
+      setSignUpDone(true)
     }
     setLoading(false)
+  }
+
+  async function handleResendConfirmation() {
+    setResending(true)
+    setMessage('')
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`
+      }
+    })
+    if (error) {
+      setMessage('Erro ao reenviar: ' + error.message)
+    } else {
+      setMessage('E-mail reenviado! Verifique sua caixa de entrada e spam.')
+    }
+    setResending(false)
   }
 
   return (
@@ -90,47 +115,94 @@ function LoginForm() {
           }}>Cadastrar</button>
         </div>
 
-        <form onSubmit={isSignUp ? handleSignUp : handleLogin}>
-          {isSignUp && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="Seu nome completo" required
-                style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+        {signUpDone ? (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉️</div>
+            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+              Verifique seu e-mail
+            </h2>
+            <p style={{ color: '#374151', fontSize: '14px', marginBottom: '8px' }}>
+              Enviamos um link de confirmacao para:
+            </p>
+            <p style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>
+              {email}
+            </p>
+            <div style={{
+              background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px',
+              padding: '12px 16px', marginBottom: '20px', textAlign: 'left'
+            }}>
+              <p style={{ color: '#92400E', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 'bold' }}>
+                Nao recebeu o e-mail?
+              </p>
+              <ul style={{ color: '#92400E', fontSize: '13px', margin: '0', paddingLeft: '16px' }}>
+                <li>Verifique a pasta de <strong>spam/lixo eletronico</strong></li>
+                <li>Aguarde alguns minutos e tente reenviar</li>
+                <li>Confirme se o e-mail digitado esta correto</li>
+              </ul>
             </div>
-          )}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="seu@email.com" required
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+            <button onClick={handleResendConfirmation} disabled={resending} style={{
+              width: '100%', padding: '12px',
+              background: resending ? '#9CA3AF' : '#7C3AED',
+              color: '#ffffff', border: 'none', borderRadius: '8px',
+              fontSize: '15px', fontWeight: 'bold',
+              cursor: resending ? 'not-allowed' : 'pointer',
+              marginBottom: '12px'
+            }}>
+              {resending ? 'Reenviando...' : 'Reenviar e-mail de confirmacao'}
+            </button>
+            <button onClick={() => { setSignUpDone(false); setMessage(''); setIsSignUp(false) }} style={{
+              width: '100%', padding: '12px', background: '#F3F4F6',
+              color: '#374151', border: 'none', borderRadius: '8px',
+              fontSize: '14px', cursor: 'pointer'
+            }}>
+              Voltar para o login
+            </button>
           </div>
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Senha</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              placeholder={isSignUp ? 'Minimo 6 caracteres' : 'Sua senha'} required
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-          {!isSignUp && (
-            <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
-              <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
-            </div>
-          )}
-          <button type="submit" disabled={loading} style={{
-            width: '100%', padding: '14px',
-            background: loading ? '#9CA3AF' : '#7C3AED',
-            color: '#ffffff', border: 'none', borderRadius: '8px',
-            fontSize: '16px', fontWeight: 'bold',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}>
-            {loading ? 'Aguarde...' : isSignUp ? 'Criar conta' : 'Entrar'}
-          </button>
-        </form>
+        ) : (
+          <>
+            <form onSubmit={isSignUp ? handleSignUp : handleLogin}>
+              {isSignUp && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)}
+                    placeholder="Seu nome completo" required
+                    style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              )}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="seu@email.com" required
+                  style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Senha</label>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder={isSignUp ? 'Minimo 6 caracteres' : 'Sua senha'} required
+                  style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              {!isSignUp && (
+                <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
+                  <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
+                </div>
+              )}
+              <button type="submit" disabled={loading} style={{
+                width: '100%', padding: '14px',
+                background: loading ? '#9CA3AF' : '#7C3AED',
+                color: '#ffffff', border: 'none', borderRadius: '8px',
+                fontSize: '16px', fontWeight: 'bold',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}>
+                {loading ? 'Aguarde...' : isSignUp ? 'Criar conta' : 'Entrar'}
+              </button>
+            </form>
+          </>
+        )}
 
         {message && (
           <div style={{
             marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') || message.includes('incorretos') ? '#FEF2F2' : '#F0FDF4',
+            background: message.includes('Erro') || message.includes('incorretos') ? '#FEF2F2' : message.includes('reenviado') ? '#F0FDF4' : '#F0FDF4',
             border: `1px solid ${message.includes('Erro') || message.includes('incorretos') ? '#FECACA' : '#BBF7D0'}`,
             color: message.includes('Erro') || message.includes('incorretos') ? '#DC2626' : '#15803D',
             fontSize: '14px', textAlign: 'center'

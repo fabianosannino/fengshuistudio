@@ -585,7 +585,7 @@ export default function Dashboard() {
       </div>
 
       {/* Banner upgrade */}
-      {profile?.plano === 'freemium' && (
+      {profile?.plano !== 'pro' && (
         <div style={{
           background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
           borderRadius: '12px', padding: '24px 32px',

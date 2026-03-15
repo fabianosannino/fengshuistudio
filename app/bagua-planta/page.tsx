@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 
@@ -215,7 +215,7 @@ function lbl(s:number){return s>=80?'Excelente':s>=60?'Bom':s>=40?'Regular':s>=2
 
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
-export default function BaguaPlanta() {
+function BaguaPlantaContent() {
   const router      = useRouter()
   const searchParams = useSearchParams()
   const consultaId  = searchParams.get('consultaId')
@@ -850,5 +850,20 @@ export default function BaguaPlanta() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function BaguaPlanta() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando planta...</p>
+        </div>
+      </div>
+    }>
+      <BaguaPlantaContent />
+    </Suspense>
   )
 }

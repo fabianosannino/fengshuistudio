@@ -12,7 +12,7 @@ const PLANOS = [
       { nome: 'Clientes cadastrados', valor: 'Até 5', disponivel: true },
       { nome: 'Consultas por mês', valor: 'Até 3', disponivel: true },
       { nome: 'Diagnóstico Ba Gua', valor: 'Completo', disponivel: true },
-      { nome: 'Geração de PDF', valor: '—', disponivel: false },
+      { nome: 'Geração de PDF', valor: 'Com marca d\'água', disponivel: true },
       { nome: 'Calendário lunar', valor: '—', disponivel: false },
       { nome: 'Suporte prioritário', valor: '—', disponivel: false },
     ]
