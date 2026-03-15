@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
+import { rateLimit } from '../../../src/lib/rate-limit'
+
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a.trim())
+  const bufB = Buffer.from(b.trim())
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
+}
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success, remaining } = rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  if (!success) {
+    return Response.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,7 +54,7 @@ export async function POST(request: Request) {
 
     if (allowFree) {
       // Allow free upgrade (testing mode)
-    } else if (validKey && chave_ativacao && chave_ativacao.trim() === validKey.trim()) {
+    } else if (validKey && chave_ativacao && safeCompare(chave_ativacao, validKey)) {
       // Valid activation key provided
     } else if (chave_ativacao) {
       return NextResponse.json(
@@ -57,7 +75,8 @@ export async function POST(request: Request) {
     .eq('id', user.id)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    console.error('Planos update error:', error.message)
+    return NextResponse.json({ error: 'Erro ao atualizar plano. Tente novamente.' }, { status: 400 })
   }
 
   return NextResponse.json({ plano })

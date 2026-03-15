@@ -70,14 +70,14 @@ export default function RedefinirSenha() {
         {!success ? (
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nova senha</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              <label htmlFor="input-nova-senha" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nova senha</label>
+              <input id="input-nova-senha" type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres" required
                 style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Confirmar senha</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+              <label htmlFor="input-confirmar-senha" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Confirmar senha</label>
+              <input id="input-confirmar-senha" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Repita a senha" required
                 style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
             </div>

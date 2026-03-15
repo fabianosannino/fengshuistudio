@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import ConfirmModal from '../components/ConfirmModal'
+import Skeleton from '../components/Skeleton'
+import type { Pagamento, Cliente, Consulta } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> = {
   pendente: { label: 'Pendente', cor: '#D97706', bg: '#FFFBEB' },
@@ -10,6 +14,8 @@ const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> 
   atrasado: { label: 'Atrasado', cor: '#DC2626', bg: '#FEF2F2' },
   cancelado: { label: 'Cancelado', cor: '#6B7280', bg: '#F3F4F6' },
 }
+
+const PAGE_SIZE = 10
 
 const METODOS: Record<string, string> = {
   pix: 'Pix',
@@ -21,11 +27,11 @@ const METODOS: Record<string, string> = {
 }
 
 export default function Pagamentos() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [pagamentos, setPagamentos] = useState<any[]>([])
-  const [clientes, setClientes] = useState<any[]>([])
-  const [consultas, setConsultas] = useState<any[]>([])
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
+  const [consultas, setConsultas] = useState<Pick<Consulta, 'id' | 'nome_imovel'>[]>([])
 
   // Modal
   const [showModal, setShowModal] = useState(false)
@@ -33,8 +39,11 @@ export default function Pagamentos() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState<string>('todos')
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Form
   const [form, setForm] = useState({
@@ -99,7 +108,7 @@ export default function Pagamentos() {
     setShowModal(true)
   }
 
-  function openEdit(pag: any) {
+  function openEdit(pag: Pagamento) {
     setForm({
       descricao: pag.descricao || '',
       valor: String(pag.valor) || '',
@@ -121,7 +130,7 @@ export default function Pagamentos() {
     setMessage('')
 
     const payload = {
-      consultor_id: user.id,
+      consultor_id: user!.id,
       descricao: form.descricao,
       valor: parseFloat(form.valor),
       status: form.status,
@@ -145,7 +154,7 @@ export default function Pagamentos() {
     const { data: pags } = await supabase
       .from('pagamentos')
       .select('*, clientes(nome_completo), consultas(nome_imovel)')
-      .eq('consultor_id', user.id)
+      .eq('consultor_id', user!.id)
       .order('data_vencimento', { ascending: false })
     setPagamentos(pags || [])
 
@@ -154,17 +163,18 @@ export default function Pagamentos() {
     setSaving(false)
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Deseja excluir este pagamento?')) return
-    const { error } = await supabase.from('pagamentos').delete().eq('id', id)
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return
+    const { error } = await supabase.from('pagamentos').delete().eq('id', deleteTarget)
     if (error) {
       setMessage('Erro ao excluir pagamento: ' + error.message)
-      return
+    } else {
+      setPagamentos(pagamentos.filter(p => p.id !== deleteTarget))
     }
-    setPagamentos(pagamentos.filter(p => p.id !== id))
+    setDeleteTarget(null)
   }
 
-  async function handleMarcarPago(pag: any) {
+  async function handleMarcarPago(pag: Pagamento) {
     const hoje = new Date().toISOString().split('T')[0]
     const { error } = await supabase.from('pagamentos').update({
       status: 'pago',
@@ -187,7 +197,7 @@ export default function Pagamentos() {
     return d.toLocaleDateString('pt-BR')
   }
 
-  function isVencido(pag: any) {
+  function isVencido(pag: Pagamento) {
     if (pag.status !== 'pendente') return false
     return new Date(pag.data_vencimento) < new Date(new Date().toISOString().split('T')[0])
   }
@@ -197,6 +207,9 @@ export default function Pagamentos() {
     ? pagamentos
     : pagamentos.filter(p => p.status === filtroStatus)
 
+  const totalPages = Math.ceil(pagsFiltrados.length / PAGE_SIZE)
+  const paginatedItems = pagsFiltrados.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
   // Totais
   const totalRecebido = pagamentos.filter(p => p.status === 'pago').reduce((a, p) => a + Number(p.valor), 0)
   const totalPendente = pagamentos.filter(p => p.status === 'pendente').reduce((a, p) => a + Number(p.valor), 0)
@@ -204,12 +217,19 @@ export default function Pagamentos() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="pagamentos">
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Skeleton width="180px" height="24px" />
+            <div style={{ marginTop: '8px' }}><Skeleton width="220px" height="14px" /></div>
+          </div>
+          <Skeleton width="160px" height="44px" borderRadius="8px" />
         </div>
-      </div>
+        <Skeleton variant="kpi" />
+        <div style={{ marginTop: '24px' }}>
+          <Skeleton variant="list" rows={5} />
+        </div>
+      </AppShell>
     )
   }
 
@@ -247,7 +267,7 @@ export default function Pagamentos() {
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {['todos', 'pendente', 'pago', 'atrasado', 'cancelado'].map(f => (
-          <button key={f} onClick={() => setFiltroStatus(f)} style={{
+          <button key={f} onClick={() => { setFiltroStatus(f); setCurrentPage(1) }} style={{
             padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold',
             cursor: 'pointer', border: 'none',
             background: filtroStatus === f ? '#1E3A5F' : '#F3F4F6',
@@ -275,7 +295,7 @@ export default function Pagamentos() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {pagsFiltrados.map(pag => {
+          {paginatedItems.map(pag => {
             const st = STATUS_CONFIG[pag.status] || STATUS_CONFIG.pendente
             const vencido = isVencido(pag)
             return (
@@ -331,7 +351,7 @@ export default function Pagamentos() {
                     border: '1px solid #E5E7EB', borderRadius: '6px',
                     fontSize: '12px', cursor: 'pointer',
                   }}>Editar</button>
-                  <button onClick={() => handleDelete(pag.id)} style={{
+                  <button onClick={() => setDeleteTarget(pag.id)} style={{
                     padding: '6px 14px', background: '#FEF2F2', color: '#DC2626',
                     border: '1px solid #FECACA', borderRadius: '6px',
                     fontSize: '12px', cursor: 'pointer',
@@ -340,6 +360,39 @@ export default function Pagamentos() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: '8px', marginTop: '24px',
+        }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 1 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >← Anterior</button>
+          <span style={{ color: '#6B7280', fontSize: '13px' }}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >Próximo →</button>
         </div>
       )}
 
@@ -375,23 +428,23 @@ export default function Pagamentos() {
             <form onSubmit={handleSave}>
               {/* Descrição */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Descricao *</label>
-                <input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
-                  placeholder="Ex: Consulta residencial - Joao" required
+                <label htmlFor="input-descricao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Descrição *</label>
+                <input id="input-descricao" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
+                  placeholder="Ex: Consulta residencial - João" required
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
 
               {/* Valor + Status */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Valor (R$) *</label>
-                  <input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })}
+                  <label htmlFor="input-valor" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Valor (R$) *</label>
+                  <input id="input-valor" type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })}
                     placeholder="350.00" required
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Status</label>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                  <label htmlFor="select-status" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Status</label>
+                  <select id="select-status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="pendente">Pendente</option>
                     <option value="pago">Pago</option>
@@ -404,14 +457,14 @@ export default function Pagamentos() {
               {/* Datas */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Vencimento *</label>
-                  <input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
+                  <label htmlFor="input-vencimento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Vencimento *</label>
+                  <input id="input-vencimento" type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
                     required
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data pagamento</label>
-                  <input type="date" value={form.data_pagamento} onChange={e => setForm({ ...form, data_pagamento: e.target.value })}
+                  <label htmlFor="input-data-pagamento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data pagamento</label>
+                  <input id="input-data-pagamento" type="date" value={form.data_pagamento} onChange={e => setForm({ ...form, data_pagamento: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
@@ -419,8 +472,8 @@ export default function Pagamentos() {
               {/* Método + Cliente */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Metodo de pagamento</label>
-                  <select value={form.metodo_pagamento} onChange={e => setForm({ ...form, metodo_pagamento: e.target.value })}
+                  <label htmlFor="select-metodo-pagamento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Método de pagamento</label>
+                  <select id="select-metodo-pagamento" value={form.metodo_pagamento} onChange={e => setForm({ ...form, metodo_pagamento: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="">Selecione...</option>
                     {Object.entries(METODOS).map(([k, v]) => (
@@ -429,8 +482,8 @@ export default function Pagamentos() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente</label>
-                  <select value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })}
+                  <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente</label>
+                  <select id="select-cliente" value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="">Nenhum</option>
                     {clientes.map(c => (
@@ -442,8 +495,8 @@ export default function Pagamentos() {
 
               {/* Consulta */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Consulta vinculada</label>
-                <select value={form.consulta_id} onChange={e => setForm({ ...form, consulta_id: e.target.value })}
+                <label htmlFor="select-consulta" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Consulta vinculada</label>
+                <select id="select-consulta" value={form.consulta_id} onChange={e => setForm({ ...form, consulta_id: e.target.value })}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                   <option value="">Nenhuma</option>
                   {consultas.map(c => (
@@ -454,8 +507,8 @@ export default function Pagamentos() {
 
               {/* Observações */}
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observacoes</label>
-                <textarea value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })}
+                <label htmlFor="textarea-observacoes" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observações</label>
+                <textarea id="textarea-observacoes" value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })}
                   placeholder="Notas adicionais..." rows={3}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
               </div>
@@ -479,6 +532,17 @@ export default function Pagamentos() {
           </div>
         </>
       )}
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Excluir pagamento"
+        message="Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   )
 }

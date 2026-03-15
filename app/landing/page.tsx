@@ -18,10 +18,10 @@ export default function LandingPage() {
   const navSolid = scrollY > 60
 
   const faqs = [
-    { q: 'Preciso ter experiencia com tecnologia?', a: 'Nao! O FengShui Studio foi feito para consultores de Feng Shui, nao para programadores. A interface e intuitiva e voce aprende em minutos.' },
-    { q: 'Posso cancelar o plano Pro a qualquer momento?', a: 'Sim. Nao ha fidelidade. Voce pode fazer upgrade ou downgrade quando quiser, sem burocracia.' },
-    { q: 'Meus dados estao seguros?', a: 'Absolutamente. Usamos criptografia de ponta a ponta e servidores seguros. Seus dados e os de seus clientes estao protegidos.' },
-    { q: 'O relatorio PDF e personalizavel?', a: 'O relatorio inclui automaticamente seus dados profissionais, logo e informacoes do imovel analisado, gerando um documento profissional com a sua marca.' },
+    { q: 'Preciso ter experiência com tecnologia?', a: 'Não! O FengShui Studio foi feito para consultores de Feng Shui, não para programadores. A interface é intuitiva e você aprende em minutos.' },
+    { q: 'Posso cancelar o plano Pro a qualquer momento?', a: 'Sim. Não há fidelidade. Você pode fazer upgrade ou downgrade quando quiser, sem burocracia.' },
+    { q: 'Meus dados estão seguros?', a: 'Absolutamente. Usamos criptografia de ponta a ponta e servidores seguros. Seus dados e os de seus clientes estão protegidos.' },
+    { q: 'O relatório PDF é personalizável?', a: 'O relatório inclui automaticamente seus dados profissionais, logo e informações do imóvel analisado, gerando um documento profissional com a sua marca.' },
   ]
 
   if (!mounted) return null
@@ -175,7 +175,7 @@ export default function LandingPage() {
           <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
             <a href="#recursos" className="nav-link">Recursos</a>
             <a href="#como-funciona" className="nav-link">Como funciona</a>
-            <a href="#precos" className="nav-link">Precos</a>
+            <a href="#precos" className="nav-link">Preços</a>
             <a href="#depoimentos" className="nav-link">Depoimentos</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -186,7 +186,7 @@ export default function LandingPage() {
               borderRadius: '8px', fontSize: '14px', fontWeight: 700,
               cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
               transition: 'all 0.3s ease'
-            }}>Comecar gratis</button>
+            }}>Começar grátis</button>
             {/* Mobile menu */}
             <button onClick={() => setMenuOpen(!menuOpen)} className="hide-mobile" style={{ display: 'none' }}>☰</button>
           </div>
@@ -246,19 +246,19 @@ export default function LandingPage() {
                   background: 'linear-gradient(135deg, #C9A84C, #E8D48B)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>Feng Shui</span>
-                {' '}em uma experiencia profissional
+                {' '}em uma experiência profissional
               </h1>
 
               <p className="fade-up fade-up-d2" style={{
                 color: 'rgba(255,255,255,0.7)', fontSize: '18px',
                 lineHeight: 1.7, marginBottom: '40px', maxWidth: '520px',
               }}>
-                Gerencie clientes, realize diagnosticos Ba Gua completos e gere relatorios PDF profissionais. Tudo em uma unica plataforma feita para consultores como voce.
+                Gerencie clientes, realize diagnósticos Ba Gua completos e gere relatórios PDF profissionais. Tudo em uma única plataforma feita para consultores como você.
               </p>
 
               <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
                 <button className="btn-primary" onClick={() => window.location.href = '/login'}>
-                  Comecar gratuitamente
+                  Começar gratuitamente
                 </button>
                 <a href="#como-funciona" className="btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
                   Ver como funciona
@@ -269,7 +269,7 @@ export default function LandingPage() {
                 {[
                   { num: '500+', label: 'Consultores ativos' },
                   { num: '2.000+', label: 'Consultas realizadas' },
-                  { num: '4.8★', label: 'Avaliacao media' },
+                  { num: '4.8★', label: 'Avaliação média' },
                 ].map((stat, i) => (
                   <div key={i}>
                     <p style={{ color: '#C9A84C', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>{stat.num}</p>
@@ -427,7 +427,7 @@ export default function LandingPage() {
               fontSize: 'clamp(28px, 4vw, 42px)',
               color: '#0f172a', fontWeight: 700, marginBottom: '16px',
             }}>
-              Tudo que voce precisa em um so lugar
+              Tudo que você precisa em um só lugar
             </h2>
             <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '560px', margin: '0 auto', lineHeight: 1.7 }}>
               Ferramentas projetadas especificamente para consultores de Feng Shui que querem profissionalizar seu trabalho.
@@ -436,11 +436,11 @@ export default function LandingPage() {
 
           <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             {[
-              { icon: '👥', title: 'Gestao de Clientes', desc: 'Cadastre e organize todos os seus clientes com dados de contato, historico de consultas e notas pessoais.', color: '#3B82F6' },
-              { icon: '🧭', title: 'Diagnostico Ba Gua', desc: 'Avalie os 9 setores do Ba Gua com criterios padronizados e scores automaticos por setor.', color: '#7C3AED' },
-              { icon: '📊', title: 'Relatorio PDF Pro', desc: 'Gere relatorios profissionais em PDF com sua marca, scores detalhados e recomendacoes por setor.', color: '#15803D' },
-              { icon: '📅', title: 'Calendario Lunar', desc: 'Consulte o calendario lunar chinês integrado para planejar ativacoes e datas auspiciosas.', color: '#D97706' },
-              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estao protegidos com criptografia e autenticacao segura.', color: '#DC2626' },
+              { icon: '👥', title: 'Gestão de Clientes', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
+              { icon: '🧭', title: 'Diagnóstico Ba Gua', desc: 'Avalie os 9 setores do Ba Gua com critérios padronizados e scores automáticos por setor.', color: '#7C3AED' },
+              { icon: '📊', title: 'Relatório PDF Pro', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
+              { icon: '📅', title: 'Calendário Lunar', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações e datas auspiciosas.', color: '#D97706' },
+              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#DC2626' },
               { icon: '📱', title: 'Acesso em Qualquer Lugar', desc: 'Use pelo computador, tablet ou celular. Interface responsiva que se adapta a qualquer tela.', color: '#0891B2' },
             ].map((feat, i) => (
               <div key={i} className="feature-card" style={{
@@ -486,7 +486,7 @@ export default function LandingPage() {
               Simples como deve ser
             </h2>
             <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>
-              Em apenas 3 passos voce transforma seu atendimento.
+              Em apenas 3 passos você transforma seu atendimento.
             </p>
           </div>
 
@@ -498,9 +498,9 @@ export default function LandingPage() {
               opacity: 0.3,
             }} />
             {[
-              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imoveis a serem analisados.', color: '#7C3AED' },
-              { step: '02', title: 'Realize o diagnostico', desc: 'Avalie cada setor do Ba Gua com os criterios integrados e gere scores automaticos.', color: '#C9A84C' },
-              { step: '03', title: 'Entregue o relatorio', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
+              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imóveis a serem analisados.', color: '#7C3AED' },
+              { step: '02', title: 'Realize o diagnóstico', desc: 'Avalie cada setor do Ba Gua com os critérios integrados e gere scores automáticos.', color: '#C9A84C' },
+              { step: '03', title: 'Entregue o relatório', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
             ].map((item, i) => (
               <div key={i} style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
                 <div style={{
@@ -547,10 +547,10 @@ export default function LandingPage() {
               fontSize: 'clamp(28px, 4vw, 42px)',
               color: '#ffffff', fontWeight: 700, marginBottom: '16px',
             }}>
-              Escolha o plano ideal para voce
+              Escolha o plano ideal para você
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>
-              Comece gratuitamente e faca upgrade quando quiser.
+              Comece gratuitamente e faça upgrade quando quiser.
             </p>
           </div>
 
@@ -564,16 +564,16 @@ export default function LandingPage() {
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>FREE</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$0</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mes</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>
-                Perfeito para comecar
+                Perfeito para começar
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
                 {[
-                  'Ate 5 clientes',
-                  '3 consultas por mes',
-                  'Diagnostico Ba Gua completo',
+                  'Até 5 clientes',
+                  '3 consultas por mês',
+                  'Diagnóstico Ba Gua completo',
                   'Suporte por email',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -582,8 +582,8 @@ export default function LandingPage() {
                   </div>
                 ))}
                 {[
-                  'Relatorio PDF',
-                  'Calendario lunar',
+                  'Relatório PDF',
+                  'Calendário lunar',
                   'Clientes ilimitados',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
@@ -600,7 +600,7 @@ export default function LandingPage() {
                 cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
                 transition: 'all 0.3s ease',
               }}>
-                Comecar gratis
+                Começar grátis
               </button>
             </div>
 
@@ -621,7 +621,7 @@ export default function LandingPage() {
               <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>PRO</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$49</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mes</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>
                 Para consultores profissionais
@@ -630,10 +630,10 @@ export default function LandingPage() {
                 {[
                   'Clientes ilimitados',
                   'Consultas ilimitadas',
-                  'Diagnostico Ba Gua completo',
-                  'Relatorio PDF profissional',
-                  'Calendario lunar chinês',
-                  'Suporte prioritario',
+                  'Diagnóstico Ba Gua completo',
+                  'Relatório PDF profissional',
+                  'Calendário lunar chinês',
+                  'Suporte prioritário',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#fff', flexShrink: 0 }}>✓</div>
@@ -669,9 +669,9 @@ export default function LandingPage() {
 
           <div className="testimonials-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             {[
-              { name: 'Marina Silva', city: 'Sao Paulo, SP', text: 'Antes eu fazia tudo em planilhas. Com o FengShui Studio, meus relatorios ficaram muito mais profissionais. Meus clientes adoram!', avatar: 'M' },
-              { name: 'Ricardo Tanaka', city: 'Curitiba, PR', text: 'O diagnostico por setor com scores automaticos economiza horas do meu trabalho. Recomendo para todos os consultores de Feng Shui.', avatar: 'R' },
-              { name: 'Ana Beatriz Costa', city: 'Rio de Janeiro, RJ', text: 'A plataforma e intuitiva e o calendario lunar integrado e um diferencial incrivel. Vale cada centavo do plano Pro.', avatar: 'A' },
+              { name: 'Marina Silva', city: 'São Paulo, SP', text: 'Antes eu fazia tudo em planilhas. Com o FengShui Studio, meus relatórios ficaram muito mais profissionais. Meus clientes adoram!', avatar: 'M' },
+              { name: 'Ricardo Tanaka', city: 'Curitiba, PR', text: 'O diagnóstico por setor com scores automáticos economiza horas do meu trabalho. Recomendo para todos os consultores de Feng Shui.', avatar: 'R' },
+              { name: 'Ana Beatriz Costa', city: 'Rio de Janeiro, RJ', text: 'A plataforma é intuitiva e o calendário lunar integrado é um diferencial incrível. Vale cada centavo do plano Pro.', avatar: 'A' },
             ].map((t, i) => (
               <div key={i} className="testimonial-card" style={{
                 background: '#ffffff',
@@ -735,6 +735,8 @@ export default function LandingPage() {
               }}>
                 <button
                   onClick={() => setActiveFaq(activeFaq === i ? null : i)}
+                  aria-expanded={activeFaq === i}
+                  aria-controls={`faq-answer-${i}`}
                   style={{
                     width: '100%', padding: '20px 24px',
                     background: 'transparent', border: 'none',
@@ -749,7 +751,7 @@ export default function LandingPage() {
                     transition: 'transform 0.3s ease',
                   }}>+</span>
                 </button>
-                <div style={{
+                <div id={`faq-answer-${i}`} role="region" aria-labelledby={`faq-btn-${i}`} style={{
                   maxHeight: activeFaq === i ? '200px' : '0',
                   overflow: 'hidden',
                   transition: 'max-height 0.3s ease',
@@ -786,7 +788,7 @@ export default function LandingPage() {
             Pronto para transformar suas consultas?
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>
-            Junte-se a centenas de consultores que ja usam o FengShui Studio para elevar a qualidade do seu trabalho.
+            Junte-se a centenas de consultores que já usam o FengShui Studio para elevar a qualidade do seu trabalho.
           </p>
           <button onClick={() => window.location.href = '/login'} style={{
             background: '#ffffff', color: '#7C3AED', border: 'none',
@@ -794,10 +796,10 @@ export default function LandingPage() {
             fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
             transition: 'all 0.3s ease', boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
           }}>
-            Criar minha conta gratis
+            Criar minha conta grátis
           </button>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '16px' }}>
-            Sem cartao de credito. Cancele quando quiser.
+            Sem cartão de crédito. Cancele quando quiser.
           </p>
         </div>
       </section>
@@ -831,16 +833,23 @@ export default function LandingPage() {
             <div>
               <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px', letterSpacing: '0.05em' }}>EMPRESA</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Sobre', 'Blog', 'Contato'].map((item, i) => (
-                  <span key={i} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', cursor: 'pointer' }}>{item}</span>
+                {[
+                  { label: 'Sobre', href: '#sobre' },
+                  { label: 'Blog', href: '#blog' },
+                  { label: 'Contato', href: 'mailto:contato@fengshuistudio.com.br' },
+                ].map((item, i) => (
+                  <a key={i} href={item.href} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', textDecoration: 'none', transition: 'color 0.2s' }}>{item.label}</a>
                 ))}
               </div>
             </div>
             <div>
               <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px', letterSpacing: '0.05em' }}>LEGAL</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Termos de uso', 'Privacidade'].map((item, i) => (
-                  <span key={i} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', cursor: 'pointer' }}>{item}</span>
+                {[
+                  { label: 'Termos de uso', href: '/termos' },
+                  { label: 'Privacidade', href: '/privacidade' },
+                ].map((item, i) => (
+                  <a key={i} href={item.href} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', textDecoration: 'none', transition: 'color 0.2s' }}>{item.label}</a>
                 ))}
               </div>
             </div>

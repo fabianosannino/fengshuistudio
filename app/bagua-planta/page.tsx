@@ -3,19 +3,9 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import { CRITERIOS } from '../../src/lib/constants'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
-
-const CRITERIOS = [
-  'Limpeza e organização',
-  'Iluminação adequada',
-  'Ventilação e ar fresco',
-  'Cores harmônicas',
-  'Mobiliário posicionado',
-  'Plantas e elementos naturais',
-  'Ausência de objetos quebrados',
-  'Fluxo de energia livre',
-]
 
 const SETORES = [
   { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#7C3AED',
@@ -854,12 +844,12 @@ function BaguaPlantaContent() {
                       </div>
                     </div>
                     <div>
-                      <label style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>
+                      <label htmlFor="input-rotacao" style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>
                         2️⃣ Rotação <span style={{color:'#7C3AED',fontWeight:'normal'}}>{rot}°</span>
                       </label>
                       <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'6px'}}>
                         <button onClick={()=>setRot(r=>(r-90+360)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↺</button>
-                        <input type="range" min={0} max={359} value={rot} onChange={e=>setRot(Number(e.target.value))} style={{flex:1}}/>
+                        <input id="input-rotacao" type="range" min={0} max={359} value={rot} onChange={e=>setRot(Number(e.target.value))} style={{flex:1}}/>
                         <button onClick={()=>setRot(r=>(r+90)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↻</button>
                       </div>
                       <div style={{display:'flex',gap:'4px'}}>

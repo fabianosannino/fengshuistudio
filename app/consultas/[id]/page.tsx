@@ -5,17 +5,8 @@ import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import TabRodaDaVida from './TabRodaDaVida'
 import TabFluxoChi from './TabFluxoChi'
-
-const CRITERIOS = [
-  'Limpeza e organizacao',
-  'Iluminacao adequada',
-  'Ventilacao e ar fresco',
-  'Cores harmonicas',
-  'Mobiliario posicionado',
-  'Plantas e elementos naturais',
-  'Ausencia de objetos quebrados',
-  'Fluxo de energia livre',
-]
+import { CRITERIOS } from '../../../src/lib/constants'
+import type { Consulta, SetorBagua, DiagnosticoCriterio } from '../../../src/lib/types'
 
 // Cômodo types for room mapping per Guá
 const COMODO_TIPOS = [
@@ -206,8 +197,9 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
 
       {/* Texto */}
       <div style={{ marginBottom: '10px' }}>
-        <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Orientação ao cliente</label>
+        <label htmlFor="input-orientacao-cliente" style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Orientação ao cliente</label>
         <textarea
+          id="input-orientacao-cliente"
           value={texto}
           onChange={e => setTexto(e.target.value)}
           placeholder="Descreva a recomendação, orientação ou direcionamento para o cliente..."
@@ -264,8 +256,8 @@ export default function ConsultaDetalhe() {
   const params = useParams()
   const id = params.id as string
 
-  const [consulta, setConsulta] = useState<any>(null)
-  const [setores, setSetores] = useState<any[]>([])
+  const [consulta, setConsulta] = useState<Consulta | null>(null)
+  const [setores, setSetores] = useState<SetorBagua[]>([])
   const [criterios, setCriterios] = useState<Record<string, Record<string, number>>>({})
   const [notas, setNotas] = useState<Record<string, Record<string, string>>>({})
   const [customRecs, setCustomRecs] = useState<Record<string, CustomRec[]>>({})
@@ -318,7 +310,7 @@ export default function ConsultaDetalhe() {
         nMap[setor.id] = {}
         rMap[setor.id] = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom : []
         cmMap[setor.id] = setor.comodo_tipo || ''
-        setor.diagnostico_criterios?.forEach((c: any) => {
+        setor.diagnostico_criterios?.forEach((c: DiagnosticoCriterio) => {
           cMap[setor.id][c.criterio] = c.score
           nMap[setor.id][c.criterio] = c.notas || ''
         })
@@ -384,7 +376,7 @@ export default function ConsultaDetalhe() {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
       const pct = getScore(setorId)
-      const updateData: any = {
+      const updateData: Record<string, number | null | string | CustomRec[]> = {
         score_percentual: pct,
         recomendacoes_custom: customRecs[setorId] || [],
       }
@@ -413,7 +405,7 @@ export default function ConsultaDetalhe() {
     if (error) {
       setMessage('Erro ao salvar Roda da Vida: ' + error.message)
     } else {
-      setConsulta((prev: any) => ({ ...prev, roda_da_vida: rodaData }))
+      setConsulta(prev => prev ? { ...prev, roda_da_vida: rodaData } : prev)
       setMessage('Roda da Vida salva com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
@@ -430,7 +422,7 @@ export default function ConsultaDetalhe() {
     if (error) {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
-      setConsulta((prev: any) => ({ ...prev, checklist_chi: checklistChi, posicao_comando: posicaoComando }))
+      setConsulta(prev => prev ? { ...prev, checklist_chi: checklistChi, posicao_comando: posicaoComando } : prev)
       setMessage('Fluxo de Chi salvo com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
@@ -443,7 +435,7 @@ export default function ConsultaDetalhe() {
     router.push('/consultas')
   }
 
-  if (loading) {
+  if (loading || !consulta) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
@@ -835,10 +827,11 @@ export default function ConsultaDetalhe() {
                   background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#7C3AED' }}>
+                    <label htmlFor="select-comodo-setor" style={{ fontSize: '13px', fontWeight: 'bold', color: '#7C3AED' }}>
                       Cômodo neste setor:
                     </label>
                     <select
+                      id="select-comodo-setor"
                       value={comodoMap[setorAtivoData.id] || ''}
                       onChange={e => setComodoMap(prev => ({ ...prev, [setorAtivoData.id]: e.target.value }))}
                       style={{

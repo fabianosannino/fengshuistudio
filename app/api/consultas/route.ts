@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
+import { rateLimit } from '../../../src/lib/rate-limit'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 const MAX_CONSULTAS_MES_FREE = 3
 const MAX_IMOVEIS_PESSOAL = 3
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success, remaining } = rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  if (!success) {
+    return Response.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -81,7 +91,8 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    console.error('Consulta insert error:', error.message)
+    return NextResponse.json({ error: 'Erro ao criar consulta. Tente novamente.' }, { status: 400 })
   }
 
   return NextResponse.json(data)

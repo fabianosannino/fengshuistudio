@@ -4,15 +4,19 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
+import ConfirmModal from '../../components/ConfirmModal'
+import Skeleton from '../../components/Skeleton'
+import type { Cliente, Consulta } from '../../../src/lib/types'
 
 export default function ClienteDetalhe() {
   const params = useParams()
-  const [cliente, setCliente] = useState<any>(null)
-  const [consultas, setConsultas] = useState<any[]>([])
+  const [cliente, setCliente] = useState<Cliente | null>(null)
+  const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [form, setForm] = useState({
     nome_completo: '',
     email: '',
@@ -73,7 +77,7 @@ export default function ClienteDetalhe() {
     if (error) {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
-      setCliente({ ...cliente, ...form })
+      setCliente({ ...cliente!, ...form })
       setEditing(false)
       setMessage('Cliente atualizado com sucesso!')
       setTimeout(() => setMessage(''), 3000)
@@ -82,7 +86,6 @@ export default function ClienteDetalhe() {
   }
 
   async function handleDelete() {
-    if (!confirm('Tem certeza que deseja excluir este cliente? As consultas associadas serao mantidas.')) return
     const { error } = await supabase
       .from('clientes')
       .update({ ativo: false })
@@ -92,18 +95,29 @@ export default function ClienteDetalhe() {
     } else {
       window.location.href = '/clientes'
     }
+    setDeleteTarget(null)
   }
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="clientes">
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <Skeleton width="150px" height="14px" />
+          <div style={{ marginTop: '24px' }}>
+            <Skeleton variant="card" />
+          </div>
+          <div style={{ marginTop: '32px' }}>
+            <Skeleton width="180px" height="18px" />
+            <div style={{ marginTop: '16px' }}>
+              <Skeleton variant="list" rows={3} />
+            </div>
+          </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
+
+  if (!cliente) return null
 
   return (
     <AppShell currentPage="clientes">
@@ -150,7 +164,7 @@ export default function ClienteDetalhe() {
                   padding: '8px 20px', background: '#F3F4F6', color: '#374151',
                   border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}>✏️ Editar</button>
-                <button onClick={handleDelete} style={{
+                <button onClick={() => setDeleteTarget(params.id as string)} style={{
                   padding: '8px 20px', background: '#FEF2F2', color: '#DC2626',
                   border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}>🗑️ Excluir</button>
@@ -192,28 +206,28 @@ export default function ClienteDetalhe() {
             <form onSubmit={handleSave}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>
-                  <input name="nome_completo" value={form.nome_completo} onChange={handleChange} required
+                  <label htmlFor="input-nome-completo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>
+                  <input id="input-nome-completo" name="nome_completo" value={form.nome_completo} onChange={handleChange} required
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
-                  <input name="email" value={form.email} onChange={handleChange} type="email"
+                  <label htmlFor="input-email" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
+                  <input id="input-email" name="email" value={form.email} onChange={handleChange} type="email"
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
-                  <input name="telefone" value={form.telefone} onChange={handleChange}
+                  <label htmlFor="input-telefone" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
+                  <input id="input-telefone" name="telefone" value={form.telefone} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
-                  <input name="cidade" value={form.cidade} onChange={handleChange}
+                  <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
+                  <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
-                  <select name="estado" value={form.estado} onChange={handleChange}
+                  <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
+                  <select id="select-estado" name="estado" value={form.estado} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="">Selecione...</option>
                     {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
@@ -222,8 +236,8 @@ export default function ClienteDetalhe() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observações</label>
-                  <input name="notas" value={form.notas} onChange={handleChange}
+                  <label htmlFor="input-notas" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observações</label>
+                  <input id="input-notas" name="notas" value={form.notas} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
@@ -287,6 +301,17 @@ export default function ClienteDetalhe() {
         )}
 
       </div>
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Excluir cliente"
+        message="Tem certeza que deseja excluir este cliente? As consultas associadas serão mantidas."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   )
 }

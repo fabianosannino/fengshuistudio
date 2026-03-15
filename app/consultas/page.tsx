@@ -3,14 +3,20 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
+import ConfirmModal from '../components/ConfirmModal'
+import type { Consulta } from '../../src/lib/types'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+const PAGE_SIZE = 10
 
 export default function Consultas() {
-  const [consultas, setConsultas] = useState<any[]>([])
+  const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [isProfessional, setIsProfessional] = useState(true)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     async function load() {
@@ -40,25 +46,39 @@ export default function Consultas() {
   }, [])
 
   function statusColor(status: string) {
-    const map: any = { rascunho: '#6B7280', em_andamento: '#D97706', finalizada: '#15803D', arquivada: '#9CA3AF' }
+    const map: Record<string, string> = { rascunho: '#6B7280', em_andamento: '#D97706', finalizada: '#15803D', arquivada: '#9CA3AF' }
     return map[status] || '#6B7280'
   }
 
   function statusLabel(status: string) {
-    const map: any = { rascunho: 'Rascunho', em_andamento: 'Em andamento', finalizada: 'Finalizada', arquivada: 'Arquivada' }
+    const map: Record<string, string> = { rascunho: 'Rascunho', em_andamento: 'Em andamento', finalizada: 'Finalizada', arquivada: 'Arquivada' }
     return map[status] || status
+  }
+
+  async function handleDelete(id: string) {
+    const { error } = await supabase.from('consultas').delete().eq('id', id)
+    if (error) {
+      setMessage('Erro ao excluir: ' + error.message)
+    } else {
+      setConsultas(consultas.filter(c => c.id !== id))
+    }
+    setDeleteTarget(null)
   }
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="consultas">
+        <div style={{ marginBottom: '24px' }}>
+          <Skeleton width="200px" height="24px" />
+          <div style={{ marginTop: '8px' }}><Skeleton width="260px" height="16px" /></div>
         </div>
-      </div>
+        <Skeleton variant="list" rows={4} />
+      </AppShell>
     )
   }
+
+  const totalPages = Math.ceil(consultas.length / PAGE_SIZE)
+  const paginatedItems = consultas.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <AppShell currentPage="consultas">
@@ -66,17 +86,17 @@ export default function Consultas() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-            {isProfessional ? 'Consultas' : 'Meus Imoveis'}
+            {isProfessional ? 'Consultas' : 'Meus Imóveis'}
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-            {consultas.length} {isProfessional ? 'consulta(s) registrada(s)' : 'imovel(is) cadastrado(s)'}
+            {consultas.length} {isProfessional ? 'consulta(s) registrada(s)' : 'imóvel(is) cadastrado(s)'}
           </p>
         </div>
         <button onClick={() => window.location.href = '/consultas/nova'} style={{
           background: '#7C3AED', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer'
-        }}>{isProfessional ? '+ Nova consulta' : '+ Novo imovel'}</button>
+        }}>{isProfessional ? '+ Nova consulta' : '+ Novo imóvel'}</button>
       </div>
 
       {message && (
@@ -94,22 +114,22 @@ export default function Consultas() {
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>{isProfessional ? '📋' : '🏠'}</div>
           <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>
-            {isProfessional ? 'Nenhuma consulta registrada' : 'Nenhum imovel cadastrado'}
+            {isProfessional ? 'Nenhuma consulta registrada' : 'Nenhum imóvel cadastrado'}
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>
             {isProfessional
-              ? 'Clique em "Nova consulta" para comecar um diagnostico Ba Gua'
-              : 'Cadastre seu imovel para receber o diagnostico Feng Shui personalizado'}
+              ? 'Clique em "Nova consulta" para começar um diagnóstico Ba Gua'
+              : 'Cadastre seu imóvel para receber o diagnóstico Feng Shui personalizado'}
           </p>
           <button onClick={() => window.location.href = '/consultas/nova'} style={{
             background: '#7C3AED', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
-          }}>{isProfessional ? 'Iniciar primeira consulta' : 'Cadastrar meu imovel'}</button>
+          }}>{isProfessional ? 'Iniciar primeira consulta' : 'Cadastrar meu imóvel'}</button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {consultas.map(consulta => (
+          {paginatedItems.map(consulta => (
             <div key={consulta.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px 24px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -120,7 +140,7 @@ export default function Consultas() {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                   <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
-                    {consulta.nome_imovel || 'Imovel'}
+                    {consulta.nome_imovel || 'Imóvel'}
                   </h3>
                   <span style={{
                     background: `${statusColor(consulta.status)}20`,
@@ -151,18 +171,9 @@ export default function Consultas() {
                     padding: '8px 20px', background: '#1E3A5F', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
-                  }}>Relatorio</button>
+                  }}>Relatório</button>
                 )}
-                <button onClick={async () => {
-                  if (confirm(isProfessional ? 'Deseja excluir esta consulta?' : 'Deseja excluir este imovel?')) {
-                    const { error } = await supabase.from('consultas').delete().eq('id', consulta.id)
-                    if (error) {
-                      setMessage('Erro ao excluir: ' + error.message)
-                      return
-                    }
-                    setConsultas(consultas.filter(c => c.id !== consulta.id))
-                  }
-                }} style={{
+                <button onClick={() => setDeleteTarget(consulta.id)} style={{
                   padding: '8px 16px', background: '#FEF2F2', color: '#DC2626',
                   border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px',
                   cursor: 'pointer'
@@ -173,6 +184,51 @@ export default function Consultas() {
         </div>
       )}
 
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: '8px', marginTop: '24px',
+        }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 1 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >← Anterior</button>
+          <span style={{ color: '#6B7280', fontSize: '13px' }}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
+              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: 'bold',
+            }}
+          >Próximo →</button>
+        </div>
+      )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={isProfessional ? 'Excluir consulta' : 'Excluir imóvel'}
+        message={isProfessional
+          ? 'Tem certeza que deseja excluir esta consulta? Esta ação não pode ser desfeita.'
+          : 'Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.'}
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   )
 }

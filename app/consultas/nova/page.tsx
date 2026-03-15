@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import AppShell from '../../components/AppShell'
+import Skeleton from '../../components/Skeleton'
+import type { Profile, Cliente } from '../../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 
@@ -19,13 +22,13 @@ const SETORES_BAGUA = [
 ]
 
 export default function NovaConsulta() {
-  const [user, setUser] = useState<any>(null)
-  const [clientes, setClientes] = useState<any[]>([])
+  const [user, setUser] = useState<User | null>(null)
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [step, setStep] = useState(1)
   const [message, setMessage] = useState('')
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<Pick<Profile, 'plano' | 'tipo_usuario' | 'role' | 'nome_completo'> | null>(null)
   const [consultasMes, setConsultasMes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
 
@@ -112,8 +115,8 @@ export default function NovaConsulta() {
         const { data: existingClients } = await supabase
           .from('clientes')
           .select('id')
-          .eq('consultor_id', user.id)
-          .eq('email', user.email)
+          .eq('consultor_id', user!.id)
+          .eq('email', user!.email!)
           .limit(1)
 
         if (existingClients && existingClients.length > 0) {
@@ -123,9 +126,9 @@ export default function NovaConsulta() {
           const { data: newClient, error: clientError } = await supabase
             .from('clientes')
             .insert({
-              consultor_id: user.id,
-              nome_completo: profile?.nome_completo || user.email,
-              email: user.email,
+              consultor_id: user!.id,
+              nome_completo: profile?.nome_completo || user!.email,
+              email: user!.email,
               ativo: true,
             })
             .select('id')
@@ -162,7 +165,7 @@ export default function NovaConsulta() {
       setConsultaId(data.id)
       setStep(2)
     } catch {
-      setMessage('Erro de conexao ao criar consulta.')
+      setMessage('Erro de conexão ao criar consulta.')
     }
     setSaving(false)
   }
@@ -202,12 +205,14 @@ export default function NovaConsulta() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="consultas">
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <Skeleton width="200px" height="24px" />
+          <div style={{ marginTop: '24px' }}>
+            <Skeleton variant="card" />
+          </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
@@ -222,15 +227,15 @@ export default function NovaConsulta() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-            {isProfessional ? 'Nova Consulta Ba Gua' : 'Novo Diagnostico do Imovel'}
+            {isProfessional ? 'Nova Consulta Ba Gua' : 'Novo Diagnóstico do Imóvel'}
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-            {isProfessional ? 'Preencha os dados para iniciar o diagnostico' : 'Cadastre seu imovel para receber o diagnostico Feng Shui'}
+            {isProfessional ? 'Preencha os dados para iniciar o diagnóstico' : 'Cadastre seu imóvel para receber o diagnóstico Feng Shui'}
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px', gap: '0' }}>
-          {['Dados do Imovel', 'Setores Ba Gua'].map((label, i) => (
+          {['Dados do Imóvel', 'Setores Ba Gua'].map((label, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < 1 ? 'none' : 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
@@ -310,13 +315,13 @@ export default function NovaConsulta() {
               {/* Client selector - only for professionals */}
               {isProfessional && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
+                  <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
                   {clientes.length === 0 ? (
                     <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', color: '#92400E', fontSize: '14px' }}>
                       Nenhum cliente cadastrado. <span style={{ color: '#7C3AED', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
                     </div>
                   ) : (
-                    <select name="cliente_id" value={form.cliente_id} onChange={handleChange} required
+                    <select id="select-cliente" name="cliente_id" value={form.cliente_id} onChange={handleChange} required
                       style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                       <option value="">Selecione o cliente...</option>
                       {clientes.map(c => <option key={c.id} value={c.id}>{c.nome_completo}</option>)}
@@ -334,38 +339,38 @@ export default function NovaConsulta() {
                 }}>
                   <span style={{ fontSize: '20px' }}>🏠</span>
                   <p style={{ color: '#15803D', fontSize: '13px', margin: '0' }}>
-                    Cadastre os dados do seu imovel para receber o diagnostico Feng Shui personalizado.
+                    Cadastre os dados do seu imóvel para receber o diagnóstico Feng Shui personalizado.
                   </p>
                 </div>
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>
-                    {isProfessional ? 'Nome do imovel' : 'Nome do seu imovel'}
+                  <label htmlFor="input-nome-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>
+                    {isProfessional ? 'Nome do imóvel' : 'Nome do seu imóvel'}
                   </label>
-                  <input name="nome_imovel" value={form.nome_imovel} onChange={handleChange}
+                  <input id="input-nome-imovel" name="nome_imovel" value={form.nome_imovel} onChange={handleChange}
                     placeholder={isProfessional ? 'Ex: Apartamento Centro' : 'Ex: Minha Casa, Meu Apto'}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Tipo do imovel</label>
-                  <select name="tipo_imovel" value={form.tipo_imovel} onChange={handleChange}
+                  <label htmlFor="select-tipo-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Tipo do imóvel</label>
+                  <select id="select-tipo-imovel" name="tipo_imovel" value={form.tipo_imovel} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="residencial">Residencial</option>
                     <option value="comercial">Comercial</option>
-                    <option value="escritorio">Escritorio</option>
+                    <option value="escritorio">Escritório</option>
                     <option value="outro">Outro</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Area total (m²)</label>
-                  <input name="area_total_m2" value={form.area_total_m2} onChange={handleChange} type="number" placeholder="Ex: 80"
+                  <label htmlFor="input-area-total" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Área total (m²)</label>
+                  <input id="input-area-total" name="area_total_m2" value={form.area_total_m2} onChange={handleChange} type="number" placeholder="Ex: 80"
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Posicao da porta</label>
-                  <select name="porta_posicao" value={form.porta_posicao} onChange={handleChange}
+                  <label htmlFor="select-porta-posicao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Posição da porta</label>
+                  <select id="select-porta-posicao" name="porta_posicao" value={form.porta_posicao} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="centro_frente">Centro da frente</option>
                     <option value="esquerda_frente">Esquerda da frente</option>
@@ -375,8 +380,8 @@ export default function NovaConsulta() {
               </div>
 
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Endereco do imovel</label>
-                <input name="endereco_imovel" value={form.endereco_imovel} onChange={handleChange} placeholder="Rua, numero, bairro, cidade"
+                <label htmlFor="input-endereco-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Endereço do imóvel</label>
+                <input id="input-endereco-imovel" name="endereco_imovel" value={form.endereco_imovel} onChange={handleChange} placeholder="Rua, número, bairro, cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
 
@@ -389,7 +394,7 @@ export default function NovaConsulta() {
                   padding: '12px 32px', background: saving ? '#9CA3AF' : '#7C3AED',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
-                }}>{saving ? 'Salvando...' : 'Proximo →'}</button>
+                }}>{saving ? 'Salvando...' : 'Próximo →'}</button>
               </div>
             </form>
           </div>

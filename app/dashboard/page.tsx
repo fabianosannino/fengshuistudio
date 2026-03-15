@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
+import type { Profile, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -30,26 +33,26 @@ const COR_PENDENTE = '#F59E0B'
 const COR_ATRASADO = '#DC2626'
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [totalClientes, setTotalClientes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
   const [totalRituais, setTotalRituais] = useState(0)
 
   // Chart data
-  const [statusData, setStatusData] = useState<any[]>([])
-  const [consultasMesData, setConsultasMesData] = useState<any[]>([])
-  const [clientesMesData, setClientesMesData] = useState<any[]>([])
+  const [statusData, setStatusData] = useState<StatusChartEntry[]>([])
+  const [consultasMesData, setConsultasMesData] = useState<ConsultaMesChartEntry[]>([])
+  const [clientesMesData, setClientesMesData] = useState<ClienteMesChartEntry[]>([])
 
   // Pagamentos
-  const [pagamentosData, setPagamentosData] = useState<any[]>([])
+  const [pagamentosData, setPagamentosData] = useState<PagamentoMesChartEntry[]>([])
   const [totalRecebido, setTotalRecebido] = useState(0)
   const [totalPendente, setTotalPendente] = useState(0)
   const [totalAtrasado, setTotalAtrasado] = useState(0)
 
   // Agenda
-  const [agenda, setAgenda] = useState<any[]>([])
+  const [agenda, setAgenda] = useState<AgendaItem[]>([])
 
   useEffect(() => {
     async function loadAll() {
@@ -206,7 +209,7 @@ export default function Dashboard() {
       }
 
       // ── AGENDA: Próximos rituais + consultas em andamento ──
-      const agendaItems: any[] = []
+      const agendaItems: AgendaItem[] = []
 
       // Rituais pendentes (próximos 30 dias)
       const hoje = new Date().toISOString().split('T')[0]
@@ -292,7 +295,7 @@ export default function Dashboard() {
     amanha.setDate(amanha.getDate() + 1)
 
     if (d.toDateString() === hoje.toDateString()) return 'Hoje'
-    if (d.toDateString() === amanha.toDateString()) return 'Amanha'
+    if (d.toDateString() === amanha.toDateString()) return 'Amanhã'
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
   }
 
@@ -302,12 +305,15 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="dashboard">
+        <div style={{ marginBottom: '32px' }}>
+          <Skeleton width="280px" height="24px" />
+          <div style={{ marginTop: '8px' }}><Skeleton width="320px" height="16px" /></div>
         </div>
-      </div>
+        <Skeleton variant="kpi" />
+        <div style={{ marginTop: '20px' }}><Skeleton variant="chart" /></div>
+        <div style={{ marginTop: '20px' }}><Skeleton variant="chart" /></div>
+      </AppShell>
     )
   }
 
@@ -371,7 +377,7 @@ export default function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: any, name: any) => [`${value} consulta(s)`, name]}
+                  formatter={(value) => [`${value} consulta(s)`, '']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '13px', color: '#6B7280' }} />
@@ -424,7 +430,7 @@ export default function Dashboard() {
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
+                  formatter={(value) => [formatCurrency(Number(value)), '']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '12px' }}
                 />
                 <Bar dataKey="Recebido" stackId="a" fill={COR_PAGO} radius={[0, 0, 0, 0]} maxBarSize={28} />
@@ -449,7 +455,7 @@ export default function Dashboard() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-            Consultas por Mes
+            Consultas por Mês
           </h3>
           {consultasMesData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
@@ -458,7 +464,7 @@ export default function Dashboard() {
                 <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any) => [`${value}`, 'Consultas']}
+                  formatter={(value) => [`${value}`, 'Consultas']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Line type="monotone" dataKey="consultas" stroke="#15803D" strokeWidth={3}
@@ -469,7 +475,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Crie consultas para ver a evolucao</p>
+              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Crie consultas para ver a evolução</p>
             </div>
           )}
         </div>
@@ -481,9 +487,9 @@ export default function Dashboard() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
-              Proximas Atividades
+              Próximas Atividades
             </h3>
-            <span style={{ color: '#9CA3AF', fontSize: '12px' }}>Proximos 30 dias</span>
+            <span style={{ color: '#9CA3AF', fontSize: '12px' }}>Próximos 30 dias</span>
           </div>
 
           {agenda.length > 0 ? (
@@ -522,7 +528,7 @@ export default function Dashboard() {
           ) : (
             <div style={{ height: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <span style={{ fontSize: '32px' }}>📅</span>
-              <p style={{ color: '#9CA3AF', fontSize: '14px', textAlign: 'center', margin: '0' }}>Nenhuma atividade proxima</p>
+              <p style={{ color: '#9CA3AF', fontSize: '14px', textAlign: 'center', margin: '0' }}>Nenhuma atividade próxima</p>
               <p style={{ color: '#D1D5DB', fontSize: '12px', textAlign: 'center', margin: '0' }}>Rituais, consultas e pagamentos aparecem aqui</p>
             </div>
           )}
@@ -536,7 +542,7 @@ export default function Dashboard() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-            Novos Clientes por Mes
+            Novos Clientes por Mês
           </h3>
           {clientesMesData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -545,7 +551,7 @@ export default function Dashboard() {
                 <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any) => [`${value}`, 'Clientes']}
+                  formatter={(value) => [`${value}`, 'Clientes']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
                 />
                 <Bar dataKey="clientes" fill="#1D4ED8" radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -553,7 +559,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Cadastre clientes para ver o grafico</p>
+              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Cadastre clientes para ver o gráfico</p>
             </div>
           )}
         </div>
@@ -562,14 +568,14 @@ export default function Dashboard() {
       {/* Ações rápidas */}
       <div style={{ marginBottom: '32px' }}>
         <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-          Acoes rapidas
+          Ações rápidas
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {[
-            { label: 'Nova consulta', desc: 'Iniciar novo diagnostico Ba Gua', icon: '✨', color: '#7C3AED', link: '/consultas/nova' },
+            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: '✨', color: '#7C3AED', link: '/consultas/nova' },
             { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8', link: '/clientes' },
-            { label: 'Ver relatorios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
-            { label: 'Calendario lunar', desc: 'Proximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
+            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
+            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
           ].map((kpi, i) => (
             <div key={i} onClick={() => window.location.href = kpi.link} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px',
@@ -594,10 +600,10 @@ export default function Dashboard() {
         }}>
           <div>
             <p style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '16px', margin: '0 0 4px 0' }}>
-              Voce esta no plano Freemium
+              Você está no plano Freemium
             </p>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', margin: '0' }}>
-              Faca upgrade para acessar relatorios PDF, cronograma lunar e clientes ilimitados
+              Faça upgrade para acessar relatórios PDF, cronograma lunar e clientes ilimitados
             </p>
           </div>
           <button onClick={() => window.location.href = '/planos'} style={{

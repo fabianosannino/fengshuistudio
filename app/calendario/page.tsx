@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
+import type { Ritual, Profile, Cliente } from '../../src/lib/types'
+import type { User } from '@supabase/supabase-js'
 
 function getMoonPhase(date: Date): { fase: string; emoji: string; percentual: number } {
   const known = new Date(2000, 0, 6, 18, 14)
@@ -72,15 +75,15 @@ const COR_FASE: Record<string, string> = { nova: '#1E3A5F', crescente: '#7C3AED'
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 export default function Calendario() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [mesAtual, setMesAtual] = useState(new Date().getMonth())
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear())
-  const [rituais, setRituais] = useState<any[]>([])
-  const [clientes, setClientes] = useState<any[]>([])
+  const [rituais, setRituais] = useState<Ritual[]>([])
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<Pick<Profile, 'plano'> | null>(null)
   const [message, setMessage] = useState('')
   const [faseSelecionada, setFaseSelecionada] = useState<string | null>(null)
   const [form, setForm] = useState({ titulo: '', descricao: '', fase_lunar: 'nova', data_ritual: '', horario: '', cliente_id: '' })
@@ -122,7 +125,7 @@ export default function Calendario() {
     setSaving(true)
     setMessage('')
     const { error } = await supabase.from('rituais').insert({
-      consultor_id: user.id, titulo: form.titulo, descricao: form.descricao,
+      consultor_id: user!.id, titulo: form.titulo, descricao: form.descricao,
       fase_lunar: form.fase_lunar, data_ritual: form.data_ritual,
       horario: form.horario || null, cliente_id: form.cliente_id || null,
       tipo: 'customizado', status: 'pendente'
@@ -134,7 +137,7 @@ export default function Calendario() {
       setShowForm(false)
       const inicioMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-01`
       const fimMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-${new Date(anoAtual, mesAtual + 1, 0).getDate()}`
-      const { data: rits } = await supabase.from('rituais').select('*, clientes(nome_completo)').eq('consultor_id', user.id).gte('data_ritual', inicioMes).lte('data_ritual', fimMes).order('data_ritual', { ascending: true })
+      const { data: rits } = await supabase.from('rituais').select('*, clientes(nome_completo)').eq('consultor_id', user!.id).gte('data_ritual', inicioMes).lte('data_ritual', fimMes).order('data_ritual', { ascending: true })
       setRituais(rits || [])
       setTimeout(() => setMessage(''), 3000)
     }
@@ -181,12 +184,12 @@ export default function Calendario() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="calendario">
+        <Skeleton width="200px" height="24px" />
+        <div style={{ marginTop: '24px' }}>
+          <Skeleton variant="card" />
         </div>
-      </div>
+      </AppShell>
     )
   }
 
@@ -349,13 +352,13 @@ export default function Calendario() {
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Título *</label>
-                <input name="titulo" value={form.titulo} onChange={handleChange} required placeholder="Nome do ritual"
+                <label htmlFor="input-titulo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Título *</label>
+                <input id="input-titulo" name="titulo" value={form.titulo} onChange={handleChange} required placeholder="Nome do ritual"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Fase lunar</label>
-                <select name="fase_lunar" value={form.fase_lunar} onChange={handleChange}
+                <label htmlFor="select-fase-lunar" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Fase lunar</label>
+                <select id="select-fase-lunar" name="fase_lunar" value={form.fase_lunar} onChange={handleChange}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                   <option value="nova">🌑 Lua Nova</option>
                   <option value="crescente">🌒 Lua Crescente</option>
@@ -364,18 +367,18 @@ export default function Calendario() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data *</label>
-                <input name="data_ritual" type="date" value={form.data_ritual} onChange={handleChange} required
+                <label htmlFor="input-data-ritual" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data *</label>
+                <input id="input-data-ritual" name="data_ritual" type="date" value={form.data_ritual} onChange={handleChange} required
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Horário</label>
-                <input name="horario" type="time" value={form.horario} onChange={handleChange}
+                <label htmlFor="input-horario" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Horário</label>
+                <input id="input-horario" name="horario" type="time" value={form.horario} onChange={handleChange}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente (opcional)</label>
-                <select name="cliente_id" value={form.cliente_id} onChange={handleChange}
+                <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente (opcional)</label>
+                <select id="select-cliente" name="cliente_id" value={form.cliente_id} onChange={handleChange}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                   <option value="">Sem cliente específico</option>
                   {clientes.map(c => <option key={c.id} value={c.id}>{c.nome_completo}</option>)}
@@ -383,8 +386,8 @@ export default function Calendario() {
               </div>
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Descrição</label>
-              <textarea name="descricao" value={form.descricao} onChange={handleChange} rows={3} placeholder="Detalhes do ritual..."
+              <label htmlFor="textarea-descricao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Descrição</label>
+              <textarea id="textarea-descricao" name="descricao" value={form.descricao} onChange={handleChange} rows={3} placeholder="Detalhes do ritual..."
                 style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
             </div>
             <button type="submit" disabled={saving} style={{
