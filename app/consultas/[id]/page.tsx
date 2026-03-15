@@ -648,6 +648,11 @@ export default function ConsultaDetalhe() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
+              background: '#7C3AED', color: '#ffffff', border: 'none',
+              padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>治 Curas & Ativações</button>
             <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
               background: '#1E3A5F', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
