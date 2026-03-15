@@ -3,6 +3,11 @@ import { createSupabaseMiddlewareClient } from './lib/supabase-server'
 
 const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha']
 
+function isSafeRedirect(path: string): boolean {
+  // Only allow relative paths starting with / and no protocol://
+  return path.startsWith('/') && !path.startsWith('//') && !path.includes('://')
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -19,7 +24,10 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
+    // Validate redirect param to prevent open redirect attacks
+    if (isSafeRedirect(pathname)) {
+      loginUrl.searchParams.set('redirect', pathname)
+    }
     return NextResponse.redirect(loginUrl)
   }
 

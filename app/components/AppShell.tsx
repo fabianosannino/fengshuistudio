@@ -127,10 +127,10 @@ export default function AppShell({
     <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'Arial, sans-serif', display: 'flex', transition: 'background 0.3s ease' }}>
 
       {mobileOpen && (
-        <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }} />
+        <div onClick={() => setMobileOpen(false)} role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }} />
       )}
 
-      <aside style={{
+      <aside role="navigation" aria-label="Menu principal" style={{
         width: sidebarOpen ? '240px' : '72px',
         background: t.sidebar,
         height: '100vh',
@@ -175,7 +175,7 @@ export default function AppShell({
           </div>
         )}
 
-        <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <nav aria-label="Navegação principal" style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map((item) => {
             const active = currentPage === item.href.replace('/', '')
             return (
@@ -202,36 +202,36 @@ export default function AppShell({
           borderTop: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', flexDirection: 'column', gap: '4px'
         }}>
-          <button onClick={toggleDark} style={{
+          <button onClick={toggleDark} aria-label={darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'} style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
             borderRadius: '8px', background: 'transparent', border: 'none',
             color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', width: '100%'
           }}>
-            <span style={{ fontSize: '18px' }}>{darkMode ? '☀️' : '🌙'}</span>
+            <span style={{ fontSize: '18px' }} aria-hidden="true">{darkMode ? '☀️' : '🌙'}</span>
             {sidebarOpen && <span>{darkMode ? 'Modo claro' : 'Modo escuro'}</span>}
           </button>
 
-          <button onClick={toggleSidebar} style={{
+          <button onClick={toggleSidebar} aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'} style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
             borderRadius: '8px', background: 'transparent', border: 'none',
             color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', width: '100%'
           }}>
-            <span style={{ fontSize: '18px' }}>{sidebarOpen ? '◀' : '▶'}</span>
+            <span style={{ fontSize: '18px' }} aria-hidden="true">{sidebarOpen ? '◀' : '▶'}</span>
             {sidebarOpen && <span>Recolher</span>}
           </button>
 
-          <button onClick={handleLogout} style={{
+          <button onClick={handleLogout} aria-label="Sair da conta" style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
             borderRadius: '8px', background: 'transparent', border: 'none',
             color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '14px', width: '100%'
           }}>
-            <span style={{ fontSize: '18px' }}>🚪</span>
+            <span style={{ fontSize: '18px' }} aria-hidden="true">🚪</span>
             {sidebarOpen && <span>Sair</span>}
           </button>
         </div>
@@ -247,11 +247,13 @@ export default function AppShell({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid ' + t.border, position: 'sticky', top: 0, zIndex: 30,
         }}>
-          <button onClick={() => setMobileOpen(true)} style={{
+          <button onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" style={{
             background: 'none', border: 'none', fontSize: '24px',
             cursor: 'pointer', padding: '4px',
             display: isMobile ? 'block' : 'none'
-          }}>☰</button>
+          }} aria-expanded={mobileOpen}>
+            <span aria-hidden="true">☰</span>
+          </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: t.textSoft, fontSize: '14px' }}>
@@ -269,7 +271,7 @@ export default function AppShell({
           </div>
         </header>
 
-        <main style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <main id="main-content" role="main" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
           {children}
         </main>
       </div>
@@ -278,6 +280,20 @@ export default function AppShell({
         @media (max-width: 768px) { aside { transform: translateX(-100%) !important; } }
         a:hover { background: rgba(255,255,255,0.1) !important; }
         button:hover { opacity: 0.85; }
+        /* Focus indicators for keyboard navigation */
+        a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+          outline: 2px solid #7C3AED !important;
+          outline-offset: 2px !important;
+        }
+        /* Respect reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
       `}</style>
     </div>
   )

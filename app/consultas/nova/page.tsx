@@ -310,13 +310,13 @@ export default function NovaConsulta() {
               {/* Client selector - only for professionals */}
               {isProfessional && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
+                  <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
                   {clientes.length === 0 ? (
                     <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', color: '#92400E', fontSize: '14px' }}>
                       Nenhum cliente cadastrado. <span style={{ color: '#7C3AED', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
                     </div>
                   ) : (
-                    <select name="cliente_id" value={form.cliente_id} onChange={handleChange} required
+                    <select id="select-cliente" name="cliente_id" value={form.cliente_id} onChange={handleChange} required
                       style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                       <option value="">Selecione o cliente...</option>
                       {clientes.map(c => <option key={c.id} value={c.id}>{c.nome_completo}</option>)}
@@ -341,16 +341,16 @@ export default function NovaConsulta() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>
+                  <label htmlFor="input-nome-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>
                     {isProfessional ? 'Nome do imovel' : 'Nome do seu imovel'}
                   </label>
-                  <input name="nome_imovel" value={form.nome_imovel} onChange={handleChange}
+                  <input id="input-nome-imovel" name="nome_imovel" value={form.nome_imovel} onChange={handleChange}
                     placeholder={isProfessional ? 'Ex: Apartamento Centro' : 'Ex: Minha Casa, Meu Apto'}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Tipo do imovel</label>
-                  <select name="tipo_imovel" value={form.tipo_imovel} onChange={handleChange}
+                  <label htmlFor="select-tipo-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Tipo do imovel</label>
+                  <select id="select-tipo-imovel" name="tipo_imovel" value={form.tipo_imovel} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="residencial">Residencial</option>
                     <option value="comercial">Comercial</option>
@@ -359,13 +359,13 @@ export default function NovaConsulta() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Area total (m²)</label>
-                  <input name="area_total_m2" value={form.area_total_m2} onChange={handleChange} type="number" placeholder="Ex: 80"
+                  <label htmlFor="input-area-total" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Area total (m²)</label>
+                  <input id="input-area-total" name="area_total_m2" value={form.area_total_m2} onChange={handleChange} type="number" placeholder="Ex: 80"
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Posicao da porta</label>
-                  <select name="porta_posicao" value={form.porta_posicao} onChange={handleChange}
+                  <label htmlFor="select-porta-posicao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Posicao da porta</label>
+                  <select id="select-porta-posicao" name="porta_posicao" value={form.porta_posicao} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="centro_frente">Centro da frente</option>
                     <option value="esquerda_frente">Esquerda da frente</option>
@@ -375,8 +375,8 @@ export default function NovaConsulta() {
               </div>
 
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Endereco do imovel</label>
-                <input name="endereco_imovel" value={form.endereco_imovel} onChange={handleChange} placeholder="Rua, numero, bairro, cidade"
+                <label htmlFor="input-endereco-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Endereco do imovel</label>
+                <input id="input-endereco-imovel" name="endereco_imovel" value={form.endereco_imovel} onChange={handleChange} placeholder="Rua, numero, bairro, cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
 

@@ -49,8 +49,8 @@ export default function EsqueciSenha() {
         {!sent ? (
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label htmlFor="input-email" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
+              <input id="input-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="seu@email.com" required
                 style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
             </div>

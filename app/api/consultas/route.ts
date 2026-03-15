@@ -81,7 +81,8 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    console.error('Consulta insert error:', error.message)
+    return NextResponse.json({ error: 'Erro ao criar consulta. Tente novamente.' }, { status: 400 })
   }
 
   return NextResponse.json(data)

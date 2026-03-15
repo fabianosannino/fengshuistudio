@@ -83,8 +83,9 @@ export default function Parceiros() {
         display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end'
       }}>
         <div style={{ flex: 1, minWidth: '200px' }}>
-          <label style={{ display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Buscar</label>
+          <label htmlFor="input-busca" style={{ display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Buscar</label>
           <input
+            id="input-busca"
             type="text"
             value={filtroBusca}
             onChange={e => setFiltroBusca(e.target.value)}
@@ -93,16 +94,16 @@ export default function Parceiros() {
           />
         </div>
         <div style={{ minWidth: '160px' }}>
-          <label style={{ display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Estado</label>
-          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+          <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Estado</label>
+          <select id="select-estado" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
             style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
             <option value="">Todos os estados</option>
             {ESTADOS_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
           </select>
         </div>
         <div style={{ minWidth: '200px' }}>
-          <label style={{ display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Tipo de profissional</label>
-          <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
+          <label htmlFor="select-tipo-profissional" style={{ display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Tipo de profissional</label>
+          <select id="select-tipo-profissional" value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
             style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
             <option value="">Todos</option>
             {Object.entries(TIPOS_PROFISSIONAL).map(([key, val]) => (

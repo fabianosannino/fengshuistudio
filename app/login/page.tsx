@@ -44,7 +44,9 @@ function LoginForm() {
 
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const rawRedirect = searchParams.get('redirect') || '/dashboard'
+  // Prevent open redirect — only allow relative paths
+  const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') && !rawRedirect.includes('://') ? rawRedirect : '/dashboard'
 
   const isProfessional = tipoUsuario !== 'pessoal'
 
@@ -246,13 +248,13 @@ function LoginForm() {
         ) : !isSignUp ? (
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label htmlFor="login-email" style={labelStyle}>E-mail</label>
+              <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="seu@email.com" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={labelStyle}>Senha</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              <label htmlFor="login-senha" style={labelStyle}>Senha</label>
+              <input id="login-senha" type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Sua senha" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
             </div>
             <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
@@ -273,18 +275,18 @@ function LoginForm() {
         ) : signUpStep === 1 ? (
           <form onSubmit={handleStep1}>
             <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>Nome completo</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)}
+              <label htmlFor="signup-nome" style={labelStyle}>Nome completo</label>
+              <input id="signup-nome" type="text" value={name} onChange={e => setName(e.target.value)}
                 placeholder="Seu nome completo" required style={inputStyle} />
             </div>
             <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label htmlFor="signup-email" style={labelStyle}>E-mail</label>
+              <input id="signup-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="seu@email.com" required style={inputStyle} />
             </div>
             <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>Senha</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              <label htmlFor="signup-senha" style={labelStyle}>Senha</label>
+              <input id="signup-senha" type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Minimo 6 caracteres" required style={inputStyle} />
             </div>
 
@@ -346,36 +348,36 @@ function LoginForm() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
               <div>
-                <label style={labelStyle}>Profissao *</label>
-                <input type="text" value={profForm.profissao}
+                <label htmlFor="signup-profissao" style={labelStyle}>Profissao *</label>
+                <input id="signup-profissao" type="text" value={profForm.profissao}
                   onChange={e => setProfForm({ ...profForm, profissao: e.target.value })}
                   placeholder="Ex: Arquiteto, Consultor" required style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Area de atuacao *</label>
-                <input type="text" value={profForm.area_atuacao}
+                <label htmlFor="signup-area-atuacao" style={labelStyle}>Area de atuacao *</label>
+                <input id="signup-area-atuacao" type="text" value={profForm.area_atuacao}
                   onChange={e => setProfForm({ ...profForm, area_atuacao: e.target.value })}
                   placeholder="Ex: Residencial, Comercial" required style={inputStyle} />
               </div>
             </div>
 
             <div style={{ marginBottom: '12px' }}>
-              <label style={labelStyle}>Registro profissional</label>
-              <input type="text" value={profForm.registro_profissional}
+              <label htmlFor="signup-registro" style={labelStyle}>Registro profissional</label>
+              <input id="signup-registro" type="text" value={profForm.registro_profissional}
                 onChange={e => setProfForm({ ...profForm, registro_profissional: e.target.value })}
                 placeholder="Ex: CAU A12345-6, CREA 12345" style={inputStyle} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
               <div>
-                <label style={labelStyle}>LinkedIn (portfolio)</label>
-                <input type="url" value={profForm.linkedin}
+                <label htmlFor="signup-linkedin" style={labelStyle}>LinkedIn (portfolio)</label>
+                <input id="signup-linkedin" type="url" value={profForm.linkedin}
                   onChange={e => setProfForm({ ...profForm, linkedin: e.target.value })}
                   placeholder="https://linkedin.com/in/..." style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Instagram (portfolio)</label>
-                <input type="text" value={profForm.instagram}
+                <label htmlFor="signup-instagram" style={labelStyle}>Instagram (portfolio)</label>
+                <input id="signup-instagram" type="text" value={profForm.instagram}
                   onChange={e => setProfForm({ ...profForm, instagram: e.target.value })}
                   placeholder="@seuperfil" style={inputStyle} />
               </div>

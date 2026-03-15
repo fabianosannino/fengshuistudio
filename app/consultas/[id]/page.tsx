@@ -5,17 +5,7 @@ import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import TabRodaDaVida from './TabRodaDaVida'
 import TabFluxoChi from './TabFluxoChi'
-
-const CRITERIOS = [
-  'Limpeza e organizacao',
-  'Iluminacao adequada',
-  'Ventilacao e ar fresco',
-  'Cores harmonicas',
-  'Mobiliario posicionado',
-  'Plantas e elementos naturais',
-  'Ausencia de objetos quebrados',
-  'Fluxo de energia livre',
-]
+import { CRITERIOS } from '../../../src/lib/constants'
 
 // Cômodo types for room mapping per Guá
 const COMODO_TIPOS = [
@@ -206,8 +196,9 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
 
       {/* Texto */}
       <div style={{ marginBottom: '10px' }}>
-        <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Orientação ao cliente</label>
+        <label htmlFor="input-orientacao-cliente" style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Orientação ao cliente</label>
         <textarea
+          id="input-orientacao-cliente"
           value={texto}
           onChange={e => setTexto(e.target.value)}
           placeholder="Descreva a recomendação, orientação ou direcionamento para o cliente..."
@@ -835,10 +826,11 @@ export default function ConsultaDetalhe() {
                   background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#7C3AED' }}>
+                    <label htmlFor="select-comodo-setor" style={{ fontSize: '13px', fontWeight: 'bold', color: '#7C3AED' }}>
                       Cômodo neste setor:
                     </label>
                     <select
+                      id="select-comodo-setor"
                       value={comodoMap[setorAtivoData.id] || ''}
                       onChange={e => setComodoMap(prev => ({ ...prev, [setorAtivoData.id]: e.target.value }))}
                       style={{

@@ -158,20 +158,20 @@ export default function Perfil() {
             <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados pessoais</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
-                <input name="nome_completo" value={form.nome_completo} onChange={handleChange} placeholder="Seu nome completo" style={inputStyle} />
+                <label htmlFor="input-nome-completo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
+                <input id="input-nome-completo" name="nome_completo" value={form.nome_completo} onChange={handleChange} placeholder="Seu nome completo" style={inputStyle} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
-                <input name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999" style={inputStyle} />
+                <label htmlFor="input-telefone" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
+                <input id="input-telefone" name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999" style={inputStyle} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
-                <input name="cidade" value={form.cidade} onChange={handleChange} placeholder="Sua cidade" style={inputStyle} />
+                <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
+                <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange} placeholder="Sua cidade" style={inputStyle} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
-                <select name="estado" value={form.estado} onChange={handleChange}
+                <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
+                <select id="select-estado" name="estado" value={form.estado} onChange={handleChange}
                   style={{ ...inputStyle, background: '#fff' }}>
                   <option value="">Selecione...</option>
                   {ESTADOS_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
@@ -185,17 +185,17 @@ export default function Perfil() {
             <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados profissionais</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome da empresa</label>
-                <input name="nome_empresa" value={form.nome_empresa} onChange={handleChange} placeholder="Seu consultorio ou empresa" style={inputStyle} />
+                <label htmlFor="input-nome-empresa" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome da empresa</label>
+                <input id="input-nome-empresa" name="nome_empresa" value={form.nome_empresa} onChange={handleChange} placeholder="Seu consultorio ou empresa" style={inputStyle} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Site</label>
-                <input name="site" value={form.site} onChange={handleChange} placeholder="www.seusite.com.br" style={inputStyle} />
+                <label htmlFor="input-site" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Site</label>
+                <input id="input-site" name="site" value={form.site} onChange={handleChange} placeholder="www.seusite.com.br" style={inputStyle} />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bio / Apresentacao</label>
-              <textarea name="bio" value={form.bio} onChange={handleChange} placeholder="Descreva sua experiencia..." rows={4}
+              <label htmlFor="textarea-bio" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bio / Apresentacao</label>
+              <textarea id="textarea-bio" name="bio" value={form.bio} onChange={handleChange} placeholder="Descreva sua experiencia..." rows={4}
                 style={{ ...inputStyle, resize: 'vertical' as const }} />
             </div>
           </div>
@@ -209,24 +209,24 @@ export default function Perfil() {
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Profissao</label>
-                  <input name="profissao" value={form.profissao} onChange={handleChange} placeholder="Ex: Consultor de Feng Shui" style={inputStyle} />
+                  <label htmlFor="input-profissao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Profissao</label>
+                  <input id="input-profissao" name="profissao" value={form.profissao} onChange={handleChange} placeholder="Ex: Consultor de Feng Shui" style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Area de atuacao</label>
-                  <input name="area_atuacao" value={form.area_atuacao} onChange={handleChange} placeholder="Ex: Residencial e Comercial" style={inputStyle} />
+                  <label htmlFor="input-area-atuacao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Area de atuacao</label>
+                  <input id="input-area-atuacao" name="area_atuacao" value={form.area_atuacao} onChange={handleChange} placeholder="Ex: Residencial e Comercial" style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Registro profissional</label>
-                  <input name="registro_profissional" value={form.registro_profissional} onChange={handleChange} placeholder="CAU, CREA, etc." style={inputStyle} />
+                  <label htmlFor="input-registro-profissional" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Registro profissional</label>
+                  <input id="input-registro-profissional" name="registro_profissional" value={form.registro_profissional} onChange={handleChange} placeholder="CAU, CREA, etc." style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>LinkedIn</label>
-                  <input name="linkedin" value={form.linkedin} onChange={handleChange} placeholder="https://linkedin.com/in/seu-perfil" style={inputStyle} />
+                  <label htmlFor="input-linkedin" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>LinkedIn</label>
+                  <input id="input-linkedin" name="linkedin" value={form.linkedin} onChange={handleChange} placeholder="https://linkedin.com/in/seu-perfil" style={inputStyle} />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Instagram</label>
-                  <input name="instagram" value={form.instagram} onChange={handleChange} placeholder="@seuperfil ou https://instagram.com/seuperfil" style={inputStyle} />
+                  <label htmlFor="input-instagram" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Instagram</label>
+                  <input id="input-instagram" name="instagram" value={form.instagram} onChange={handleChange} placeholder="@seuperfil ou https://instagram.com/seuperfil" style={inputStyle} />
                 </div>
               </div>
 

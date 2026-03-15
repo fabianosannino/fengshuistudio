@@ -375,8 +375,8 @@ export default function Pagamentos() {
             <form onSubmit={handleSave}>
               {/* Descrição */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Descricao *</label>
-                <input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
+                <label htmlFor="input-descricao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Descricao *</label>
+                <input id="input-descricao" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
                   placeholder="Ex: Consulta residencial - Joao" required
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
@@ -384,14 +384,14 @@ export default function Pagamentos() {
               {/* Valor + Status */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Valor (R$) *</label>
-                  <input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })}
+                  <label htmlFor="input-valor" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Valor (R$) *</label>
+                  <input id="input-valor" type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })}
                     placeholder="350.00" required
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Status</label>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                  <label htmlFor="select-status" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Status</label>
+                  <select id="select-status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="pendente">Pendente</option>
                     <option value="pago">Pago</option>
@@ -404,14 +404,14 @@ export default function Pagamentos() {
               {/* Datas */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Vencimento *</label>
-                  <input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
+                  <label htmlFor="input-vencimento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Vencimento *</label>
+                  <input id="input-vencimento" type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
                     required
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data pagamento</label>
-                  <input type="date" value={form.data_pagamento} onChange={e => setForm({ ...form, data_pagamento: e.target.value })}
+                  <label htmlFor="input-data-pagamento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data pagamento</label>
+                  <input id="input-data-pagamento" type="date" value={form.data_pagamento} onChange={e => setForm({ ...form, data_pagamento: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
@@ -419,8 +419,8 @@ export default function Pagamentos() {
               {/* Método + Cliente */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Metodo de pagamento</label>
-                  <select value={form.metodo_pagamento} onChange={e => setForm({ ...form, metodo_pagamento: e.target.value })}
+                  <label htmlFor="select-metodo-pagamento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Metodo de pagamento</label>
+                  <select id="select-metodo-pagamento" value={form.metodo_pagamento} onChange={e => setForm({ ...form, metodo_pagamento: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="">Selecione...</option>
                     {Object.entries(METODOS).map(([k, v]) => (
@@ -429,8 +429,8 @@ export default function Pagamentos() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente</label>
-                  <select value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })}
+                  <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente</label>
+                  <select id="select-cliente" value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                     <option value="">Nenhum</option>
                     {clientes.map(c => (
@@ -442,8 +442,8 @@ export default function Pagamentos() {
 
               {/* Consulta */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Consulta vinculada</label>
-                <select value={form.consulta_id} onChange={e => setForm({ ...form, consulta_id: e.target.value })}
+                <label htmlFor="select-consulta" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Consulta vinculada</label>
+                <select id="select-consulta" value={form.consulta_id} onChange={e => setForm({ ...form, consulta_id: e.target.value })}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                   <option value="">Nenhuma</option>
                   {consultas.map(c => (
@@ -454,8 +454,8 @@ export default function Pagamentos() {
 
               {/* Observações */}
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observacoes</label>
-                <textarea value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })}
+                <label htmlFor="textarea-observacoes" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observacoes</label>
+                <textarea id="textarea-observacoes" value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })}
                   placeholder="Notas adicionais..." rows={3}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
               </div>

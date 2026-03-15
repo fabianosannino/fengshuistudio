@@ -148,28 +148,28 @@ export default function Clientes() {
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>
-                <input name="nome_completo" value={form.nome_completo} onChange={handleChange} required placeholder="Nome do cliente"
+                <label htmlFor="input-nome-completo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>
+                <input id="input-nome-completo" name="nome_completo" value={form.nome_completo} onChange={handleChange} required placeholder="Nome do cliente"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
-                <input name="email" value={form.email} onChange={handleChange} type="email" placeholder="email@exemplo.com"
+                <label htmlFor="input-email" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
+                <input id="input-email" name="email" value={form.email} onChange={handleChange} type="email" placeholder="email@exemplo.com"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
-                <input name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999"
+                <label htmlFor="input-telefone" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Telefone</label>
+                <input id="input-telefone" name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
-                <input name="cidade" value={form.cidade} onChange={handleChange} placeholder="Cidade"
+                <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
+                <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange} placeholder="Cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
-                <select name="estado" value={form.estado} onChange={handleChange}
+                <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
+                <select id="select-estado" name="estado" value={form.estado} onChange={handleChange}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                   <option value="">Selecione...</option>
                   {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
@@ -178,8 +178,8 @@ export default function Clientes() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observacoes</label>
-                <input name="notas" value={form.notas} onChange={handleChange} placeholder="Anotacoes sobre o cliente"
+                <label htmlFor="input-notas" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observacoes</label>
+                <input id="input-notas" name="notas" value={form.notas} onChange={handleChange} placeholder="Anotacoes sobre o cliente"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
