@@ -21,10 +21,19 @@ export default function Clientes() {
     nome_completo: '',
     email: '',
     telefone: '',
+    cep: '',
+    rua: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
     cidade: '',
     estado: '',
+    pais: 'Brasil',
     notas: ''
   })
+  const [cepLoading, setCepLoading] = useState(false)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -67,8 +76,17 @@ export default function Clientes() {
       if (!res.ok) {
         setMessage(data.error || 'Erro ao salvar cliente.')
       } else {
+        // Upload photo if selected
+        if (fotoFile && data.id) {
+          const fd = new FormData()
+          fd.append('foto', fotoFile)
+          fd.append('cliente_id', data.id)
+          await fetch('/api/clientes/foto', { method: 'POST', body: fd })
+        }
         setMessage('Cliente cadastrado com sucesso!')
-        setForm({ nome_completo: '', email: '', telefone: '', cidade: '', estado: '', notas: '' })
+        setForm({ nome_completo: '', email: '', telefone: '', cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil', notas: '' })
+        setFotoFile(null)
+        setFotoPreview(null)
         setShowForm(false)
         if (user) await loadClientes(user.id)
       }
@@ -79,7 +97,50 @@ export default function Clientes() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    if (name === 'cep') {
+      // CEP mask: 00000-000
+      const digits = value.replace(/\D/g, '').slice(0, 8)
+      const masked = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits
+      setForm({ ...form, cep: masked })
+      return
+    }
+    setForm({ ...form, [name]: value })
+  }
+
+  async function handleCepBlur() {
+    const digits = form.cep.replace(/\D/g, '')
+    if (digits.length !== 8) return
+    setCepLoading(true)
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      const data = await res.json()
+      if (!data.erro) {
+        setForm(prev => ({
+          ...prev,
+          rua: data.logradouro || prev.rua,
+          bairro: data.bairro || prev.bairro,
+          cidade: data.localidade || prev.cidade,
+          estado: data.uf || prev.estado,
+        }))
+      }
+    } catch { /* ignore network errors */ }
+    setCepLoading(false)
+  }
+
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('Formato inválido. Use JPG, PNG ou WEBP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Arquivo muito grande. Máximo 5MB.')
+      return
+    }
+    setFotoFile(file)
+    setFotoPreview(URL.createObjectURL(file))
   }
 
   if (loading) {
@@ -154,6 +215,35 @@ export default function Clientes() {
             Novo Cliente
           </h2>
           <form onSubmit={handleSave}>
+            {/* Foto de perfil */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{
+                width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
+                background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px dashed #D1D5DB', flexShrink: 0,
+              }}>
+                {fotoPreview ? (
+                  <img src={fotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
+                )}
+              </div>
+              <div>
+                <label htmlFor="input-foto" style={{ display: 'inline-block', padding: '8px 16px', background: '#F3F4F6', color: '#374151', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  {fotoPreview ? 'Trocar foto' : 'Adicionar foto'}
+                </label>
+                <input id="input-foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFotoChange} style={{ display: 'none' }} />
+                {fotoPreview && (
+                  <button type="button" onClick={() => { setFotoFile(null); setFotoPreview(null) }} style={{
+                    marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                    border: 'none', fontSize: '13px', cursor: 'pointer'
+                  }}>Remover</button>
+                )}
+                <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 5MB.</p>
+              </div>
+            </div>
+
+            {/* Dados pessoais */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label htmlFor="input-nome-completo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo *</label>
@@ -170,24 +260,66 @@ export default function Clientes() {
                 <input id="input-telefone" name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
+            </div>
+
+            {/* Endereço */}
+            <h3 style={{ color: '#1E3A5F', fontSize: '15px', fontWeight: 'bold', margin: '20px 0 12px 0', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>Endereço</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
-                <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange} placeholder="Cidade"
+                <label htmlFor="input-cep" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>CEP *</label>
+                <div style={{ position: 'relative' }}>
+                  <input id="input-cep" name="cep" value={form.cep} onChange={handleChange} onBlur={handleCepBlur} required placeholder="00000-000" maxLength={9}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                  {cepLoading && <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#7C3AED', fontSize: '12px' }}>Buscando...</span>}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="input-rua" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Rua / Logradouro *</label>
+                <input id="input-rua" name="rua" value={form.rua} onChange={handleChange} required placeholder="Rua, Avenida, etc."
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
-                <select id="select-estado" name="estado" value={form.estado} onChange={handleChange}
+                <label htmlFor="input-numero" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Número *</label>
+                <input id="input-numero" name="numero" value={form.numero} onChange={handleChange} required placeholder="Nº"
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div>
+                <label htmlFor="input-complemento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Complemento</label>
+                <input id="input-complemento" name="complemento" value={form.complemento} onChange={handleChange} placeholder="Apto, Bloco..."
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label htmlFor="input-bairro" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bairro *</label>
+                <input id="input-bairro" name="bairro" value={form.bairro} onChange={handleChange} required placeholder="Bairro"
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade *</label>
+                <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange} required placeholder="Cidade"
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado *</label>
+                <select id="select-estado" name="estado" value={form.estado} onChange={handleChange} required
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
-                  <option value="">Selecione...</option>
+                  <option value="">UF</option>
                   {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
                     <option key={uf} value={uf}>{uf}</option>
                   ))}
                 </select>
               </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
-                <label htmlFor="input-notas" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observacoes</label>
-                <input id="input-notas" name="notas" value={form.notas} onChange={handleChange} placeholder="Anotacoes sobre o cliente"
+                <label htmlFor="input-pais" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>País *</label>
+                <input id="input-pais" name="pais" value={form.pais} onChange={handleChange} required placeholder="Brasil"
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label htmlFor="input-notas" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Observações</label>
+                <input id="input-notas" name="notas" value={form.notas} onChange={handleChange} placeholder="Anotações sobre o cliente"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
@@ -220,11 +352,16 @@ export default function Clientes() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div style={{
-                  width: '40px', height: '40px', borderRadius: '50%',
+                  width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
                   background: '#7C3AED', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px'
+                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
+                  flexShrink: 0,
                 }}>
-                  {cliente.nome_completo.charAt(0).toUpperCase()}
+                  {cliente.foto_url ? (
+                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    cliente.nome_completo.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <span style={{
                   background: '#F0FDF4', color: '#15803D', padding: '2px 10px',

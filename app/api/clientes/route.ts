@@ -50,9 +50,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  const { nome_completo, email, telefone, cidade, estado, notas } = body as {
+  const { nome_completo, email, telefone, cep, rua, numero, complemento, bairro, cidade, estado, pais, notas } = body as {
     nome_completo?: string; email?: string; telefone?: string;
-    cidade?: string; estado?: string; notas?: string
+    cep?: string; rua?: string; numero?: string; complemento?: string; bairro?: string;
+    cidade?: string; estado?: string; pais?: string; notas?: string
   }
 
   if (!nome_completo || typeof nome_completo !== 'string' || nome_completo.trim().length === 0) {
@@ -63,8 +64,14 @@ export async function POST(request: Request) {
     nome_completo: nome_completo.trim(),
     email: email || null,
     telefone: telefone || null,
+    cep: cep || null,
+    rua: rua || null,
+    numero: numero || null,
+    complemento: complemento || null,
+    bairro: bairro || null,
     cidade: cidade || null,
     estado: estado || null,
+    pais: pais || null,
     notas: notas || null,
     consultor_id: user.id,
   }).select().single()
