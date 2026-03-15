@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import TabRodaDaVida from './TabRodaDaVida'
+import TabFluxoChi from './TabFluxoChi'
 
 const CRITERIOS = [
   'Limpeza e organizacao',
@@ -15,9 +17,47 @@ const CRITERIOS = [
   'Fluxo de energia livre',
 ]
 
+// Cômodo types for room mapping per Guá
+const COMODO_TIPOS = [
+  { value: '', label: '— Selecione —' },
+  { value: 'sala', label: 'Sala de Estar' },
+  { value: 'quarto_casal', label: 'Quarto do Casal' },
+  { value: 'quarto_filho', label: 'Quarto de Filho(a)' },
+  { value: 'quarto_hospede', label: 'Quarto de Hóspede' },
+  { value: 'escritorio', label: 'Escritório / Home Office' },
+  { value: 'cozinha', label: 'Cozinha' },
+  { value: 'banheiro', label: 'Banheiro' },
+  { value: 'lavabo', label: 'Lavabo' },
+  { value: 'area_servico', label: 'Área de Serviço' },
+  { value: 'garagem', label: 'Garagem' },
+  { value: 'varanda', label: 'Varanda / Sacada' },
+  { value: 'corredor', label: 'Corredor' },
+  { value: 'despensa', label: 'Despensa' },
+  { value: 'jardim', label: 'Jardim / Área Externa' },
+]
+
+// Favorability mapping: which rooms are favorable in each Guá
+const COMODO_FAVORAVEL: Record<string, { favoravel: string[]; problematico: string[] }> = {
+  'Carreira': { favoravel: ['escritorio', 'sala'], problematico: ['banheiro', 'despensa'] },
+  'Espiritualidade': { favoravel: ['quarto_casal', 'escritorio'], problematico: ['banheiro', 'cozinha'] },
+  'Conhecimento': { favoravel: ['quarto_casal', 'escritorio'], problematico: ['banheiro', 'cozinha'] },
+  'Família': { favoravel: ['sala', 'cozinha', 'quarto_casal'], problematico: ['banheiro', 'garagem'] },
+  'Prosperidade': { favoravel: ['escritorio', 'sala', 'cozinha'], problematico: ['banheiro', 'area_servico'] },
+  'Centro': { favoravel: ['sala'], problematico: ['banheiro', 'escada'] },
+  'Centro/Saúde': { favoravel: ['sala'], problematico: ['banheiro', 'escada'] },
+  'Fama': { favoravel: ['sala', 'escritorio'], problematico: ['banheiro', 'garagem'] },
+  'Fama/Reputação': { favoravel: ['sala', 'escritorio'], problematico: ['banheiro', 'garagem'] },
+  'Relacionamentos': { favoravel: ['quarto_casal', 'sala'], problematico: ['banheiro', 'area_servico'] },
+  'Criatividade': { favoravel: ['quarto_filho', 'escritorio'], problematico: ['banheiro', 'despensa'] },
+  'Filhos': { favoravel: ['quarto_filho', 'escritorio'], problematico: ['banheiro', 'despensa'] },
+  'Pessoas Úteis': { favoravel: ['sala', 'escritorio', 'varanda'], problematico: ['banheiro', 'area_servico'] },
+  'Pessoas Uteis': { favoravel: ['sala', 'escritorio', 'varanda'], problematico: ['banheiro', 'area_servico'] },
+}
+
 const SETOR_DICAS: Record<string, string[]> = {
   'Carreira':       ['Adicione elemento água: aquário, fonte ou imagem de rio','Use tons pretos, azul escuro e ondulados','Coloque espelho estrategicamente para ampliar o espaço','Mantenha o caminho até a porta livre','Adicione cristais negros como obsidiana'],
   'Conhecimento':   ['Crie espaço de estudo ou leitura tranquilo','Use tons azul-escuro, verde e preto','Adicione livros, mapas ou objetos de aprendizado','Iluminação focada e direta para concentração','Elimine distrações e eletrônicos desnecessários'],
+  'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos','Iluminação suave com velas ou luz indireta','Mantenha silêncio e tranquilidade neste setor'],
   'Família':        ['Use tons verdes e azuis para harmonia familiar','Coloque fotos da família em momentos felizes','Adicione plantas de madeira como bambu da sorte','Mantenha a área livre de objetos de conflito','Use madeira natural na decoração'],
   'Prosperidade':   ['Adicione plantas saudáveis e viçosas','Use tons roxo, verde e dourado','Coloque símbolos de abundância como moedas ou peixes','Mantenha este setor sempre limpo e iluminado','Ative com fonte de água pequena ou aquário'],
   'Centro':         ['Adicione cristais amarelos ou cerâmicas','Mantenha sempre limpo — centro irradia para todos os setores','Use tons terrosos: amarelo, ocre, marrom','Este setor influencia todos os demais','Coloque uma tigela de cristal ou pedras naturais'],
@@ -29,7 +69,6 @@ const SETOR_DICAS: Record<string, string[]> = {
   'Relacionamentos':['Use tons rosa, vermelho e branco em pares','Coloque objetos em duplas: velas, porta-retratos','Adicione cristais de quartzo rosa','Exponha fotos felizes com pessoas amadas','Remova imagens de solidão ou objetos únicos'],
   'Fama':           ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos','Adicione objetos triangulares ou em forma de chama','Coloque imagens de animais com força e presença'],
   'Fama/Reputação': ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos','Adicione objetos triangulares ou em forma de chama','Coloque imagens de animais com força e presença'],
-  'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos','Iluminação suave com velas ou luz indireta','Mantenha silêncio e tranquilidade neste setor'],
 }
 
 // Map recommendation keywords to product categories for affiliate links
@@ -213,6 +252,13 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
   )
 }
 
+// ── Tabs ─────────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'diagnostico', label: 'Diagnóstico Ba Guá', icon: '☯' },
+  { id: 'roda_vida', label: 'Roda da Vida', icon: '◎' },
+  { id: 'fluxo_chi', label: 'Fluxo de Chi', icon: '🌊' },
+]
+
 export default function ConsultaDetalhe() {
   const router = useRouter()
   const params = useParams()
@@ -223,11 +269,18 @@ export default function ConsultaDetalhe() {
   const [criterios, setCriterios] = useState<Record<string, Record<string, number>>>({})
   const [notas, setNotas] = useState<Record<string, Record<string, string>>>({})
   const [customRecs, setCustomRecs] = useState<Record<string, CustomRec[]>>({})
+  const [comodoMap, setComodoMap] = useState<Record<string, string>>({})
   const [setorAtivo, setSetorAtivo] = useState<string | null>(null)
   const [recModal, setRecModal] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('diagnostico')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+
+  // New data for Roda da Vida & Chi Flow
+  const [rodaData, setRodaData] = useState<Record<string, number>>({})
+  const [checklistChi, setChecklistChi] = useState<string[]>([])
+  const [posicaoComando, setPosicaoComando] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     async function load() {
@@ -243,6 +296,11 @@ export default function ConsultaDetalhe() {
       if (!consulta) { router.push('/consultas'); return }
       setConsulta(consulta)
 
+      // Load advanced diagnostic data (stored as JSONB)
+      setRodaData(consulta.roda_da_vida || {})
+      setChecklistChi(consulta.checklist_chi || [])
+      setPosicaoComando(consulta.posicao_comando || {})
+
       const { data: setoresData } = await supabase
         .from('setores_bagua')
         .select('*, diagnostico_criterios(*)')
@@ -254,10 +312,12 @@ export default function ConsultaDetalhe() {
       const cMap: Record<string, Record<string, number>> = {}
       const nMap: Record<string, Record<string, string>> = {}
       const rMap: Record<string, CustomRec[]> = {}
+      const cmMap: Record<string, string> = {}
       setoresData?.forEach(setor => {
         cMap[setor.id] = {}
         nMap[setor.id] = {}
         rMap[setor.id] = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom : []
+        cmMap[setor.id] = setor.comodo_tipo || ''
         setor.diagnostico_criterios?.forEach((c: any) => {
           cMap[setor.id][c.criterio] = c.score
           nMap[setor.id][c.criterio] = c.notas || ''
@@ -266,6 +326,7 @@ export default function ConsultaDetalhe() {
       setCriterios(cMap)
       setNotas(nMap)
       setCustomRecs(rMap)
+      setComodoMap(cmMap)
 
       if (setoresData && setoresData.length > 0) {
         setSetorAtivo(setoresData[0].id)
@@ -275,7 +336,7 @@ export default function ConsultaDetalhe() {
     }
     load()
 
-    // Recarrega ao voltar do bagua-planta
+    // Reload on focus (returning from bagua-planta)
     const onFocus = () => load()
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
@@ -293,6 +354,16 @@ export default function ConsultaDetalhe() {
     if (pct >= 70) return '#15803D'
     if (pct >= 40) return '#D97706'
     return '#DC2626'
+  }
+
+  // Room favorability check
+  function comodoFavorabilidade(setorNome: string, comodoTipo: string): { label: string; cor: string } | null {
+    if (!comodoTipo) return null
+    const regra = COMODO_FAVORAVEL[setorNome]
+    if (!regra) return null
+    if (regra.favoravel.includes(comodoTipo)) return { label: 'Favorável', cor: '#15803D' }
+    if (regra.problematico.includes(comodoTipo)) return { label: 'Problemático', cor: '#DC2626' }
+    return { label: 'Neutro', cor: '#D97706' }
   }
 
   async function handleSaveSetor(setorId: string) {
@@ -313,12 +384,54 @@ export default function ConsultaDetalhe() {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
       const pct = getScore(setorId)
-      await supabase.from('setores_bagua').update({
+      const updateData: any = {
         score_percentual: pct,
         recomendacoes_custom: customRecs[setorId] || [],
-      }).eq('id', setorId)
-      setSetores(prev => prev.map(s => s.id === setorId ? { ...s, score_percentual: pct, recomendacoes_custom: customRecs[setorId] || [] } : s))
+      }
+      // Save room mapping if column exists
+      if (comodoMap[setorId] !== undefined) {
+        updateData.comodo_tipo = comodoMap[setorId] || null
+      }
+      await supabase.from('setores_bagua').update(updateData).eq('id', setorId)
+      setSetores(prev => prev.map(s => s.id === setorId ? {
+        ...s, score_percentual: pct,
+        recomendacoes_custom: customRecs[setorId] || [],
+        comodo_tipo: comodoMap[setorId] || null
+      } : s))
       setMessage('Setor salvo com sucesso!')
+      setTimeout(() => setMessage(''), 3000)
+    }
+    setSaving(false)
+  }
+
+  async function handleSaveRoda() {
+    setSaving(true)
+    setMessage('')
+    const { error } = await supabase.from('consultas').update({
+      roda_da_vida: rodaData
+    }).eq('id', id)
+    if (error) {
+      setMessage('Erro ao salvar Roda da Vida: ' + error.message)
+    } else {
+      setConsulta((prev: any) => ({ ...prev, roda_da_vida: rodaData }))
+      setMessage('Roda da Vida salva com sucesso!')
+      setTimeout(() => setMessage(''), 3000)
+    }
+    setSaving(false)
+  }
+
+  async function handleSaveChi() {
+    setSaving(true)
+    setMessage('')
+    const { error } = await supabase.from('consultas').update({
+      checklist_chi: checklistChi,
+      posicao_comando: posicaoComando
+    }).eq('id', id)
+    if (error) {
+      setMessage('Erro ao salvar: ' + error.message)
+    } else {
+      setConsulta((prev: any) => ({ ...prev, checklist_chi: checklistChi, posicao_comando: posicaoComando }))
+      setMessage('Fluxo de Chi salvo com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
     setSaving(false)
@@ -366,7 +479,7 @@ export default function ConsultaDetalhe() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
                   <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-                    💡 Recomendações — {recSetorData.nome}
+                    Recomendações — {recSetorData.nome}
                   </h2>
                   <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
                     {recSetorData.elemento} · Score: {pct}%
@@ -388,7 +501,7 @@ export default function ConsultaDetalhe() {
               {rec.urgente.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'inline-block', background: '#DC2626', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
-                    ⚠ URGENTE ({rec.urgente.length})
+                    URGENTE ({rec.urgente.length})
                   </div>
                   {rec.urgente.map((d, i) => (
                     <div key={i} style={{ padding: '10px 12px', background: '#FEF2F2', borderLeft: '3px solid #DC2626', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
@@ -401,7 +514,7 @@ export default function ConsultaDetalhe() {
               {rec.melhoria.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'inline-block', background: '#D97706', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
-                    ↑ MELHORIA ({rec.melhoria.length})
+                    MELHORIA ({rec.melhoria.length})
                   </div>
                   {rec.melhoria.map((d, i) => (
                     <div key={i} style={{ padding: '10px 12px', background: '#FFFBEB', borderLeft: '3px solid #D97706', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
@@ -414,7 +527,7 @@ export default function ConsultaDetalhe() {
               {rec.manutencao.length > 0 && (
                 <div style={{ marginBottom: '8px' }}>
                   <div style={{ display: 'inline-block', background: '#15803D', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
-                    ✓ MANUTENÇÃO ({rec.manutencao.length})
+                    MANUTENÇÃO ({rec.manutencao.length})
                   </div>
                   {rec.manutencao.map((d, i) => (
                     <div key={i} style={{ padding: '10px 12px', background: '#F0FDF4', borderLeft: '3px solid #15803D', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
@@ -424,14 +537,14 @@ export default function ConsultaDetalhe() {
                 </div>
               )}
 
-              {/* Recomendações personalizadas do consultor */}
+              {/* Custom consultant recommendations */}
               {(() => {
                 const cRecs = customRecs[recSetorData.id] || []
                 if (cRecs.length === 0) return null
                 return (
                   <div style={{ marginTop: '16px' }}>
                     <div style={{ display: 'inline-block', background: '#7C3AED', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
-                      📝 DO CONSULTOR ({cRecs.length})
+                      DO CONSULTOR ({cRecs.length})
                     </div>
                     {cRecs.map((cr, i) => (
                       <div key={i} style={{
@@ -467,11 +580,10 @@ export default function ConsultaDetalhe() {
                 )
               })()}
 
-              {/* Produtos sugeridos baseados nas recomendações automáticas */}
+              {/* Product suggestions */}
               {(() => {
                 const todasRec = [...rec.urgente, ...rec.melhoria, ...rec.manutencao]
                 const produtos = getProdutosSugeridos(todasRec)
-                // Also add products from custom recommendations
                 const customProds = (customRecs[recSetorData.id] || []).flatMap(cr => cr.produtos)
                 const allProds = new Map<string, { nome: string; categoria: string }>()
                 produtos.forEach(p => allProds.set(p.categoria, p))
@@ -489,7 +601,7 @@ export default function ConsultaDetalhe() {
                     border: '1px solid #E9D5FF'
                   }}>
                     <p style={{ color: '#7C3AED', fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
-                      🛒 Produtos recomendados para este setor
+                      Produtos recomendados para este setor
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {Array.from(allProds.values()).map(p => (
@@ -525,7 +637,7 @@ export default function ConsultaDetalhe() {
 
       <main style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto' }}>
 
-        {/* Cabeçalho consulta */}
+        {/* Consultation header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
@@ -558,7 +670,7 @@ export default function ConsultaDetalhe() {
           }}>{message}</div>
         )}
 
-        {/* ── Área Ba Gua Planta ─────────────────────────────────────────────── */}
+        {/* ── Ba Gua Planta banner ─────────────────────────────────────────── */}
         <div style={{
           background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 100%)',
           borderRadius: '14px', padding: '20px 24px', marginBottom: '24px',
@@ -584,7 +696,7 @@ export default function ConsultaDetalhe() {
                 padding: '12px 18px', borderRadius: '10px', fontSize: '14px',
                 fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
               }}>
-              🔄 Atualizar
+              Atualizar
             </button>
             <button
               onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
@@ -593,205 +705,298 @@ export default function ConsultaDetalhe() {
                 padding: '12px 28px', borderRadius: '10px', fontSize: '14px',
                 fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
               }}>
-              Abrir Planta ↗
+              Abrir Planta
             </button>
           </div>
         </div>
 
-        {/* ── Grid principal ───────────────────────────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px' }}>
+        {/* ── Tab Navigation ───────────────────────────────────────────────── */}
+        <div style={{
+          display: 'flex', gap: '4px', marginBottom: '24px',
+          background: '#E5E7EB', borderRadius: '10px', padding: '4px'
+        }}>
+          {TABS.map(tab => {
+            const isActive = activeTab === tab.id
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none',
+                cursor: 'pointer', fontSize: '14px', fontWeight: 'bold',
+                background: isActive ? '#ffffff' : 'transparent',
+                color: isActive ? '#1E3A5F' : '#6B7280',
+                boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}>
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            )
+          })}
+        </div>
 
-          {/* Sidebar setores */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Setores Ba Gua
-            </h3>
-            {setores.map(setor => {
-              const pct = setor.score_percentual ?? getScore(setor.id)
-              const ativo = setor.id === setorAtivo
-              return (
-                <div key={setor.id} style={{
-                  padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
-                  background: ativo ? '#1E3A5F' : '#ffffff',
-                  border: `2px solid ${ativo ? '#1E3A5F' : '#E5E7EB'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: '8px'
-                }}>
-                  <div style={{ flex: 1 }} onClick={() => setSetorAtivo(setor.id)}>
-                    <div style={{ color: ativo ? '#ffffff' : '#111827', fontWeight: 'bold', fontSize: '13px' }}>
-                      {setor.numero}. {setor.nome}
+        {/* ══════ TAB: Diagnóstico Ba Guá ══════ */}
+        {activeTab === 'diagnostico' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px' }}>
+
+            {/* Sidebar setores */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Setores Ba Gua
+              </h3>
+              {setores.map(setor => {
+                const pct = setor.score_percentual ?? getScore(setor.id)
+                const ativo = setor.id === setorAtivo
+                const comodo = comodoMap[setor.id]
+                const comodoLabel = COMODO_TIPOS.find(c => c.value === comodo)?.label
+                const fav = comodo ? comodoFavorabilidade(setor.nome, comodo) : null
+                return (
+                  <div key={setor.id} style={{
+                    padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                    background: ativo ? '#1E3A5F' : '#ffffff',
+                    border: `2px solid ${ativo ? '#1E3A5F' : '#E5E7EB'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: '8px'
+                  }}>
+                    <div style={{ flex: 1 }} onClick={() => setSetorAtivo(setor.id)}>
+                      <div style={{ color: ativo ? '#ffffff' : '#111827', fontWeight: 'bold', fontSize: '13px' }}>
+                        {setor.numero}. {setor.nome}
+                      </div>
+                      <div style={{ color: ativo ? 'rgba(255,255,255,0.7)' : '#9CA3AF', fontSize: '12px' }}>
+                        {setor.elemento}
+                        {comodoLabel && (
+                          <span> · {comodoLabel}
+                            {fav && (
+                              <span style={{ color: fav.cor, fontWeight: 'bold' }}> ({fav.label})</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ color: ativo ? 'rgba(255,255,255,0.7)' : '#9CA3AF', fontSize: '12px' }}>
-                      {setor.elemento}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {pct !== null && (
+                        <div style={{
+                          background: scoreColor(pct), color: '#fff',
+                          borderRadius: '20px', padding: '2px 8px',
+                          fontSize: '12px', fontWeight: 'bold'
+                        }}>{pct}%</div>
+                      )}
+                      <button
+                        onClick={e => { e.stopPropagation(); setRecModal(setor.id) }}
+                        title="Ver recomendações"
+                        style={{
+                          background: ativo ? 'rgba(255,255,255,0.2)' : '#EDE9FE',
+                          border: 'none', borderRadius: '7px', padding: '4px 8px',
+                          cursor: 'pointer', fontSize: '14px', lineHeight: 1
+                        }}>💡</button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {pct !== null && (
+                )
+              })}
+            </div>
+
+            {/* Sector detail panel */}
+            {setorAtivoData && (
+              <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div>
+                    <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                      {setorAtivoData.nome}
+                    </h2>
+                    <p style={{ color: '#6B7280', fontSize: '13px', margin: '0' }}>
+                      Elemento: {setorAtivoData.elemento} · {setorAtivoData.posicao_grid}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {getScore(setorAtivoData.id) !== null && (
                       <div style={{
-                        background: scoreColor(pct), color: '#fff',
-                        borderRadius: '20px', padding: '2px 8px',
-                        fontSize: '12px', fontWeight: 'bold'
-                      }}>{pct}%</div>
+                        background: scoreColor(getScore(setorAtivoData.id)),
+                        color: '#fff', borderRadius: '12px', padding: '8px 16px',
+                        fontSize: '20px', fontWeight: 'bold'
+                      }}>{getScore(setorAtivoData.id)}%</div>
                     )}
                     <button
-                      onClick={e => { e.stopPropagation(); setRecModal(setor.id) }}
-                      title="Ver recomendações"
+                      onClick={() => setRecModal(setorAtivoData.id)}
                       style={{
-                        background: ativo ? 'rgba(255,255,255,0.2)' : '#EDE9FE',
-                        border: 'none', borderRadius: '7px', padding: '4px 8px',
-                        cursor: 'pointer', fontSize: '14px', lineHeight: 1
-                      }}>💡</button>
+                        background: '#EDE9FE', color: '#7C3AED', border: 'none',
+                        borderRadius: '8px', padding: '8px 14px', cursor: 'pointer',
+                        fontSize: '13px', fontWeight: 'bold'
+                      }}>Recomendações</button>
                   </div>
                 </div>
-              )
-            })}
-          </div>
 
-          {/* Critérios do setor ativo */}
-          {setorAtivoData && (
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-                    {setorAtivoData.nome}
-                  </h2>
-                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '0' }}>
-                    Elemento: {setorAtivoData.elemento} · {setorAtivoData.posicao_grid}
-                  </p>
+                {/* ── Room Mapping ──────────────────────────────────── */}
+                <div style={{
+                  marginBottom: '20px', padding: '14px 16px',
+                  background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#7C3AED' }}>
+                      Cômodo neste setor:
+                    </label>
+                    <select
+                      value={comodoMap[setorAtivoData.id] || ''}
+                      onChange={e => setComodoMap(prev => ({ ...prev, [setorAtivoData.id]: e.target.value }))}
+                      style={{
+                        padding: '8px 12px', borderRadius: '6px', border: '1px solid #D1D5DB',
+                        fontSize: '13px', outline: 'none', minWidth: '200px'
+                      }}>
+                      {COMODO_TIPOS.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                    {comodoMap[setorAtivoData.id] && (() => {
+                      const fav = comodoFavorabilidade(setorAtivoData.nome, comodoMap[setorAtivoData.id])
+                      if (!fav) return null
+                      return (
+                        <span style={{
+                          fontSize: '12px', fontWeight: 'bold', padding: '4px 10px',
+                          borderRadius: '10px',
+                          background: fav.cor === '#15803D' ? '#F0FDF4' : fav.cor === '#DC2626' ? '#FEF2F2' : '#FFFBEB',
+                          color: fav.cor
+                        }}>{fav.label} para este Guá</span>
+                      )
+                    })()}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {getScore(setorAtivoData.id) !== null && (
-                    <div style={{
-                      background: scoreColor(getScore(setorAtivoData.id)),
-                      color: '#fff', borderRadius: '12px', padding: '8px 16px',
-                      fontSize: '20px', fontWeight: 'bold'
-                    }}>{getScore(setorAtivoData.id)}%</div>
-                  )}
-                  <button
-                    onClick={() => setRecModal(setorAtivoData.id)}
-                    style={{
-                      background: '#EDE9FE', color: '#7C3AED', border: 'none',
-                      borderRadius: '8px', padding: '8px 14px', cursor: 'pointer',
-                      fontSize: '13px', fontWeight: 'bold'
-                    }}>💡 Recomendações</button>
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-                {CRITERIOS.map(criterio => (
-                  <div key={criterio} style={{ padding: '16px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <label style={{ color: '#374151', fontSize: '14px', fontWeight: 'bold' }}>{criterio}</label>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {[0, 1, 2, 3].map(val => (
-                          <button key={val} onClick={() => {
-                            setCriterios(prev => ({
+                {/* ── Criteria Scoring ──────────────────────────────── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                  {CRITERIOS.map(criterio => (
+                    <div key={criterio} style={{ padding: '16px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <label style={{ color: '#374151', fontSize: '14px', fontWeight: 'bold' }}>{criterio}</label>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {[0, 1, 2, 3].map(val => (
+                            <button key={val} onClick={() => {
+                              setCriterios(prev => ({
+                                ...prev,
+                                [setorAtivoData.id]: { ...prev[setorAtivoData.id], [criterio]: val }
+                              }))
+                            }} style={{
+                              width: '36px', height: '36px', borderRadius: '8px', border: 'none',
+                              cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                              background: criterios[setorAtivoData.id]?.[criterio] === val
+                                ? val === 0 ? '#DC2626' : val === 1 ? '#D97706' : val === 2 ? '#2563EB' : '#15803D'
+                                : '#E5E7EB',
+                              color: criterios[setorAtivoData.id]?.[criterio] === val ? '#fff' : '#6B7280'
+                            }}>{val}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: '#9CA3AF', marginBottom: '8px' }}>
+                        <span style={{ color: '#DC2626' }}>0=Crítico</span>
+                        <span style={{ color: '#D97706' }}>1=Regular</span>
+                        <span style={{ color: '#2563EB' }}>2=Bom</span>
+                        <span style={{ color: '#15803D' }}>3=Ótimo</span>
+                      </div>
+                      <input
+                        placeholder="Observação (opcional)"
+                        value={notas[setorAtivoData.id]?.[criterio] || ''}
+                        onChange={e => setNotas(prev => ({
+                          ...prev,
+                          [setorAtivoData.id]: { ...prev[setorAtivoData.id], [criterio]: e.target.value }
+                        }))}
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Custom Recommendations ─────────────────────── */}
+                <div style={{
+                  marginBottom: '24px', padding: '20px', background: '#F5F0FF',
+                  borderRadius: '10px', border: '1px solid #E9D5FF'
+                }}>
+                  <h3 style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>
+                    Recomendações do Consultor
+                  </h3>
+
+                  {(customRecs[setorAtivoData.id] || []).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                      {(customRecs[setorAtivoData.id] || []).map((rec, ri) => (
+                        <div key={ri} style={{
+                          padding: '10px 12px', background: '#ffffff', borderRadius: '8px',
+                          borderLeft: `3px solid ${rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
+                          display: 'flex', gap: '8px', alignItems: 'flex-start'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                              <span style={{
+                                fontSize: '10px', fontWeight: 'bold', color: '#fff',
+                                padding: '1px 6px', borderRadius: '8px',
+                                background: rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'
+                              }}>{rec.tipo === 'urgente' ? 'URGENTE' : rec.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENÇÃO'}</span>
+                            </div>
+                            <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#374151' }}>{rec.texto}</p>
+                            {rec.produtos.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {rec.produtos.map(p => {
+                                  const cat = PRODUTO_CATEGORIAS.find(c => c.value === p)
+                                  return (
+                                    <span key={p} style={{
+                                      fontSize: '10px', padding: '2px 6px', background: '#EDE9FE',
+                                      color: '#7C3AED', borderRadius: '4px', fontWeight: 'bold'
+                                    }}>{cat?.label || p}</span>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => {
+                            setCustomRecs(prev => ({
                               ...prev,
-                              [setorAtivoData.id]: { ...prev[setorAtivoData.id], [criterio]: val }
+                              [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, i) => i !== ri)
                             }))
                           }} style={{
-                            width: '36px', height: '36px', borderRadius: '8px', border: 'none',
-                            cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
-                            background: criterios[setorAtivoData.id]?.[criterio] === val
-                              ? val === 0 ? '#DC2626' : val === 1 ? '#D97706' : val === 2 ? '#2563EB' : '#15803D'
-                              : '#E5E7EB',
-                            color: criterios[setorAtivoData.id]?.[criterio] === val ? '#fff' : '#6B7280'
-                          }}>{val}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: '#9CA3AF', marginBottom: '8px' }}>
-                      <span style={{ color: '#DC2626' }}>0=Crítico</span>
-                      <span style={{ color: '#D97706' }}>1=Regular</span>
-                      <span style={{ color: '#2563EB' }}>2=Bom</span>
-                      <span style={{ color: '#15803D' }}>3=Ótimo</span>
-                    </div>
-                    <input
-                      placeholder="Observação (opcional)"
-                      value={notas[setorAtivoData.id]?.[criterio] || ''}
-                      onChange={e => setNotas(prev => ({
-                        ...prev,
-                        [setorAtivoData.id]: { ...prev[setorAtivoData.id], [criterio]: e.target.value }
-                      }))}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Recomendações Personalizadas ─────────────────────────── */}
-              <div style={{
-                marginBottom: '24px', padding: '20px', background: '#F5F0FF',
-                borderRadius: '10px', border: '1px solid #E9D5FF'
-              }}>
-                <h3 style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>
-                  📝 Recomendações do Consultor
-                </h3>
-
-                {/* Lista de recomendações existentes */}
-                {(customRecs[setorAtivoData.id] || []).length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                    {(customRecs[setorAtivoData.id] || []).map((rec, ri) => (
-                      <div key={ri} style={{
-                        padding: '10px 12px', background: '#ffffff', borderRadius: '8px',
-                        borderLeft: `3px solid ${rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
-                        display: 'flex', gap: '8px', alignItems: 'flex-start'
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                            <span style={{
-                              fontSize: '10px', fontWeight: 'bold', color: '#fff',
-                              padding: '1px 6px', borderRadius: '8px',
-                              background: rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'
-                            }}>{rec.tipo === 'urgente' ? 'URGENTE' : rec.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENÇÃO'}</span>
-                          </div>
-                          <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#374151' }}>{rec.texto}</p>
-                          {rec.produtos.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                              {rec.produtos.map(p => {
-                                const cat = PRODUTO_CATEGORIAS.find(c => c.value === p)
-                                return (
-                                  <span key={p} style={{
-                                    fontSize: '10px', padding: '2px 6px', background: '#EDE9FE',
-                                    color: '#7C3AED', borderRadius: '4px', fontWeight: 'bold'
-                                  }}>{cat?.label || p}</span>
-                                )
-                              })}
-                            </div>
-                          )}
+                            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px',
+                            padding: '4px 8px', cursor: 'pointer', fontSize: '12px', color: '#DC2626',
+                            flexShrink: 0
+                          }}>✕</button>
                         </div>
-                        <button onClick={() => {
-                          setCustomRecs(prev => ({
-                            ...prev,
-                            [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, i) => i !== ri)
-                          }))
-                        }} style={{
-                          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px',
-                          padding: '4px 8px', cursor: 'pointer', fontSize: '12px', color: '#DC2626',
-                          flexShrink: 0
-                        }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
 
-                {/* Formulário para nova recomendação */}
-                <NewRecForm onAdd={(rec: CustomRec) => {
-                  setCustomRecs(prev => ({
-                    ...prev,
-                    [setorAtivoData.id]: [...(prev[setorAtivoData.id] || []), rec]
-                  }))
-                }} />
+                  <NewRecForm onAdd={(rec: CustomRec) => {
+                    setCustomRecs(prev => ({
+                      ...prev,
+                      [setorAtivoData.id]: [...(prev[setorAtivoData.id] || []), rec]
+                    }))
+                  }} />
+                </div>
+
+                <button onClick={() => handleSaveSetor(setorAtivoData.id)} disabled={saving} style={{
+                  width: '100%', padding: '14px', background: saving ? '#9CA3AF' : '#7C3AED',
+                  color: '#ffffff', border: 'none', borderRadius: '8px',
+                  fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
+                }}>{saving ? 'Salvando...' : 'Salvar avaliação deste setor'}</button>
               </div>
+            )}
+          </div>
+        )}
 
-              <button onClick={() => handleSaveSetor(setorAtivoData.id)} disabled={saving} style={{
-                width: '100%', padding: '14px', background: saving ? '#9CA3AF' : '#7C3AED',
-                color: '#ffffff', border: 'none', borderRadius: '8px',
-                fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
-              }}>{saving ? 'Salvando...' : 'Salvar avaliação deste setor'}</button>
-            </div>
-          )}
-        </div>
+        {/* ══════ TAB: Roda da Vida ══════ */}
+        {activeTab === 'roda_vida' && (
+          <TabRodaDaVida
+            rodaData={rodaData}
+            onChange={setRodaData}
+            onSave={handleSaveRoda}
+            saving={saving}
+            setores={setores}
+          />
+        )}
+
+        {/* ══════ TAB: Fluxo de Chi ══════ */}
+        {activeTab === 'fluxo_chi' && (
+          <TabFluxoChi
+            checklistChi={checklistChi}
+            posicaoComando={posicaoComando}
+            onChangeChi={setChecklistChi}
+            onChangePosicao={setPosicaoComando}
+            onSave={handleSaveChi}
+            saving={saving}
+          />
+        )}
       </main>
     </div>
   )
