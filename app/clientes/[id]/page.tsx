@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
+import ConfirmModal from '../../components/ConfirmModal'
+import Skeleton from '../../components/Skeleton'
 
 export default function ClienteDetalhe() {
   const params = useParams()
@@ -13,6 +15,7 @@ export default function ClienteDetalhe() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [form, setForm] = useState({
     nome_completo: '',
     email: '',
@@ -82,7 +85,6 @@ export default function ClienteDetalhe() {
   }
 
   async function handleDelete() {
-    if (!confirm('Tem certeza que deseja excluir este cliente? As consultas associadas serao mantidas.')) return
     const { error } = await supabase
       .from('clientes')
       .update({ ativo: false })
@@ -92,16 +94,25 @@ export default function ClienteDetalhe() {
     } else {
       window.location.href = '/clientes'
     }
+    setDeleteTarget(null)
   }
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="clientes">
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <Skeleton width="150px" height="14px" />
+          <div style={{ marginTop: '24px' }}>
+            <Skeleton variant="card" />
+          </div>
+          <div style={{ marginTop: '32px' }}>
+            <Skeleton width="180px" height="18px" />
+            <div style={{ marginTop: '16px' }}>
+              <Skeleton variant="list" rows={3} />
+            </div>
+          </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
@@ -150,7 +161,7 @@ export default function ClienteDetalhe() {
                   padding: '8px 20px', background: '#F3F4F6', color: '#374151',
                   border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}>✏️ Editar</button>
-                <button onClick={handleDelete} style={{
+                <button onClick={() => setDeleteTarget(params.id as string)} style={{
                   padding: '8px 20px', background: '#FEF2F2', color: '#DC2626',
                   border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}>🗑️ Excluir</button>
@@ -287,6 +298,17 @@ export default function ClienteDetalhe() {
         )}
 
       </div>
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Excluir cliente"
+        message="Tem certeza que deseja excluir este cliente? As consultas associadas serão mantidas."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   )
 }

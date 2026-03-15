@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
 
 function getMoonPhase(date: Date): { fase: string; emoji: string; percentual: number } {
   const known = new Date(2000, 0, 6, 18, 14)
@@ -181,12 +182,12 @@ export default function Calendario() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="calendario">
+        <Skeleton width="200px" height="24px" />
+        <div style={{ marginTop: '24px' }}>
+          <Skeleton variant="card" />
         </div>
-      </div>
+      </AppShell>
     )
   }
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import AppProvider from './components/AppProvider'
 
 export const metadata: Metadata = {
   title: 'FengShui Studio',
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main-content" className="skip-link">
           Pular para o conteúdo principal
         </a>
-        {children}
+        <AppProvider>
+          {children}
+        </AppProvider>
       </body>
     </html>
   )

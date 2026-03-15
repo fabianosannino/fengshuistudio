@@ -12,10 +12,10 @@ const CATEGORIAS_PRODUTOS = [
     nome: 'Espelhos',
     icon: '🪞',
     cor: '#1D4ED8',
-    descricao: 'Espelhos concavos, convexos e Ba Gua para harmonizacao',
+    descricao: 'Espelhos côncavos, convexos e Ba Gua para harmonização',
     produtos: [
-      { nome: 'Espelho Concavo Ba Gua', desc: 'Espelho concavo octogonal para protecao e desvio de energia negativa', tag: 'Protecao', preco: 'A partir de R$ 29,90' },
-      { nome: 'Espelho Convexo Ba Gua', desc: 'Espelho convexo para distribuir e expandir energia positiva', tag: 'Expansao', preco: 'A partir de R$ 34,90' },
+      { nome: 'Espelho Côncavo Ba Gua', desc: 'Espelho côncavo octogonal para proteção e desvio de energia negativa', tag: 'Proteção', preco: 'A partir de R$ 29,90' },
+      { nome: 'Espelho Convexo Ba Gua', desc: 'Espelho convexo para distribuir e expandir energia positiva', tag: 'Expansão', preco: 'A partir de R$ 34,90' },
       { nome: 'Espelho Plano Octogonal', desc: 'Espelho Ba Gua plano para neutralizar energias', tag: 'Equilíbrio', preco: 'A partir de R$ 24,90' },
     ]
   },
@@ -24,25 +24,25 @@ const CATEGORIAS_PRODUTOS = [
     nome: 'Cristais e Pedras',
     icon: '💎',
     cor: '#7C3AED',
-    descricao: 'Cristais para ativacao energetica dos setores do Ba Gua',
+    descricao: 'Cristais para ativação energética dos setores do Ba Gua',
     produtos: [
-      { nome: 'Cristal Multifacetado', desc: 'Cristal de pendurar para dispersar energia estagnada e trazer luz', tag: 'Ativacao', preco: 'A partir de R$ 19,90' },
+      { nome: 'Cristal Multifacetado', desc: 'Cristal de pendurar para dispersar energia estagnada e trazer luz', tag: 'Ativação', preco: 'A partir de R$ 19,90' },
       { nome: 'Quartzo Rosa', desc: 'Pedra do amor e relacionamentos para o setor Sudoeste', tag: 'Relacionamento', preco: 'A partir de R$ 15,90' },
-      { nome: 'Obsidiana Negra', desc: 'Pedra de protecao para entrada e setor Carreira', tag: 'Protecao', preco: 'A partir de R$ 22,90' },
-      { nome: 'Citrino', desc: 'Pedra da prosperidade e abundancia para o setor Sudeste', tag: 'Prosperidade', preco: 'A partir de R$ 18,90' },
-      { nome: 'Ametista', desc: 'Cristal de sabedoria e espiritualidade para meditacao', tag: 'Espiritualidade', preco: 'A partir de R$ 25,90' },
+      { nome: 'Obsidiana Negra', desc: 'Pedra de proteção para entrada e setor Carreira', tag: 'Proteção', preco: 'A partir de R$ 22,90' },
+      { nome: 'Citrino', desc: 'Pedra da prosperidade e abundância para o setor Sudeste', tag: 'Prosperidade', preco: 'A partir de R$ 18,90' },
+      { nome: 'Ametista', desc: 'Cristal de sabedoria e espiritualidade para meditação', tag: 'Espiritualidade', preco: 'A partir de R$ 25,90' },
     ]
   },
   {
     id: 'fontes',
-    nome: 'Fontes de Agua',
+    nome: 'Fontes de Água',
     icon: '⛲',
     cor: '#0EA5E9',
-    descricao: 'Fontes para ativar o elemento agua e prosperidade',
+    descricao: 'Fontes para ativar o elemento água e prosperidade',
     produtos: [
       { nome: 'Fonte de Mesa Bambu', desc: 'Fonte decorativa de mesa com bambu e pedras naturais', tag: 'Prosperidade', preco: 'A partir de R$ 89,90' },
-      { nome: 'Fonte Cascata Ceramica', desc: 'Fonte de ceramica com cascata para sala ou escritorio', tag: 'Harmonia', preco: 'A partir de R$ 129,90' },
-      { nome: 'Mini Aquario Decorativo', desc: 'Aquario pequeno para ativar setor Carreira e riqueza', tag: 'Carreira', preco: 'A partir de R$ 79,90' },
+      { nome: 'Fonte Cascata Cerâmica', desc: 'Fonte de cerâmica com cascata para sala ou escritório', tag: 'Harmonia', preco: 'A partir de R$ 129,90' },
+      { nome: 'Mini Aquário Decorativo', desc: 'Aquário pequeno para ativar setor Carreira e riqueza', tag: 'Carreira', preco: 'A partir de R$ 79,90' },
     ]
   },
   {
@@ -50,11 +50,11 @@ const CATEGORIAS_PRODUTOS = [
     nome: 'Plantas e Vasos',
     icon: '🌿',
     cor: '#15803D',
-    descricao: 'Plantas vivas e artificiais para purificacao e ativacao',
+    descricao: 'Plantas vivas e artificiais para purificação e ativação',
     produtos: [
-      { nome: 'Bambu da Sorte', desc: 'Bambu da sorte em vaso de ceramica para prosperidade', tag: 'Prosperidade', preco: 'A partir de R$ 29,90' },
-      { nome: 'Espada de Sao Jorge', desc: 'Planta protetora para entrada e areas de passagem', tag: 'Protecao', preco: 'A partir de R$ 19,90' },
-      { nome: 'Lirio da Paz', desc: 'Planta purificadora de ar para ambientes internos', tag: 'Purificacao', preco: 'A partir de R$ 24,90' },
+      { nome: 'Bambu da Sorte', desc: 'Bambu da sorte em vaso de cerâmica para prosperidade', tag: 'Prosperidade', preco: 'A partir de R$ 29,90' },
+      { nome: 'Espada de São Jorge', desc: 'Planta protetora para entrada e áreas de passagem', tag: 'Proteção', preco: 'A partir de R$ 19,90' },
+      { nome: 'Lírio da Paz', desc: 'Planta purificadora de ar para ambientes internos', tag: 'Purificação', preco: 'A partir de R$ 24,90' },
     ]
   },
   {
@@ -62,11 +62,11 @@ const CATEGORIAS_PRODUTOS = [
     nome: 'Sinos de Vento e Mobiles',
     icon: '🎐',
     cor: '#B45309',
-    descricao: 'Sinos e mobiles metalicos para ativacao do elemento metal',
+    descricao: 'Sinos e móbiles metálicos para ativação do elemento metal',
     produtos: [
-      { nome: 'Sino de Vento 5 Tubos', desc: 'Sino de vento em aluminio com 5 tubos para energia metal', tag: 'Metal', preco: 'A partir de R$ 39,90' },
-      { nome: 'Sino de Vento Bambu', desc: 'Sino em bambu para elemento madeira e setor Familia', tag: 'Madeira', preco: 'A partir de R$ 34,90' },
-      { nome: 'Mobile Cristal Facetado', desc: 'Mobile com cristais facetados para dispersar energia', tag: 'Ativacao', preco: 'A partir de R$ 49,90' },
+      { nome: 'Sino de Vento 5 Tubos', desc: 'Sino de vento em alumínio com 5 tubos para energia metal', tag: 'Metal', preco: 'A partir de R$ 39,90' },
+      { nome: 'Sino de Vento Bambu', desc: 'Sino em bambu para elemento madeira e setor Família', tag: 'Madeira', preco: 'A partir de R$ 34,90' },
+      { nome: 'Mobile Cristal Facetado', desc: 'Mobile com cristais facetados para dispersar energia', tag: 'Ativação', preco: 'A partir de R$ 49,90' },
     ]
   },
   {
@@ -74,24 +74,24 @@ const CATEGORIAS_PRODUTOS = [
     nome: 'Velas e Incensos',
     icon: '🕯️',
     cor: '#DC2626',
-    descricao: 'Velas e incensos para ativar o elemento fogo',
+    descricao: 'Velas e incensos para ativar o elemento Fogo',
     produtos: [
-      { nome: 'Kit Velas Aromaticas 7 Chakras', desc: 'Kit com 7 velas aromaticas para ativacao dos chakras', tag: 'Fogo', preco: 'A partir de R$ 59,90' },
-      { nome: 'Incensario Cascata', desc: 'Incensario de ceramica em formato cascata com cones', tag: 'Purificacao', preco: 'A partir de R$ 44,90' },
-      { nome: 'Difusor de Oleos Essenciais', desc: 'Difusor ultrasonico para aromaterapia e harmonia', tag: 'Harmonia', preco: 'A partir de R$ 69,90' },
+      { nome: 'Kit Velas Aromáticas 7 Chakras', desc: 'Kit com 7 velas aromáticas para ativação dos chakras', tag: 'Fogo', preco: 'A partir de R$ 59,90' },
+      { nome: 'Incensário Cascata', desc: 'Incensário de cerâmica em formato cascata com cones', tag: 'Purificação', preco: 'A partir de R$ 44,90' },
+      { nome: 'Difusor de Óleos Essenciais', desc: 'Difusor ultrassônico para aromaterapia e harmonia', tag: 'Harmonia', preco: 'A partir de R$ 69,90' },
     ]
   },
   {
     id: 'decoracao',
-    nome: 'Decoracao e Simbolos',
+    nome: 'Decoração e Símbolos',
     icon: '🏮',
     cor: '#BE185D',
-    descricao: 'Objetos decorativos e simbolos para ativacao dos setores',
+    descricao: 'Objetos decorativos e símbolos para ativação dos setores',
     produtos: [
-      { nome: 'Sapo da Fortuna', desc: 'Sapo de tres pernas com moeda para prosperidade', tag: 'Prosperidade', preco: 'A partir de R$ 34,90' },
-      { nome: 'Par de Elefantes', desc: 'Par de elefantes decorativos para protecao e sabedoria', tag: 'Protecao', preco: 'A partir de R$ 49,90' },
-      { nome: 'Buda Decorativo', desc: 'Estatueta de Buda para meditacao e serenidade', tag: 'Espiritualidade', preco: 'A partir de R$ 39,90' },
-      { nome: 'Moedas Chinesas I-Ching', desc: 'Conjunto de moedas amarradas com fita vermelha', tag: 'Abundancia', preco: 'A partir de R$ 14,90' },
+      { nome: 'Sapo da Fortuna', desc: 'Sapo de três pernas com moeda para prosperidade', tag: 'Prosperidade', preco: 'A partir de R$ 34,90' },
+      { nome: 'Par de Elefantes', desc: 'Par de elefantes decorativos para proteção e sabedoria', tag: 'Proteção', preco: 'A partir de R$ 49,90' },
+      { nome: 'Buda Decorativo', desc: 'Estatueta de Buda para meditação e serenidade', tag: 'Espiritualidade', preco: 'A partir de R$ 39,90' },
+      { nome: 'Moedas Chinesas I-Ching', desc: 'Conjunto de moedas amarradas com fita vermelha', tag: 'Abundância', preco: 'A partir de R$ 14,90' },
     ]
   },
 ]
@@ -160,7 +160,7 @@ function ProdutosContent() {
           Produtos Recomendados
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-          Produtos para harmonizacao e ativacao dos setores do Ba Gua
+          Produtos para harmonização e ativação dos setores do Ba Gua
         </p>
       </div>
 
@@ -172,8 +172,8 @@ function ProdutosContent() {
       }}>
         <span style={{ fontSize: '24px' }}>💡</span>
         <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', margin: '0' }}>
-          Os produtos listados sao recomendacoes baseadas em praticas de Feng Shui.
-          Ao clicar em &quot;Ver produto&quot;, voce sera redirecionado para a loja parceira.
+          Os produtos listados são recomendações baseadas em práticas de Feng Shui.
+          Ao clicar em &quot;Ver produto&quot;, você será redirecionado para a loja parceira.
         </p>
       </div>
 

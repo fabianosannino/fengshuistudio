@@ -125,7 +125,7 @@ export default function Parceiros() {
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>
             {parceiros.length === 0
-              ? 'Em breve teremos profissionais disponiveis para ajudar voce'
+              ? 'Em breve teremos profissionais disponíveis para ajudar você'
               : 'Tente ajustar os filtros de busca'
             }
           </p>
@@ -161,12 +161,12 @@ export default function Parceiros() {
 
                 {parceiro.profissao && (
                   <p style={{ color: '#374151', fontSize: '13px', margin: '4px 0' }}>
-                    <strong>Profissao:</strong> {parceiro.profissao}
+                    <strong>Profissão:</strong> {parceiro.profissao}
                   </p>
                 )}
                 {parceiro.area_atuacao && (
                   <p style={{ color: '#374151', fontSize: '13px', margin: '4px 0' }}>
-                    <strong>Area:</strong> {parceiro.area_atuacao}
+                    <strong>Área:</strong> {parceiro.area_atuacao}
                   </p>
                 )}
                 {parceiro.registro_profissional && (

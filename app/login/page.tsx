@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 
 const TIPOS_USUARIO = [
-  { id: 'pessoal', label: 'Pessoal', desc: 'Uso para minha residencia' },
+  { id: 'pessoal', label: 'Pessoal', desc: 'Uso para minha residência' },
   { id: 'arquiteto', label: 'Arquiteto(a)', desc: 'Profissional de arquitetura' },
   { id: 'feng_shui', label: 'Profissional de Feng Shui', desc: 'Consultor(a) de Feng Shui' },
-  { id: 'decorador', label: 'Decorador(a)', desc: 'Profissional de decoracao' },
+  { id: 'decorador', label: 'Decorador(a)', desc: 'Profissional de decoração' },
   { id: 'outro_profissional', label: 'Outro profissional', desc: 'Outro tipo de profissional' },
 ]
 
@@ -119,7 +119,7 @@ function LoginForm() {
       (!data.session && data.user && data.user.created_at &&
         new Date().getTime() - new Date(data.user.created_at).getTime() > 5000)
     ) {
-      setMessage('Este e-mail ja esta cadastrado. Use a aba "Entrar" para fazer login, ou clique em "Esqueci minha senha" para recuperar o acesso.')
+      setMessage('Este e-mail já está cadastrado. Use a aba "Entrar" para fazer login, ou clique em "Esqueci minha senha" para recuperar o acesso.')
     } else {
       setSignUpDone(true)
     }
@@ -166,7 +166,7 @@ function LoginForm() {
           <div style={{ fontSize: '40px', marginBottom: '4px' }}>☯</div>
           <h1 style={{ color: '#1E3A5F', fontSize: '26px', fontWeight: 'bold', margin: '0' }}>FengShui Studio</h1>
           <p style={{ color: '#7C3AED', fontSize: '13px', margin: '4px 0 0 0' }}>
-            {isSignUp ? (signUpStep === 2 ? 'Dados profissionais' : 'Crie sua conta') : 'Plataforma para Consultores e Usuarios'}
+            {isSignUp ? (signUpStep === 2 ? 'Dados profissionais' : 'Crie sua conta') : 'Plataforma para Consultores e Usuários'}
           </p>
         </div>
 
@@ -208,7 +208,7 @@ function LoginForm() {
               Verifique seu e-mail
             </h2>
             <p style={{ color: '#374151', fontSize: '14px', marginBottom: '8px' }}>
-              Enviamos um link de confirmacao para:
+              Enviamos um link de confirmação para:
             </p>
             <p style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>
               {email}
@@ -218,12 +218,12 @@ function LoginForm() {
               padding: '12px 16px', marginBottom: '20px', textAlign: 'left'
             }}>
               <p style={{ color: '#92400E', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 'bold' }}>
-                Nao recebeu o e-mail?
+                Não recebeu o e-mail?
               </p>
               <ul style={{ color: '#92400E', fontSize: '13px', margin: '0', paddingLeft: '16px' }}>
-                <li>Verifique a pasta de <strong>spam/lixo eletronico</strong></li>
+                <li>Verifique a pasta de <strong>spam/lixo eletrônico</strong></li>
                 <li>Aguarde alguns minutos e tente reenviar</li>
-                <li>Confirme se o e-mail digitado esta correto</li>
+                <li>Confirme se o e-mail digitado está correto</li>
               </ul>
             </div>
             <button onClick={handleResendConfirmation} disabled={resending} style={{
@@ -233,7 +233,7 @@ function LoginForm() {
               fontSize: '15px', fontWeight: 'bold',
               cursor: resending ? 'not-allowed' : 'pointer', marginBottom: '12px'
             }}>
-              {resending ? 'Reenviando...' : 'Reenviar e-mail de confirmacao'}
+              {resending ? 'Reenviando...' : 'Reenviar e-mail de confirmação'}
             </button>
             <button onClick={resetSignUp} style={{
               width: '100%', padding: '12px', background: '#F3F4F6',
@@ -287,12 +287,12 @@ function LoginForm() {
             <div style={{ marginBottom: '14px' }}>
               <label htmlFor="signup-senha" style={labelStyle}>Senha</label>
               <input id="signup-senha" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="Minimo 6 caracteres" required style={inputStyle} />
+                placeholder="Mínimo 6 caracteres" required style={inputStyle} />
             </div>
 
             {/* User type selector */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Tipo de usuario</label>
+              <label style={labelStyle}>Tipo de usuário</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {TIPOS_USUARIO.map(tipo => (
                   <label key={tipo.id} onClick={() => setTipoUsuario(tipo.id)} style={{
@@ -327,7 +327,7 @@ function LoginForm() {
               fontSize: '16px', fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer'
             }}>
-              {loading ? 'Aguarde...' : isProfessional ? 'Proximo: dados profissionais' : 'Criar conta'}
+              {loading ? 'Aguarde...' : isProfessional ? 'Próximo: dados profissionais' : 'Criar conta'}
             </button>
           </form>
 
@@ -348,13 +348,13 @@ function LoginForm() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
               <div>
-                <label htmlFor="signup-profissao" style={labelStyle}>Profissao *</label>
+                <label htmlFor="signup-profissao" style={labelStyle}>Profissão *</label>
                 <input id="signup-profissao" type="text" value={profForm.profissao}
                   onChange={e => setProfForm({ ...profForm, profissao: e.target.value })}
                   placeholder="Ex: Arquiteto, Consultor" required style={inputStyle} />
               </div>
               <div>
-                <label htmlFor="signup-area-atuacao" style={labelStyle}>Area de atuacao *</label>
+                <label htmlFor="signup-area-atuacao" style={labelStyle}>Área de atuação *</label>
                 <input id="signup-area-atuacao" type="text" value={profForm.area_atuacao}
                   onChange={e => setProfForm({ ...profForm, area_atuacao: e.target.value })}
                   placeholder="Ex: Residencial, Comercial" required style={inputStyle} />
@@ -402,7 +402,7 @@ function LoginForm() {
         )}
 
         {message && (() => {
-          const isError = message.includes('Erro') || message.includes('incorretos') || message.includes('ja esta cadastrado')
+          const isError = message.includes('Erro') || message.includes('incorretos') || message.includes('já está cadastrado')
           return (
             <div style={{
               marginTop: '20px', padding: '12px 16px', borderRadius: '8px',

@@ -10,8 +10,10 @@ const NAV_PROFESSIONAL = [
   { label: 'Dashboard', icon: '📊', href: '/dashboard' },
   { label: 'Clientes', icon: '👤', href: '/clientes' },
   { label: 'Consultas', icon: '📋', href: '/consultas' },
+  { label: 'Curas', icon: '✨', href: '/curas' },
+  { label: 'Planta Ba Gua', icon: '🏠', href: '/bagua-planta' },
   { label: 'Pagamentos', icon: '💰', href: '/pagamentos' },
-  { label: 'Calendario', icon: '🌙', href: '/calendario' },
+  { label: 'Calendário', icon: '🌙', href: '/calendario' },
   { label: 'Produtos', icon: '🛒', href: '/produtos' },
   { label: 'Planos', icon: '⭐', href: '/planos' },
   { label: 'Perfil', icon: '⚙️', href: '/perfil' },
@@ -19,7 +21,8 @@ const NAV_PROFESSIONAL = [
 
 const NAV_PERSONAL = [
   { label: 'Minha Casa', icon: '🏠', href: '/consultas' },
-  { label: 'Calendario', icon: '🌙', href: '/calendario' },
+  { label: 'Curas', icon: '✨', href: '/curas' },
+  { label: 'Calendário', icon: '🌙', href: '/calendario' },
   { label: 'Parceiros', icon: '🤝', href: '/parceiros' },
   { label: 'Produtos', icon: '🛒', href: '/produtos' },
   { label: 'Perfil', icon: '⚙️', href: '/perfil' },
@@ -257,7 +260,7 @@ export default function AppShell({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: t.textSoft, fontSize: '14px' }}>
-              Ola, <strong style={{ color: t.text }}>{profile?.nome_completo || user?.email || ''}</strong>
+              Olá, <strong style={{ color: t.text }}>{profile?.nome_completo || user?.email || ''}</strong>
             </span>
           </div>
 

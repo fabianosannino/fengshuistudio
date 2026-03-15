@@ -194,7 +194,7 @@ export default function Relatorio() {
       pdf.save(nomeArquivo)
     } catch (err) {
       console.error('Erro ao gerar PDF:', err)
-      alert('Erro ao gerar PDF. Tente usar a opcao Imprimir.')
+      alert('Erro ao gerar PDF. Tente usar a opção Imprimir.')
     } finally {
       setDownloading(false)
     }

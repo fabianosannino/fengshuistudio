@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
@@ -97,12 +98,17 @@ export default function Perfil() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando perfil...</p>
+      <AppShell currentPage="perfil">
+        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+          <Skeleton width="200px" height="24px" />
+          <div style={{ marginTop: '24px' }}>
+            <Skeleton variant="card" />
+          </div>
+          <div style={{ marginTop: '20px' }}>
+            <Skeleton variant="card" />
+          </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
@@ -116,7 +122,7 @@ export default function Perfil() {
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meu Perfil</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
             {isProfessional
-              ? 'Seus dados aparecem no relatorio PDF enviado ao cliente'
+              ? 'Seus dados aparecem no relatório PDF enviado ao cliente'
               : 'Gerencie seus dados pessoais'}
           </p>
         </div>
@@ -194,8 +200,8 @@ export default function Perfil() {
               </div>
             </div>
             <div>
-              <label htmlFor="textarea-bio" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bio / Apresentacao</label>
-              <textarea id="textarea-bio" name="bio" value={form.bio} onChange={handleChange} placeholder="Descreva sua experiencia..." rows={4}
+              <label htmlFor="textarea-bio" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bio / Apresentação</label>
+              <textarea id="textarea-bio" name="bio" value={form.bio} onChange={handleChange} placeholder="Descreva sua experiência..." rows={4}
                 style={{ ...inputStyle, resize: 'vertical' as const }} />
             </div>
           </div>
@@ -205,15 +211,15 @@ export default function Perfil() {
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
               <h3 style={{ color: '#7C3AED', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Perfil profissional</h3>
               <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
-                Essas informacoes ficam visiveis na rede de parceiros para usuarios pessoais
+                Essas informações ficam visíveis na rede de parceiros para usuários pessoais
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <label htmlFor="input-profissao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Profissao</label>
+                  <label htmlFor="input-profissao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Profissão</label>
                   <input id="input-profissao" name="profissao" value={form.profissao} onChange={handleChange} placeholder="Ex: Consultor de Feng Shui" style={inputStyle} />
                 </div>
                 <div>
-                  <label htmlFor="input-area-atuacao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Area de atuacao</label>
+                  <label htmlFor="input-area-atuacao" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Área de atuação</label>
                   <input id="input-area-atuacao" name="area_atuacao" value={form.area_atuacao} onChange={handleChange} placeholder="Ex: Residencial e Comercial" style={inputStyle} />
                 </div>
                 <div>
@@ -263,8 +269,8 @@ export default function Perfil() {
                   </p>
                   <p style={{ color: '#6B7280', fontSize: '12px', margin: '0' }}>
                     {form.parceiro_visivel
-                      ? 'Seu perfil esta visivel para usuarios pessoais que buscam profissionais'
-                      : 'Ative para que usuarios pessoais encontrem voce na rede de parceiros'}
+                      ? 'Seu perfil está visível para usuários pessoais que buscam profissionais'
+                      : 'Ative para que usuários pessoais encontrem você na rede de parceiros'}
                   </p>
                 </div>
               </div>
