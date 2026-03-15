@@ -6,6 +6,65 @@ import { useRouter, useParams } from 'next/navigation'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
+const SETOR_DICAS: Record<string, string[]> = {
+  'Carreira':       ['Adicione elemento água: aquário, fonte ou imagem de rio','Use tons pretos, azul escuro e ondulados','Coloque espelho estrategicamente para ampliar o espaço','Mantenha o caminho até a porta livre','Adicione cristais negros como obsidiana'],
+  'Conhecimento':   ['Crie espaço de estudo ou leitura tranquilo','Use tons azul-escuro, verde e preto','Adicione livros, mapas ou objetos de aprendizado','Iluminação focada e direta para concentração','Elimine distrações e eletrônicos desnecessários'],
+  'Família':        ['Use tons verdes e azuis para harmonia familiar','Coloque fotos da família em momentos felizes','Adicione plantas de madeira como bambu da sorte','Mantenha a área livre de objetos de conflito','Use madeira natural na decoração'],
+  'Prosperidade':   ['Adicione plantas saudáveis e viçosas','Use tons roxo, verde e dourado','Coloque símbolos de abundância como moedas ou peixes','Mantenha este setor sempre limpo e iluminado','Ative com fonte de água pequena ou aquário'],
+  'Centro':         ['Adicione cristais amarelos ou cerâmicas','Mantenha sempre limpo — centro irradia para todos os setores','Use tons terrosos: amarelo, ocre, marrom'],
+  'Centro/Saúde':   ['Adicione cristais amarelos ou cerâmicas','Mantenha sempre limpo — centro irradia para todos os setores','Use tons terrosos: amarelo, ocre, marrom'],
+  'Pessoas Uteis':  ['Adicione objetos metálicos e brancos','Use tons cinza, prata e branco','Adicione sinos ou móbiles metálicos'],
+  'Pessoas Úteis':  ['Adicione objetos metálicos e brancos','Use tons cinza, prata e branco','Adicione sinos ou móbiles metálicos'],
+  'Filhos':         ['Use tons brancos, cinza e pastéis','Adicione elementos metálicos e circulares','Adicione cristais brancos como selenita'],
+  'Criatividade':   ['Adicione elementos brancos e metálicos','Use tons brancos, cinza e pastéis','Adicione cristais brancos como selenita'],
+  'Relacionamentos':['Use tons rosa, vermelho e branco em pares','Coloque objetos em duplas: velas, porta-retratos','Adicione cristais de quartzo rosa'],
+  'Fama':           ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos'],
+  'Fama/Reputação': ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos'],
+  'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos'],
+}
+
+const PRODUTO_MAP: Record<string, { nome: string; categoria: string }> = {
+  'espelho': { nome: 'Espelhos Ba Gua', categoria: 'espelhos' },
+  'cristal': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'cristais': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'quartzo': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'obsidiana': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'selenita': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'fonte': { nome: 'Fontes de Agua', categoria: 'fontes' },
+  'aquário': { nome: 'Fontes de Agua', categoria: 'fontes' },
+  'aquario': { nome: 'Fontes de Agua', categoria: 'fontes' },
+  'planta': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'bambu': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'lírio': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'sino': { nome: 'Sinos de Vento', categoria: 'sinos' },
+  'móbile': { nome: 'Sinos de Vento', categoria: 'sinos' },
+  'mobile': { nome: 'Sinos de Vento', categoria: 'sinos' },
+  'vela': { nome: 'Velas e Incensos', categoria: 'velas' },
+  'incens': { nome: 'Velas e Incensos', categoria: 'velas' },
+  'difusor': { nome: 'Velas e Incensos', categoria: 'velas' },
+  'moeda': { nome: 'Decoracao e Simbolos', categoria: 'decoracao' },
+}
+
+function getReportProdutos(setoresData: any[]): { nome: string; categoria: string }[] {
+  const found = new Map<string, { nome: string; categoria: string }>()
+  setoresData.forEach(setor => {
+    const dicas = SETOR_DICAS[setor.nome] || []
+    const pct = setor.score_percentual
+    // Only suggest products for sectors that need improvement
+    if (pct !== null && pct < 70) {
+      dicas.forEach(dica => {
+        const lower = dica.toLowerCase()
+        Object.entries(PRODUTO_MAP).forEach(([keyword, produto]) => {
+          if (lower.includes(keyword) && !found.has(produto.categoria)) {
+            found.set(produto.categoria, produto)
+          }
+        })
+      })
+    }
+  })
+  return Array.from(found.values())
+}
+
 export default function Relatorio() {
   const router = useRouter()
   const params = useParams()
@@ -337,6 +396,37 @@ export default function Relatorio() {
             </div>
           ))}
         </div>
+
+        {/* Produtos recomendados */}
+        {(() => {
+          const produtos = getReportProdutos(setores)
+          if (produtos.length === 0) return null
+          return (
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+                Produtos Recomendados
+              </h2>
+              <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
+                Com base no diagnostico, recomendamos os seguintes produtos para harmonizacao:
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+                {produtos.map(p => (
+                  <div key={p.categoria} style={{
+                    background: '#F5F0FF', borderRadius: '8px', padding: '14px',
+                    border: '1px solid #E9D5FF', textAlign: 'center'
+                  }}>
+                    <p style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                      {p.nome}
+                    </p>
+                    <p style={{ color: '#6B7280', fontSize: '11px', margin: '0' }}>
+                      Veja opcoes em Produtos
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Footer */}
         <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '20px', textAlign: 'center' }}>

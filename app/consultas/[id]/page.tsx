@@ -32,6 +32,47 @@ const SETOR_DICAS: Record<string, string[]> = {
   'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos','Iluminação suave com velas ou luz indireta','Mantenha silêncio e tranquilidade neste setor'],
 }
 
+// Map recommendation keywords to product categories for affiliate links
+const PRODUTO_SUGESTOES: Record<string, { nome: string; categoria: string }> = {
+  'espelho': { nome: 'Espelhos Ba Gua', categoria: 'espelhos' },
+  'cristal': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'cristais': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'quartzo': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'obsidiana': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'selenita': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'ametista': { nome: 'Cristais e Pedras', categoria: 'cristais' },
+  'fonte': { nome: 'Fontes de Agua', categoria: 'fontes' },
+  'aquário': { nome: 'Fontes de Agua', categoria: 'fontes' },
+  'aquario': { nome: 'Fontes de Agua', categoria: 'fontes' },
+  'planta': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'bambu': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'espada-de-são-jorge': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'lírio': { nome: 'Plantas e Vasos', categoria: 'plantas' },
+  'sino': { nome: 'Sinos de Vento', categoria: 'sinos' },
+  'móbile': { nome: 'Sinos de Vento', categoria: 'sinos' },
+  'mobile': { nome: 'Sinos de Vento', categoria: 'sinos' },
+  'vela': { nome: 'Velas e Incensos', categoria: 'velas' },
+  'incens': { nome: 'Velas e Incensos', categoria: 'velas' },
+  'difusor': { nome: 'Velas e Incensos', categoria: 'velas' },
+  'moeda': { nome: 'Decoracao e Simbolos', categoria: 'decoracao' },
+  'buda': { nome: 'Decoracao e Simbolos', categoria: 'decoracao' },
+  'elefante': { nome: 'Decoracao e Simbolos', categoria: 'decoracao' },
+  'sapo': { nome: 'Decoracao e Simbolos', categoria: 'decoracao' },
+}
+
+function getProdutosSugeridos(recomendacoes: string[]): { nome: string; categoria: string }[] {
+  const found = new Map<string, { nome: string; categoria: string }>()
+  recomendacoes.forEach(rec => {
+    const lower = rec.toLowerCase()
+    Object.entries(PRODUTO_SUGESTOES).forEach(([keyword, produto]) => {
+      if (lower.includes(keyword) && !found.has(produto.categoria)) {
+        found.set(produto.categoria, produto)
+      }
+    })
+  })
+  return Array.from(found.values())
+}
+
 const CRITERIO_DICAS: Record<number, string[]> = {
   0: ['Faça limpeza profunda e reorganize completamente este setor','Descarte objetos desnecessários — desordem bloqueia fluxo de energia','Elimine poeira e sujeira acumulada nos cantos e sob móveis'],
   1: ['Aumente iluminação com luminárias adicionais ou spots direcionados','Substitua lâmpadas fracas ou queimadas por equivalentes mais potentes','Adicione espelhos estratégicos para refletir e ampliar a luz natural'],
@@ -270,6 +311,33 @@ export default function ConsultaDetalhe() {
                   ))}
                 </div>
               )}
+
+              {/* Produtos sugeridos baseados nas recomendações */}
+              {(() => {
+                const todasRec = [...rec.urgente, ...rec.melhoria, ...rec.manutencao]
+                const produtos = getProdutosSugeridos(todasRec)
+                if (produtos.length === 0) return null
+                return (
+                  <div style={{
+                    marginTop: '16px', padding: '14px 16px',
+                    background: '#F5F0FF', borderRadius: '10px',
+                    border: '1px solid #E9D5FF'
+                  }}>
+                    <p style={{ color: '#7C3AED', fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
+                      🛒 Produtos recomendados para este setor
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {produtos.map(p => (
+                        <a key={p.categoria} href={`/produtos?categoria=${p.categoria}`} style={{
+                          padding: '6px 12px', background: '#7C3AED', color: '#fff',
+                          borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
+                          textDecoration: 'none', cursor: 'pointer'
+                        }}>{p.nome}</a>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )

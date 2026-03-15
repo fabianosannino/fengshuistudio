@@ -3,13 +3,25 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
 
-const NAV_ITEMS = [
+// Professional user types (have client management, dashboard, payments, etc.)
+const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+
+const NAV_PROFESSIONAL = [
   { label: 'Dashboard', icon: '📊', href: '/dashboard' },
   { label: 'Clientes', icon: '👤', href: '/clientes' },
   { label: 'Consultas', icon: '📋', href: '/consultas' },
   { label: 'Pagamentos', icon: '💰', href: '/pagamentos' },
-  { label: 'Calendário', icon: '🌙', href: '/calendario' },
+  { label: 'Calendario', icon: '🌙', href: '/calendario' },
+  { label: 'Produtos', icon: '🛒', href: '/produtos' },
   { label: 'Planos', icon: '⭐', href: '/planos' },
+  { label: 'Perfil', icon: '⚙️', href: '/perfil' },
+]
+
+const NAV_PERSONAL = [
+  { label: 'Minha Casa', icon: '🏠', href: '/consultas' },
+  { label: 'Calendario', icon: '🌙', href: '/calendario' },
+  { label: 'Parceiros', icon: '🤝', href: '/parceiros' },
+  { label: 'Produtos', icon: '🛒', href: '/produtos' },
   { label: 'Perfil', icon: '⚙️', href: '/perfil' },
 ]
 
@@ -27,6 +39,12 @@ export default function AppShell({
   const [profile, setProfile] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
+
+  const isProfessional = profile?.tipo_usuario
+    ? PROF_TYPES.includes(profile.tipo_usuario)
+    : (profile?.role === 'consultor' || !profile?.tipo_usuario)
+
+  const navItems = isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL
 
   useEffect(() => {
     setMounted(true)
@@ -47,10 +65,20 @@ export default function AppShell({
         setUser(user)
         const { data } = await supabase
           .from('profiles')
-          .select('nome_completo, plano')
+          .select('nome_completo, plano, tipo_usuario, role')
           .eq('id', user.id)
           .single()
-        setProfile(data)
+        if (data) {
+          setProfile(data)
+        } else {
+          // Fallback to user metadata if profile not found
+          setProfile({
+            nome_completo: user.user_metadata?.nome_completo,
+            tipo_usuario: user.user_metadata?.tipo_usuario,
+            role: user.user_metadata?.role,
+            plano: 'freemium',
+          })
+        }
       }
     }
     loadProfile()
@@ -132,8 +160,23 @@ export default function AppShell({
           )}
         </div>
 
+        {/* User type badge */}
+        {sidebarOpen && profile && (
+          <div style={{
+            padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <span style={{
+              background: isProfessional ? 'rgba(124,58,237,0.2)' : 'rgba(184,134,11,0.2)',
+              color: isProfessional ? '#C4B5FD' : '#FDE68A',
+              padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
+            }}>
+              {isProfessional ? 'Profissional' : 'Pessoal'}
+            </span>
+          </div>
+        )}
+
         <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = currentPage === item.href.replace('/', '')
             return (
               <a key={item.href} href={item.href} onClick={() => setMobileOpen(false)} style={{
@@ -212,7 +255,7 @@ export default function AppShell({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: t.textSoft, fontSize: '14px' }}>
-              Olá, <strong style={{ color: t.text }}>{profile?.nome_completo || user?.email || ''}</strong>
+              Ola, <strong style={{ color: t.text }}>{profile?.nome_completo || user?.email || ''}</strong>
             </span>
           </div>
 
