@@ -4,6 +4,23 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 
+const TIPOS_USUARIO = [
+  { id: 'pessoal', label: 'Pessoal', desc: 'Uso para minha residencia' },
+  { id: 'arquiteto', label: 'Arquiteto(a)', desc: 'Profissional de arquitetura' },
+  { id: 'feng_shui', label: 'Profissional de Feng Shui', desc: 'Consultor(a) de Feng Shui' },
+  { id: 'decorador', label: 'Decorador(a)', desc: 'Profissional de decoracao' },
+  { id: 'outro_profissional', label: 'Outro profissional', desc: 'Outro tipo de profissional' },
+]
+
+const inputStyle = {
+  width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB',
+  borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const,
+}
+
+const labelStyle = {
+  display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold' as const, marginBottom: '4px',
+}
+
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,9 +30,23 @@ function LoginForm() {
   const [name, setName] = useState('')
   const [signUpDone, setSignUpDone] = useState(false)
   const [resending, setResending] = useState(false)
+
+  // New: user type & professional fields
+  const [tipoUsuario, setTipoUsuario] = useState('pessoal')
+  const [signUpStep, setSignUpStep] = useState(1) // 1 = basic, 2 = professional details
+  const [profForm, setProfForm] = useState({
+    profissao: '',
+    area_atuacao: '',
+    registro_profissional: '',
+    linkedin: '',
+    instagram: '',
+  })
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
+
+  const isProfessional = tipoUsuario !== 'pessoal'
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -39,15 +70,42 @@ function LoginForm() {
     }
   }
 
-  async function handleSignUp(e: React.FormEvent) {
+  function handleStep1(e: React.FormEvent) {
     e.preventDefault()
+    if (isProfessional) {
+      setSignUpStep(2)
+      setMessage('')
+    } else {
+      doSignUp()
+    }
+  }
+
+  function handleStep2(e: React.FormEvent) {
+    e.preventDefault()
+    doSignUp()
+  }
+
+  async function doSignUp() {
     setLoading(true)
     setMessage('')
+    const metadata: Record<string, string> = {
+      nome_completo: name,
+      tipo_usuario: tipoUsuario,
+      role: isProfessional ? 'consultor' : 'pessoal',
+    }
+    if (isProfessional) {
+      metadata.profissao = profForm.profissao
+      metadata.area_atuacao = profForm.area_atuacao
+      metadata.registro_profissional = profForm.registro_profissional
+      metadata.linkedin = profForm.linkedin
+      metadata.instagram = profForm.instagram
+    }
+
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { nome_completo: name, role: 'consultor' },
+        data: metadata,
         emailRedirectTo: `${window.location.origin}/login`
       }
     })
@@ -72,9 +130,7 @@ function LoginForm() {
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`
-      }
+      options: { emailRedirectTo: `${window.location.origin}/login` }
     })
     if (error) {
       setMessage('Erro ao reenviar: ' + error.message)
@@ -82,6 +138,13 @@ function LoginForm() {
       setMessage('E-mail reenviado! Verifique sua caixa de entrada e spam.')
     }
     setResending(false)
+  }
+
+  function resetSignUp() {
+    setSignUpDone(false)
+    setSignUpStep(1)
+    setMessage('')
+    setIsSignUp(false)
   }
 
   return (
@@ -92,34 +155,50 @@ function LoginForm() {
       fontFamily: 'Arial, sans-serif', padding: '20px'
     }}>
       <div style={{
-        background: '#ffffff', borderRadius: '16px', padding: '48px 40px',
-        width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+        background: '#ffffff', borderRadius: '16px', padding: '40px 36px',
+        width: '100%', maxWidth: isSignUp && signUpStep === 2 ? '520px' : '420px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        transition: 'max-width 0.3s ease'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '8px' }}>☯</div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '28px', fontWeight: 'bold', margin: '0' }}>FengShui Studio</h1>
-          <p style={{ color: '#7C3AED', fontSize: '14px', margin: '4px 0 0 0' }}>
-            {isSignUp ? 'Crie sua conta de consultor' : 'Plataforma para Consultores'}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '4px' }}>☯</div>
+          <h1 style={{ color: '#1E3A5F', fontSize: '26px', fontWeight: 'bold', margin: '0' }}>FengShui Studio</h1>
+          <p style={{ color: '#7C3AED', fontSize: '13px', margin: '4px 0 0 0' }}>
+            {isSignUp ? (signUpStep === 2 ? 'Dados profissionais' : 'Crie sua conta') : 'Plataforma para Consultores e Usuarios'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '28px' }}>
-          <button onClick={() => { setIsSignUp(false); setMessage('') }} style={{
-            flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-            fontSize: '14px', fontWeight: 'bold',
-            background: !isSignUp ? '#ffffff' : 'transparent',
-            color: !isSignUp ? '#1E3A5F' : '#6B7280',
-            boxShadow: !isSignUp ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'
-          }}>Entrar</button>
-          <button onClick={() => { setIsSignUp(true); setMessage('') }} style={{
-            flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-            fontSize: '14px', fontWeight: 'bold',
-            background: isSignUp ? '#ffffff' : 'transparent',
-            color: isSignUp ? '#1E3A5F' : '#6B7280',
-            boxShadow: isSignUp ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'
-          }}>Cadastrar</button>
-        </div>
+        {!isSignUp && (
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
+            <button onClick={() => { setIsSignUp(false); setMessage('') }} style={{
+              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: 'bold',
+              background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+            }}>Entrar</button>
+            <button onClick={() => { setIsSignUp(true); setMessage(''); setSignUpStep(1) }} style={{
+              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: 'bold',
+              background: 'transparent', color: '#6B7280'
+            }}>Cadastrar</button>
+          </div>
+        )}
 
+        {isSignUp && !signUpDone && (
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
+            <button onClick={() => { setIsSignUp(false); setMessage(''); setSignUpStep(1) }} style={{
+              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: 'bold',
+              background: 'transparent', color: '#6B7280'
+            }}>Entrar</button>
+            <button style={{
+              flex: 1, padding: '8px', border: 'none', borderRadius: '6px',
+              fontSize: '14px', fontWeight: 'bold',
+              background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+            }}>Cadastrar</button>
+          </div>
+        )}
+
+        {/* ── SIGN UP DONE ──────────────────────────────────── */}
         {signUpDone ? (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉️</div>
@@ -150,12 +229,11 @@ function LoginForm() {
               background: resending ? '#9CA3AF' : '#7C3AED',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '15px', fontWeight: 'bold',
-              cursor: resending ? 'not-allowed' : 'pointer',
-              marginBottom: '12px'
+              cursor: resending ? 'not-allowed' : 'pointer', marginBottom: '12px'
             }}>
               {resending ? 'Reenviando...' : 'Reenviar e-mail de confirmacao'}
             </button>
-            <button onClick={() => { setSignUpDone(false); setMessage(''); setIsSignUp(false) }} style={{
+            <button onClick={resetSignUp} style={{
               width: '100%', padding: '12px', background: '#F3F4F6',
               color: '#374151', border: 'none', borderRadius: '8px',
               fontSize: '14px', cursor: 'pointer'
@@ -163,45 +241,162 @@ function LoginForm() {
               Voltar para o login
             </button>
           </div>
+
+        /* ── LOGIN FORM ──────────────────────────────────── */
+        ) : !isSignUp ? (
+          <form onSubmit={handleLogin}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>E-mail</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="seu@email.com" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={labelStyle}>Senha</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="Sua senha" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
+            </div>
+            <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
+              <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
+            </div>
+            <button type="submit" disabled={loading} style={{
+              width: '100%', padding: '14px',
+              background: loading ? '#9CA3AF' : '#7C3AED',
+              color: '#ffffff', border: 'none', borderRadius: '8px',
+              fontSize: '16px', fontWeight: 'bold',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}>
+              {loading ? 'Aguarde...' : 'Entrar'}
+            </button>
+          </form>
+
+        /* ── SIGN UP STEP 1 ──────────────────────────────── */
+        ) : signUpStep === 1 ? (
+          <form onSubmit={handleStep1}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>Nome completo</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)}
+                placeholder="Seu nome completo" required style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>E-mail</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="seu@email.com" required style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>Senha</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="Minimo 6 caracteres" required style={inputStyle} />
+            </div>
+
+            {/* User type selector */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Tipo de usuario</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {TIPOS_USUARIO.map(tipo => (
+                  <label key={tipo.id} onClick={() => setTipoUsuario(tipo.id)} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+                    border: `2px solid ${tipoUsuario === tipo.id ? '#7C3AED' : '#E5E7EB'}`,
+                    background: tipoUsuario === tipo.id ? '#F5F0FF' : '#ffffff',
+                    transition: 'all 0.2s'
+                  }}>
+                    <div style={{
+                      width: '18px', height: '18px', borderRadius: '50%',
+                      border: `2px solid ${tipoUsuario === tipo.id ? '#7C3AED' : '#D1D5DB'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      {tipoUsuario === tipo.id && (
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#7C3AED' }} />
+                      )}
+                    </div>
+                    <div>
+                      <span style={{ color: '#111827', fontSize: '14px', fontWeight: 'bold' }}>{tipo.label}</span>
+                      <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '6px' }}>{tipo.desc}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading} style={{
+              width: '100%', padding: '14px',
+              background: loading ? '#9CA3AF' : '#7C3AED',
+              color: '#ffffff', border: 'none', borderRadius: '8px',
+              fontSize: '16px', fontWeight: 'bold',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}>
+              {loading ? 'Aguarde...' : isProfessional ? 'Proximo: dados profissionais' : 'Criar conta'}
+            </button>
+          </form>
+
+        /* ── SIGN UP STEP 2: Professional Details ────────── */
         ) : (
-          <>
-            <form onSubmit={isSignUp ? handleSignUp : handleLogin}>
-              {isSignUp && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
-                  <input type="text" value={name} onChange={e => setName(e.target.value)}
-                    placeholder="Seu nome completo" required
-                    style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              )}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>E-mail</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="seu@email.com" required
-                  style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+          <form onSubmit={handleStep2}>
+            <div style={{
+              background: '#F5F0FF', borderRadius: '8px', padding: '10px 14px',
+              marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'
+            }}>
+              <span style={{ fontSize: '18px' }}>
+                {tipoUsuario === 'arquiteto' ? '🏗️' : tipoUsuario === 'feng_shui' ? '☯' : tipoUsuario === 'decorador' ? '🎨' : '💼'}
+              </span>
+              <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
+                {TIPOS_USUARIO.find(t => t.id === tipoUsuario)?.label}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={labelStyle}>Profissao *</label>
+                <input type="text" value={profForm.profissao}
+                  onChange={e => setProfForm({ ...profForm, profissao: e.target.value })}
+                  placeholder="Ex: Arquiteto, Consultor" required style={inputStyle} />
               </div>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Senha</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder={isSignUp ? 'Minimo 6 caracteres' : 'Sua senha'} required
-                  style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
+              <div>
+                <label style={labelStyle}>Area de atuacao *</label>
+                <input type="text" value={profForm.area_atuacao}
+                  onChange={e => setProfForm({ ...profForm, area_atuacao: e.target.value })}
+                  placeholder="Ex: Residencial, Comercial" required style={inputStyle} />
               </div>
-              {!isSignUp && (
-                <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
-                  <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
-                </div>
-              )}
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={labelStyle}>Registro profissional</label>
+              <input type="text" value={profForm.registro_profissional}
+                onChange={e => setProfForm({ ...profForm, registro_profissional: e.target.value })}
+                placeholder="Ex: CAU A12345-6, CREA 12345" style={inputStyle} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div>
+                <label style={labelStyle}>LinkedIn (portfolio)</label>
+                <input type="url" value={profForm.linkedin}
+                  onChange={e => setProfForm({ ...profForm, linkedin: e.target.value })}
+                  placeholder="https://linkedin.com/in/..." style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Instagram (portfolio)</label>
+                <input type="text" value={profForm.instagram}
+                  onChange={e => setProfForm({ ...profForm, instagram: e.target.value })}
+                  placeholder="@seuperfil" style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" onClick={() => setSignUpStep(1)} style={{
+                padding: '14px 20px', background: '#F3F4F6', color: '#374151',
+                border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
+              }}>Voltar</button>
               <button type="submit" disabled={loading} style={{
-                width: '100%', padding: '14px',
+                flex: 1, padding: '14px',
                 background: loading ? '#9CA3AF' : '#7C3AED',
                 color: '#ffffff', border: 'none', borderRadius: '8px',
                 fontSize: '16px', fontWeight: 'bold',
                 cursor: loading ? 'not-allowed' : 'pointer'
               }}>
-                {loading ? 'Aguarde...' : isSignUp ? 'Criar conta' : 'Entrar'}
+                {loading ? 'Aguarde...' : 'Criar conta'}
               </button>
-            </form>
-          </>
+            </div>
+          </form>
         )}
 
         {message && (() => {
@@ -219,7 +414,7 @@ function LoginForm() {
           )
         })()}
 
-        <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '12px', marginTop: '32px', marginBottom: '0' }}>
+        <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '12px', marginTop: '24px', marginBottom: '0' }}>
           FengShui Studio 2026 - CollabZ Consultoria
         </p>
       </div>
