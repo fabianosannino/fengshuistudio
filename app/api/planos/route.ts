@@ -10,9 +10,11 @@ export async function POST(request: Request) {
   }
 
   let plano: string
+  let chave_ativacao: string | undefined
   try {
     const body = await request.json()
     plano = body.plano
+    chave_ativacao = body.chave_ativacao
   } catch {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
@@ -29,12 +31,21 @@ export async function POST(request: Request) {
     .single()
 
   if (plano === 'pro' && profile?.plano !== 'pro') {
-    // In production, this should validate payment through a gateway (Stripe, Mercado Pago, etc.)
-    // For now, we block direct upgrade and return a message
-    // To enable upgrade for testing, set ALLOW_FREE_UPGRADE=true in environment
-    if (process.env.ALLOW_FREE_UPGRADE !== 'true') {
+    const validKey = process.env.PRO_ACTIVATION_KEY
+    const allowFree = process.env.ALLOW_FREE_UPGRADE === 'true'
+
+    if (allowFree) {
+      // Allow free upgrade (testing mode)
+    } else if (validKey && chave_ativacao && chave_ativacao.trim() === validKey.trim()) {
+      // Valid activation key provided
+    } else if (chave_ativacao) {
       return NextResponse.json(
-        { error: 'Pagamento necessário. Integração com gateway de pagamento em breve.', requiresPayment: true },
+        { error: 'Chave de ativação inválida. Verifique e tente novamente.', requiresPayment: true },
+        { status: 403 }
+      )
+    } else {
+      return NextResponse.json(
+        { error: 'Pagamento necessário. Utilize uma chave de ativação ou aguarde a integração com pagamento.', requiresPayment: true },
         { status: 402 }
       )
     }

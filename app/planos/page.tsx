@@ -36,6 +36,9 @@ export default function Planos() {
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [showKeyInput, setShowKeyInput] = useState(false)
+  const [chaveAtivacao, setChaveAtivacao] = useState('')
+  const [upgrading, setUpgrading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -52,47 +55,59 @@ export default function Planos() {
   async function handleSelectPlan(planoId: string) {
     if (planoId === profile?.plano) return
     if (planoId === 'pro') {
-      try {
-        const res = await fetch('/api/planos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plano: 'pro' }),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          if (data.requiresPayment) {
-            setMessage('Para fazer upgrade para o plano Pro, é necessário efetuar o pagamento. Em breve a integração com pagamento estará disponível.')
-          } else {
-            setMessage('Erro ao atualizar plano: ' + data.error)
-          }
-          return
-        }
-        setProfile({ ...profile, plano: 'pro' })
-        setMessage('Parabéns! Seu plano foi atualizado para Pro!')
-        setTimeout(() => setMessage(''), 4000)
-      } catch {
-        setMessage('Erro de conexão ao atualizar plano.')
-      }
-    } else {
-      if (!confirm('Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos Pro.')) return
-      try {
-        const res = await fetch('/api/planos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plano: 'freemium' }),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          setMessage('Erro ao atualizar plano: ' + data.error)
-          return
-        }
-        setProfile({ ...profile, plano: 'freemium' })
-        setMessage('Plano alterado para Free.')
-        setTimeout(() => setMessage(''), 4000)
-      } catch {
-        setMessage('Erro de conexão ao atualizar plano.')
-      }
+      setShowKeyInput(true)
+      setMessage('')
+      return
     }
+    // Downgrade to free
+    if (!confirm('Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos Pro.')) return
+    try {
+      const res = await fetch('/api/planos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plano: 'freemium' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage('Erro ao atualizar plano: ' + data.error)
+        return
+      }
+      setProfile({ ...profile, plano: 'freemium' })
+      setMessage('Plano alterado para Free.')
+      setTimeout(() => setMessage(''), 4000)
+    } catch {
+      setMessage('Erro de conexão ao atualizar plano.')
+    }
+  }
+
+  async function handleActivateKey() {
+    if (!chaveAtivacao.trim()) {
+      setMessage('Digite a chave de ativação.')
+      return
+    }
+    setUpgrading(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/planos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plano: 'pro', chave_ativacao: chaveAtivacao.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Erro ao ativar plano Pro.')
+        setUpgrading(false)
+        return
+      }
+      setProfile({ ...profile, plano: 'pro' })
+      setShowKeyInput(false)
+      setChaveAtivacao('')
+      setMessage('Parabéns! Seu plano foi atualizado para Pro!')
+      setTimeout(() => setMessage(''), 5000)
+    } catch {
+      setMessage('Erro de conexão ao ativar plano.')
+    }
+    setUpgrading(false)
   }
 
   if (loading) {
@@ -120,15 +135,18 @@ export default function Planos() {
         </p>
       </div>
 
-      {message && (
-        <div style={{
-          marginBottom: '24px', padding: '12px 16px', borderRadius: '8px',
-          background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-          border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-          color: message.includes('Erro') ? '#DC2626' : '#15803D',
-          fontSize: '14px', textAlign: 'center'
-        }}>{message}</div>
-      )}
+      {message && (() => {
+        const isError = message.includes('Erro') || message.includes('inválida') || message.includes('Digite')
+        return (
+          <div style={{
+            marginBottom: '24px', padding: '12px 16px', borderRadius: '8px',
+            background: isError ? '#FEF2F2' : '#F0FDF4',
+            border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
+            color: isError ? '#DC2626' : '#15803D',
+            fontSize: '14px', textAlign: 'center'
+          }}>{message}</div>
+        )
+      })()}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px', maxWidth: '900px', margin: '0 auto 40px' }}>
         {PLANOS.map(plano => {
@@ -187,6 +205,54 @@ export default function Planos() {
           )
         })}
       </div>
+
+      {/* Painel de chave de ativação */}
+      {showKeyInput && planoAtual !== 'pro' && (
+        <div style={{
+          background: '#ffffff', borderRadius: '12px', padding: '28px 32px',
+          boxShadow: '0 4px 20px rgba(124,58,237,0.15)', border: '2px solid #7C3AED',
+          maxWidth: '500px', margin: '0 auto 32px', textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔑</div>
+          <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+            Ativar Plano Pro
+          </h3>
+          <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 20px 0' }}>
+            Digite sua chave de ativacao para liberar o plano Pro
+          </p>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+            <input
+              type="text"
+              value={chaveAtivacao}
+              onChange={e => setChaveAtivacao(e.target.value)}
+              placeholder="Digite a chave de ativacao"
+              onKeyDown={e => e.key === 'Enter' && handleActivateKey()}
+              style={{
+                flex: 1, padding: '12px 16px', border: '2px solid #E5E7EB',
+                borderRadius: '8px', fontSize: '15px', outline: 'none',
+                boxSizing: 'border-box', textAlign: 'center',
+                letterSpacing: '2px', fontWeight: 'bold'
+              }}
+            />
+            <button onClick={handleActivateKey} disabled={upgrading} style={{
+              padding: '12px 24px',
+              background: upgrading ? '#9CA3AF' : '#7C3AED',
+              color: '#ffffff', border: 'none', borderRadius: '8px',
+              fontSize: '15px', fontWeight: 'bold',
+              cursor: upgrading ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap'
+            }}>
+              {upgrading ? 'Ativando...' : 'Ativar'}
+            </button>
+          </div>
+          <button onClick={() => { setShowKeyInput(false); setChaveAtivacao(''); setMessage('') }} style={{
+            background: 'none', border: 'none', color: '#9CA3AF',
+            fontSize: '13px', cursor: 'pointer'
+          }}>
+            Cancelar
+          </button>
+        </div>
+      )}
 
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '24px 32px',
