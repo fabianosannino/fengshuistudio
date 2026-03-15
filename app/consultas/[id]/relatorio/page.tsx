@@ -469,6 +469,10 @@ export default function Relatorio() {
             background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
             color: '#ffffff', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
           }}>← Voltar</button>
+          <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
+            background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
+            color: '#b8860b', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+          }}>治 Curas</button>
           <button onClick={handlePrint} style={{
             background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
             color: '#ffffff', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
