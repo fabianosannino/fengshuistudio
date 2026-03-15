@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 
+const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 const MAX_CONSULTAS_MES_FREE = 3
+const MAX_IMOVEIS_PESSOAL = 3
 
 export async function POST(request: Request) {
   const supabase = await createRouteHandlerClient()
@@ -11,24 +13,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  // Check plan
+  // Check profile and plan
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plano')
+    .select('plano, tipo_usuario, role')
     .eq('id', user.id)
     .single()
 
-  if (profile?.plano !== 'pro') {
-    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+  const isProfessional = profile?.tipo_usuario
+    ? PROF_TYPES.includes(profile.tipo_usuario)
+    : (profile?.role === 'consultor')
+
+  if (isProfessional) {
+    // Professional free plan: 3 consultations per month
+    if (profile?.plano !== 'pro') {
+      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      const { count } = await supabase
+        .from('consultas')
+        .select('*', { count: 'exact', head: true })
+        .eq('consultor_id', user.id)
+        .gte('criado_em', inicioMes)
+
+      if ((count || 0) >= MAX_CONSULTAS_MES_FREE) {
+        return NextResponse.json(
+          { error: 'Limite de 3 consultas/mês no plano Free. Faça upgrade para continuar.' },
+          { status: 403 }
+        )
+      }
+    }
+  } else {
+    // Personal user: max 3 properties total
     const { count } = await supabase
       .from('consultas')
       .select('*', { count: 'exact', head: true })
       .eq('consultor_id', user.id)
-      .gte('criado_em', inicioMes)
 
-    if ((count || 0) >= MAX_CONSULTAS_MES_FREE) {
+    if ((count || 0) >= MAX_IMOVEIS_PESSOAL) {
       return NextResponse.json(
-        { error: 'Limite de 3 consultas/mês no plano Free. Faça upgrade para continuar.' },
+        { error: 'Limite de 3 imóveis atingido na conta pessoal. Mude para uma conta profissional para continuar.' },
         { status: 403 }
       )
     }
