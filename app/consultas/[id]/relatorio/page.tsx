@@ -6,6 +6,17 @@ import { useRouter, useParams } from 'next/navigation'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
+const CRITERIOS = [
+  'Limpeza e organizacao',
+  'Iluminacao adequada',
+  'Ventilacao e ar fresco',
+  'Cores harmonicas',
+  'Mobiliario posicionado',
+  'Plantas e elementos naturais',
+  'Ausencia de objetos quebrados',
+  'Fluxo de energia livre',
+]
+
 const SETOR_DICAS: Record<string, string[]> = {
   'Carreira':       ['Adicione elemento água: aquário, fonte ou imagem de rio','Use tons pretos, azul escuro e ondulados','Coloque espelho estrategicamente para ampliar o espaço','Mantenha o caminho até a porta livre','Adicione cristais negros como obsidiana'],
   'Conhecimento':   ['Crie espaço de estudo ou leitura tranquilo','Use tons azul-escuro, verde e preto','Adicione livros, mapas ou objetos de aprendizado','Iluminação focada e direta para concentração','Elimine distrações e eletrônicos desnecessários'],
@@ -21,6 +32,17 @@ const SETOR_DICAS: Record<string, string[]> = {
   'Fama':           ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos'],
   'Fama/Reputação': ['Adicione elementos de fogo: velas ou luz vermelha','Use tons vermelhos e laranja na decoração','Exponha diplomas, prêmios e reconhecimentos'],
   'Espiritualidade':['Crie um espaço de meditação ou altar pessoal','Use tons roxo, azul escuro e branco','Adicione objetos sagrados e significativos'],
+}
+
+const CRITERIO_DICAS: Record<number, string[]> = {
+  0: ['Faça limpeza profunda e reorganize completamente este setor','Descarte objetos desnecessários — desordem bloqueia fluxo de energia','Elimine poeira e sujeira acumulada nos cantos e sob móveis'],
+  1: ['Aumente iluminação com luminárias adicionais ou spots direcionados','Substitua lâmpadas fracas ou queimadas por equivalentes mais potentes','Adicione espelhos estratégicos para refletir e ampliar a luz natural'],
+  2: ['Abra janelas diariamente para renovar o ar pelo menos 15 minutos','Adicione plantas purificadoras como espada-de-são-jorge ou lírio-da-paz','Considere um purificador de ar ou difusor de óleos essenciais'],
+  3: ['Introduza a cor dominante do elemento deste setor na decoração','Substitua cores dissonantes por tons neutros ou do elemento correto','Use almofadas, quadros ou tapetes nas cores indicadas para ativação'],
+  4: ['Reposicione o móvel principal para ficar de costas para parede sólida','Afaste móveis de cantos mortos e garanta passagem de pelo menos 60cm','Remova móveis que bloqueiam portas, janelas ou o fluxo de circulação'],
+  5: ['Adicione uma planta saudável e viçosa com folhas arredondadas','Substitua plantas murchas ou secas — plantas doentes geram energia negativa','Coloque um vaso com terra ou elemento natural representando o ciclo vital'],
+  6: ['Remova imediatamente objetos quebrados, lascados ou sem funcionalidade','Conserte ou substitua itens danificados — simbolizam situações inacabadas','Verifique equipamentos elétricos com mau funcionamento e conserte-os'],
+  7: ['Reorganize a disposição dos móveis para criar fluxo em curvas suaves','Elimine corredores longos e estreitos usando plantas ou biombos','Certifique-se que a porta principal abre completamente sem obstruções'],
 }
 
 const PRODUTO_MAP: Record<string, { nome: string; categoria: string }> = {
@@ -45,25 +67,61 @@ const PRODUTO_MAP: Record<string, { nome: string; categoria: string }> = {
   'moeda': { nome: 'Decoracao e Simbolos', categoria: 'decoracao' },
 }
 
-function getReportProdutos(setoresData: any[]): { nome: string; categoria: string }[] {
+function gerarRecomendacoes(nomeSetor: string, scorePct: number, criteriosSetor: Record<string, number>) {
+  const urgente: string[] = []
+  const melhoria: string[] = []
+  const manutencao: string[] = []
+
+  CRITERIOS.forEach((criterio, ci) => {
+    const val = criteriosSetor[criterio] ?? -1
+    const dicas = CRITERIO_DICAS[ci] || []
+    if (val === 0) urgente.push(...dicas.slice(0, 2))
+    else if (val === 1) melhoria.push(dicas[0] || '')
+  })
+
+  const dicasSetor = SETOR_DICAS[nomeSetor] ?? []
+  if (scorePct < 40) urgente.push(...dicasSetor.slice(0, 3))
+  else if (scorePct < 70) melhoria.push(...dicasSetor.slice(0, 2))
+  else manutencao.push(...dicasSetor.slice(3, 5))
+
+  return {
+    urgente: [...new Set(urgente)].filter(Boolean).slice(0, 4),
+    melhoria: [...new Set(melhoria)].filter(Boolean).slice(0, 4),
+    manutencao: [...new Set(manutencao)].filter(Boolean).slice(0, 3),
+  }
+}
+
+function getProdutosSugeridos(recomendacoes: string[]): { nome: string; categoria: string }[] {
   const found = new Map<string, { nome: string; categoria: string }>()
-  setoresData.forEach(setor => {
-    const dicas = SETOR_DICAS[setor.nome] || []
-    const pct = setor.score_percentual
-    // Only suggest products for sectors that need improvement
-    if (pct !== null && pct < 70) {
-      dicas.forEach(dica => {
-        const lower = dica.toLowerCase()
-        Object.entries(PRODUTO_MAP).forEach(([keyword, produto]) => {
-          if (lower.includes(keyword) && !found.has(produto.categoria)) {
-            found.set(produto.categoria, produto)
-          }
-        })
-      })
-    }
+  recomendacoes.forEach(rec => {
+    const lower = rec.toLowerCase()
+    Object.entries(PRODUTO_MAP).forEach(([keyword, produto]) => {
+      if (lower.includes(keyword) && !found.has(produto.categoria)) {
+        found.set(produto.categoria, produto)
+      }
+    })
   })
   return Array.from(found.values())
 }
+
+// Ba Gua sector grid layout (3x3) — position mapping
+const BAGUA_GRID: { nome: string; elemento: string; cor: string }[][] = [
+  [
+    { nome: 'Prosperidade', elemento: 'Madeira', cor: '#6B21A8' },
+    { nome: 'Fama', elemento: 'Fogo', cor: '#DC2626' },
+    { nome: 'Relacionamentos', elemento: 'Terra', cor: '#DB2777' },
+  ],
+  [
+    { nome: 'Família', elemento: 'Madeira', cor: '#15803D' },
+    { nome: 'Centro', elemento: 'Terra', cor: '#CA8A04' },
+    { nome: 'Criatividade', elemento: 'Metal', cor: '#6B7280' },
+  ],
+  [
+    { nome: 'Conhecimento', elemento: 'Terra', cor: '#1D4ED8' },
+    { nome: 'Carreira', elemento: 'Água', cor: '#0F172A' },
+    { nome: 'Pessoas Úteis', elemento: 'Metal', cor: '#64748B' },
+  ],
+]
 
 export default function Relatorio() {
   const router = useRouter()
@@ -120,11 +178,29 @@ export default function Relatorio() {
     return 'Critico'
   }
 
+  function energiaLabel(energia: string | null) {
+    if (!energia) return null
+    const map: Record<string, { label: string; cor: string; icon: string }> = {
+      'falta': { label: 'Falta de Energia', cor: '#DC2626', icon: '▼' },
+      'excesso': { label: 'Excesso de Energia', cor: '#D97706', icon: '▲' },
+      'normal': { label: 'Energia Normal', cor: '#15803D', icon: '●' },
+    }
+    return map[energia] || null
+  }
+
   function scoreGeral() {
     const avaliados = setores.filter(s => s.score_percentual !== null)
     if (avaliados.length === 0) return null
     const soma = avaliados.reduce((a, s) => a + s.score_percentual, 0)
     return Math.round(soma / avaliados.length)
+  }
+
+  function getCriteriosMap(setor: any): Record<string, number> {
+    const map: Record<string, number> = {}
+    setor.diagnostico_criterios?.forEach((c: any) => {
+      map[c.criterio] = c.score
+    })
+    return map
   }
 
   function handlePrint() {
@@ -143,19 +219,17 @@ export default function Relatorio() {
         logging: false,
       })
 
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
+      const imgWidth = 210
+      const pageHeight = 297
       const imgHeight = (canvas.height * imgWidth) / canvas.width
 
       const pdf = new jsPDF('p', 'mm', 'a4')
       let heightLeft = imgHeight
       let position = 0
 
-      // First page
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
 
-      // Additional pages if content overflows
       while (heightLeft > 0) {
         position = position - pageHeight
         pdf.addPage()
@@ -163,7 +237,6 @@ export default function Relatorio() {
         heightLeft -= pageHeight
       }
 
-      // Watermark for Free plan
       if (isFree) {
         const totalPages = pdf.getNumberOfPages()
         for (let i = 1; i <= totalPages; i++) {
@@ -188,6 +261,18 @@ export default function Relatorio() {
     }
   }
 
+  // Find setor data by name for the Ba Gua grid
+  function findSetorByName(nome: string) {
+    return setores.find(s =>
+      s.nome === nome ||
+      s.nome === nome.replace('Úteis', 'Uteis') ||
+      s.nome === nome.replace('Uteis', 'Úteis') ||
+      s.nome === 'Centro/Saúde' && nome === 'Centro' ||
+      s.nome === 'Fama/Reputação' && nome === 'Fama' ||
+      s.nome === 'Filhos' && nome === 'Criatividade'
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
@@ -207,7 +292,7 @@ export default function Relatorio() {
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; }
-          .print-area { padding: 0 !important; }
+          .print-area { padding: 0 !important; box-shadow: none !important; }
         }
       `}</style>
 
@@ -263,7 +348,7 @@ export default function Relatorio() {
           </div>
         )}
 
-        {/* Header */}
+        {/* ══════════════════ HEADER ══════════════════ */}
         <div style={{ borderBottom: '3px solid #1E3A5F', paddingBottom: '24px', marginBottom: '32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -289,7 +374,7 @@ export default function Relatorio() {
           </div>
         </div>
 
-        {/* Dados do imovel */}
+        {/* ══════════════════ DADOS DO IMOVEL / CLIENTE ══════════════════ */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
           <div style={{ background: '#F9FAFB', borderRadius: '8px', padding: '20px' }}>
             <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0', textTransform: 'uppercase' }}>Imovel</h3>
@@ -308,7 +393,7 @@ export default function Relatorio() {
           </div>
         </div>
 
-        {/* Score geral */}
+        {/* ══════════════════ SCORE GERAL ══════════════════ */}
         {geral !== null && (
           <div style={{
             background: `linear-gradient(135deg, #1E3A5F, #2d5a8e)`,
@@ -333,81 +418,269 @@ export default function Relatorio() {
           </div>
         )}
 
-        {/* Setores */}
+        {/* ══════════════════ PLANTA BA GUA COM GRID ══════════════════ */}
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
+            Mapa Ba Gua do Imovel
+          </h2>
+
+          {/* Ba Gua plant image from canvas */}
+          {consulta.bagua_imagem && (
+            <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+              <img
+                src={consulta.bagua_imagem}
+                alt="Planta Ba Gua"
+                style={{
+                  maxWidth: '100%', maxHeight: '400px',
+                  borderRadius: '8px', border: '2px solid #E5E7EB',
+                  objectFit: 'contain'
+                }}
+              />
+              <p style={{ color: '#9CA3AF', fontSize: '11px', margin: '8px 0 0 0' }}>
+                Planta com grid Ba Gua — analise geometrica automatica
+              </p>
+            </div>
+          )}
+
+          {/* 3x3 Ba Gua Grid visual summary */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '2px', background: '#E5E7EB', borderRadius: '10px',
+            overflow: 'hidden', border: '2px solid #1E3A5F'
+          }}>
+            {BAGUA_GRID.flat().map((cell, idx) => {
+              const setor = findSetorByName(cell.nome)
+              const pct = setor?.score_percentual ?? null
+              const energia = setor?.avaliacao_geometrica || null
+              const enInfo = energiaLabel(energia)
+              return (
+                <div key={idx} style={{
+                  background: '#ffffff', padding: '10px 8px',
+                  textAlign: 'center', minHeight: '80px',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: '4px'
+                }}>
+                  <div style={{
+                    fontSize: '10px', fontWeight: 'bold', color: cell.cor,
+                    textTransform: 'uppercase', letterSpacing: '0.03em'
+                  }}>{cell.nome}</div>
+                  <div style={{ fontSize: '9px', color: '#9CA3AF' }}>{cell.elemento}</div>
+                  {pct !== null ? (
+                    <div style={{
+                      background: scoreColor(pct), color: '#fff',
+                      borderRadius: '12px', padding: '2px 10px',
+                      fontSize: '12px', fontWeight: 'bold', marginTop: '2px'
+                    }}>{pct}%</div>
+                  ) : (
+                    <div style={{ fontSize: '10px', color: '#D1D5DB', marginTop: '2px' }}>—</div>
+                  )}
+                  {enInfo && (
+                    <div style={{ fontSize: '9px', color: enInfo.cor, fontWeight: 'bold' }}>
+                      {enInfo.icon} {enInfo.label}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p style={{ color: '#9CA3AF', fontSize: '11px', margin: '8px 0 0 0', textAlign: 'center' }}>
+            Escola Black Hat — Porta principal na base do mapa
+          </p>
+        </div>
+
+        {/* ══════════════════ DIAGNOSTICO POR SETOR ══════════════════ */}
         <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
           Diagnostico por Setor
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
-          {setores.map(setor => (
-            <div key={setor.id} style={{
-              border: `1px solid #E5E7EB`, borderRadius: '8px', overflow: 'hidden'
-            }}>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '12px 16px',
-                background: '#F9FAFB', borderBottom: '1px solid #E5E7EB'
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px' }}>
+          {setores.map(setor => {
+            const pct = setor.score_percentual
+            const criteriosMap = getCriteriosMap(setor)
+            const rec = pct !== null ? gerarRecomendacoes(setor.nome, pct, criteriosMap) : null
+            const temRec = rec ? (rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0) : false
+            const energia = setor.avaliacao_geometrica || null
+            const enInfo = energiaLabel(energia)
+
+            // Collect products for this sector's recommendations
+            const todasRec = rec ? [...rec.urgente, ...rec.melhoria, ...rec.manutencao] : []
+            const produtos = getProdutosSugeridos(todasRec)
+
+            return (
+              <div key={setor.id} style={{
+                border: '1px solid #E5E7EB', borderRadius: '10px', overflow: 'hidden',
+                pageBreakInside: 'avoid'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '28px', height: '28px', borderRadius: '50%',
-                    background: scoreColor(setor.score_percentual),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: '12px', fontWeight: 'bold'
-                  }}>{setor.numero}</div>
-                  <div>
-                    <span style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '15px' }}>{setor.nome}</span>
-                    <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '8px' }}>{setor.elemento} • {setor.posicao_grid}</span>
+                {/* Sector header */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '14px 18px',
+                  background: '#F9FAFB', borderBottom: '1px solid #E5E7EB'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '50%',
+                      background: scoreColor(pct),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: '13px', fontWeight: 'bold'
+                    }}>{setor.numero}</div>
+                    <div>
+                      <span style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '15px' }}>{setor.nome}</span>
+                      <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '8px' }}>{setor.elemento} • {setor.posicao_grid}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {enInfo && (
+                      <span style={{
+                        fontSize: '11px', color: enInfo.cor, fontWeight: 'bold',
+                        padding: '2px 8px', background: `${enInfo.cor}15`, borderRadius: '12px'
+                      }}>
+                        {enInfo.icon} {enInfo.label}
+                      </span>
+                    )}
+                    {pct !== null && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '100px', height: '8px', background: '#E5E7EB', borderRadius: '4px', overflow: 'hidden'
+                        }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: scoreColor(pct), borderRadius: '4px' }} />
+                        </div>
+                        <span style={{ color: scoreColor(pct), fontWeight: 'bold', fontSize: '14px', minWidth: '40px' }}>
+                          {pct}%
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {setor.score_percentual !== null && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      width: '100px', height: '8px', background: '#E5E7EB', borderRadius: '4px', overflow: 'hidden'
-                    }}>
-                      <div style={{ width: `${setor.score_percentual}%`, height: '100%', background: scoreColor(setor.score_percentual), borderRadius: '4px' }} />
-                    </div>
-                    <span style={{ color: scoreColor(setor.score_percentual), fontWeight: 'bold', fontSize: '14px', minWidth: '40px' }}>
-                      {setor.score_percentual}%
-                    </span>
-                  </div>
-                )}
-              </div>
-              {setor.diagnostico_criterios?.length > 0 && (
-                <div style={{ padding: '12px 16px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    {setor.diagnostico_criterios.map((c: any) => (
-                      <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6B7280' }}>
-                        <span>{c.criterio}</span>
-                        <span style={{ color: scoreColor(c.score * 33), fontWeight: 'bold' }}>{c.score}/3</span>
+
+                <div style={{ padding: '14px 18px' }}>
+                  {/* Criteria scores */}
+                  {setor.diagnostico_criterios?.length > 0 && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Avaliacao dos Criterios
                       </div>
-                    ))}
-                  </div>
-                  {setor.diagnostico_criterios.some((c: any) => c.notas) && (
-                    <div style={{ marginTop: '8px', padding: '8px', background: '#F5F0FF', borderRadius: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                        {setor.diagnostico_criterios.map((c: any) => (
+                          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6B7280', padding: '4px 8px', background: '#F9FAFB', borderRadius: '4px' }}>
+                            <span>{c.criterio}</span>
+                            <span style={{ color: scoreColor(c.score * 33), fontWeight: 'bold' }}>{c.score}/3</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* User notes/observations */}
+                  {setor.diagnostico_criterios?.some((c: any) => c.notas) && (
+                    <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#F5F0FF', borderRadius: '8px', border: '1px solid #E9D5FF' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        Observacoes do Consultor
+                      </div>
                       {setor.diagnostico_criterios.filter((c: any) => c.notas).map((c: any) => (
-                        <p key={c.id} style={{ margin: '2px 0', fontSize: '12px', color: '#5B21B6' }}>
+                        <p key={c.id} style={{ margin: '3px 0', fontSize: '12px', color: '#5B21B6' }}>
                           <strong>{c.criterio}:</strong> {c.notas}
                         </p>
                       ))}
                     </div>
                   )}
+
+                  {/* Recommendations */}
+                  {temRec && rec && (
+                    <div style={{ marginBottom: produtos.length > 0 ? '14px' : '0' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Recomendacoes
+                      </div>
+
+                      {rec.urgente.length > 0 && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <div style={{ display: 'inline-block', background: '#DC2626', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px', marginBottom: '6px' }}>
+                            URGENTE
+                          </div>
+                          {rec.urgente.map((d, i) => (
+                            <div key={i} style={{ padding: '6px 10px', background: '#FEF2F2', borderLeft: '3px solid #DC2626', borderRadius: '4px', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {rec.melhoria.length > 0 && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <div style={{ display: 'inline-block', background: '#D97706', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px', marginBottom: '6px' }}>
+                            MELHORIA
+                          </div>
+                          {rec.melhoria.map((d, i) => (
+                            <div key={i} style={{ padding: '6px 10px', background: '#FFFBEB', borderLeft: '3px solid #D97706', borderRadius: '4px', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {rec.manutencao.length > 0 && (
+                        <div>
+                          <div style={{ display: 'inline-block', background: '#15803D', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px', marginBottom: '6px' }}>
+                            MANUTENCAO
+                          </div>
+                          {rec.manutencao.map((d, i) => (
+                            <div key={i} style={{ padding: '6px 10px', background: '#F0FDF4', borderLeft: '3px solid #15803D', borderRadius: '4px', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Per-sector product suggestions */}
+                  {produtos.length > 0 && (
+                    <div style={{
+                      padding: '10px 12px', background: '#F5F0FF',
+                      borderRadius: '8px', border: '1px solid #E9D5FF'
+                    }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '6px' }}>
+                        Produtos sugeridos para este setor
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {produtos.map(p => (
+                          <span key={p.categoria} style={{
+                            padding: '4px 10px', background: '#7C3AED', color: '#fff',
+                            borderRadius: '6px', fontSize: '11px', fontWeight: 'bold'
+                          }}>{p.nome}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
 
-        {/* Produtos recomendados */}
+        {/* ══════════════════ RESUMO DE PRODUTOS RECOMENDADOS ══════════════════ */}
         {(() => {
-          const produtos = getReportProdutos(setores)
-          if (produtos.length === 0) return null
+          // Collect all unique products across all sectors
+          const allProdutos = new Map<string, { nome: string; categoria: string }>()
+          setores.forEach(setor => {
+            const pct = setor.score_percentual
+            if (pct === null) return
+            const criteriosMap = getCriteriosMap(setor)
+            const rec = gerarRecomendacoes(setor.nome, pct, criteriosMap)
+            const todasRec = [...rec.urgente, ...rec.melhoria, ...rec.manutencao]
+            const prods = getProdutosSugeridos(todasRec)
+            prods.forEach(p => {
+              if (!allProdutos.has(p.categoria)) allProdutos.set(p.categoria, p)
+            })
+          })
+          if (allProdutos.size === 0) return null
+          const produtos = Array.from(allProdutos.values())
           return (
             <div style={{ marginBottom: '32px' }}>
               <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
                 Produtos Recomendados
               </h2>
               <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
-                Com base no diagnostico, recomendamos os seguintes produtos para harmonizacao:
+                Com base no diagnostico completo, recomendamos os seguintes produtos para harmonizacao energetica:
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
                 {produtos.map(p => (
@@ -428,11 +701,16 @@ export default function Relatorio() {
           )
         })()}
 
-        {/* Footer */}
+        {/* ══════════════════ FOOTER ══════════════════ */}
         <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '20px', textAlign: 'center' }}>
-          <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0' }}>
+          <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0 0 4px 0' }}>
             Relatorio gerado pelo FengShui Studio • {new Date().toLocaleDateString('pt-BR')} • Escola Black Hat
           </p>
+          {profile?.nome_completo && (
+            <p style={{ color: '#9CA3AF', fontSize: '11px', margin: '0' }}>
+              {profile.nome_completo}{profile?.registro_profissional ? ` • ${profile.registro_profissional}` : ''}
+            </p>
+          )}
         </div>
 
       </div>

@@ -177,36 +177,47 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
   const ctx=src.getContext('2d')!, W=src.width, H=src.height
   const d=ctx.getImageData(0,0,W,H).data
 
-  // Detect "construction" pixels: walls, furniture, fixtures, floors with patterns
-  // Uses multiple heuristics to distinguish built areas from empty/outdoor areas
+  // Helper: classify a pixel as vegetation/outdoor
+  function isVegetation(r:number,g:number,b:number){
+    // Green-dominant: grass, trees, bushes, garden
+    return g > r*1.12 && g > b*1.12 && g > 55
+  }
+  // Helper: classify a pixel as construction (walls, furniture, indoor floors)
+  // Excludes vegetation, sky, and plain white backgrounds
+  function isConstruction(r:number,g:number,b:number){
+    if(isVegetation(r,g,b)) return false
+    const brightness=(r+g+b)/3
+    // Very bright = empty/background
+    if(brightness>225) return false
+    // Walls: very dark lines
+    if(brightness<100) return true
+    // Furniture/fixtures: medium dark, non-green
+    if(brightness<170) return true
+    // Colored elements (non-green): saturated pixels like colored walls/tiles
+    const maxC=Math.max(r,g,b), minC=Math.min(r,g,b)
+    const sat=maxC>0?(maxC-minC)/maxC:0
+    if(sat>0.3 && brightness<210) return true
+    return false
+  }
+
+  // Detect construction density inside a region (ignores vegetation/outdoor)
   function contentDensity(x0:number,y0:number,x1:number,y1:number){
-    let structural=0, total=0
+    let construction=0, total=0
     const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
     const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
-    // Sample every 2nd pixel for performance on large images
     const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 200))
     for(let y=sy;y<ey;y+=step) for(let x=sx;x<ex;x+=step){
       const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
       if(a<30) continue
       total++
-      // Count as structural/construction if:
-      // 1. Dark pixels (walls, dark furniture): any channel < 120
-      // 2. Strongly colored pixels (colored walls, fixtures): high saturation
-      // 3. Non-uniform/textured (not a plain light background)
-      const maxC=Math.max(r,g,bv), minC=Math.min(r,g,bv)
-      const saturation = maxC > 0 ? (maxC-minC)/maxC : 0
-      const brightness = (r+g+bv)/3
-      const isDark = brightness < 140
-      const isColored = saturation > 0.25 && brightness < 210
-      const isStructural = brightness < 200 // not very light/white
-      if(isDark || isColored || isStructural) structural++
+      if(isConstruction(r,g,bv)) construction++
     }
-    return total>0 ? structural/total : 0
+    return total>0 ? construction/total : 0
   }
 
-  // Detect any visible content outside boundary (for excesso)
+  // Detect construction (NOT vegetation/garden) outside boundary for excesso
   function outsideDensity(x0:number,y0:number,x1:number,y1:number){
-    let content=0, total=0
+    let construction=0, total=0
     const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
     const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
     const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 150))
@@ -214,13 +225,10 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
       const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
       if(a<30) continue
       total++
-      // Any non-white pixel with some substance
-      const brightness = (r+g+bv)/3
-      const maxC=Math.max(r,g,bv), minC=Math.min(r,g,bv)
-      const saturation = maxC > 0 ? (maxC-minC)/maxC : 0
-      if(brightness < 180 || saturation > 0.2) content++
+      // Only count wall-like or structural elements, not garden
+      if(isConstruction(r,g,bv) && (r+g+bv)/3 < 150) construction++
     }
-    return total>0 ? content/total : 0
+    return total>0 ? construction/total : 0
   }
 
   // Calculate content density for each of the 9 grid sectors
@@ -250,17 +258,17 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     if(col===0) ex=Math.max(ex,outsideDensity(b.x-mgW,y0,b.x,y1))
     if(col===2) ex=Math.max(ex,outsideDensity(b.x+b.w,y0,b.x+b.w+mgW,y1))
 
-    // Falta: sector has significantly less content than average/median
-    // A sector is "falta" when its density is less than 40% of the median
-    // (meaning it's mostly empty - garden, patio, no construction)
-    const refDensity = Math.max(median, avg) // use whichever is higher as reference
-    const falta = refDensity > 0.05 && wd[idx] < refDensity * 0.45
+    // Falta: sector has significantly less construction than others
+    // meaning part of the sector is garden/outdoor without building
+    const refDensity = Math.max(median, avg)
+    const falta = refDensity > 0.03 && wd[idx] < refDensity * 0.55
 
-    // Excesso: significant construction exists outside the boundary
-    const excesso = ex > 0.15
+    // Excesso: actual building structure extends outside the boundary
+    // (vegetation/garden outside does NOT count as excesso)
+    const excesso = ex > 0.20
 
-    // Geo score based on analysis
-    const geo = falta ? 20 : excesso ? 55 : Math.round(Math.min(100, 70 + (wd[idx] / (avg || 1)) * 15))
+    // Geo score: falta penalizes more than excesso
+    const geo = falta ? 20 : excesso ? 50 : Math.round(Math.min(100, 70 + (wd[idx] / (avg || 1)) * 15))
     return {criterios:Array(8).fill(1),geo,falta,excesso}
   })
 }
@@ -715,6 +723,14 @@ function BaguaPlantaContent() {
     const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
     await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
     await supabase.from('diagnostico_criterios').insert(inserts)
+    // Save canvas snapshot to consulta (best effort - column may not exist yet)
+    try {
+      const cv=cvRef.current
+      if(cv){
+        const dataUrl=cv.toDataURL('image/png',0.7)
+        await supabase.from('consultas').update({bagua_imagem:dataUrl}).eq('id',consultaId)
+      }
+    } catch{}
     setMsg(`"${stDef.nome}" salvo!`)
     setTimeout(()=>setMsg(''),3000)
   }
