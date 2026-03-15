@@ -99,6 +99,7 @@ export interface Consulta {
   bagua_imagem?: string | null
   foto_geral_url?: string | null
   fotos_comodos?: FotoComodo[] | null
+  bagua_entrada?: { x: number; y: number; lado: string } | null
   status: ConsultaStatus
   roda_da_vida?: Record<string, number> | null
   checklist_chi?: string[] | null
