@@ -44,12 +44,16 @@ export default function AppShell({
   const [profile, setProfile] = useState<Profile | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [hasClientes, setHasClientes] = useState(false)
+  const [hasConsultas, setHasConsultas] = useState(false)
 
   const isProfessional = profile?.tipo_usuario
     ? PROF_TYPES.includes(profile.tipo_usuario)
     : (profile?.role === 'consultor' || !profile?.tipo_usuario)
 
-  const navItems = isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL
+  const showPlantaBagua = hasClientes && hasConsultas
+  const navItems = (isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL)
+    .filter(item => item.href !== '/bagua-planta' || showPlantaBagua)
 
   useEffect(() => {
     setMounted(true)
@@ -84,6 +88,22 @@ export default function AppShell({
             plano: 'freemium',
           })
         }
+
+        // Check if user has clients and imóveis (consultas) for conditional nav
+        const { count: clienteCount } = await supabase
+          .from('clientes')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id)
+          .eq('ativo', true)
+          .limit(1)
+        setHasClientes((clienteCount ?? 0) > 0)
+
+        const { count: consultaCount } = await supabase
+          .from('consultas')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id)
+          .limit(1)
+        setHasConsultas((consultaCount ?? 0) > 0)
       }
     }
     loadProfile()
@@ -200,6 +220,18 @@ export default function AppShell({
               </a>
             )
           })}
+          {/* Hint when user has clients but no imóveis yet */}
+          {sidebarOpen && isProfessional && hasClientes && !hasConsultas && (
+            <div style={{
+              margin: '8px 6px 0', padding: '8px 12px',
+              background: 'rgba(251,191,36,0.1)', borderRadius: '8px',
+              border: '1px solid rgba(251,191,36,0.2)',
+            }}>
+              <p style={{ color: '#FDE68A', fontSize: '11px', margin: 0, lineHeight: '1.4' }}>
+                Cadastre um imóvel para acessar a análise de planta.
+              </p>
+            </div>
+          )}
         </nav>
 
         <div style={{
