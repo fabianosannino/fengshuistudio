@@ -128,8 +128,11 @@ function gridOrder(escola: string, lado: string): number[] {
 type Step   = 'upload' | 'configurar' | 'entrada' | 'resultado'
 type Lado   = 'esquerda' | 'centro' | 'direita'
 type Bounds = { x:number; y:number; w:number; h:number }
+type Marcacao = { id:string; tipo:'falta'|'excesso'; x:number; y:number; w:number; h:number }
 type Drag   = { tipo:'borda'; lado:'top'|'bottom'|'left'|'right' }
             | { tipo:'linhaH'|'linhaV'; index:number }
+            | { tipo:'marcacao-mover'; id:string; offX:number; offY:number }
+            | { tipo:'marcacao-resize'; id:string; canto:'tl'|'tr'|'bl'|'br' }
 type Setor  = {
   criterios:number[]; geo:number; falta:boolean; excesso:boolean;
   /** Area metrics (pixel-based, proportional) */
@@ -269,6 +272,44 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
   })
 }
 
+// Compute overlap area between a marcacao rect and a sector rect
+function rectOverlap(r:{x:number;y:number;w:number;h:number}, sx:number,sy:number,sw:number,sh:number):number{
+  const ox=Math.max(0,Math.min(r.x+r.w,sx+sw)-Math.max(r.x,sx))
+  const oy=Math.max(0,Math.min(r.y+r.h,sy+sh)-Math.max(r.y,sy))
+  return ox*oy
+}
+
+// Apply marcacoes to setores — adjusts AR based on manual falta/excesso rectangles
+function aplicarMarcacoes(setoresBase:Setor[], b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[]):Setor[]{
+  if(marcacoes.length===0) return setoresBase
+  return setoresBase.map((sc,idx)=>{
+    const row=Math.floor(idx/3),col=idx%3
+    const x0=b.x+(col===0?0:b.w*lv[col-1])
+    const x1=b.x+(col===2?b.w:b.w*lv[col])
+    const y0=b.y+(row===0?0:b.h*lh[row-1])
+    const y1=b.y+(row===2?b.h:b.h*lh[row])
+    const sw=x1-x0, sh=y1-y0
+
+    let faltaArea=0, excessoArea=0
+    for(const m of marcacoes){
+      const overlap=rectOverlap(m,x0,y0,sw,sh)
+      if(overlap>0){
+        if(m.tipo==='falta') faltaArea+=overlap
+        else excessoArea+=overlap
+      }
+    }
+    if(faltaArea===0 && excessoArea===0) return sc
+    const newAv = sc.av + faltaArea
+    const newAe = sc.ae + excessoArea
+    const newAr = Math.max(0, sc.aq - newAv - newAe)
+    const newDesvio = sc.aq > 0 ? ((newAr - sc.aq) / sc.aq) * 100 : 0
+    const absD = Math.abs(newDesvio)
+    const newGeo = absD <= 5 ? 100 : absD <= 15 ? 80 : absD <= 40 ? 50 : absD <= 70 ? 25 : 10
+    return {...sc, av:newAv, ae:newAe, ar:newAr, desvio:newDesvio, geo:newGeo,
+      falta:newAv>0, excesso:newAe>0}
+  })
+}
+
 function desvioTipo(d:number,sc?:Setor):{tipo:string;icon:string;intensidade:string;cor:string}{
   const abs=Math.abs(d)
   if(abs<=5)  return {tipo:'Equilibrado',icon:'✓',intensidade:'—',cor:'#15803D'}
@@ -339,7 +380,7 @@ function BaguaPlantaContent() {
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
   const [lh,       setLh]       = useState([1/3,2/3])
   const [lv,       setLv]       = useState([1/3,2/3])
-  const [modo,     setModo]     = useState<'nenhum'|'bordas'|'grid'>('nenhum')
+  const [modo,     setModo]     = useState<'nenhum'|'bordas'|'grid'|'marcarFalta'|'marcarExcesso'>('nenhum')
   const [setores,  setSetores]  = useState<Setor[]>([])
   const [ativo,    setAtivo]    = useState<number|null>(null)
   const [msg,      setMsg]      = useState('')
@@ -360,6 +401,11 @@ function BaguaPlantaContent() {
   const [showRetomar, setShowRetomar] = useState(false)
   const rascunhoRef = useRef<any>(null) // holds loaded draft for "Continuar"
   const restaurandoRef = useRef(false) // prevents re-save during restoration
+  // Falta/Excesso manual rectangles
+  const [marcacoes, setMarcacoes] = useState<Marcacao[]>([])
+  const marcacoesRef = useRef<Marcacao[]>([])
+  const desenhandoRef = useRef<{startX:number;startY:number;tipo:'falta'|'excesso'}|null>(null)
+  const [desenhandoPreview, setDesenhandoPreview] = useState<{x:number;y:number;w:number;h:number}|null>(null)
 
   // Dismiss instruction card via localStorage
   useEffect(()=>{
@@ -387,6 +433,7 @@ function BaguaPlantaContent() {
   useEffect(()=>{ lhRef.current=lh },[lh])
   useEffect(()=>{ lvRef.current=lv },[lv])
   useEffect(()=>{ plantaUrlRef.current=plantaUrl },[plantaUrl])
+  useEffect(()=>{ marcacoesRef.current=marcacoes },[marcacoes])
 
   useEffect(()=>{
     supabase.auth.getUser().then(({data:{user}})=>{
@@ -474,11 +521,18 @@ function BaguaPlantaContent() {
         if(be.finalizada_em) setStep('resultado')
         else setStep(etapa)
         // Recalculate sectors if we have bounds
+        // Restore marcacoes
+        const savedMarcacoes:Marcacao[]=Array.isArray(be.marcacoes)?be.marcacoes.map((m:any)=>({
+          id:m.id||Date.now().toString(36),tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h
+        })):[]
+        setMarcacoes(savedMarcacoes); marcacoesRef.current=savedMarcacoes
+
         if(be.bordas&&r2){
           const bRestored={x:be.bordas.x,y:be.bordas.y,w:be.bordas.w,h:be.bordas.h}
           const lhRestored=be.lh||[1/3,2/3]
           const lvRestored=be.lv||[1/3,2/3]
-          const novos=analisar(r2,bRestored,lhRestored,lvRestored)
+          const base=analisar(r2,bRestored,lhRestored,lvRestored)
+          const novos=aplicarMarcacoes(base,bRestored,lhRestored,lvRestored,savedMarcacoes)
           // Merge saved sector data (criterios, ajustes) with recalculated geometry
           const setoresRasc=be.setores_rascunho as any[]|undefined
           setSetores(novos.map((n,idx)=>{
@@ -665,8 +719,48 @@ function BaguaPlantaContent() {
       ctx.fill()
       ctx.fillStyle='#ffffff'; ctx.fillText(lbl2,lx,ly+2)
     }
+
+    // ── marcações de falta/excesso ──
+    const drawMarcacao=(m:Marcacao,s2:number)=>{
+      const mx=m.x*s2,my=m.y*s2,mw=m.w*s2,mh=m.h*s2
+      const isFalta=m.tipo==='falta'
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
+      ctx.fillRect(mx,my,mw,mh)
+      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
+      // Label
+      const area=Math.round(m.w*m.h)
+      const label=`${isFalta?'FALTA':'EXCESSO'} · ${area} px²`
+      const fs2=Math.max(8,Math.min(11,mw/10))
+      ctx.font=`bold ${fs2}px Arial`; ctx.textAlign='center'
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
+      ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
+      // Resize handles (4 corners)
+      const hs=4
+      ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
+        ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+        ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
+      })
+      // Delete button (top-right)
+      const dx=mx+mw-1,dy=my-1
+      ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+      ctx.beginPath(); ctx.arc(dx,dy,7,0,Math.PI*2); ctx.fill()
+      ctx.fillStyle='#fff'; ctx.font='bold 10px Arial'; ctx.textAlign='center'
+      ctx.fillText('✕',dx,dy+3.5)
+    }
+    for(const m of marcacoes) drawMarcacao(m,s)
+    // Drawing preview
+    if(desenhandoPreview){
+      const isFalta=modo==='marcarFalta'
+      const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
+      ctx.fillRect(px,py,pw,ph)
+      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[bounds,entrada,lado,escola,lh,lv,modo,setores,ativo])
+  },[bounds,entrada,lado,escola,lh,lv,modo,setores,ativo,marcacoes,desenhandoPreview])
 
   // redesenha sempre que draw muda (state changes)
   useEffect(()=>{ draw() },[draw])
@@ -799,8 +893,44 @@ function BaguaPlantaContent() {
       ctx.fill()
       ctx.fillStyle='#ffffff'; ctx.fillText(lbl2,lx,ly+2)
     }
+
+    // ── marcações de falta/excesso (fullscreen) ──
+    const drawMarcacaoFS=(m:Marcacao)=>{
+      const mx=m.x*s,my=m.y*s,mw=m.w*s,mh=m.h*s
+      const isFalta=m.tipo==='falta'
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
+      ctx.fillRect(mx,my,mw,mh)
+      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
+      const area=Math.round(m.w*m.h)
+      const label=`${isFalta?'FALTA':'EXCESSO'} · ${area} px²`
+      const fs2=Math.max(10,Math.min(14,mw/8))
+      ctx.font=`bold ${fs2}px Arial`; ctx.textAlign='center'
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
+      ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
+      const hs=5
+      ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
+        ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+        ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
+      })
+      const dx=mx+mw-1,dy=my-1
+      ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+      ctx.beginPath(); ctx.arc(dx,dy,8,0,Math.PI*2); ctx.fill()
+      ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.textAlign='center'
+      ctx.fillText('✕',dx,dy+4)
+    }
+    for(const m of marcacoes) drawMarcacaoFS(m)
+    if(desenhandoPreview){
+      const isFalta=modo==='marcarFalta'
+      const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
+      ctx.fillRect(px,py,pw,ph)
+      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fullscreen,bounds,entrada,lado,escola,lh,lv,modo,setores])
+  },[fullscreen,bounds,entrada,lado,escola,lh,lv,modo,setores,marcacoes,desenhandoPreview])
 
   useEffect(()=>{ drawFS() },[drawFS])
 
@@ -830,14 +960,60 @@ function BaguaPlantaContent() {
     return null
   }
   function onFsMD(e:React.MouseEvent<HTMLCanvasElement>){
+    const{cx,cy}=fsCC(e); const s=fsScale()
+    if(modo==='marcarFalta'||modo==='marcarExcesso'){
+      const ix=cx/s, iy=cy/s
+      for(const m of marcacoes){
+        const mx=m.x*s,my=m.y*s,mw=m.w*s,mh=m.h*s
+        const dx=mx+mw-1,dy=my-1
+        if(Math.sqrt((cx-dx)**2+(cy-dy)**2)<12){removeMarcacao(m.id);return}
+        const HANDLE=10
+        const corners:[number,number,'tl'|'tr'|'bl'|'br'][]=[
+          [mx,my,'tl'],[mx+mw,my,'tr'],[mx,my+mh,'bl'],[mx+mw,my+mh,'br']]
+        for(const [hx,hy,c] of corners){
+          if(Math.abs(cx-hx)<HANDLE&&Math.abs(cy-hy)<HANDLE){
+            dragRef.current={tipo:'marcacao-resize',id:m.id,canto:c}; isDrag.current=false; return
+          }
+        }
+        if(cx>=mx&&cx<=mx+mw&&cy>=my&&cy<=my+mh){
+          dragRef.current={tipo:'marcacao-mover',id:m.id,offX:ix-m.x,offY:iy-m.y}; isDrag.current=false; return
+        }
+      }
+      desenhandoRef.current={startX:ix,startY:iy,tipo:modo==='marcarFalta'?'falta':'excesso'}
+      isDrag.current=false; return
+    }
     if(modo==='nenhum') return
-    const{cx,cy}=fsCC(e); const t=fsFindDrag(cx,cy)
+    const t=fsFindDrag(cx,cy)
     if(t){dragRef.current=t; isDrag.current=false}
   }
   function onFsMM(e:React.MouseEvent<HTMLCanvasElement>){
+    const{cx,cy}=fsCC(e); const s=fsScale()
+    if(desenhandoRef.current){
+      isDrag.current=true
+      const ix=cx/s, iy=cy/s; const st=desenhandoRef.current
+      setDesenhandoPreview({x:Math.min(st.startX,ix),y:Math.min(st.startY,iy),
+        w:Math.abs(ix-st.startX),h:Math.abs(iy-st.startY)})
+      return
+    }
+    if(dragRef.current&&(dragRef.current.tipo==='marcacao-mover'||dragRef.current.tipo==='marcacao-resize')){
+      isDrag.current=true; const t=dragRef.current; const ix=cx/s, iy=cy/s
+      setMarcacoes(prev=>{
+        const next=prev.map(m=>{
+          if(t.tipo==='marcacao-mover'&&m.id===t.id) return {...m,x:ix-t.offX,y:iy-t.offY}
+          if(t.tipo==='marcacao-resize'&&m.id===t.id){
+            const nx=t.canto.includes('l')?ix:m.x, ny=t.canto.includes('t')?iy:m.y
+            const nw=t.canto.includes('l')?m.x+m.w-ix:ix-m.x
+            const nh=t.canto.includes('t')?m.y+m.h-iy:iy-m.y
+            return {...m,x:nx,y:ny,w:Math.max(5,nw),h:Math.max(5,nh)}
+          }
+          return m
+        })
+        marcacoesRef.current=next; return next
+      })
+      return
+    }
     if(!dragRef.current||!bounds) return
     isDrag.current=true; setBordaModificada(true)
-    const{cx,cy}=fsCC(e); const s=fsScale()
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
     const t=dragRef.current
     if(t.tipo==='borda'){
@@ -856,6 +1032,18 @@ function BaguaPlantaContent() {
     if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lvRef.current=n;return n})}
   }
   function onFsMU(){
+    if(desenhandoRef.current&&desenhandoPreview&&desenhandoPreview.w>3&&desenhandoPreview.h>3){
+      const m:Marcacao={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+        tipo:desenhandoRef.current.tipo,...desenhandoPreview}
+      const next=[...marcacoes,m]
+      setMarcacoes(next); marcacoesRef.current=next
+      recalcularComMarcacoes(next)
+    }
+    desenhandoRef.current=null; setDesenhandoPreview(null)
+    if(dragRef.current&&(dragRef.current.tipo==='marcacao-mover'||dragRef.current.tipo==='marcacao-resize')){
+      if(isDrag.current) recalcularComMarcacoes(marcacoesRef.current)
+      dragRef.current=null; setTimeout(()=>{isDrag.current=false},50); return
+    }
     if(isDrag.current) recalcular()
     dragRef.current=null; setTimeout(()=>{isDrag.current=false},50)
   }
@@ -928,6 +1116,11 @@ function BaguaPlantaContent() {
         obs:sc.obs,
       }))
     }
+    // Save marcacoes (falta/excesso rectangles)
+    const curMarcacoes=marcacoesRef.current
+    if(curMarcacoes.length>0){
+      draft.marcacoes=curMarcacoes.map(m=>({id:m.id,tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h}))
+    }
     await supabase.from('consultas').update({bagua_entrada:draft}).eq('id',consultaId)
   }
 
@@ -954,6 +1147,27 @@ function BaguaPlantaContent() {
     }
   }
 
+  // ── marcação helpers ─────────────────────────────────────────────────────
+  function recalcularComMarcacoes(newMarcacoes:Marcacao[]){
+    const r=rotRef.current, b=boundsRef.current
+    const curLh=lhRef.current, curLv=lvRef.current
+    if(!r||!b) return
+    const base=analisar(r,b,curLh,curLv)
+    const novos=aplicarMarcacoes(base,b,curLh,curLv,newMarcacoes)
+    setSetores(prev=>{
+      const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios,
+        ajusteManual:prev[i]?.ajusteManual??null,ajusteTipo:prev[i]?.ajusteTipo??null,obs:prev[i]?.obs??''}))
+      salvarRascunho({etapa:'resultado',bordas:b,lhV:curLh,lvV:curLv,setoresV:merged})
+      return merged
+    })
+    setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
+  }
+  function removeMarcacao(id:string){
+    const next=marcacoes.filter(m=>m.id!==id)
+    setMarcacoes(next); marcacoesRef.current=next
+    recalcularComMarcacoes(next)
+  }
+
   // ── calcular ───────────────────────────────────────────────────────────────
   function calcular(){
     const r=rotRef.current; if(!r) return
@@ -961,7 +1175,8 @@ function BaguaPlantaContent() {
     setBounds(b); boundsRef.current=b
     setLh([1/3,2/3]); lhRef.current=[1/3,2/3]
     setLv([1/3,2/3]); lvRef.current=[1/3,2/3]
-    const novosSetores=analisar(r,b,[1/3,2/3],[1/3,2/3])
+    const base=analisar(r,b,[1/3,2/3],[1/3,2/3])
+    const novosSetores=aplicarMarcacoes(base,b,[1/3,2/3],[1/3,2/3],marcacoesRef.current)
     setSetores(novosSetores)
     setStep('resultado'); setModo('nenhum')
     setBordaModificada(false)
@@ -976,7 +1191,8 @@ function BaguaPlantaContent() {
     const curLh=lhRef.current
     const curLv=lvRef.current
     if(!r||!b) return
-    const novos=analisar(r,b,curLh,curLv)
+    const base=analisar(r,b,curLh,curLv)
+    const novos=aplicarMarcacoes(base,b,curLh,curLv,marcacoesRef.current)
     setSetores(prev=>{
       const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios}))
       // Save draft after recalculation
@@ -1006,15 +1222,75 @@ function BaguaPlantaContent() {
   }
 
   function onMD(e:React.MouseEvent<HTMLCanvasElement>){
+    const{cx,cy}=cc(e); const s=scale()
+    // Start drawing marcacao
+    if(modo==='marcarFalta'||modo==='marcarExcesso'){
+      const ix=cx/s, iy=cy/s
+      // Check delete button, corner handles, or body
+      for(const m of marcacoes){
+        const mx=m.x*s,my=m.y*s,mw=m.w*s,mh=m.h*s
+        // Delete button (top-right corner)
+        const dx=mx+mw-1,dy=my-1
+        if(Math.sqrt((cx-dx)**2+(cy-dy)**2)<10){removeMarcacao(m.id);return}
+        // Corner handles
+        const HANDLE=8
+        const corners:[number,number,'tl'|'tr'|'bl'|'br'][]=[
+          [mx,my,'tl'],[mx+mw,my,'tr'],[mx,my+mh,'bl'],[mx+mw,my+mh,'br']]
+        for(const [hx,hy,c] of corners){
+          if(Math.abs(cx-hx)<HANDLE&&Math.abs(cy-hy)<HANDLE){
+            dragRef.current={tipo:'marcacao-resize',id:m.id,canto:c}; isDrag.current=false; return
+          }
+        }
+        // Move body
+        if(cx>=mx&&cx<=mx+mw&&cy>=my&&cy<=my+mh){
+          dragRef.current={tipo:'marcacao-mover',id:m.id,offX:cx/s-m.x,offY:cy/s-m.y}; isDrag.current=false; return
+        }
+      }
+      // Start new drawing
+      desenhandoRef.current={startX:ix,startY:iy,tipo:modo==='marcarFalta'?'falta':'excesso'}
+      isDrag.current=false; return
+    }
     if(modo==='nenhum') return
-    const{cx,cy}=cc(e); const t=findDrag(cx,cy)
+    const t=findDrag(cx,cy)
     if(t){dragRef.current=t; isDrag.current=false}
   }
 
   function onMM(e:React.MouseEvent<HTMLCanvasElement>){
+    const{cx,cy}=cc(e); const s=scale()
+    // Drawing marcacao preview
+    if(desenhandoRef.current){
+      isDrag.current=true
+      const ix=cx/s, iy=cy/s
+      const st=desenhandoRef.current
+      setDesenhandoPreview({x:Math.min(st.startX,ix),y:Math.min(st.startY,iy),
+        w:Math.abs(ix-st.startX),h:Math.abs(iy-st.startY)})
+      return
+    }
+    // Moving/resizing marcacao
+    if(dragRef.current&&(dragRef.current.tipo==='marcacao-mover'||dragRef.current.tipo==='marcacao-resize')){
+      isDrag.current=true
+      const t=dragRef.current
+      const ix=cx/s, iy=cy/s
+      setMarcacoes(prev=>{
+        const next=prev.map(m=>{
+          if(t.tipo==='marcacao-mover'&&m.id===t.id){
+            return {...m,x:ix-t.offX,y:iy-t.offY}
+          }
+          if(t.tipo==='marcacao-resize'&&m.id===t.id){
+            const nx=t.canto.includes('l')?ix:m.x
+            const ny=t.canto.includes('t')?iy:m.y
+            const nw=t.canto.includes('l')?m.x+m.w-ix:ix-m.x
+            const nh=t.canto.includes('t')?m.y+m.h-iy:iy-m.y
+            return {...m,x:nx,y:ny,w:Math.max(5,nw),h:Math.max(5,nh)}
+          }
+          return m
+        })
+        marcacoesRef.current=next; return next
+      })
+      return
+    }
     if(!dragRef.current||!bounds) return
     isDrag.current=true; setBordaModificada(true)
-    const{cx,cy}=cc(e); const s=scale()
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
     const t=dragRef.current
     if(t.tipo==='borda'){
@@ -1034,6 +1310,20 @@ function BaguaPlantaContent() {
   }
 
   function onMU(){
+    // Finish drawing marcacao
+    if(desenhandoRef.current&&desenhandoPreview&&desenhandoPreview.w>3&&desenhandoPreview.h>3){
+      const m:Marcacao={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+        tipo:desenhandoRef.current.tipo,...desenhandoPreview}
+      const next=[...marcacoes,m]
+      setMarcacoes(next); marcacoesRef.current=next
+      recalcularComMarcacoes(next)
+    }
+    desenhandoRef.current=null; setDesenhandoPreview(null)
+    // Finish moving/resizing marcacao
+    if(dragRef.current&&(dragRef.current.tipo==='marcacao-mover'||dragRef.current.tipo==='marcacao-resize')){
+      if(isDrag.current) recalcularComMarcacoes(marcacoesRef.current)
+      dragRef.current=null; setTimeout(()=>{isDrag.current=false},50); return
+    }
     if(isDrag.current) recalcular()
     dragRef.current=null; setTimeout(()=>{isDrag.current=false},50)
   }
@@ -1133,6 +1423,10 @@ function BaguaPlantaContent() {
           ajusteTipo:sc.ajusteTipo,
           obs:sc.obs,
         }))
+      }
+      // Save marcacoes
+      if(marcacoes.length>0){
+        finalizacao.marcacoes=marcacoes.map(m=>({id:m.id,tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h}))
       }
       await supabase.from('consultas').update({
         bagua_imagem:dataUrl,
@@ -1280,7 +1574,7 @@ function BaguaPlantaContent() {
                   style={{
                     maxWidth:'100%',display:'block',
                     border:'1px solid #E5E7EB',borderRadius:'8px',
-                    cursor: step==='entrada'?'crosshair':modo!=='nenhum'?'move':'pointer',
+                    cursor: step==='entrada'?'crosshair':(modo==='marcarFalta'||modo==='marcarExcesso')?'crosshair':modo!=='nenhum'?'move':'pointer',
                     userSelect:'none',
                   }}
                 />
@@ -1421,6 +1715,14 @@ function BaguaPlantaContent() {
                       style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='grid'?'🔒 Finalizar':'⊞ Grid'}
                     </button>
+                    <button onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
+                      style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      {modo==='marcarFalta'?'🔒 Finalizar':'▭ Marcar Falta'}
+                    </button>
+                    <button onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
+                      style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Marcar Excesso'}
+                    </button>
                     <button onClick={recalcular} disabled={!bordaModificada}
                       style={{background:bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:bordaModificada?'pointer':'not-allowed',opacity:bordaModificada?1:0.6}}>
                       🔄 Recalcular
@@ -1429,13 +1731,15 @@ function BaguaPlantaContent() {
                       style={{background:'#15803D',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       🔍 Tela cheia
                     </button>
-                    <button onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null)}}
+                    <button onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null);setMarcacoes([])}}
                       style={{background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>
                       ↩ Nova planta
                     </button>
                   </div>
                   {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
                   {modo==='grid'  &&<div style={{marginTop:'5px',padding:'5px 9px',background:'#EDE9FE',borderRadius:'5px',color:'#5B21B6',fontSize:'10px'}}>Arraste as linhas laranja para reposicionar os setores</div>}
+                  {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
+                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
                   {msg            &&<div style={{marginTop:'5px',padding:'6px 10px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'11px',fontWeight:'bold'}}>✅ {msg}</div>}
                   {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
                   {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
@@ -1704,6 +2008,14 @@ function BaguaPlantaContent() {
                   style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='grid'?'🔒 Finalizar grid':'⊞ Ajustar grid'}
                 </button>
+                <button onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
+                  style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  {modo==='marcarFalta'?'🔒 Finalizar':'▭ Falta'}
+                </button>
+                <button onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
+                  style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Excesso'}
+                </button>
                 <button onClick={recalcular} disabled={!bordaModificada}
                   style={{background:bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:bordaModificada?'pointer':'not-allowed',opacity:bordaModificada?1:0.6}}>
                   🔄 Recalcular
@@ -1722,6 +2034,18 @@ function BaguaPlantaContent() {
                 Arraste as alças laranja para ajustar os limites da construcao (fronteira Feng Shui)
               </div>
             )}
+            {modo==='marcarFalta'&&(
+              <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
+                padding:'6px 16px',background:'#FEF2F2',borderRadius:'6px',color:'#DC2626',fontSize:'12px',zIndex:1}}>
+                Clique e arraste para marcar uma area de FALTA
+              </div>
+            )}
+            {modo==='marcarExcesso'&&(
+              <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
+                padding:'6px 16px',background:'#FFF7ED',borderRadius:'6px',color:'#EA580C',fontSize:'12px',zIndex:1}}>
+                Clique e arraste para marcar uma area de EXCESSO
+              </div>
+            )}
             {modo==='grid'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
                 padding:'6px 16px',background:'#EDE9FE',borderRadius:'6px',color:'#5B21B6',fontSize:'12px',zIndex:1}}>
@@ -1738,7 +2062,7 @@ function BaguaPlantaContent() {
               style={{
                 display:'block', borderRadius:'8px',
                 border:'2px solid rgba(255,255,255,0.2)',
-                cursor:modo!=='nenhum'?'move':'default',
+                cursor:(modo==='marcarFalta'||modo==='marcarExcesso')?'crosshair':modo!=='nenhum'?'move':'default',
                 userSelect:'none', maxWidth:'95vw', maxHeight:'80vh'
               }}
             />
