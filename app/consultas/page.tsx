@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
@@ -17,12 +17,37 @@ export default function Consultas() {
   const [message, setMessage] = useState('')
   const [isProfessional, setIsProfessional] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const loadData = useCallback(async (pageNum: number, uid?: string) => {
+    const id = uid || userId
+    if (!id) return
+
+    setLoading(true)
+    const from = pageNum * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    const { data, count } = await supabase
+      .from('consultas')
+      .select(`*, clientes(nome_completo)`, { count: 'exact' })
+      .eq('consultor_id', id)
+      .order('criado_em', { ascending: false })
+      .range(from, to)
+
+    setConsultas(data || [])
+    setTotalCount(count || 0)
+    setCurrentPage(pageNum)
+    setLoading(false)
+  }, [userId])
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
+
+      setUserId(user.id)
 
       const { data: prof } = await supabase
         .from('profiles')
@@ -35,15 +60,10 @@ export default function Consultas() {
         || prof?.role === 'consultor'
       setIsProfessional(isProf)
 
-      const { data } = await supabase
-        .from('consultas')
-        .select(`*, clientes(nome_completo)`)
-        .eq('consultor_id', user.id)
-        .order('criado_em', { ascending: false })
-      setConsultas(data || [])
-      setLoading(false)
+      await loadData(0, user.id)
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function statusColor(status: string) {
@@ -61,12 +81,20 @@ export default function Consultas() {
     if (error) {
       setMessage('Erro ao excluir: ' + error.message)
     } else {
-      setConsultas(consultas.filter(c => c.id !== id))
+      // Reload current page after deletion
+      await loadData(currentPage)
     }
     setDeleteTarget(null)
   }
 
-  if (loading) {
+  function handlePageChange(newPage: number) {
+    loadData(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  if (loading && consultas.length === 0) {
     return (
       <AppShell currentPage="consultas">
         <div style={{ marginBottom: '24px' }}>
@@ -78,9 +106,6 @@ export default function Consultas() {
     )
   }
 
-  const totalPages = Math.ceil(consultas.length / PAGE_SIZE)
-  const paginatedItems = consultas.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-
   return (
     <AppShell currentPage="consultas">
 
@@ -90,7 +115,7 @@ export default function Consultas() {
             {isProfessional ? 'Consultas' : 'Meus Imóveis'}
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-            {consultas.length} {isProfessional ? 'consulta(s) registrada(s)' : 'imóvel(is) cadastrado(s)'}
+            {totalCount} {isProfessional ? 'consulta(s) registrada(s)' : 'imóvel(is) cadastrado(s)'}
           </p>
         </div>
         <button onClick={() => window.location.href = '/consultas/nova'} style={{
@@ -108,7 +133,9 @@ export default function Consultas() {
         }}>{message}</div>
       )}
 
-      {consultas.length === 0 ? (
+      {loading ? (
+        <Skeleton variant="list" rows={4} />
+      ) : totalCount === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
@@ -130,7 +157,7 @@ export default function Consultas() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {paginatedItems.map(consulta => (
+          {consultas.map(consulta => (
             <div key={consulta.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px 24px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -199,27 +226,27 @@ export default function Consultas() {
           gap: '8px', marginTop: '24px',
         }}>
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 0}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
-              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
-              color: currentPage === 1 ? '#D1D5DB' : '#374151',
-              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              background: currentPage === 0 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 0 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
               fontSize: '13px', fontWeight: 'bold',
             }}
           >← Anterior</button>
           <span style={{ color: '#6B7280', fontSize: '13px' }}>
-            Página {currentPage} de {totalPages}
+            Página {currentPage + 1} de {totalPages}
           </span>
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage + 1 >= totalPages}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
-              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
-              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
-              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              background: currentPage + 1 >= totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage + 1 >= totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage + 1 >= totalPages ? 'not-allowed' : 'pointer',
               fontSize: '13px', fontWeight: 'bold',
             }}
           >Próximo →</button>
