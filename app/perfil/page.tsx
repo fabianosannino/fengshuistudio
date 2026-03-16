@@ -24,7 +24,7 @@ export default function Perfil() {
     linkedin: '', instagram: '', parceiro_visivel: false,
   })
 
-  const isProfessional = plano === 'pro'
+  const isProfessional = plano === 'pro' || plano === 'profissional'
     || PROF_TYPES.includes(tipoUsuario)
     || tipoUsuario === 'consultor'
 
@@ -96,7 +96,12 @@ export default function Perfil() {
       parceiro_visivel: form.parceiro_visivel,
     }
 
-    const updateData = isProfessional ? { ...basicData, ...profData } : basicData
+    const isPaidPlan = planoEfetivo(plano) !== 'free'
+    const updateData = isProfessional
+      ? { ...basicData, ...profData }
+      : isPaidPlan
+        ? { ...basicData, parceiro_visivel: form.parceiro_visivel }
+        : basicData
 
     const { error } = await supabase.from('profiles').update(updateData).eq('id', user!.id)
 
@@ -264,7 +269,16 @@ export default function Perfil() {
                 </div>
               </div>
 
-              {/* Parceiro visivel toggle */}
+            </div>
+          )}
+
+          {/* Parceiro visivel toggle — available for all paid plans (Simples + Profissional) */}
+          {planoEfetivo(plano) !== 'free' && (
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
+              <h3 style={{ color: '#7C3AED', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Rede de Parceiros</h3>
+              <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
+                Apareça na listagem de parceiros para outros usuários da plataforma
+              </p>
               <div style={{
                 background: form.parceiro_visivel ? '#F0FDF4' : '#F9FAFB',
                 border: `1px solid ${form.parceiro_visivel ? '#BBF7D0' : '#E5E7EB'}`,
@@ -297,8 +311,8 @@ export default function Perfil() {
                   </p>
                   <p style={{ color: '#6B7280', fontSize: '12px', margin: '0' }}>
                     {form.parceiro_visivel
-                      ? 'Seu perfil está visível para usuários pessoais que buscam profissionais'
-                      : 'Ative para que usuários pessoais encontrem você na rede de parceiros'}
+                      ? 'Seu perfil está visível para outros usuários que buscam profissionais'
+                      : 'Ative para que outros usuários encontrem você na rede de parceiros'}
                   </p>
                 </div>
               </div>

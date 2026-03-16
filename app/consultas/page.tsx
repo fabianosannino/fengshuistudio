@@ -29,7 +29,7 @@ export default function Consultas() {
         .eq('id', user.id)
         .single()
 
-      const isProf = prof?.plano === 'pro'
+      const isProf = prof?.plano === 'pro' || prof?.plano === 'profissional'
         || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
         || prof?.role === 'consultor'
       setIsProfessional(isProf)

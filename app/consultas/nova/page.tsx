@@ -45,7 +45,7 @@ export default function NovaConsulta() {
   const [setoresAtivos, setSetoresAtivos] = useState<number[]>([])
   const [consultaId, setConsultaId] = useState<string | null>(null)
 
-  const isProfessional = profile?.plano === 'pro'
+  const isProfessional = profile?.plano === 'pro' || profile?.plano === 'profissional'
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 
@@ -62,7 +62,7 @@ export default function NovaConsulta() {
         .single()
       setProfile(prof)
 
-      const userIsProfessional = prof?.plano === 'pro'
+      const userIsProfessional = prof?.plano === 'pro' || prof?.plano === 'profissional'
         || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
         || prof?.role === 'consultor'
 
@@ -261,7 +261,7 @@ export default function NovaConsulta() {
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
             <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Limite de 3 imóveis atingido na conta Free.
+              Limite de 3 imóveis atingido no plano {planoLabel(profile?.plano)}.
             </p>
             <p style={{ margin: '0 0 12px 0' }}>
               Para cadastrar mais imóveis, faça upgrade.
@@ -307,7 +307,7 @@ export default function NovaConsulta() {
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
             background: '#F5F0FF', border: '1px solid #E9D5FF', color: '#6B21A8', fontSize: '13px'
           }}>
-            Plano Free: {totalConsultas}/3 imóveis cadastrados.
+            Plano {planoLabel(profile?.plano)}: {totalConsultas}/3 imóveis cadastrados.
           </div>
         )}
 
