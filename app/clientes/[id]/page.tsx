@@ -67,7 +67,7 @@ export default function ClienteDetalhe() {
 
       const { data: cons } = await supabase
         .from('consultas')
-        .select('*')
+        .select('*, bagua_entrada')
         .eq('cliente_id', params.id)
         .eq('consultor_id', user.id)
         .order('criado_em', { ascending: false })
@@ -498,26 +498,37 @@ export default function ClienteDetalhe() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {consultas.map(c => (
-              <div key={c.id} onClick={() => window.location.href = `/consultas/${c.id}`} style={{
-                background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-              }}>
-                <div>
-                  <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', margin: '0 0 4px 0' }}>{c.nome_imovel || 'Imóvel'}</p>
-                  <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
-                    📅 {new Date(c.criado_em).toLocaleDateString('pt-BR')}
-                    {c.tipo_imovel && ` • ${c.tipo_imovel}`}
-                  </p>
+            {consultas.map(c => {
+              const baguaData = c.bagua_entrada as any
+              const temBagua = !!(baguaData?.finalizada_em)
+              return (
+                <div key={c.id} onClick={() => window.location.href = `/consultas/${c.id}`} style={{
+                  background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', margin: '0 0 4px 0' }}>{c.nome_imovel || 'Imóvel'}</p>
+                    <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
+                      📅 {new Date(c.criado_em).toLocaleDateString('pt-BR')}
+                      {c.tipo_imovel && ` • ${c.tipo_imovel}`}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{
+                      background: temBagua ? '#F0FDF4' : '#F3F4F6',
+                      color: temBagua ? '#15803D' : '#9CA3AF',
+                      padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
+                    }}>{temBagua ? '☯ Com análise Baguá' : '☯ Sem análise'}</span>
+                    <span style={{
+                      background: c.status === 'finalizada' ? '#F0FDF4' : c.status === 'em_andamento' ? '#FFF7ED' : '#F3F4F6',
+                      color: c.status === 'finalizada' ? '#15803D' : c.status === 'em_andamento' ? '#D97706' : '#6B7280',
+                      padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
+                    }}>{c.status === 'finalizada' ? 'Finalizada' : c.status === 'em_andamento' ? 'Em andamento' : 'Rascunho'}</span>
+                  </div>
                 </div>
-                <span style={{
-                  background: c.status === 'finalizada' ? '#F0FDF4' : c.status === 'em_andamento' ? '#FFF7ED' : '#F3F4F6',
-                  color: c.status === 'finalizada' ? '#15803D' : c.status === 'em_andamento' ? '#D97706' : '#6B7280',
-                  padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                }}>{c.status === 'finalizada' ? 'Finalizada' : c.status === 'em_andamento' ? 'Em andamento' : 'Rascunho'}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

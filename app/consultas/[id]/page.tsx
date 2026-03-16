@@ -739,45 +739,108 @@ export default function ConsultaDetalhe() {
           }}>{message}</div>
         )}
 
-        {/* ── Ba Gua Planta banner ─────────────────────────────────────────── */}
-        <div style={{
-          background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 100%)',
-          borderRadius: '14px', padding: '20px 24px', marginBottom: '24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexWrap: 'wrap', gap: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span style={{ fontSize: '40px' }}>🗺️</span>
-            <div>
-              <div style={{ color: '#ffffff', fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
-                Análise Ba Gua — Planta Interativa
+        {/* ── Ba Gua Planta banner + resumo ───────────────────────────────── */}
+        {(() => {
+          const baguaEntrada = consulta.bagua_entrada as any
+          const finalizada = baguaEntrada?.finalizada_em
+          const temSetores = setores.length > 0
+          // Helper: deviation color
+          function devCor(pct: number | null) {
+            if (pct === null) return '#D1D5DB'
+            if (pct >= 70) return '#15803D'
+            if (pct >= 40) return '#D97706'
+            return '#DC2626'
+          }
+          // Top 3 worst sectors
+          const sorted3 = [...setores].filter(s => s.score_percentual != null)
+            .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100)).slice(0, 3)
+          return (
+            <div style={{
+              background: '#ffffff', borderRadius: '14px', marginBottom: '24px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden'
+            }}>
+              {/* Header */}
+              <div style={{
+                background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 100%)',
+                padding: '20px 24px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexWrap: 'wrap', gap: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ fontSize: '40px' }}>🗺️</span>
+                  <div>
+                    <div style={{ color: '#ffffff', fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
+                      Análise Ba Gua — Planta Interativa
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
+                      {finalizada
+                        ? `Concluída em ${new Date(finalizada).toLocaleDateString('pt-BR')} às ${new Date(finalizada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                        : 'Posicione a planta, defina setores e avalie geometricamente cada área do imóvel'
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {finalizada && (
+                    <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                      style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Reabrir análise
+                    </button>
+                  )}
+                  <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                    style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    {finalizada ? 'Refazer análise' : 'Abrir Planta'}
+                  </button>
+                </div>
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
-                Posicione a planta, defina setores e avalie geometricamente cada área do imóvel
-              </div>
+              {/* Summary body (only if sectors exist) */}
+              {temSetores && (
+                <div style={{ padding: '18px 24px' }}>
+                  {/* 9-sector grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '16px' }}>
+                    {setores.map(s => {
+                      const pct = s.score_percentual ?? 0
+                      return (
+                        <div key={s.id} style={{
+                          padding: '8px', borderRadius: '6px',
+                          background: devCor(pct) + '12', borderLeft: `3px solid ${devCor(pct)}`
+                        }}>
+                          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1E3A5F' }}>{s.nome}</div>
+                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: devCor(pct) }}>{pct}%</div>
+                          <div style={{ fontSize: '9px', color: '#6B7280' }}>
+                            {pct >= 70 ? '✓ Equilibrado' : pct >= 40 ? '⚠ Atenção' : '▼ Urgente'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {/* Top 3 priorities */}
+                  {sorted3.length > 0 && (
+                    <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '8px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#DC2626', marginBottom: '6px' }}>
+                        Prioridades de intervenção
+                      </div>
+                      {sorted3.map((s, i) => (
+                        <div key={s.id} style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '3px' }}>
+                          {i + 1}. <strong>{s.nome}</strong> — {s.score_percentual}%
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Bagua image preview */}
+                  {consulta.bagua_imagem && (
+                    <div style={{ textAlign: 'center' }}>
+                      <img src={consulta.bagua_imagem} alt="Planta Ba Gua" style={{
+                        maxWidth: '100%', maxHeight: '200px', borderRadius: '8px',
+                        border: '1px solid #E5E7EB'
+                      }} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
-                padding: '12px 18px', borderRadius: '10px', fontSize: '14px',
-                fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
-              }}>
-              Atualizar
-            </button>
-            <button
-              onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-              style={{
-                background: '#B8860B', color: '#fff', border: 'none',
-                padding: '12px 28px', borderRadius: '10px', fontSize: '14px',
-                fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
-              }}>
-              Abrir Planta
-            </button>
-          </div>
-        </div>
+          )
+        })()}
 
         {/* ── Tab Navigation ───────────────────────────────────────────────── */}
         <div style={{

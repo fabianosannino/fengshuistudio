@@ -54,6 +54,9 @@ export default function Dashboard() {
   // Agenda
   const [agenda, setAgenda] = useState<AgendaItem[]>([])
 
+  // Análises Baguá recentes
+  const [analisesBagua, setAnalisesBagua] = useState<{id:string;nome_imovel:string;finalizada_em:string;cliente_nome:string}[]>([])
+
   useEffect(() => {
     async function loadAll() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -282,6 +285,26 @@ export default function Dashboard() {
       // Ordenar por data
       agendaItems.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
       setAgenda(agendaItems.slice(0, 8))
+
+      // Análises Baguá recentes (consultas com bagua_entrada.finalizada_em)
+      const { data: consultasBagua } = await supabase
+        .from('consultas')
+        .select('id, nome_imovel, bagua_entrada, clientes(nome_completo)')
+        .eq('consultor_id', user.id)
+        .not('bagua_entrada', 'is', null)
+        .order('criado_em', { ascending: false })
+        .limit(20)
+      const recentes = (consultasBagua || [])
+        .filter((c: any) => c.bagua_entrada?.finalizada_em)
+        .sort((a: any, b: any) => new Date(b.bagua_entrada.finalizada_em).getTime() - new Date(a.bagua_entrada.finalizada_em).getTime())
+        .slice(0, 5)
+        .map((c: any) => ({
+          id: c.id,
+          nome_imovel: c.nome_imovel || 'Imóvel',
+          finalizada_em: c.bagua_entrada.finalizada_em,
+          cliente_nome: c.clientes?.nome_completo || '',
+        }))
+      setAnalisesBagua(recentes)
 
       setLoading(false)
     }
@@ -564,6 +587,36 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Análises Baguá recentes */}
+      {analisesBagua.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
+            ☯ Análises Ba Gua recentes
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {analisesBagua.map(a => (
+              <div key={a.id} onClick={() => window.location.href = `/consultas/${a.id}`} style={{
+                background: '#ffffff', borderRadius: '10px', padding: '14px 18px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                borderLeft: '4px solid #15803D'
+              }}>
+                <div>
+                  <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '14px', margin: '0 0 2px 0' }}>{a.nome_imovel}</p>
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0' }}>
+                    {a.cliente_nome && `${a.cliente_nome} · `}
+                    Concluída em {new Date(a.finalizada_em).toLocaleDateString('pt-BR')} às {new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <span style={{ background: '#F0FDF4', color: '#15803D', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' }}>
+                  ✓ Concluída
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Ações rápidas */}
       <div style={{ marginBottom: '32px' }}>

@@ -869,6 +869,58 @@ function BaguaPlantaContent() {
     setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,criterios:sc.criterios.map((v,j)=>j===ci?val:v)}))
   }
 
+  const [salvandoTudo,setSalvandoTudo] = useState(false)
+
+  async function finalizarAnalise(){
+    if(!consultaId||setores.length!==9) return
+    setSalvandoTudo(true)
+    try{
+      const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
+      // Save all 9 sectors
+      for(let i=0;i<9;i++){
+        const stDef=SETORES[order[i]]
+        const sc=setores[i]
+        const scorePct=Math.round(sc.geo*0.4+(sc.criterios.reduce((a:number,b:number)=>a+b,0)/24*100)*0.6)
+        const {data:setorRow,error:e1}=await supabase.from('setores_bagua').upsert({
+          consulta_id:consultaId,
+          numero:i+1,
+          nome:stDef.nome,
+          elemento:stDef.elem,
+          posicao_grid:String(i+1),
+          score_percentual:scorePct
+        },{onConflict:'consulta_id,numero'}).select('id').single()
+        if(e1||!setorRow) continue
+        const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
+        await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
+        await supabase.from('diagnostico_criterios').insert(inserts)
+      }
+      // Save canvas snapshot + finalization metadata
+      const cv=cvRef.current
+      const dataUrl=cv?cv.toDataURL('image/png',0.7):null
+      const b=boundsRef.current
+      const finalizacao={
+        x:entrada?.x??0, y:entrada?.y??0, lado,
+        bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
+        finalizada_em:new Date().toISOString(),
+        lh:lhRef.current, lv:lvRef.current,
+      }
+      await supabase.from('consultas').update({
+        bagua_imagem:dataUrl,
+        bagua_entrada:finalizacao,
+        status:'em_andamento',
+      }).eq('id',consultaId)
+      // Show toast
+      setMsg('✓ Análise salva com sucesso. Todas as páginas foram atualizadas.')
+      setTimeout(()=>{
+        router.push(`/consultas/${consultaId}`)
+      },1000)
+    }catch(err:any){
+      setMsg('Erro ao salvar: '+(err?.message||'erro desconhecido'))
+    }finally{
+      setSalvandoTudo(false)
+    }
+  }
+
   const order  = gridOrder(escola,lado)
   const stepN  = {upload:0,configurar:1,entrada:2,resultado:3}[step]
   const stAtivo= ativo!==null?SETORES[order[ativo]]:null
@@ -1162,6 +1214,19 @@ function BaguaPlantaContent() {
                       <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
                       <div style={{fontSize:'10px',color:'#16A34A',marginTop:'2px'}}>Todos os setores com desvio ≤ 5%</div>
                     </div>
+                  )}
+
+                  {/* Salvar e continuar */}
+                  {setores.length===9&&consultaId&&(
+                    <button onClick={finalizarAnalise} disabled={salvandoTudo}
+                      style={{
+                        marginTop:'14px',width:'100%',padding:'12px',
+                        background:salvandoTudo?'#93C5FD':'linear-gradient(135deg, #1E3A5F, #2D5A8E)',
+                        color:'#fff',border:'none',borderRadius:'8px',
+                        fontSize:'14px',fontWeight:'bold',cursor:salvandoTudo?'not-allowed':'pointer',
+                      }}>
+                      {salvandoTudo?'Salvando...':'Salvar e continuar análise →'}
+                    </button>
                   )}
                 </>
               )}
