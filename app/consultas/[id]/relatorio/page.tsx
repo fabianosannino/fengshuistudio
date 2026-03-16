@@ -197,7 +197,7 @@ export default function Relatorio() {
           pdf.setFontSize(40)
           pdf.setTextColor(200, 200, 200)
           pdf.saveGraphicsState()
-          pdf.text('Gerado com FengShui Studio \u2014 Plano Simples', imgWidth / 2, pageHeight / 2, { align: 'center', angle: 45 })
+          pdf.text('Gerado com FengShui Studio — Plano Simples', imgWidth / 2, pageHeight / 2, { align: 'center', angle: 45 })
           pdf.restoreGraphicsState()
         }
       }
@@ -229,10 +229,10 @@ export default function Relatorio() {
         <div style={{ textAlign: 'center', maxWidth: '400px', padding: '32px' }}>
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>🔒</div>
           <h1 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', marginBottom: '12px' }}>
-            Relat\u00f3rio PDF
+            Relatório PDF
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', marginBottom: '24px' }}>
-            Relat\u00f3rio PDF dispon\u00edvel nos planos pagos.
+            Relatório PDF disponível nos planos pagos.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button onClick={() => router.push('/planos')} style={{

@@ -261,10 +261,10 @@ export default function NovaConsulta() {
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
             <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Limite de 3 im\u00f3veis atingido na conta Free.
+              Limite de 3 imóveis atingido na conta Free.
             </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Para cadastrar mais im\u00f3veis, fa\u00e7a upgrade.
+              Para cadastrar mais imóveis, faça upgrade.
             </p>
             <a href="/planos" style={{
               display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
@@ -281,17 +281,17 @@ export default function NovaConsulta() {
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
             <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Voc\u00ea j\u00e1 possui 1 im\u00f3vel ativo.
+              Você já possui 1 imóvel ativo.
             </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Arquive o im\u00f3vel atual para cadastrar um novo, ou fa\u00e7a upgrade para o plano Profissional.
+              Arquive o imóvel atual para cadastrar um novo, ou faça upgrade para o plano Profissional.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <a href="/consultas" style={{
                 display: 'inline-block', padding: '8px 20px', background: '#D97706',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 textDecoration: 'none'
-              }}>Arquivar im\u00f3vel atual</a>
+              }}>Arquivar imóvel atual</a>
               <a href="/planos" style={{
                 display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
@@ -307,7 +307,7 @@ export default function NovaConsulta() {
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
             background: '#F5F0FF', border: '1px solid #E9D5FF', color: '#6B21A8', fontSize: '13px'
           }}>
-            Plano Free: {totalConsultas}/3 im\u00f3veis cadastrados.
+            Plano Free: {totalConsultas}/3 imóveis cadastrados.
           </div>
         )}
 
@@ -317,7 +317,7 @@ export default function NovaConsulta() {
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
             background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontSize: '13px'
           }}>
-            Plano Simples: {consultasAtivas}/1 im\u00f3vel ativo.
+            Plano Simples: {consultasAtivas}/1 imóvel ativo.
           </div>
         )}
 

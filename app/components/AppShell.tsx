@@ -44,9 +44,9 @@ export default function AppShell({
     }
     items.push({ label: isProfessional ? 'Consultas' : 'Minha Casa', icon: isProfessional ? '\ud83d\udccb' : '\ud83c\udfe0', href: '/consultas' })
     items.push({ label: 'Curas', icon: '\u2728', href: '/curas' })
-    // Calend\u00e1rio: hidden for free
+    // Calendário: hidden for free
     if (podeCalendario(plano)) {
-      items.push({ label: 'Calend\u00e1rio', icon: '\ud83c\udf19', href: '/calendario' })
+      items.push({ label: 'Calendário', icon: '\ud83c\udf19', href: '/calendario' })
     }
     if (isProfessional) {
       items.push({ label: 'Pagamentos', icon: '\ud83d\udcb0', href: '/pagamentos' })

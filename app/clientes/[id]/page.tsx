@@ -526,8 +526,8 @@ export default function ClienteDetalhe() {
                       color: baguaFinalizada ? '#15803D' : baguaEmAndamento ? '#D97706' : '#9CA3AF',
                       padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
                     }}>{baguaFinalizada
-                        ? `☯ Conclu\u00edda em ${new Date(baguaData.finalizada_em).toLocaleDateString('pt-BR')}`
-                        : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem an\u00e1lise'
+                        ? `☯ Concluída em ${new Date(baguaData.finalizada_em).toLocaleDateString('pt-BR')}`
+                        : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem análise'
                     }</span>
                     <span style={{
                       background: c.status === 'finalizada' ? '#F0FDF4' : c.status === 'em_andamento' ? '#FFF7ED' : '#F3F4F6',
