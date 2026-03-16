@@ -213,10 +213,10 @@ export default function Relatorio() {
 
   if (loading || !consulta) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF5', fontFamily: "Georgia, 'Times New Roman', serif" }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', color: '#B8860B', marginBottom: '16px' }}>\u98a8\u6c34</div>
-          <p style={{ color: '#B8860B', fontSize: '14px' }}>Gerando relat\u00f3rio...</p>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Gerando relatório...</p>
         </div>
       </div>
     )
