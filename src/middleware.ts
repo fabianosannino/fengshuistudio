@@ -31,6 +31,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Protect /admin routes — require role = 'admin'
+  if (pathname.startsWith('/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') {
+      const dashUrl = new URL('/dashboard', request.url)
+      dashUrl.searchParams.set('msg', 'Acesso restrito.')
+      return NextResponse.redirect(dashUrl)
+    }
+  }
+
   return response
 }
 

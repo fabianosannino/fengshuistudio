@@ -48,7 +48,12 @@ export default function AppShell({
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 
-  const navItems = isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL
+  const isAdmin = profile?.role === 'admin'
+
+  const baseNav = isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL
+  const navItems = isAdmin
+    ? [...baseNav, { label: 'Admin', icon: '🔧', href: '/admin/chaves' }]
+    : baseNav
 
   useEffect(() => {
     setMounted(true)
