@@ -243,7 +243,11 @@ export default function ClienteDetalhe() {
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         <div style={{ marginBottom: '24px' }}>
-          <span onClick={() => window.location.href = '/clientes'} style={{ color: '#7C3AED', fontSize: '14px', cursor: 'pointer' }}>← Voltar para clientes</span>
+          <button onClick={() => window.location.href = '/clientes'} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            padding: '6px 14px', background: 'transparent', border: '1px solid #E5E7EB',
+            borderRadius: '6px', color: '#6B7280', fontSize: '14px', fontWeight: 400, cursor: 'pointer',
+          }}>← Clientes</button>
         </div>
 
         {message && (
