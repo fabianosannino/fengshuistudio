@@ -148,6 +148,14 @@ export default function Consultas() {
                     padding: '2px 10px', borderRadius: '20px',
                     fontSize: '12px', fontWeight: 'bold'
                   }}>{statusLabel(consulta.status)}</span>
+                  {(()=>{
+                    const be=consulta.bagua_entrada as any
+                    const finalizada=!!(be?.finalizada_em)
+                    const emAndamento=!!(be?.planta_url)&&!finalizada
+                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Conclu\u00edda ${new Date(be.finalizada_em).toLocaleDateString('pt-BR')}`}</span>
+                    if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>☯ Em andamento</span>
+                    return null
+                  })()}
                 </div>
                 {isProfessional && consulta.clientes?.nome_completo && (
                   <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>

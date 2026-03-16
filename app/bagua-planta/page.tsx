@@ -294,6 +294,28 @@ function total(geo:number,c:number[]){return Math.round(geo*0.4+fisico(c)*0.6)}
 function cor(s:number){return s>=80?'#15803D':s>=60?'#65A30D':s>=40?'#D97706':s>=20?'#EA580C':'#DC2626'}
 function lbl(s:number){return s>=80?'Excelente':s>=60?'Bom':s>=40?'Regular':s>=20?'Ruim':'Crítico'}
 
+// Effective deviation considering 3-level hierarchy (manual → calculated)
+function desvioFinal(sc:Setor):{desvio:number;ajustado:boolean}{
+  if(sc.ajusteManual!==null&&sc.ajusteManual!==undefined){
+    // Nível 3: manual override — use the manual value as desvio
+    const sign=sc.ajusteTipo==='excedente'?1:(sc.ajusteTipo==='equilibrado'?0:-1)
+    return {desvio:sign===0?0:sign*Math.abs(sc.ajusteManual),ajustado:true}
+  }
+  return {desvio:sc.desvio,ajustado:false}
+}
+function desvioTipoFinal(sc:Setor):{tipo:string;icon:string;intensidade:string;cor:string;ajustado:boolean}{
+  const {desvio:d,ajustado}=desvioFinal(sc)
+  if(ajustado&&sc.ajusteTipo==='equilibrado') return {...desvioTipo(0),ajustado}
+  const dt=desvioTipo(d,sc)
+  // Override tipo with manual type when adjusted
+  if(ajustado&&sc.ajusteTipo){
+    const tipoMap:{[k:string]:string}={equilibrado:'Equilibrado',faltante:'Faltante',excedente:'Excedente'}
+    const iconMap:{[k:string]:string}={equilibrado:'\u2713',faltante:'\u25BC',excedente:'\u25B2'}
+    return {...dt,tipo:tipoMap[sc.ajusteTipo]||dt.tipo,icon:iconMap[sc.ajusteTipo]||dt.icon,ajustado}
+  }
+  return {...dt,ajustado}
+}
+
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
 function BaguaPlantaContent() {
@@ -330,6 +352,13 @@ function BaguaPlantaContent() {
   const boundsRef = useRef<Bounds|null>(null)
   const lhRef = useRef([1/3,2/3])
   const lvRef = useRef([1/3,2/3])
+  // Plant persistence state
+  const [plantaUrl, setPlantaUrl] = useState<string|null>(null)
+  const plantaUrlRef = useRef<string|null>(null)
+  const [carregandoPlanta, setCarregandoPlanta] = useState(false)
+  const [showRetomar, setShowRetomar] = useState(false)
+  const rascunhoRef = useRef<any>(null) // holds loaded draft for "Continuar"
+  const restaurandoRef = useRef(false) // prevents re-save during restoration
 
   // Dismiss instruction card via localStorage
   useEffect(()=>{
@@ -356,6 +385,7 @@ function BaguaPlantaContent() {
   useEffect(()=>{ boundsRef.current=bounds },[bounds])
   useEffect(()=>{ lhRef.current=lh },[lh])
   useEffect(()=>{ lvRef.current=lv },[lv])
+  useEffect(()=>{ plantaUrlRef.current=plantaUrl },[plantaUrl])
 
   useEffect(()=>{
     supabase.auth.getUser().then(({data:{user}})=>{
@@ -368,9 +398,27 @@ function BaguaPlantaContent() {
           .then(({data})=>{
             if(data) setConsultaNome(data.nome_imovel)
             if(data?.bagua_entrada){
-              const e=data.bagua_entrada as {x:number;y:number;lado:string}
-              setEntrada({x:e.x,y:e.y})
-              setLado(e.lado as Lado)
+              const be=data.bagua_entrada as any
+              // Check if there's a saved plant image (in-progress or finalized analysis)
+              if(be.planta_url && !be.finalizada_em){
+                // Draft analysis exists — offer to continue
+                rascunhoRef.current=be
+                setPlantaUrl(be.planta_url)
+                setShowRetomar(true)
+                return
+              }
+              if(be.planta_url && be.finalizada_em){
+                // Finalized analysis — load for viewing/re-editing
+                rascunhoRef.current=be
+                setPlantaUrl(be.planta_url)
+                setShowRetomar(true)
+                return
+              }
+              // Legacy format: just entrance coords
+              if(typeof be.x==='number'&&typeof be.y==='number'){
+                setEntrada({x:be.x,y:be.y})
+                setLado((be.lado||'centro') as Lado)
+              }
             }
           })
         supabase.from('setores_bagua')
@@ -397,6 +445,78 @@ function BaguaPlantaContent() {
     })
   },[router,consultaId])
 
+  // Restore saved draft state (loads image from URL and restores all state)
+  function restaurarRascunho(){
+    const be=rascunhoRef.current; if(!be?.planta_url) return
+    setShowRetomar(false)
+    setCarregandoPlanta(true)
+    restaurandoRef.current=true
+    const i=new Image()
+    i.crossOrigin='anonymous'
+    i.onload=()=>{
+      setImg(i)
+      setRot(be.rotacao||0)
+      setLado((be.lado||'centro') as Lado)
+      if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
+      // Defer bounds/setores restoration after image+rotation effect runs
+      setTimeout(()=>{
+        const r2=buildRot(i,be.rotacao||0)
+        rotRef.current=r2
+        if(be.bordas){
+          const b={x:be.bordas.x,y:be.bordas.y,w:be.bordas.w,h:be.bordas.h}
+          setBounds(b); boundsRef.current=b
+        }
+        if(be.lh){setLh(be.lh);lhRef.current=be.lh}
+        if(be.lv){setLv(be.lv);lvRef.current=be.lv}
+        // Restore step
+        const etapa=(be.etapa||'configurar') as Step
+        if(be.finalizada_em) setStep('resultado')
+        else setStep(etapa)
+        // Recalculate sectors if we have bounds
+        if(be.bordas&&r2){
+          const bRestored={x:be.bordas.x,y:be.bordas.y,w:be.bordas.w,h:be.bordas.h}
+          const lhRestored=be.lh||[1/3,2/3]
+          const lvRestored=be.lv||[1/3,2/3]
+          const novos=analisar(r2,bRestored,lhRestored,lvRestored)
+          // Merge saved sector data (criterios, ajustes) with recalculated geometry
+          const setoresRasc=be.setores_rascunho as any[]|undefined
+          setSetores(novos.map((n,idx)=>{
+            const saved=setoresRasc?.[idx]
+            return {
+              ...n,
+              criterios:saved?.criterios??n.criterios,
+              ajusteManual:saved?.ajusteManual??null,
+              ajusteTipo:saved?.ajusteTipo??null,
+              obs:saved?.obs??'',
+            }
+          }))
+        }
+        setCarregandoPlanta(false)
+        restaurandoRef.current=false
+      },200)
+    }
+    i.onerror=()=>{
+      setCarregandoPlanta(false)
+      restaurandoRef.current=false
+      setMsg('Erro ao carregar planta salva. Faça novo upload.')
+      setStep('upload')
+    }
+    i.src=be.planta_url
+  }
+
+  function recomecarAnalise(){
+    setShowRetomar(false)
+    rascunhoRef.current=null
+    setImg(null); setStep('upload'); setRot(0)
+    setBounds(null); boundsRef.current=null
+    setEntrada(null); setSetores([]); setLh([1/3,2/3]); setLv([1/3,2/3])
+    lhRef.current=[1/3,2/3]; lvRef.current=[1/3,2/3]
+    // Clear saved draft (keep planta_url for storage but clear state)
+    if(consultaId){
+      supabase.from('consultas').update({bagua_entrada:null,bagua_imagem:null}).eq('id',consultaId).then(()=>{})
+    }
+  }
+
   // ── reconstruir imagem rotacionada + redimensionar canvas ─────────────────
   // ÚNICA vez que o canvas é redimensionado = quando image ou rotacao muda
   useEffect(()=>{
@@ -411,6 +531,8 @@ function BaguaPlantaContent() {
     // Fixar CSS igual aos pixels — impede width:100% de distorcer canvas portrait
     cv.style.width  = cv.width  + 'px'
     cv.style.height = cv.height + 'px'
+    // Skip reset during restoration (bounds/setores are set by restaurarRascunho)
+    if(restaurandoRef.current) return
     // reset posicionamento ao girar
     setBounds(null); setEntrada(null); setSetores([])
   },[img,rot])
@@ -439,19 +561,26 @@ function BaguaPlantaContent() {
       const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0,sel=ativo===idx
-      const c=sc?desvioCorCanvas(sc.desvio):st.cor
+      const ef=sc?desvioFinal(sc):null
+      const efD=ef?.desvio??0
+      const c=sc?desvioCorCanvas(efD):st.cor
       ctx.fillStyle=c+(sel?'55':'28'); ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=sel?'#000':c; ctx.lineWidth=sel?3:1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(8,Math.min(12,fw/11))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
       ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const dt=desvioTipo(sc.desvio,sc)
+        const dt=desvioTipoFinal(sc)
         ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#000000aa'
-        ctx.fillText(`AR: ${Math.round(sc.ar).toLocaleString()} px²`,x0+fw/2,y0+fh/2+fs*0.5)
+        const dStr=efD>0?`+${Math.round(efD)}%`:`${Math.round(efD)}%`
+        ctx.fillText(`${dStr}`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(7,fs-2)}px Arial`
-        ctx.fillStyle=desvioCorCanvas(sc.desvio)
+        ctx.fillStyle=desvioCorCanvas(efD)
         ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.5)
+        if(dt.ajustado){
+          ctx.font=`${Math.max(6,fs-3)}px Arial`; ctx.fillStyle='#7C3AED'
+          ctx.fillText('\u270F',x0+fw/2,y0+fh/2+fs*2.4)
+        }
       }
     }
 
@@ -570,19 +699,26 @@ function BaguaPlantaContent() {
       const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0
-      const c=sc?desvioCorCanvas(sc.desvio):st.cor
+      const ef2=sc?desvioFinal(sc):null
+      const efD2=ef2?.desvio??0
+      const c=sc?desvioCorCanvas(efD2):st.cor
       ctx.fillStyle=c+'28'; ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=c; ctx.lineWidth=1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(10,Math.min(16,fw/9))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
       ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const dt=desvioTipo(sc.desvio,sc)
+        const dt=desvioTipoFinal(sc)
+        const dStr2=efD2>0?`+${Math.round(efD2)}%`:`${Math.round(efD2)}%`
         ctx.font=`${Math.max(8,fs-1)}px Arial`; ctx.fillStyle='#000000aa'
-        ctx.fillText(`AR: ${Math.round(sc.ar).toLocaleString()} px²`,x0+fw/2,y0+fh/2+fs*0.5)
+        ctx.fillText(`${dStr2}`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(8,fs-1)}px Arial`
-        ctx.fillStyle=desvioCorCanvas(sc.desvio)
+        ctx.fillStyle=desvioCorCanvas(efD2)
         ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.7)
+        if(dt.ajustado){
+          ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#7C3AED'
+          ctx.fillText('\u270F',x0+fw/2,y0+fh/2+fs*2.6)
+        }
       }
     }
 
@@ -732,13 +868,66 @@ function BaguaPlantaContent() {
   // ── upload ─────────────────────────────────────────────────────────────────
   function onUpload(e:React.ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0]; if(!file) return
+    // Load image locally first
     const reader=new FileReader()
     reader.onload=ev=>{
       const i=new Image()
-      i.onload=()=>{ setImg(i); setRot(0); setStep('configurar') }
+      i.onload=()=>{
+        setImg(i); setRot(0); setStep('configurar')
+        // Upload to Supabase storage in background
+        if(consultaId){
+          const fd=new FormData()
+          fd.append('consulta_id',consultaId)
+          fd.append('planta',file)
+          fetch('/api/consultas/bagua-planta',{method:'POST',body:fd})
+            .then(r=>r.json())
+            .then(d=>{
+              if(d.url){
+                setPlantaUrl(d.url)
+                // Save initial draft state
+                supabase.from('consultas').update({
+                  bagua_entrada:{planta_url:d.url,etapa:'configurar',rotacao:0,lado:'centro'}
+                }).eq('id',consultaId).then(()=>{})
+              }
+            })
+            .catch(()=>{})
+        }
+      }
       i.src=ev.target?.result as string
     }
     reader.readAsDataURL(file)
+  }
+
+  // Save analysis state as draft (called on key transitions)
+  async function salvarRascunho(overrides?:Partial<{etapa:Step;rotacao:number;bordas:Bounds|null;lhV:number[];lvV:number[];entradaV:{x:number;y:number}|null;ladoV:Lado;setoresV:Setor[]}>){
+    if(!consultaId||restaurandoRef.current) return
+    const b=overrides?.bordas??boundsRef.current
+    const curLh=overrides?.lhV??lhRef.current
+    const curLv=overrides?.lvV??lvRef.current
+    const draft:any={
+      planta_url:plantaUrlRef.current,
+      etapa:overrides?.etapa??step,
+      rotacao:overrides?.rotacao??rot,
+      lado:overrides?.ladoV??lado,
+    }
+    if(overrides?.entradaV??entrada){
+      const ent=overrides?.entradaV??entrada
+      draft.x=ent!.x; draft.y=ent!.y
+    }
+    if(b) draft.bordas={x:b.x,y:b.y,w:b.w,h:b.h}
+    if(curLh) draft.lh=curLh
+    if(curLv) draft.lv=curLv
+    // Save sector draft data (criterios, ajustes)
+    const sArr=overrides?.setoresV??setores
+    if(sArr.length===9){
+      draft.setores_rascunho=sArr.map(sc=>({
+        criterios:sc.criterios,
+        ajusteManual:sc.ajusteManual,
+        ajusteTipo:sc.ajusteTipo,
+        obs:sc.obs,
+      }))
+    }
+    await supabase.from('consultas').update({bagua_entrada:draft}).eq('id',consultaId)
   }
 
   // ── click ──────────────────────────────────────────────────────────────────
@@ -750,10 +939,8 @@ function BaguaPlantaContent() {
       const newLado:Lado=(ex)<(rotRef.current?.width||1)*0.33?'esquerda':(ex)>(rotRef.current?.width||1)*0.67?'direita':'centro'
       setEntrada({x:ex,y:ey})
       setLado(newLado)
-      // Persist entrance point
-      if(consultaId){
-        supabase.from('consultas').update({bagua_entrada:{x:ex,y:ey,lado:newLado}}).eq('id',consultaId).then(()=>{})
-      }
+      // Persist entrance point as draft
+      salvarRascunho({etapa:'entrada',entradaV:{x:ex,y:ey},ladoV:newLado})
       return
     }
     if(step==='resultado'&&modo==='nenhum'&&bounds){
@@ -773,10 +960,13 @@ function BaguaPlantaContent() {
     setBounds(b); boundsRef.current=b
     setLh([1/3,2/3]); lhRef.current=[1/3,2/3]
     setLv([1/3,2/3]); lvRef.current=[1/3,2/3]
-    setSetores(analisar(r,b,[1/3,2/3],[1/3,2/3]))
+    const novosSetores=analisar(r,b,[1/3,2/3],[1/3,2/3])
+    setSetores(novosSetores)
     setStep('resultado'); setModo('nenhum')
     setBordaModificada(false)
     setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
+    // Save draft
+    salvarRascunho({etapa:'resultado',bordas:b,lhV:[1/3,2/3],lvV:[1/3,2/3],setoresV:novosSetores})
   }
 
   function recalcular(){
@@ -786,7 +976,12 @@ function BaguaPlantaContent() {
     const curLv=lvRef.current
     if(!r||!b) return
     const novos=analisar(r,b,curLh,curLv)
-    setSetores(prev=>novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios})))
+    setSetores(prev=>{
+      const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios}))
+      // Save draft after recalculation
+      salvarRascunho({etapa:'resultado',bordas:b,lhV:curLh,lvV:curLv,setoresV:merged})
+      return merged
+    })
     setBordaModificada(false)
     setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
   }
@@ -921,11 +1116,22 @@ function BaguaPlantaContent() {
       const cv=cvRef.current
       const dataUrl=cv?cv.toDataURL('image/png',0.7):null
       const b=boundsRef.current
-      const finalizacao={
+      const finalizacao:any={
         x:entrada?.x??0, y:entrada?.y??0, lado,
         bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
+        rotacao:rot, etapa:'resultado',
+      }
+      if(plantaUrl) finalizacao.planta_url=plantaUrl
+      // Save sector draft data for restoration
+      if(setores.length===9){
+        finalizacao.setores_rascunho=setores.map(sc=>({
+          criterios:sc.criterios,
+          ajusteManual:sc.ajusteManual,
+          ajusteTipo:sc.ajusteTipo,
+          obs:sc.obs,
+        }))
       }
       await supabase.from('consultas').update({
         bagua_imagem:dataUrl,
@@ -997,8 +1203,47 @@ function BaguaPlantaContent() {
           ))}
         </div>
 
+        {/* ════ LOADING PLANTA ════ */}
+        {carregandoPlanta&&(
+          <div style={{background:'#fff',borderRadius:'12px',padding:'48px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
+            <div style={{fontSize:'48px',marginBottom:'10px'}}>☯</div>
+            <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>Carregando planta salva...</h3>
+            <p style={{color:'#6B7280',fontSize:'13px'}}>Restaurando análise anterior</p>
+          </div>
+        )}
+
+        {/* ════ RETOMAR / RECOMEÇAR ════ */}
+        {showRetomar&&!carregandoPlanta&&(
+          <div style={{background:'#fff',borderRadius:'12px',padding:'36px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
+            <div style={{fontSize:'48px',marginBottom:'10px'}}>🏠</div>
+            <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>
+              {rascunhoRef.current?.finalizada_em?'Análise concluída anteriormente':'Análise em andamento'}
+            </h3>
+            <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>
+              {rascunhoRef.current?.finalizada_em
+                ?`Finalizada em ${new Date(rascunhoRef.current.finalizada_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}`
+                :`Etapa: ${({upload:'Upload',configurar:'Configurar',entrada:'Entrada',resultado:'Resultado'} as Record<string,string>)[rascunhoRef.current?.etapa||'upload']||'Upload'}`
+              }
+            </p>
+            <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
+              <button onClick={restaurarRascunho}
+                style={{background:'#15803D',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                Continuar an\u00e1lise
+              </button>
+              <button onClick={()=>{
+                if(confirm('Tem certeza que deseja recomecar do zero? Todos os dados salvos ser\u00e3o apagados.')){
+                  recomecarAnalise()
+                }
+              }}
+                style={{background:'#fff',color:'#DC2626',border:'2px solid #DC2626',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                Recome\u00e7ar do zero
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ════ UPLOAD ════ */}
-        {step==='upload'&&(
+        {step==='upload'&&!showRetomar&&!carregandoPlanta&&(
           <div style={{background:'#fff',borderRadius:'12px',padding:'48px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
             <div style={{fontSize:'48px',marginBottom:'10px'}}>🏠</div>
             <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>Upload da planta baixa</h3>
@@ -1012,7 +1257,7 @@ function BaguaPlantaContent() {
         )}
 
         {/* ════ CANVAS AREA (sempre no DOM quando há imagem) ════ */}
-        {step!=='upload'&&(
+        {step!=='upload'&&!showRetomar&&!carregandoPlanta&&(
           <div style={{display:'flex',gap:'12px',alignItems:'flex-start'}}>
             <div style={{flex:1,minWidth:0,background:'#fff',borderRadius:'12px',padding:'14px',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
 
@@ -1211,18 +1456,19 @@ function BaguaPlantaContent() {
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const sel=ativo===i
-                          const dt=desvioTipo(sc.desvio,sc)
-                          const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
-                          const statusCor=desvioCorCanvas(sc.desvio)
+                          const ef3=desvioFinal(sc)
+                          const dt=desvioTipoFinal(sc)
+                          const dStr=ef3.desvio>0?`+${Math.round(ef3.desvio)}%`:`${Math.round(ef3.desvio)}%`
+                          const statusCor=desvioCorCanvas(ef3.desvio)
                           return(
                             <div key={i} onClick={()=>setAtivo(i===ativo?null:i)} style={{
                               padding:'7px',borderRadius:'6px',cursor:'pointer',
                               border:`2px solid ${sel?statusCor:'#E5E7EB'}`,background:sel?statusCor+'18':'#F9FAFB',
                             }}>
                               <div style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{st.nome}</div>
-                              <div style={{fontSize:'11px',color:'#374151',marginTop:'2px'}}>AR: {Math.round(sc.ar).toLocaleString()} px²</div>
                               <div style={{fontSize:'10px',color:statusCor,fontWeight:'bold',marginTop:'2px'}}>{dt.icon} {dStr} {dt.tipo}</div>
                               <div style={{fontSize:'8px',color:statusCor}}>{dt.intensidade!=='—'?dt.intensidade:''}</div>
+                              {dt.ajustado&&<div style={{fontSize:'7px',color:'#7C3AED',marginTop:'1px'}}>&#x270F; Ajustado</div>}
                             </div>
                           )
                         })}
@@ -1231,7 +1477,7 @@ function BaguaPlantaContent() {
                   )}
 
                   {/* Balanced banner */}
-                  {setores.length===9&&setores.every(s=>Math.abs(s.desvio)<=5)&&(
+                  {setores.length===9&&setores.every(s=>Math.abs(desvioFinal(s).desvio)<=5)&&(
                     <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'8px',textAlign:'center'}}>
                       <div style={{fontSize:'20px',marginBottom:'4px'}}>☯</div>
                       <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
