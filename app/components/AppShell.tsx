@@ -4,30 +4,12 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { planoEfetivo, planoLabel, podeClientes, podeCalendario } from '../../src/lib/plano-utils'
 
 // Professional user types (have client management, dashboard, payments, etc.)
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 
-const NAV_PROFESSIONAL = [
-  { label: 'Dashboard', icon: '📊', href: '/dashboard' },
-  { label: 'Clientes', icon: '👤', href: '/clientes' },
-  { label: 'Consultas', icon: '📋', href: '/consultas' },
-  { label: 'Curas', icon: '✨', href: '/curas' },
-  { label: 'Calendário', icon: '🌙', href: '/calendario' },
-  { label: 'Pagamentos', icon: '💰', href: '/pagamentos' },
-  { label: 'Produtos', icon: '🛒', href: '/produtos' },
-  { label: 'Planos', icon: '⭐', href: '/planos' },
-  { label: 'Perfil', icon: '⚙️', href: '/perfil' },
-]
-
-const NAV_PERSONAL = [
-  { label: 'Minha Casa', icon: '🏠', href: '/consultas' },
-  { label: 'Curas', icon: '✨', href: '/curas' },
-  { label: 'Calendário', icon: '🌙', href: '/calendario' },
-  { label: 'Parceiros', icon: '🤝', href: '/parceiros' },
-  { label: 'Produtos', icon: '🛒', href: '/produtos' },
-  { label: 'Perfil', icon: '⚙️', href: '/perfil' },
-]
+type NavItem = { label: string; icon: string; href: string; bloqueado?: boolean }
 
 export default function AppShell({
   children,
@@ -44,15 +26,40 @@ export default function AppShell({
   const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  const isProfessional = profile?.plano === 'pro'
+  const isProfessional = profile?.plano === 'pro' || profile?.plano === 'profissional'
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 
   const isAdmin = profile?.role === 'admin'
+  const plano = planoEfetivo(profile?.plano)
 
-  const baseNav = isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL
-  const navItems = isAdmin
-    ? [...baseNav, { label: 'Admin', icon: '🔧', href: '/admin/chaves' }]
+  // Build nav items based on plan
+  const buildNav = (): NavItem[] => {
+    const items: NavItem[] = [
+      { label: 'Dashboard', icon: '\ud83d\udcca', href: '/dashboard' },
+    ]
+    // Clientes: hidden for free, self-only for simples (hidden), full for profissional
+    if (podeClientes(plano)) {
+      items.push({ label: 'Clientes', icon: '\ud83d\udc64', href: '/clientes' })
+    }
+    items.push({ label: isProfessional ? 'Consultas' : 'Minha Casa', icon: isProfessional ? '\ud83d\udccb' : '\ud83c\udfe0', href: '/consultas' })
+    items.push({ label: 'Curas', icon: '\u2728', href: '/curas' })
+    // Calend\u00e1rio: hidden for free
+    if (podeCalendario(plano)) {
+      items.push({ label: 'Calend\u00e1rio', icon: '\ud83c\udf19', href: '/calendario' })
+    }
+    if (isProfessional) {
+      items.push({ label: 'Pagamentos', icon: '\ud83d\udcb0', href: '/pagamentos' })
+    }
+    items.push({ label: 'Parceiros', icon: '\ud83e\udd1d', href: '/parceiros' })
+    items.push({ label: 'Produtos', icon: '\ud83d\uded2', href: '/produtos' })
+    items.push({ label: 'Planos', icon: '\u2b50', href: '/planos' })
+    items.push({ label: 'Perfil', icon: '\u2699\ufe0f', href: '/perfil' })
+    return items
+  }
+  const baseNav = buildNav()
+  const navItems: NavItem[] = isAdmin
+    ? [...baseNav, { label: 'Admin', icon: '\ud83d\udd27', href: '/admin/chaves' }]
     : baseNav
 
   useEffect(() => {
@@ -176,11 +183,11 @@ export default function AppShell({
             padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}>
             <span style={{
-              background: isProfessional ? 'rgba(124,58,237,0.2)' : 'rgba(184,134,11,0.2)',
-              color: isProfessional ? '#C4B5FD' : '#FDE68A',
+              background: plano === 'profissional' ? 'rgba(124,58,237,0.2)' : plano === 'simples' ? 'rgba(59,130,246,0.2)' : 'rgba(184,134,11,0.2)',
+              color: plano === 'profissional' ? '#C4B5FD' : plano === 'simples' ? '#93C5FD' : '#FDE68A',
               padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
             }}>
-              {isProfessional ? 'Profissional' : 'Pessoal'}
+              {planoLabel(profile?.plano)}
             </span>
           </div>
         )}
@@ -272,11 +279,12 @@ export default function AppShell({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {profile?.plano === 'pro' && (
+            {plano !== 'free' && (
               <span style={{
-                background: '#7C3AED', color: '#fff', padding: '3px 10px',
+                background: plano === 'profissional' ? '#7C3AED' : '#3B82F6',
+                color: '#fff', padding: '3px 10px',
                 borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
-              }}>PRO</span>
+              }}>{plano === 'profissional' ? 'PRO' : 'SIMPLES'}</span>
             )}
           </div>
         </header>

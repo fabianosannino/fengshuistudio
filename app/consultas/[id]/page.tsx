@@ -743,7 +743,11 @@ export default function ConsultaDetalhe() {
         {(() => {
           const baguaEntrada = consulta.bagua_entrada as any
           const finalizada = baguaEntrada?.finalizada_em
+          const plantaUrl = baguaEntrada?.planta_url
+          const emAndamento = !!plantaUrl && !finalizada
           const temSetores = setores.length > 0
+          const etapaMap: Record<string, string> = { upload: 'Upload', configurar: 'Configurar', entrada: 'Entrada', resultado: 'Resultado' }
+          const etapaAtual = etapaMap[baguaEntrada?.etapa || 'upload'] || 'Upload'
           // Helper: deviation color
           function devCor(pct: number | null) {
             if (pct === null) return '#D1D5DB'
@@ -754,6 +758,22 @@ export default function ConsultaDetalhe() {
           // Top 3 worst sectors
           const sorted3 = [...setores].filter(s => s.score_percentual != null)
             .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100)).slice(0, 3)
+
+          // Confirm before replacing existing plant
+          function alterarPlanta() {
+            const msg = finalizada
+              ? 'Substituir a planta atual ir\u00e1 apagar:\n\u2022 Bordas e configura\u00e7\u00f5es definidas\n\u2022 Marca\u00e7\u00f5es de falta e excesso\n\u2022 Ajustes manuais por setor\n\u2022 An\u00e1lise conclu\u00edda\n\nEsta a\u00e7\u00e3o n\u00e3o pode ser desfeita.'
+              : 'Substituir a planta atual ir\u00e1 apagar:\n\u2022 Bordas e configura\u00e7\u00f5es definidas\n\u2022 Marca\u00e7\u00f5es de falta e excesso\n\u2022 Ajustes manuais por setor\n\nEsta a\u00e7\u00e3o n\u00e3o pode ser desfeita.'
+            if (confirm(msg)) {
+              // Clear analysis and redirect to upload
+              supabase.from('consultas').update({
+                bagua_entrada: null, bagua_imagem: null
+              }).eq('id', id).then(() => {
+                router.push(`/bagua-planta?consultaId=${id}`)
+              })
+            }
+          }
+
           return (
             <div style={{
               background: '#ffffff', borderRadius: '14px', marginBottom: '24px',
@@ -770,27 +790,63 @@ export default function ConsultaDetalhe() {
                   <span style={{ fontSize: '40px' }}>🗺️</span>
                   <div>
                     <div style={{ color: '#ffffff', fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
-                      Análise Ba Gua — Planta Interativa
+                      An\u00e1lise Ba Gua — Planta Interativa
                     </div>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
                       {finalizada
-                        ? `Concluída em ${new Date(finalizada).toLocaleDateString('pt-BR')} às ${new Date(finalizada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-                        : 'Posicione a planta, defina setores e avalie geometricamente cada área do imóvel'
+                        ? `\u2713 An\u00e1lise conclu\u00edda`
+                        : emAndamento
+                          ? `\ud83d\udd50 An\u00e1lise em andamento`
+                          : 'Posicione a planta, defina setores e avalie geometricamente cada \u00e1rea do im\u00f3vel'
                       }
                     </div>
+                    {finalizada && (
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginTop: '2px' }}>
+                        Conclu\u00edda em {new Date(finalizada).toLocaleDateString('pt-BR')} \u00e0s {new Date(finalizada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                    {emAndamento && (
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginTop: '2px' }}>
+                        {baguaEntrada?.planta_enviada_em && `Enviada em: ${new Date(baguaEntrada.planta_enviada_em).toLocaleDateString('pt-BR')} \u00e0s ${new Date(baguaEntrada.planta_enviada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} \u00b7 `}
+                        Etapa atual: {etapaAtual}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {finalizada && (
+                  {/* Estado 1: Sem planta */}
+                  {!plantaUrl && !finalizada && (
                     <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                      style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
-                      Reabrir análise
+                      style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      + Enviar planta
                     </button>
                   )}
-                  <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                    style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    {finalizada ? 'Refazer análise' : 'Abrir Planta'}
-                  </button>
+                  {/* Estado 2: Em andamento */}
+                  {emAndamento && (
+                    <>
+                      <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                        style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        Continuar an\u00e1lise
+                      </button>
+                      <button onClick={alterarPlanta}
+                        style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        Alterar planta
+                      </button>
+                    </>
+                  )}
+                  {/* Estado 3: Concluída */}
+                  {finalizada && (
+                    <>
+                      <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                        style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        Visualizar / Revisar an\u00e1lise
+                      </button>
+                      <button onClick={alterarPlanta}
+                        style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        Alterar planta
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               {/* Summary body (only if sectors exist) */}
@@ -808,7 +864,7 @@ export default function ConsultaDetalhe() {
                           <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1E3A5F' }}>{s.nome}</div>
                           <div style={{ fontSize: '16px', fontWeight: 'bold', color: devCor(pct) }}>{pct}%</div>
                           <div style={{ fontSize: '9px', color: '#6B7280' }}>
-                            {pct >= 70 ? '✓ Equilibrado' : pct >= 40 ? '⚠ Atenção' : '▼ Urgente'}
+                            {pct >= 70 ? '\u2713 Equilibrado' : pct >= 40 ? '\u26a0 Aten\u00e7\u00e3o' : '\u25bc Urgente'}
                           </div>
                         </div>
                       )
@@ -818,7 +874,7 @@ export default function ConsultaDetalhe() {
                   {sorted3.length > 0 && (
                     <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '8px', marginBottom: '12px' }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#DC2626', marginBottom: '6px' }}>
-                        Prioridades de intervenção
+                        Prioridades de interven\u00e7\u00e3o
                       </div>
                       {sorted3.map((s, i) => (
                         <div key={s.id} style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '3px' }}>

@@ -6,6 +6,7 @@ import AppShell from '../../components/AppShell'
 import Skeleton from '../../components/Skeleton'
 import type { Profile, Cliente } from '../../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { planoEfetivo, limiteImoveis, podeClientes, planoLabel } from '../../../src/lib/plano-utils'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 
@@ -29,8 +30,8 @@ export default function NovaConsulta() {
   const [step, setStep] = useState(1)
   const [message, setMessage] = useState('')
   const [profile, setProfile] = useState<Pick<Profile, 'plano' | 'tipo_usuario' | 'role' | 'nome_completo'> | null>(null)
-  const [consultasMes, setConsultasMes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
+  const [consultasAtivas, setConsultasAtivas] = useState(0)
 
   const [form, setForm] = useState({
     cliente_id: '',
@@ -76,21 +77,20 @@ export default function NovaConsulta() {
         setClientes(data || [])
       }
 
-      // Count consultations this month (for free plan monthly limit - professionals)
-      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-      const { count: countMes } = await supabase
-        .from('consultas')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-        .gte('criado_em', inicioMes)
-      setConsultasMes(countMes || 0)
-
-      // Count total consultations (for personal user 3-property limit)
+      // Count total consultations
       const { count: countTotal } = await supabase
         .from('consultas')
         .select('*', { count: 'exact', head: true })
         .eq('consultor_id', user.id)
       setTotalConsultas(countTotal || 0)
+
+      // Count active (non-archived) consultations (for Simples plan limit)
+      const { count: countAtivas } = await supabase
+        .from('consultas')
+        .select('*', { count: 'exact', head: true })
+        .eq('consultor_id', user.id)
+        .neq('status', 'arquivada')
+      setConsultasAtivas(countAtivas || 0)
 
       setLoading(false)
     }
@@ -216,10 +216,13 @@ export default function NovaConsulta() {
     )
   }
 
-  // Personal user limit: 3 properties total
-  const personalLimitReached = !isProfessional && totalConsultas >= 3
-  // Professional free plan limit: 3/month
-  const profFreeLimitReached = isProfessional && profile?.plano !== 'pro' && consultasMes >= 3
+  const plano = planoEfetivo(profile?.plano)
+  const limite = limiteImoveis(plano)
+  // Free: max 3 total
+  const freeLimitReached = plano === 'free' && totalConsultas >= 3
+  // Simples: max 1 active (non-archived)
+  const simplesLimitReached = plano === 'simples' && consultasAtivas >= 1
+  const limitReached = freeLimitReached || simplesLimitReached
 
   return (
     <AppShell currentPage="consultas">
@@ -251,53 +254,70 @@ export default function NovaConsulta() {
           ))}
         </div>
 
-        {/* Personal user: 3 property limit */}
-        {personalLimitReached && (
+        {/* Free plan: 3 property limit */}
+        {freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
             <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Limite de 3 imoveis atingido na conta pessoal.
+              Limite de 3 im\u00f3veis atingido na conta Free.
             </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Para analisar mais imoveis, mude para uma conta profissional.
+              Para cadastrar mais im\u00f3veis, fa\u00e7a upgrade.
             </p>
             <a href="/planos" style={{
               display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
               color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
               textDecoration: 'none'
-            }}>Ver opcoes profissionais</a>
+            }}>Ver planos</a>
           </div>
         )}
 
-        {/* Professional free plan: 3/month limit */}
-        {profFreeLimitReached && (
+        {/* Simples plan: 1 active property limit */}
+        {simplesLimitReached && (
           <div style={{
-            marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
+            marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
-            Limite de 3 consultas/mes atingido no plano Free. <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Faca upgrade para Pro</a> para continuar.
+            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
+              Voc\u00ea j\u00e1 possui 1 im\u00f3vel ativo.
+            </p>
+            <p style={{ margin: '0 0 12px 0' }}>
+              Arquive o im\u00f3vel atual para cadastrar um novo, ou fa\u00e7a upgrade para o plano Profissional.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <a href="/consultas" style={{
+                display: 'inline-block', padding: '8px 20px', background: '#D97706',
+                color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
+                textDecoration: 'none'
+              }}>Arquivar im\u00f3vel atual</a>
+              <a href="/planos" style={{
+                display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
+                color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
+                textDecoration: 'none'
+              }}>Ver planos</a>
+            </div>
           </div>
         )}
 
-        {/* Personal user counter */}
-        {!isProfessional && !personalLimitReached && (
+        {/* Property counter for limited plans */}
+        {plano === 'free' && !freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
             background: '#F5F0FF', border: '1px solid #E9D5FF', color: '#6B21A8', fontSize: '13px'
           }}>
-            Conta pessoal: {totalConsultas}/3 imoveis cadastrados.
+            Plano Free: {totalConsultas}/3 im\u00f3veis cadastrados.
           </div>
         )}
 
-        {/* Professional free plan counter */}
-        {isProfessional && profile?.plano !== 'pro' && !profFreeLimitReached && (
+        {/* Simples plan counter */}
+        {plano === 'simples' && !simplesLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#F5F0FF', border: '1px solid #E9D5FF', color: '#6B21A8', fontSize: '13px'
+            background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontSize: '13px'
           }}>
-            Plano Free: {consultasMes}/3 consultas usadas este mes.
+            Plano Simples: {consultasAtivas}/1 im\u00f3vel ativo.
           </div>
         )}
 
@@ -308,7 +328,7 @@ export default function NovaConsulta() {
           }}>{message}</div>
         )}
 
-        {step === 1 && !personalLimitReached && !profFreeLimitReached && (
+        {step === 1 && !limitReached && (
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <form onSubmit={handleStep1}>
 

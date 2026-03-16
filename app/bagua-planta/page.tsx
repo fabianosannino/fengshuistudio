@@ -886,7 +886,7 @@ function BaguaPlantaContent() {
                 setPlantaUrl(d.url)
                 // Save initial draft state
                 supabase.from('consultas').update({
-                  bagua_entrada:{planta_url:d.url,etapa:'configurar',rotacao:0,lado:'centro'}
+                  bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'configurar',rotacao:0,lado:'centro'}
                 }).eq('id',consultaId).then(()=>{})
               }
             })
@@ -1520,44 +1520,25 @@ function BaguaPlantaContent() {
                   <span>Direção: <strong>{stAtivo.dir}</strong></span>
                 </div>
 
-                {/* ── MÉTRICAS DE ÁREA ── */}
+                {/* ── DESVIO ── */}
                 {(()=>{
                   const dt=desvioTipo(scAtivo.desvio,scAtivo)
                   const autoDesvio=Math.round(scAtivo.desvio)
-                  const finalDesvio=scAtivo.ajusteManual!==null?scAtivo.ajusteManual:autoDesvio
-                  const finalDt=scAtivo.ajusteManual!==null?desvioTipo(-Math.abs(scAtivo.ajusteManual)):dt
-                  // Metrics: only show AV/AE if > 0
-                  const metricRows:[string,number,string][] = [
-                    ['AQ  Área teórica',scAtivo.aq,'1/9 do retângulo'],
-                  ]
-                  if(scAtivo.av>0) metricRows.push(['A_falta (vazio interno)',scAtivo.av,'AQ − AC'])
-                  if(scAtivo.ae>0) metricRows.push(['A_excesso (constr. externa)',scAtivo.ae,'fora das bordas'])
-                  metricRows.push(['AR  Área resultante',scAtivo.ar,'AQ − falta − excesso'])
+                  const ef=desvioFinal(scAtivo)
+                  const finalDt=scAtivo.ajusteManual!==null?desvioTipoFinal(scAtivo):dt
+                  const finalDesvio=scAtivo.ajusteManual!==null?Math.round(ef.desvio):autoDesvio
                   return (
                     <div style={{marginBottom:'10px'}}>
-                      <div style={{fontSize:'11px',fontWeight:'bold',color:'#374151',marginBottom:'6px'}}>📐 Métricas de área</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
-                        {metricRows.map(([label,val,formula],mi)=>(
-                          <div key={mi} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:mi===metricRows.length-1?'#EFF6FF':'#F9FAFB',borderRadius:'4px'}}>
-                            <span style={{fontSize:'10px',fontWeight:mi===metricRows.length-1?'bold':'normal',color:'#1E3A5F'}}>{label}</span>
-                            <div style={{display:'flex',alignItems:'baseline',gap:'4px'}}>
-                              <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>{Math.round(val).toLocaleString()} px²</span>
-                              <span style={{fontSize:'8px',color:'#D1D5DB'}}>{formula}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
                       {/* Multi-level desvio display */}
-                      <div style={{marginTop:'8px',display:'flex',flexDirection:'column',gap:'3px'}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#F9FAFB',borderRadius:'4px'}}>
-                          <span style={{fontSize:'10px',color:'#6B7280'}}>Automático:</span>
+                          <span style={{fontSize:'10px',color:'#6B7280'}}>Autom\u00e1tico:</span>
                           <span style={{fontSize:'11px',fontWeight:'bold',color:dt.cor}}>{autoDesvio}% {dt.icon} {dt.tipo}</span>
                         </div>
                         {scAtivo.ajusteManual!==null&&(
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#EDE9FE',borderRadius:'4px',borderLeft:'3px solid #7C3AED'}}>
                             <span style={{fontSize:'10px',color:'#5B21B6',fontWeight:'bold'}}>Final (consultor):</span>
-                            <span style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>{-Math.abs(scAtivo.ajusteManual)}% {finalDt.icon} {finalDt.tipo}</span>
+                            <span style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>{finalDesvio}% {finalDt.icon} {finalDt.tipo}</span>
                           </div>
                         )}
                       </div>
@@ -1568,26 +1549,9 @@ function BaguaPlantaContent() {
                         <span style={{fontSize:'14px'}}>{finalDt.icon}</span>
                         <div>
                           <div style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>Desvio: {finalDesvio}%</div>
-                          <div style={{fontSize:'9px',color:finalDt.cor}}>{finalDt.tipo}{finalDt.intensidade!=='—'?` · ${finalDt.intensidade}`:''}</div>
+                          <div style={{fontSize:'9px',color:finalDt.cor}}>{finalDt.tipo}{finalDt.intensidade!=='\u2014'?` \u00b7 ${finalDt.intensidade}`:''}</div>
                         </div>
                       </div>
-
-                      {/* Explanatory messages */}
-                      {scAtivo.av > 0 && (
-                        <div style={{marginTop:'6px',padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626',fontSize:'10px',color:'#7F1D1D',lineHeight:'1.5'}}>
-                          ⚠ Este setor possui {Math.round(scAtivo.av).toLocaleString()} px² de área sem construção dentro de seus limites. Isso indica <strong>FALTA</strong> de energia no Guá de {stAtivo.nome}. AR = AQ − A_falta{scAtivo.ae>0?' − A_excesso':''}
-                        </div>
-                      )}
-                      {scAtivo.ae > 0 && (
-                        <div style={{marginTop:'4px',padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C',fontSize:'10px',color:'#78350F',lineHeight:'1.5'}}>
-                          ⚠ Este setor possui {Math.round(scAtivo.ae).toLocaleString()} px² de construção fora das bordas. Essa área foi descontada pois não integra o Baguá. AR = AQ − {scAtivo.av>0?'A_falta − ':''}A_excesso
-                        </div>
-                      )}
-                      {scAtivo.av === 0 && scAtivo.ae === 0 && (
-                        <div style={{marginTop:'4px',padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D',fontSize:'10px',color:'#14532D',lineHeight:'1.5'}}>
-                          ✓ Setor completamente equilibrado dentro das bordas. Sem falta nem excesso. AR = AQ
-                        </div>
-                      )}
                     </div>
                   )
                 })()}

@@ -19,11 +19,16 @@ export default function Parceiros() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroBusca, setFiltroBusca] = useState('')
+  const [userPlano, setUserPlano] = useState<string>('')
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
+
+      // Get user plan
+      const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
+      setUserPlano(prof?.plano || '')
 
       // Fetch professional profiles that opted to be visible as partners
       const { data } = await supabase
@@ -57,10 +62,34 @@ export default function Parceiros() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>\u262f</div>
           <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando parceiros...</p>
         </div>
       </div>
+    )
+  }
+
+  // Free plan: block access to partner network
+  const _pPlano = (userPlano || '').toLowerCase().trim()
+  const _pIsFree = _pPlano !== 'pro' && _pPlano !== 'profissional' && _pPlano !== 'simples'
+  if (_pIsFree) {
+    return (
+      <AppShell currentPage="parceiros">
+        <div style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center' }}>
+          <div style={{ background: '#ffffff', borderRadius: '16px', padding: '48px 32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>\ud83e\udd1d</div>
+            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Rede de Parceiros</h1>
+            <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
+              A rede de parceiros est\u00e1 dispon\u00edvel nos planos Simples e Profissional.
+            </p>
+            <button onClick={() => window.location.href = '/planos'} style={{
+              padding: '14px 32px', background: '#7C3AED', color: '#fff',
+              border: 'none', borderRadius: '10px', fontSize: '16px',
+              fontWeight: 'bold', cursor: 'pointer'
+            }}>Ver planos</button>
+          </div>
+        </div>
+      </AppShell>
     )
   }
 

@@ -195,7 +195,9 @@ export default function Calendario() {
 
   const rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
 
-  if (profile?.plano !== 'pro') {
+  const _plano = (profile?.plano || '').toLowerCase().trim()
+  const _isFree = _plano !== 'pro' && _plano !== 'profissional' && _plano !== 'simples'
+  if (_isFree) {
     return (
       <AppShell currentPage="calendario">
         <div style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center' }}>
@@ -203,16 +205,16 @@ export default function Calendario() {
             background: '#ffffff', borderRadius: '16px', padding: '48px 32px',
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🌙</div>
-            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calendário Lunar</h1>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>\ud83c\udf19</div>
+            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calend\u00e1rio Lunar</h1>
             <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
-              O Calendário Lunar com rituais está disponível no plano Pro. Faça upgrade para acessar fases da lua, rituais sugeridos e agendamento personalizado.
+              O Calend\u00e1rio Lunar est\u00e1 dispon\u00edvel nos planos Simples e Profissional.
             </p>
             <button onClick={() => window.location.href = '/planos'} style={{
               padding: '14px 32px', background: '#7C3AED', color: '#fff',
               border: 'none', borderRadius: '10px', fontSize: '16px',
               fontWeight: 'bold', cursor: 'pointer'
-            }}>Ver planos e fazer upgrade</button>
+            }}>Ver planos</button>
           </div>
         </div>
       </AppShell>

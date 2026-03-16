@@ -5,6 +5,7 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { planoEfetivo, podeClientes } from '../../src/lib/plano-utils'
 
 const PAGE_SIZE = 10
 
@@ -166,8 +167,9 @@ export default function Clientes() {
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{clientes.length} cliente(s) cadastrado(s)</p>
         </div>
         <button onClick={() => {
-          if (profile?.plano !== 'pro' && clientes.length >= 5) {
-            setMessage('Limite de 5 clientes no plano Free. Faça upgrade para cadastrar mais.')
+          const p = planoEfetivo(profile?.plano)
+          if (!podeClientes(p)) {
+            setMessage('Cadastro de clientes dispon\u00edvel no plano Profissional.')
             return
           }
           setShowForm(!showForm); setMessage('')
@@ -180,18 +182,13 @@ export default function Clientes() {
         </button>
       </div>
 
-      {profile?.plano !== 'pro' && (
+      {!podeClientes(planoEfetivo(profile?.plano)) && (
         <div style={{
-          marginBottom: '16px', padding: '8px 16px', borderRadius: '8px',
-          background: clientes.length >= 5 ? '#FEF3C7' : '#F5F0FF',
-          border: `1px solid ${clientes.length >= 5 ? '#FDE68A' : '#E9D5FF'}`,
-          color: clientes.length >= 5 ? '#92400E' : '#6B21A8',
-          fontSize: '13px'
+          marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
+          background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '13px'
         }}>
-          {clientes.length >= 5
-            ? <>Limite de 5 clientes atingido no plano Free. <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Faca upgrade para Pro</a> para cadastrar mais.</>
-            : <>Plano Free: {clientes.length}/5 clientes cadastrados.</>
-          }
+          Cadastro de clientes externos dispon\u00edvel no plano Profissional.{' '}
+          <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Ver planos</a>
         </div>
       )}
 
