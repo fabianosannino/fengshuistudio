@@ -886,7 +886,7 @@ function BaguaPlantaContent() {
                 setPlantaUrl(d.url)
                 // Save initial draft state
                 supabase.from('consultas').update({
-                  bagua_entrada:{planta_url:d.url,etapa:'configurar',rotacao:0,lado:'centro'}
+                  bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'configurar',rotacao:0,lado:'centro'}
                 }).eq('id',consultaId).then(()=>{})
               }
             })
