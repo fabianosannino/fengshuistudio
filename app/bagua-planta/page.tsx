@@ -129,7 +129,16 @@ type Lado   = 'esquerda' | 'centro' | 'direita'
 type Bounds = { x:number; y:number; w:number; h:number }
 type Drag   = { tipo:'borda'; lado:'top'|'bottom'|'left'|'right' }
             | { tipo:'linhaH'|'linhaV'; index:number }
-type Setor  = { criterios:number[]; geo:number; falta:boolean; excesso:boolean }
+type Setor  = {
+  criterios:number[]; geo:number; falta:boolean; excesso:boolean;
+  /** Area metrics (pixel-based, proportional) */
+  aq:number;  // theoretical area (1/9 of bounds)
+  ac:number;  // construction inside bounds within sector
+  av:number;  // void inside bounds (aq - ac, clamped ≥0)
+  ae:number;  // construction outside bounds in sector direction
+  ar:number;  // effective area (ac - ae, clamped ≥0)
+  desvio:number; // ((ar - aq) / aq) * 100
+}
 
 const DRAG = 18
 
@@ -223,6 +232,27 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     return total>0 ? walls/total : 0
   }
 
+  // Total bounds area in pixels
+  const totalArea = b.w * b.h
+  const aqUnit = totalArea / 9 // theoretical area per sector
+
+  // Calculate construction pixel count inside a region
+  function constructionCount(x0:number,y0:number,x1:number,y1:number){
+    let construction=0, sampled=0
+    const sx=Math.max(0,Math.floor(x0)), ex2=Math.min(W,Math.ceil(x1))
+    const sy=Math.max(0,Math.floor(y0)), ey2=Math.min(H,Math.ceil(y1))
+    const stp = Math.max(1, Math.floor(Math.min(ex2-sx, ey2-sy) / 200))
+    for(let y=sy;y<ey2;y+=stp) for(let x=sx;x<ex2;x+=stp){
+      const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
+      if(a<30) continue
+      sampled++
+      if(isConstruction(r,g,bv)) construction++
+    }
+    const regionArea = (ex2-sx)*(ey2-sy)
+    if(sampled===0) return 0
+    return (construction/sampled)*regionArea
+  }
+
   // Calculate content density for each of the 9 grid sectors
   const wd:number[]=[]
   for(let row=0;row<3;row++) for(let col=0;col<3;col++){
@@ -243,26 +273,64 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
     const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
 
+    // Sector theoretical area
+    const sectorW = x1-x0, sectorH = y1-y0
+    const aq = sectorW * sectorH
+
+    // AC: construction pixels inside bounds within sector
+    const ac = constructionCount(x0,y0,x1,y1)
+
+    // AV: void inside bounds (theoretical - actual construction)
+    const av = Math.max(0, aq - ac)
+
+    // AE: construction outside bounds in sector edge direction
+    let aeTotal = 0
+    if(row===0) aeTotal += constructionCount(x0,b.y-mgH,x1,b.y)
+    if(row===2) aeTotal += constructionCount(x0,b.y+b.h,x1,b.y+b.h+mgH)
+    if(col===0) aeTotal += constructionCount(b.x-mgW,y0,b.x,y1)
+    if(col===2) aeTotal += constructionCount(b.x+b.w,y0,b.x+b.w+mgW,y1)
+    const ae = aeTotal
+
+    // AR: effective area
+    const ar = Math.max(0, ac - ae)
+
+    // Deviation percentage
+    const desvio = aq > 0 ? ((ar - aq) / aq) * 100 : 0
+
     // Check for excesso: construction outside boundary in adjacent edge direction
-    let ex=0
-    if(row===0) ex=Math.max(ex,outsideDensity(x0,b.y-mgH,x1,b.y))
-    if(row===2) ex=Math.max(ex,outsideDensity(x0,b.y+b.h,x1,b.y+b.h+mgH))
-    if(col===0) ex=Math.max(ex,outsideDensity(b.x-mgW,y0,b.x,y1))
-    if(col===2) ex=Math.max(ex,outsideDensity(b.x+b.w,y0,b.x+b.w+mgW,y1))
+    let exDensity=0
+    if(row===0) exDensity=Math.max(exDensity,outsideDensity(x0,b.y-mgH,x1,b.y))
+    if(row===2) exDensity=Math.max(exDensity,outsideDensity(x0,b.y+b.h,x1,b.y+b.h+mgH))
+    if(col===0) exDensity=Math.max(exDensity,outsideDensity(b.x-mgW,y0,b.x,y1))
+    if(col===2) exDensity=Math.max(exDensity,outsideDensity(b.x+b.w,y0,b.x+b.w+mgW,y1))
 
     // Falta: sector has significantly less construction than others
-    // meaning part of the sector is garden/outdoor without building
     const refDensity = Math.max(median, avg)
     const falta = refDensity > 0.03 && wd[idx] < refDensity * 0.55
 
     // Excesso: actual wall lines extend outside the boundary
-    // Only triggers when there are real architectural walls beyond the boundary
-    const excesso = ex > 0.05
+    const excesso = exDensity > 0.05
 
     // Geo score: falta penalizes more than excesso
     const geo = falta ? 20 : excesso ? 50 : Math.round(Math.min(100, 70 + (wd[idx] / (avg || 1)) * 15))
-    return {criterios:Array(8).fill(1),geo,falta,excesso}
+    return {criterios:Array(8).fill(1),geo,falta,excesso,aq,ac,av,ae,ar,desvio}
   })
+}
+
+function desvioTipo(d:number):{tipo:string;icon:string;intensidade:string;cor:string}{
+  const abs=Math.abs(d)
+  if(abs<=5)  return {tipo:'Equilibrado',icon:'✓',intensidade:'—',cor:'#15803D'}
+  const intensidade=abs<=15?'Leve':abs<=40?'Moderado':abs<=70?'Acentuado':'Ausente'
+  const cor=abs<=15?'#D97706':abs<=40?'#EA580C':'#DC2626'
+  if(d<0) return {tipo:'Faltante',icon:'▼',intensidade,cor}
+  return {tipo:'Excedente',icon:'▲',intensidade,cor}
+}
+function desvioCorCanvas(d:number):string{
+  const abs=Math.abs(d)
+  if(abs<=5)  return '#15803D'
+  if(abs<=15) return '#D97706'
+  if(abs<=40) return '#EA580C'
+  return '#DC2626'
 }
 
 function fisico(c:number[]){return Math.round(c.reduce((a,b)=>a+b,0)/(c.length*3)*100)}
@@ -298,7 +366,20 @@ function BaguaPlantaContent() {
   const [msg,      setMsg]      = useState('')
   const [consultas,setConsultas]= useState<{id:string;nome_imovel:string}[]>([])
   const [fullscreen,setFullscreen] = useState(false)
+  const [showInstrucao,setShowInstrucao] = useState(true)
   const fsCvRef = useRef<HTMLCanvasElement>(null)
+
+  // Dismiss instruction card via localStorage
+  useEffect(()=>{
+    if(consultaId){
+      const key = `bagua_instrucao_dismissed_${consultaId}`
+      if(localStorage.getItem(key)==='1') setShowInstrucao(false)
+    }
+  },[consultaId])
+  function dismissInstrucao(){
+    setShowInstrucao(false)
+    if(consultaId) localStorage.setItem(`bagua_instrucao_dismissed_${consultaId}`,'1')
+  }
 
   // ESC key to exit fullscreen
   useEffect(()=>{
@@ -400,9 +481,13 @@ function BaguaPlantaContent() {
       if(sc){
         const ts=total(sc.geo,sc.criterios)
         ctx.font=`bold ${fs+1}px Arial`; ctx.fillStyle=cor(ts)
-        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs+2)
-        if(sc.falta){ctx.font=`${fs-1}px Arial`;ctx.fillStyle='#DC2626';ctx.fillText('⚠ falta',x0+fw/2,y0+fh/2+fs*2+5)}
-        if(sc.excesso){ctx.font=`${fs-1}px Arial`;ctx.fillStyle='#EA580C';ctx.fillText('↑ excesso',x0+fw/2,y0+fh/2+fs*2+5)}
+        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs*0.4)
+        // Deviation indicator
+        const dt=desvioTipo(sc.desvio)
+        const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
+        ctx.font=`bold ${Math.max(7,fs-2)}px Arial`
+        ctx.fillStyle=desvioCorCanvas(sc.desvio)
+        ctx.fillText(`${dt.icon} ${dStr}`,x0+fw/2,y0+fh/2+fs*1.6)
       }
     }
 
@@ -530,9 +615,12 @@ function BaguaPlantaContent() {
       if(sc){
         const ts=total(sc.geo,sc.criterios)
         ctx.font=`bold ${fs+2}px Arial`; ctx.fillStyle=cor(ts)
-        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs+2)
-        if(sc.falta){ctx.font=`${fs}px Arial`;ctx.fillStyle='#DC2626';ctx.fillText('⚠ falta',x0+fw/2,y0+fh/2+fs*2+6)}
-        if(sc.excesso){ctx.font=`${fs}px Arial`;ctx.fillStyle='#EA580C';ctx.fillText('↑ excesso',x0+fw/2,y0+fh/2+fs*2+6)}
+        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs*0.4)
+        const dt=desvioTipo(sc.desvio)
+        const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
+        ctx.font=`bold ${Math.max(8,fs-1)}px Arial`
+        ctx.fillStyle=desvioCorCanvas(sc.desvio)
+        ctx.fillText(`${dt.icon} ${dStr}`,x0+fw/2,y0+fh/2+fs*1.8)
       }
     }
 
@@ -1009,6 +1097,44 @@ function BaguaPlantaContent() {
                 </div>
               )}
 
+              {/* Instrução explicativa (resultado) */}
+              {step==='resultado'&&showInstrucao&&(
+                <div style={{marginTop:'10px',padding:'16px 18px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:'10px',position:'relative'}}>
+                  <button onClick={dismissInstrucao} style={{position:'absolute',top:'8px',right:'10px',background:'transparent',border:'none',fontSize:'16px',cursor:'pointer',color:'#6B7280'}}>✕</button>
+                  <div style={{display:'flex',gap:'10px',alignItems:'flex-start',marginBottom:'12px'}}>
+                    <span style={{fontSize:'20px',flexShrink:0}}>ℹ️</span>
+                    <div>
+                      <div style={{fontWeight:'bold',color:'#1E3A5F',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
+                      <p style={{color:'#374151',fontSize:'11px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
+                        A análise automática considera o retângulo envolvente detectado na imagem. Para resultados precisos:
+                      </p>
+                      <ol style={{color:'#374151',fontSize:'11px',lineHeight:'1.7',margin:'0 0 10px 0',paddingLeft:'16px'}}>
+                        <li>Clique em <strong>&quot;Bordas&quot;</strong>.</li>
+                        <li>Arraste as alças nos 4 lados até coincidir com as <strong>paredes externas</strong> da área construída — ignore jardins, pátios e calçadas.</li>
+                        <li>Clique em <strong>&quot;Recalcular&quot;</strong>.</li>
+                      </ol>
+                      <div style={{fontWeight:'bold',color:'#92400E',fontSize:'11px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
+                      <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',color:'#374151',lineHeight:'1.5'}}>
+                        <div style={{padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
+                          <strong style={{color:'#DC2626'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
+                        </div>
+                        <div style={{padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
+                          <strong style={{color:'#EA580C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
+                        </div>
+                        <div style={{padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
+                          <strong style={{color:'#15803D'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
+                        </div>
+                      </div>
+                      <p style={{color:'#6B7280',fontSize:'10px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
+                    </div>
+                  </div>
+                  <button onClick={()=>{dismissInstrucao();setModo('bordas')}} style={{
+                    width:'100%',padding:'10px',background:'#1D4ED8',color:'#fff',border:'none',
+                    borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
+                  }}>Entendido — ajustar bordas</button>
+                </div>
+              )}
+
               {/* Controles RESULTADO */}
               {step==='resultado'&&(
                 <>
@@ -1045,6 +1171,8 @@ function BaguaPlantaContent() {
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const ts=total(sc.geo,sc.criterios); const c=cor(ts); const sel=ativo===i
+                          const dt=desvioTipo(sc.desvio)
+                          const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
                           return(
                             <div key={i} onClick={()=>setAtivo(i===ativo?null:i)} style={{
                               padding:'7px',borderRadius:'6px',cursor:'pointer',
@@ -1052,13 +1180,21 @@ function BaguaPlantaContent() {
                             }}>
                               <div style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{st.nome}</div>
                               <div style={{fontSize:'18px',fontWeight:'bold',color:c}}>{ts}</div>
-                              <div style={{fontSize:'9px',color:c}}>{lbl(ts)}</div>
-                              {sc.falta  &&<div style={{fontSize:'8px',color:'#DC2626'}}>⚠ Falta</div>}
-                              {sc.excesso&&<div style={{fontSize:'8px',color:'#EA580C'}}>↑ Excesso</div>}
+                              <div style={{fontSize:'9px',color:dt.cor,fontWeight:'bold'}}>{dt.icon} {dStr}</div>
+                              <div style={{fontSize:'8px',color:dt.cor}}>{dt.tipo}{dt.intensidade!=='—'?` · ${dt.intensidade}`:''}</div>
                             </div>
                           )
                         })}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Balanced banner */}
+                  {setores.length===9&&setores.every(s=>Math.abs(s.desvio)<=5)&&(
+                    <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'8px',textAlign:'center'}}>
+                      <div style={{fontSize:'20px',marginBottom:'4px'}}>☯</div>
+                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
+                      <div style={{fontSize:'10px',color:'#16A34A',marginTop:'2px'}}>Todos os setores com desvio ≤ 5%</div>
                     </div>
                   )}
                 </>
@@ -1093,8 +1229,46 @@ function BaguaPlantaContent() {
                   ))}
                 </div>
 
-                {scAtivo.falta  &&<div style={{padding:'5px 8px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'11px',marginBottom:'7px',borderLeft:'3px solid #DC2626'}}>⚠ Área faltante detectada</div>}
-                {scAtivo.excesso&&<div style={{padding:'5px 8px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'11px',marginBottom:'7px',borderLeft:'3px solid #EA580C'}}>↑ Área em excesso detectada</div>}
+                {/* ── Métricas de área ── */}
+                {(()=>{
+                  const dt=desvioTipo(scAtivo.desvio)
+                  const dStr=scAtivo.desvio>0?`+${Math.round(scAtivo.desvio)}%`:`${Math.round(scAtivo.desvio)}%`
+                  const metrics:[string,number,string,string][] = [
+                    ['AQ',scAtivo.aq,'Área teórica','1/9 do retângulo'],
+                    ['AC',scAtivo.ac,'Construção interna','dentro das bordas'],
+                    ['AV',scAtivo.av,'Vazio interno','AQ − AC'],
+                    ['AE',scAtivo.ae,'Construção externa','fora das bordas'],
+                    ['AR',scAtivo.ar,'Área resultante','AC − AE'],
+                  ]
+                  return (
+                    <div style={{marginBottom:'10px'}}>
+                      <div style={{fontSize:'11px',fontWeight:'bold',color:'#374151',marginBottom:'6px'}}>📐 Métricas de área</div>
+                      <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
+                        {metrics.map(([label,val,desc,formula])=>(
+                          <div key={label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#F9FAFB',borderRadius:'4px'}}>
+                            <div style={{display:'flex',alignItems:'baseline',gap:'5px'}}>
+                              <span style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{label}</span>
+                              <span style={{fontSize:'9px',color:'#9CA3AF'}}>{desc}</span>
+                            </div>
+                            <div style={{display:'flex',alignItems:'baseline',gap:'4px'}}>
+                              <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>{val.toFixed(1)}</span>
+                              <span style={{fontSize:'8px',color:'#D1D5DB'}}>{formula}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Desvio banner */}
+                      <div style={{marginTop:'6px',padding:'6px 8px',borderRadius:'6px',display:'flex',alignItems:'center',gap:'6px',
+                        background:dt.cor+'15',borderLeft:`3px solid ${dt.cor}`}}>
+                        <span style={{fontSize:'14px'}}>{dt.icon}</span>
+                        <div>
+                          <div style={{fontSize:'11px',fontWeight:'bold',color:dt.cor}}>Desvio: {dStr}</div>
+                          <div style={{fontSize:'9px',color:dt.cor}}>{dt.tipo}{dt.intensidade!=='—'?` · ${dt.intensidade}`:''}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* ── Recomendações dinâmicas (ACIMA dos critérios) ── */}
                 {(()=>{
