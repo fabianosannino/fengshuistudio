@@ -263,7 +263,7 @@ export default function NovaConsulta() {
             <p style={{ margin: '0 0 12px 0' }}>
               Para analisar mais imoveis, mude para uma conta profissional.
             </p>
-            <a href="/perfil" style={{
+            <a href="/planos" style={{
               display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
               color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
               textDecoration: 'none'
