@@ -199,43 +199,6 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     return false
   }
 
-  // Detect construction density inside a region (ignores vegetation/outdoor)
-  function contentDensity(x0:number,y0:number,x1:number,y1:number){
-    let construction=0, total=0
-    const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
-    const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
-    const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 200))
-    for(let y=sy;y<ey;y+=step) for(let x=sx;x<ex;x+=step){
-      const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
-      if(a<30) continue
-      total++
-      if(isConstruction(r,g,bv)) construction++
-    }
-    return total>0 ? construction/total : 0
-  }
-
-  // Detect WALLS (not garden/paths/fences) outside boundary for excesso
-  // Only very dark pixels count — actual architectural wall lines
-  function outsideDensity(x0:number,y0:number,x1:number,y1:number){
-    let walls=0, total=0
-    const sx=Math.max(0,Math.floor(x0)), ex=Math.min(W,Math.ceil(x1))
-    const sy=Math.max(0,Math.floor(y0)), ey=Math.min(H,Math.ceil(y1))
-    const step = Math.max(1, Math.floor(Math.min(ex-sx, ey-sy) / 150))
-    for(let y=sy;y<ey;y+=step) for(let x=sx;x<ex;x+=step){
-      const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
-      if(a<30) continue
-      total++
-      // Only count wall-like pixels: very dark, non-green
-      const brightness=(r+g+bv)/3
-      if(brightness<80 && !isVegetation(r,g,bv)) walls++
-    }
-    return total>0 ? walls/total : 0
-  }
-
-  // Total bounds area in pixels
-  const totalArea = b.w * b.h
-  const aqUnit = totalArea / 9 // theoretical area per sector
-
   // Calculate construction pixel count inside a region
   function constructionCount(x0:number,y0:number,x1:number,y1:number){
     let construction=0, sampled=0
@@ -253,19 +216,10 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     return (construction/sampled)*regionArea
   }
 
-  // Calculate content density for each of the 9 grid sectors
-  const wd:number[]=[]
-  for(let row=0;row<3;row++) for(let col=0;col<3;col++){
-    const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
-    const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
-    wd.push(contentDensity(x0,y0,x1,y1))
-  }
-
-  // Compute statistics for falta detection
-  const sorted = [...wd].sort((a,c)=>a-c)
-  const median = sorted[4] // median of 9 values
-  const avg = wd.reduce((a,c)=>a+c,0)/9
-  // Use wider margin for excesso detection (15% of boundary dimensions)
+  // ARE = bounds area (from orange handles only), AQ = uniform for all 9 sectors
+  const ARE = b.w * b.h
+  const aqUnit = ARE / 9
+  // Margin for detecting construction outside bounds (15% of boundary)
   const mgW = b.w * 0.15, mgH = b.h * 0.15
 
   return Array(9).fill(0).map((_,idx)=>{
@@ -273,17 +227,16 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
     const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
 
-    // Sector theoretical area
-    const sectorW = x1-x0, sectorH = y1-y0
-    const aq = sectorW * sectorH
+    // AQ: theoretical area = ARE / 9 (equal for all 9 sectors)
+    const aq = aqUnit
 
-    // AC: construction pixels inside bounds within sector
+    // AC: construction pixels inside bounds within this sector
     const ac = constructionCount(x0,y0,x1,y1)
 
-    // AV: void inside bounds (theoretical - actual construction)
-    const av = Math.max(0, aq - ac)
+    // AV: void inside sector (theoretical minus actual, clamped ≥ 0)
+    const av = ac < aq ? aq - ac : 0
 
-    // AE: construction outside bounds in sector edge direction
+    // AE: construction outside bounds in this sector's edge direction
     let aeTotal = 0
     if(row===0) aeTotal += constructionCount(x0,b.y-mgH,x1,b.y)
     if(row===2) aeTotal += constructionCount(x0,b.y+b.h,x1,b.y+b.h+mgH)
@@ -291,28 +244,20 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     if(col===2) aeTotal += constructionCount(b.x+b.w,y0,b.x+b.w+mgW,y1)
     const ae = aeTotal
 
-    // AR: effective area
+    // AR: effective area (AC minus external construction)
     const ar = Math.max(0, ac - ae)
 
-    // Deviation percentage
+    // Deviation percentage (completely independent per sector)
     const desvio = aq > 0 ? ((ar - aq) / aq) * 100 : 0
 
-    // Check for excesso: construction outside boundary in adjacent edge direction
-    let exDensity=0
-    if(row===0) exDensity=Math.max(exDensity,outsideDensity(x0,b.y-mgH,x1,b.y))
-    if(row===2) exDensity=Math.max(exDensity,outsideDensity(x0,b.y+b.h,x1,b.y+b.h+mgH))
-    if(col===0) exDensity=Math.max(exDensity,outsideDensity(b.x-mgW,y0,b.x,y1))
-    if(col===2) exDensity=Math.max(exDensity,outsideDensity(b.x+b.w,y0,b.x+b.w+mgW,y1))
+    // Independent per-sector diagnosis — no cross-sector contamination
+    const falta = av > 0
+    const excesso = ae > 0
 
-    // Falta: sector has significantly less construction than others
-    const refDensity = Math.max(median, avg)
-    const falta = refDensity > 0.03 && wd[idx] < refDensity * 0.55
+    // Geo score based on absolute deviation (independent per sector)
+    const absD = Math.abs(desvio)
+    const geo = absD <= 5 ? 100 : absD <= 15 ? 80 : absD <= 40 ? 50 : absD <= 70 ? 25 : 10
 
-    // Excesso: actual wall lines extend outside the boundary
-    const excesso = exDensity > 0.05
-
-    // Geo score: falta penalizes more than excesso
-    const geo = falta ? 20 : excesso ? 50 : Math.round(Math.min(100, 70 + (wd[idx] / (avg || 1)) * 15))
     return {criterios:Array(8).fill(1),geo,falta,excesso,aq,ac,av,ae,ar,desvio}
   })
 }
@@ -472,22 +417,19 @@ function BaguaPlantaContent() {
       const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0,sel=ativo===idx
-      const c=sc?cor(total(sc.geo,sc.criterios)):st.cor
+      const c=sc?desvioCorCanvas(sc.desvio):st.cor
       ctx.fillStyle=c+(sel?'55':'28'); ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=sel?'#000':c; ctx.lineWidth=sel?3:1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(8,Math.min(12,fw/11))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
-      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.7:0))
+      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const ts=total(sc.geo,sc.criterios)
-        ctx.font=`bold ${fs+1}px Arial`; ctx.fillStyle=cor(ts)
-        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs*0.4)
-        // Deviation indicator
         const dt=desvioTipo(sc.desvio)
-        const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
+        ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#000000aa'
+        ctx.fillText(`AR: ${Math.round(sc.ar).toLocaleString()} px²`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(7,fs-2)}px Arial`
         ctx.fillStyle=desvioCorCanvas(sc.desvio)
-        ctx.fillText(`${dt.icon} ${dStr}`,x0+fw/2,y0+fh/2+fs*1.6)
+        ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.5)
       }
     }
 
@@ -606,21 +548,19 @@ function BaguaPlantaContent() {
       const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0
-      const c=sc?cor(total(sc.geo,sc.criterios)):st.cor
+      const c=sc?desvioCorCanvas(sc.desvio):st.cor
       ctx.fillStyle=c+'28'; ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=c; ctx.lineWidth=1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(10,Math.min(16,fw/9))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
-      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.7:0))
+      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const ts=total(sc.geo,sc.criterios)
-        ctx.font=`bold ${fs+2}px Arial`; ctx.fillStyle=cor(ts)
-        ctx.fillText(`${ts}`,x0+fw/2,y0+fh/2+fs*0.4)
         const dt=desvioTipo(sc.desvio)
-        const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
+        ctx.font=`${Math.max(8,fs-1)}px Arial`; ctx.fillStyle='#000000aa'
+        ctx.fillText(`AR: ${Math.round(sc.ar).toLocaleString()} px²`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(8,fs-1)}px Arial`
         ctx.fillStyle=desvioCorCanvas(sc.desvio)
-        ctx.fillText(`${dt.icon} ${dStr}`,x0+fw/2,y0+fh/2+fs*1.8)
+        ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.7)
       }
     }
 
@@ -1170,18 +1110,19 @@ function BaguaPlantaContent() {
                       <div style={{fontSize:'11px',fontWeight:'bold',color:'#1E3A5F',marginBottom:'6px'}}>📊 Resumo por setor</div>
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
-                          const st=SETORES[order[i]]; const ts=total(sc.geo,sc.criterios); const c=cor(ts); const sel=ativo===i
+                          const st=SETORES[order[i]]; const sel=ativo===i
                           const dt=desvioTipo(sc.desvio)
                           const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
+                          const statusCor=desvioCorCanvas(sc.desvio)
                           return(
                             <div key={i} onClick={()=>setAtivo(i===ativo?null:i)} style={{
                               padding:'7px',borderRadius:'6px',cursor:'pointer',
-                              border:`2px solid ${sel?c:'#E5E7EB'}`,background:sel?c+'18':'#F9FAFB',
+                              border:`2px solid ${sel?statusCor:'#E5E7EB'}`,background:sel?statusCor+'18':'#F9FAFB',
                             }}>
                               <div style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{st.nome}</div>
-                              <div style={{fontSize:'18px',fontWeight:'bold',color:c}}>{ts}</div>
-                              <div style={{fontSize:'9px',color:dt.cor,fontWeight:'bold'}}>{dt.icon} {dStr}</div>
-                              <div style={{fontSize:'8px',color:dt.cor}}>{dt.tipo}{dt.intensidade!=='—'?` · ${dt.intensidade}`:''}</div>
+                              <div style={{fontSize:'11px',color:'#374151',marginTop:'2px'}}>AR: {Math.round(sc.ar).toLocaleString()} px²</div>
+                              <div style={{fontSize:'10px',color:statusCor,fontWeight:'bold',marginTop:'2px'}}>{dt.icon} {dStr} {dt.tipo}</div>
+                              <div style={{fontSize:'8px',color:statusCor}}>{dt.intensidade!=='—'?dt.intensidade:''}</div>
                             </div>
                           )
                         })}
@@ -1266,6 +1207,22 @@ function BaguaPlantaContent() {
                           <div style={{fontSize:'9px',color:dt.cor}}>{dt.tipo}{dt.intensidade!=='—'?` · ${dt.intensidade}`:''}</div>
                         </div>
                       </div>
+                      {/* Explanatory message based on AV/AE */}
+                      {scAtivo.av > 0 && (
+                        <div style={{marginTop:'6px',padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626',fontSize:'10px',color:'#7F1D1D',lineHeight:'1.5'}}>
+                          ⚠ Este setor possui {Math.round(scAtivo.av).toLocaleString()} px² de área sem construção dentro de seus limites (vazio interno). Isso indica <strong>FALTA</strong> de energia no Guá de {stAtivo.nome}.
+                        </div>
+                      )}
+                      {scAtivo.ae > 0 && (
+                        <div style={{marginTop:'4px',padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C',fontSize:'10px',color:'#78350F',lineHeight:'1.5'}}>
+                          ⚠ Este setor possui {Math.round(scAtivo.ae).toLocaleString()} px² de construção fora das bordas definidas. Essa área foi descontada pois não integra o mapa do Baguá. Indica <strong>EXCESSO</strong> não integrado no Guá de {stAtivo.nome}.
+                        </div>
+                      )}
+                      {scAtivo.av === 0 && scAtivo.ae === 0 && Math.abs(scAtivo.desvio) <= 5 && (
+                        <div style={{marginTop:'4px',padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D',fontSize:'10px',color:'#14532D',lineHeight:'1.5'}}>
+                          ✓ Setor completamente construído dentro das bordas. Sem vazio interno, sem excesso externo. Guá de {stAtivo.nome} equilibrado.
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
