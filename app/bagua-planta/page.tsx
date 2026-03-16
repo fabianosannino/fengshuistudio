@@ -312,7 +312,13 @@ function BaguaPlantaContent() {
   const [consultas,setConsultas]= useState<{id:string;nome_imovel:string}[]>([])
   const [fullscreen,setFullscreen] = useState(false)
   const [showInstrucao,setShowInstrucao] = useState(true)
+  const [bordaModificada,setBordaModificada] = useState(false)
+  const [ultimoRecalculo,setUltimoRecalculo] = useState<string|null>(null)
   const fsCvRef = useRef<HTMLCanvasElement>(null)
+  // Refs to always have latest values (avoids stale closures in drag handlers)
+  const boundsRef = useRef<Bounds|null>(null)
+  const lhRef = useRef([1/3,2/3])
+  const lvRef = useRef([1/3,2/3])
 
   // Dismiss instruction card via localStorage
   useEffect(()=>{
@@ -334,6 +340,11 @@ function BaguaPlantaContent() {
     window.addEventListener('keydown',handleKey)
     return ()=>window.removeEventListener('keydown',handleKey)
   },[fullscreen])
+
+  // Sync refs with state (so drag end handlers always read latest values)
+  useEffect(()=>{ boundsRef.current=bounds },[bounds])
+  useEffect(()=>{ lhRef.current=lh },[lh])
+  useEffect(()=>{ lvRef.current=lv },[lv])
 
   useEffect(()=>{
     supabase.auth.getUser().then(({data:{user}})=>{
@@ -677,7 +688,7 @@ function BaguaPlantaContent() {
   }
   function onFsMM(e:React.MouseEvent<HTMLCanvasElement>){
     if(!dragRef.current||!bounds) return
-    isDrag.current=true
+    isDrag.current=true; setBordaModificada(true)
     const{cx,cy}=fsCC(e); const s=fsScale()
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
     const t=dragRef.current
@@ -689,11 +700,12 @@ function BaguaPlantaContent() {
         if(t.lado==='bottom'){nb.h=iy-nb.y}
         if(t.lado==='left'){const dd=nb.x-ix;nb.x=ix;nb.w+=dd}
         if(t.lado==='right'){nb.w=ix-nb.x}
-        if(nb.w<30)nb.w=30; if(nb.h<30)nb.h=30; return nb
+        if(nb.w<30)nb.w=30; if(nb.h<30)nb.h=30
+        boundsRef.current=nb; return nb
       })
     }
-    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>p.map((v,i)=>i===t.index?rel:v))}
-    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>p.map((v,i)=>i===t.index?rel:v))}
+    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lhRef.current=n;return n})}
+    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lvRef.current=n;return n})}
   }
   function onFsMU(){
     if(isDrag.current) recalcular()
@@ -747,15 +759,25 @@ function BaguaPlantaContent() {
   function calcular(){
     const r=rotRef.current; if(!r) return
     const b=calcBounds(r)
-    setBounds(b); setLh([1/3,2/3]); setLv([1/3,2/3])
+    setBounds(b); boundsRef.current=b
+    setLh([1/3,2/3]); lhRef.current=[1/3,2/3]
+    setLv([1/3,2/3]); lvRef.current=[1/3,2/3]
     setSetores(analisar(r,b,[1/3,2/3],[1/3,2/3]))
     setStep('resultado'); setModo('nenhum')
+    setBordaModificada(false)
+    setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
   }
 
   function recalcular(){
-    const r=rotRef.current; if(!r||!bounds) return
-    const novos=analisar(r,bounds,lh,lv)
+    const r=rotRef.current
+    const b=boundsRef.current
+    const curLh=lhRef.current
+    const curLv=lvRef.current
+    if(!r||!b) return
+    const novos=analisar(r,b,curLh,curLv)
     setSetores(prev=>novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios})))
+    setBordaModificada(false)
+    setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
   }
 
   // ── drag ───────────────────────────────────────────────────────────────────
@@ -784,7 +806,7 @@ function BaguaPlantaContent() {
 
   function onMM(e:React.MouseEvent<HTMLCanvasElement>){
     if(!dragRef.current||!bounds) return
-    isDrag.current=true
+    isDrag.current=true; setBordaModificada(true)
     const{cx,cy}=cc(e); const s=scale()
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
     const t=dragRef.current
@@ -796,11 +818,12 @@ function BaguaPlantaContent() {
         if(t.lado==='bottom') {b.h=iy-b.y}
         if(t.lado==='left')   {const d=b.x-ix;b.x=ix;b.w+=d}
         if(t.lado==='right')  {b.w=ix-b.x}
-        if(b.w<30)b.w=30; if(b.h<30)b.h=30; return b
+        if(b.w<30)b.w=30; if(b.h<30)b.h=30
+        boundsRef.current=b; return b
       })
     }
-    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>p.map((v,i)=>i===t.index?rel:v))}
-    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>p.map((v,i)=>i===t.index?rel:v))}
+    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lhRef.current=n;return n})}
+    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lvRef.current=n;return n})}
   }
 
   function onMU(){
@@ -1087,8 +1110,8 @@ function BaguaPlantaContent() {
                       style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='grid'?'🔒 Finalizar':'⊞ Grid'}
                     </button>
-                    <button onClick={recalcular}
-                      style={{background:'#1D4ED8',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                    <button onClick={recalcular} disabled={!bordaModificada}
+                      style={{background:bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:bordaModificada?'pointer':'not-allowed',opacity:bordaModificada?1:0.6}}>
                       🔄 Recalcular
                     </button>
                     <button onClick={()=>setFullscreen(true)}
@@ -1103,6 +1126,8 @@ function BaguaPlantaContent() {
                   {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
                   {modo==='grid'  &&<div style={{marginTop:'5px',padding:'5px 9px',background:'#EDE9FE',borderRadius:'5px',color:'#5B21B6',fontSize:'10px'}}>Arraste as linhas laranja para reposicionar os setores</div>}
                   {msg            &&<div style={{marginTop:'5px',padding:'6px 10px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'11px',fontWeight:'bold'}}>✅ {msg}</div>}
+                  {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
+                  {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
 
                   {/* Mini-cards 3x3 */}
                   {setores.length>0&&(
@@ -1345,8 +1370,8 @@ function BaguaPlantaContent() {
                   style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='grid'?'🔒 Finalizar grid':'⊞ Ajustar grid'}
                 </button>
-                <button onClick={recalcular}
-                  style={{background:'#1D4ED8',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                <button onClick={recalcular} disabled={!bordaModificada}
+                  style={{background:bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:bordaModificada?'pointer':'not-allowed',opacity:bordaModificada?1:0.6}}>
                   🔄 Recalcular
                 </button>
                 <button onClick={()=>{setModo('nenhum');setFullscreen(false)}}
