@@ -26,7 +26,7 @@ async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandle
   if (!user) return null
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, role')
+    .select('*')
     .eq('id', user.id)
     .single()
   if (!profile || profile.role !== 'admin') return null

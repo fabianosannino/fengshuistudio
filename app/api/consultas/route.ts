@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   // Check profile and plan
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plano, tipo_usuario, role')
+    .select('*')
     .eq('id', user.id)
     .single()
 

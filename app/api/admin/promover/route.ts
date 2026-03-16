@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('id, role')
+    .select('*')
     .eq('id', user.id)
     .single()
   if (!adminProfile || adminProfile.role !== 'admin') {
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('id, role')
+    .select('*')
     .eq('id', user.id)
     .single()
   if (!adminProfile || adminProfile.role !== 'admin') {

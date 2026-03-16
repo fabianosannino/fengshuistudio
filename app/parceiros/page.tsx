@@ -33,7 +33,7 @@ export default function Parceiros() {
       // Fetch profiles that opted to be visible as partners
       const { data } = await supabase
         .from('profiles')
-        .select('id, nome_completo, tipo_usuario, plano, profissao, area_atuacao, registro_profissional, linkedin, instagram, cidade, estado, bio')
+        .select('*')
         .eq('parceiro_visivel', true)
         .order('nome_completo')
 
