@@ -4,10 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
-import { planoEfetivo, planoLabel } from '../../src/lib/plano-utils'
+import { planoEfetivo, planoLabel, isProfissional as isProfissionalFn, PROF_TYPES } from '../../src/lib/plano-utils'
 import type { User } from '@supabase/supabase-js'
-
-const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
 export default function Perfil() {
@@ -24,9 +22,7 @@ export default function Perfil() {
     linkedin: '', instagram: '', parceiro_visivel: false,
   })
 
-  const isProfessional = planoEfetivo(plano) === 'profissional'
-    || PROF_TYPES.includes(tipoUsuario)
-    || tipoUsuario === 'consultor'
+  const isProfessional = isProfissionalFn({ plano, tipo_usuario: tipoUsuario, role: tipoUsuario })
 
   useEffect(() => {
     async function load() {

@@ -6,9 +6,7 @@ import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import ConfirmModal from '../components/ConfirmModal'
 import type { Consulta } from '../../src/lib/types'
-import { planoEfetivo } from '../../src/lib/plano-utils'
-
-const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+import { isProfissional as isProfissionalFn } from '../../src/lib/plano-utils'
 const PAGE_SIZE = 10
 
 export default function Consultas() {
@@ -55,9 +53,7 @@ export default function Consultas() {
         .eq('id', user.id)
         .single()
 
-      const isProf = planoEfetivo(prof?.plano) === 'profissional'
-        || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
-        || prof?.role === 'consultor'
+      const isProf = isProfissionalFn(prof)
       setIsProfessional(isProf)
 
       await loadData(0, user.id)

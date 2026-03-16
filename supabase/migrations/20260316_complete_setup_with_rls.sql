@@ -57,17 +57,21 @@ CREATE POLICY "Usuário lê próprio perfil"
   ON profiles FOR SELECT
   USING (id = auth.uid());
 
--- 3b. SELECT — admin lê todos
+-- 3b. Helper function for admin check (SECURITY DEFINER bypasses RLS,
+--      preventing infinite recursion when profiles policies reference profiles)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- 3c. SELECT — admin lê todos
 DROP POLICY IF EXISTS "Admin lê todos os perfis" ON profiles;
 CREATE POLICY "Admin lê todos os perfis"
   ON profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles AS p
-      WHERE p.id = auth.uid()
-        AND p.role = 'admin'
-    )
-  );
+  USING (public.is_admin());
 
 -- 3c. SELECT — parceiros visíveis para todos os autenticados
 DROP POLICY IF EXISTS "Parceiros visíveis para autenticados" ON profiles;

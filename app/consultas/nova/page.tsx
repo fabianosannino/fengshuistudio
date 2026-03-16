@@ -6,9 +6,7 @@ import FlowLayout from '../../components/FlowLayout'
 import Skeleton from '../../components/Skeleton'
 import type { Profile, Cliente } from '../../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, limiteImoveis, podeClientes, planoLabel } from '../../../src/lib/plano-utils'
-
-const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional as isProfissionalFn, planoUsuario, PROF_TYPES } from '../../../src/lib/plano-utils'
 
 const SETORES_BAGUA = [
   { numero: 1, nome: 'Carreira', elemento: 'Agua', cor: '#1D4ED8', posicao: 'Centro-Norte' },
@@ -45,9 +43,7 @@ export default function NovaConsulta() {
   const [setoresAtivos, setSetoresAtivos] = useState<number[]>([])
   const [consultaId, setConsultaId] = useState<string | null>(null)
 
-  const isProfessional = planoEfetivo(profile?.plano) === 'profissional'
-    || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
-    || profile?.role === 'consultor'
+  const isProfessional = isProfissionalFn(profile)
 
   useEffect(() => {
     async function load() {
@@ -62,9 +58,7 @@ export default function NovaConsulta() {
         .single()
       setProfile(prof)
 
-      const userIsProfessional = planoEfetivo(prof?.plano) === 'profissional'
-        || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
-        || prof?.role === 'consultor'
+      const userIsProfessional = isProfissionalFn(prof)
 
       if (userIsProfessional) {
         // Professional: load clients list

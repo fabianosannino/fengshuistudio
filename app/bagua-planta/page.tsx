@@ -163,7 +163,7 @@ function buildRot(img: HTMLImageElement, deg: number): HTMLCanvasElement {
 }
 
 function calcBounds(src: HTMLCanvasElement): Bounds {
-  const ctx=src.getContext('2d')!
+  const ctx=src.getContext('2d',{willReadFrequently:true})!
   const d=ctx.getImageData(0,0,src.width,src.height).data
   let x0=src.width,x1=0,y0=src.height,y1=0
   for(let y=0;y<src.height;y++) for(let x=0;x<src.width;x++){
@@ -181,7 +181,7 @@ function calcBounds(src: HTMLCanvasElement): Bounds {
 }
 
 function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): Setor[] {
-  const ctx=src.getContext('2d')!, W=src.width, H=src.height
+  const ctx=src.getContext('2d',{willReadFrequently:true})!, W=src.width, H=src.height
   const d=ctx.getImageData(0,0,W,H).data
 
   // Helper: classify a pixel as vegetation/outdoor
@@ -1072,7 +1072,10 @@ function BaguaPlantaContent() {
           fd.append('consulta_id',consultaId)
           fd.append('planta',file)
           const uploadP = fetch('/api/consultas/bagua-planta',{method:'POST',body:fd})
-            .then(r=>r.json())
+            .then(r=>{
+              if(!r.ok) throw new Error(`Upload falhou (${r.status})`)
+              return r.json()
+            })
             .then(d=>{
               if(d.url){
                 setPlantaUrl(d.url)
@@ -1083,9 +1086,14 @@ function BaguaPlantaContent() {
                 }).eq('id',consultaId).then(()=>{})
                 return d.url as string
               }
+              setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.')
               return null
             })
-            .catch(()=>null)
+            .catch(err=>{
+              console.error('Upload planta error:', err)
+              setMsg('Erro ao enviar planta para o servidor. Verifique se o bucket de storage existe no Supabase.')
+              return null
+            })
           uploadPromiseRef.current=uploadP
         }
       }
