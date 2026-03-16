@@ -42,13 +42,23 @@ export default function ClienteDetalhe() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
 
-      const { data: cli } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('id', params.id)
-        .eq('consultor_id', user.id)
-        .single()
+      // Run both queries in parallel (both use params.id, not each other's results)
+      const [cliRes, consRes] = await Promise.all([
+        supabase
+          .from('clientes')
+          .select('*')
+          .eq('id', params.id)
+          .eq('consultor_id', user.id)
+          .single(),
+        supabase
+          .from('consultas')
+          .select('*, bagua_entrada')
+          .eq('cliente_id', params.id)
+          .eq('consultor_id', user.id)
+          .order('criado_em', { ascending: false }),
+      ])
 
+      const cli = cliRes.data
       if (!cli) { window.location.href = '/clientes'; return }
       setCliente(cli)
       setForm({
@@ -66,14 +76,7 @@ export default function ClienteDetalhe() {
         notas: cli.notas || ''
       })
 
-      const { data: cons } = await supabase
-        .from('consultas')
-        .select('*, bagua_entrada')
-        .eq('cliente_id', params.id)
-        .eq('consultor_id', user.id)
-        .order('criado_em', { ascending: false })
-
-      setConsultas(cons || [])
+      setConsultas(consRes.data || [])
       setLoading(false)
     }
     load()

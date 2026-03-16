@@ -287,12 +287,21 @@ export default function ConsultaDetalhe() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
 
-      const { data: consulta } = await supabase
-        .from('consultas')
-        .select('*, clientes(nome_completo)')
-        .eq('id', id)
-        .single()
+      // Run both queries in parallel (both use the id param, not each other's results)
+      const [consultaRes, setoresRes] = await Promise.all([
+        supabase
+          .from('consultas')
+          .select('*, clientes(nome_completo)')
+          .eq('id', id)
+          .single(),
+        supabase
+          .from('setores_bagua')
+          .select('*, diagnostico_criterios(*)')
+          .eq('consulta_id', id)
+          .order('numero'),
+      ])
 
+      const consulta = consultaRes.data
       if (!consulta) { router.push('/consultas'); return }
       setConsulta(consulta)
 
@@ -305,11 +314,7 @@ export default function ConsultaDetalhe() {
       setFotoGeral(consulta.foto_geral_url || null)
       setFotosComodos(Array.isArray(consulta.fotos_comodos) ? consulta.fotos_comodos : [])
 
-      const { data: setoresData } = await supabase
-        .from('setores_bagua')
-        .select('*, diagnostico_criterios(*)')
-        .eq('consulta_id', id)
-        .order('numero')
+      const setoresData = setoresRes.data
 
       setSetores(setoresData || [])
 
