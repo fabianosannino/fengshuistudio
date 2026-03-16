@@ -15,6 +15,7 @@ export default function Perfil() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [tipoUsuario, setTipoUsuario] = useState('')
+  const [plano, setPlano] = useState('')
   const [form, setForm] = useState({
     nome_completo: '', nome_empresa: '', telefone: '',
     cidade: '', estado: '', bio: '', site: '',
@@ -22,7 +23,9 @@ export default function Perfil() {
     linkedin: '', instagram: '', parceiro_visivel: false,
   })
 
-  const isProfessional = PROF_TYPES.includes(tipoUsuario)
+  const isProfessional = plano === 'pro'
+    || PROF_TYPES.includes(tipoUsuario)
+    || tipoUsuario === 'consultor'
 
   useEffect(() => {
     async function load() {
@@ -32,6 +35,7 @@ export default function Perfil() {
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profile) {
         setTipoUsuario(profile.tipo_usuario || profile.role || '')
+        setPlano(profile.plano || '')
         setForm({
           nome_completo: profile.nome_completo || '',
           nome_empresa: profile.nome_empresa || '',

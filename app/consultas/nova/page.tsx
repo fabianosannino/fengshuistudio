@@ -44,9 +44,9 @@ export default function NovaConsulta() {
   const [setoresAtivos, setSetoresAtivos] = useState<number[]>([])
   const [consultaId, setConsultaId] = useState<string | null>(null)
 
-  const isProfessional = profile?.tipo_usuario
-    ? PROF_TYPES.includes(profile.tipo_usuario)
-    : (profile?.role === 'consultor')
+  const isProfessional = profile?.plano === 'pro'
+    || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
+    || profile?.role === 'consultor'
 
   useEffect(() => {
     async function load() {
@@ -61,9 +61,9 @@ export default function NovaConsulta() {
         .single()
       setProfile(prof)
 
-      const userIsProfessional = prof?.tipo_usuario
-        ? PROF_TYPES.includes(prof.tipo_usuario)
-        : (prof?.role === 'consultor')
+      const userIsProfessional = prof?.plano === 'pro'
+        || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
+        || prof?.role === 'consultor'
 
       if (userIsProfessional) {
         // Professional: load clients list

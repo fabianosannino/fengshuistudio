@@ -44,9 +44,9 @@ export default function AppShell({
   const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  const isProfessional = profile?.tipo_usuario
-    ? PROF_TYPES.includes(profile.tipo_usuario)
-    : (profile?.role === 'consultor' || !profile?.tipo_usuario)
+  const isProfessional = profile?.plano === 'pro'
+    || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
+    || profile?.role === 'consultor'
 
   const navItems = isProfessional ? NAV_PROFESSIONAL : NAV_PERSONAL
 
