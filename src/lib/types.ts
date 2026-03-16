@@ -188,6 +188,37 @@ export interface ProdutoAfiliado {
   preco: string
 }
 
+// ─── Admin Types ────────────────────────────────────────────────────────────
+
+export type ActivationKeyStatus = 'available' | 'used' | 'expired' | 'cancelled'
+
+export interface ActivationKey {
+  id: string
+  key: string
+  plan_type: string
+  status: ActivationKeyStatus
+  created_at: string
+  expires_at?: string | null
+  used_at?: string | null
+  used_by?: string | null
+  note?: string | null
+  created_by?: string | null
+  /** Joined relation */
+  used_by_profile?: { nome_completo: string; id: string } | null
+}
+
+export interface AuditLogEntry {
+  id: string
+  action: string
+  target_type?: string | null
+  target_id?: string | null
+  details?: Record<string, unknown> | null
+  performed_by?: string | null
+  performed_at: string
+  /** Joined relation */
+  performer?: { nome_completo: string } | null
+}
+
 // ─── Dashboard Chart Types ───────────────────────────────────────────────────
 
 export interface StatusChartEntry {
