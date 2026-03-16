@@ -6,6 +6,7 @@ import AppShell from '../../components/AppShell'
 import Skeleton from '../../components/Skeleton'
 import ConfirmModal from '../../components/ConfirmModal'
 import type { ActivationKey } from '../../../src/lib/types'
+import { planoEfetivo, planoLabel } from '../../../src/lib/plano-utils'
 
 const PAGE_SIZE = 20
 
@@ -528,9 +529,9 @@ export default function AdminChaves() {
                   <span style={{ color: '#374151' }}>{u.nome_completo}</span>
                   <span style={{
                     padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold',
-                    background: u.plano === 'pro' ? '#EDE9FE' : '#F3F4F6',
-                    color: u.plano === 'pro' ? '#7C3AED' : '#6B7280',
-                  }}>{u.plano === 'pro' ? 'PRO' : 'FREE'}</span>
+                    background: planoEfetivo(u.plano) === 'profissional' ? '#EDE9FE' : '#F3F4F6',
+                    color: planoEfetivo(u.plano) === 'profissional' ? '#7C3AED' : '#6B7280',
+                  }}>{planoLabel(u.plano)}</span>
                 </button>
               ))}
             </div>
@@ -550,11 +551,11 @@ export default function AdminChaves() {
               <strong>Plano atual:</strong>{' '}
               <span style={{
                 padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold',
-                background: promoteTarget.plano === 'pro' ? '#EDE9FE' : '#FEF3C7',
-                color: promoteTarget.plano === 'pro' ? '#7C3AED' : '#A16207',
-              }}>{promoteTarget.plano === 'pro' ? 'PRO' : 'FREE'}</span>
+                background: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#EDE9FE' : '#FEF3C7',
+                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#7C3AED' : '#A16207',
+              }}>{planoLabel(promoteTarget.plano)}</span>
             </div>
-            {promoteTarget.plano === 'pro' ? (
+            {planoEfetivo(promoteTarget.plano) === 'profissional' ? (
               <div style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>Este usuário já possui o plano Pro.</div>
             ) : (
               <button onClick={() => setShowPromoteModal(true)} style={{
