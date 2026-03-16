@@ -4,7 +4,7 @@
 
 // ─── Utility / Enum Types ────────────────────────────────────────────────────
 
-export type PlanType = 'freemium' | 'pro'
+export type PlanType = 'freemium' | 'free' | 'simples' | 'pro' | 'profissional'
 
 export type ConsultaStatus = 'rascunho' | 'em_andamento' | 'finalizada' | 'arquivada'
 

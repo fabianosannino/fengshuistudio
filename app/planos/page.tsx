@@ -5,30 +5,46 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { planoEfetivo } from '../../src/lib/plano-utils'
 
 const PLANOS = [
   {
-    id: 'freemium', nome: 'Free', preco: 'R$ 0', periodo: '/mês',
-    descricao: 'Para quem está começando', cor: '#6B7280', destaque: false,
+    id: 'free', nome: 'Free', preco: 'R$ 0', periodo: '',
+    descricao: 'Para conhecer a plataforma', cor: '#6B7280', destaque: false,
     recursos: [
-      { nome: 'Clientes cadastrados', valor: 'Até 5', disponivel: true },
-      { nome: 'Consultas por mês', valor: 'Até 3', disponivel: true },
-      { nome: 'Diagnóstico Ba Gua', valor: 'Completo', disponivel: true },
-      { nome: 'Geração de PDF', valor: 'Com marca d\'água', disponivel: true },
+      { nome: 'Imóveis cadastrados', valor: 'Até 3', disponivel: true },
+      { nome: 'Diagnóstico Baguá', valor: '1 análise por imóvel', disponivel: true },
+      { nome: 'Cadastro de clientes', valor: '—', disponivel: false },
+      { nome: 'Relatório PDF', valor: '—', disponivel: false },
       { nome: 'Calendário lunar', valor: '—', disponivel: false },
-      { nome: 'Suporte prioritário', valor: '—', disponivel: false },
+      { nome: 'Rede de parceiros', valor: '—', disponivel: false },
+      { nome: 'Histórico de análises', valor: '—', disponivel: false },
     ]
   },
   {
-    id: 'pro', nome: 'Pro', preco: 'R$ 49,90', periodo: '/mês',
+    id: 'simples', nome: 'Simples', preco: 'R$ 29,90', periodo: '/mês',
+    descricao: 'Para uso pessoal', cor: '#059669', destaque: false,
+    recursos: [
+      { nome: 'Imóveis cadastrados', valor: '1 ativo', disponivel: true },
+      { nome: 'Diagnóstico Baguá', valor: '1 análise por imóvel', disponivel: true },
+      { nome: 'Cadastro de clientes', valor: '—', disponivel: false },
+      { nome: 'Relatório PDF', valor: 'Com marca d\'água', disponivel: true },
+      { nome: 'Calendário lunar', valor: 'Incluído', disponivel: true },
+      { nome: 'Rede de parceiros', valor: 'Visualizar', disponivel: true },
+      { nome: 'Histórico de análises', valor: '—', disponivel: false },
+    ]
+  },
+  {
+    id: 'profissional', nome: 'Profissional', preco: 'R$ 49,90', periodo: '/mês',
     descricao: 'Para consultores profissionais', cor: '#7C3AED', destaque: true,
     recursos: [
-      { nome: 'Clientes cadastrados', valor: 'Ilimitados', disponivel: true },
-      { nome: 'Consultas por mês', valor: 'Ilimitadas', disponivel: true },
-      { nome: 'Diagnóstico Ba Gua', valor: 'Completo', disponivel: true },
-      { nome: 'Geração de PDF', valor: 'Sem marca d\'água', disponivel: true },
+      { nome: 'Imóveis cadastrados', valor: 'Ilimitados', disponivel: true },
+      { nome: 'Diagnóstico Baguá', valor: 'Múltiplas análises', disponivel: true },
+      { nome: 'Cadastro de clientes', valor: 'Ilimitados', disponivel: true },
+      { nome: 'Relatório PDF', valor: 'Sem marca d\'água', disponivel: true },
       { nome: 'Calendário lunar', valor: 'Incluído', disponivel: true },
-      { nome: 'Suporte prioritário', valor: 'Via e-mail', disponivel: true },
+      { nome: 'Rede de parceiros', valor: 'Acesso completo', disponivel: true },
+      { nome: 'Histórico de análises', valor: 'Incluído', disponivel: true },
     ]
   }
 ]
@@ -39,6 +55,7 @@ export default function Planos() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [showKeyInput, setShowKeyInput] = useState(false)
+  const [selectedPlanId, setSelectedPlanId] = useState('')
   const [chaveAtivacao, setChaveAtivacao] = useState('')
   const [upgrading, setUpgrading] = useState(false)
 
@@ -54,27 +71,31 @@ export default function Planos() {
     load()
   }, [])
 
+  const planoAtualEfetivo = planoEfetivo(profile?.plano)
+
   async function handleSelectPlan(planoId: string) {
-    if (planoId === profile?.plano) return
-    if (planoId === 'pro') {
+    if (planoId === planoAtualEfetivo) return
+    const isPaid = planoId === 'simples' || planoId === 'profissional'
+    if (isPaid) {
+      setSelectedPlanId(planoId)
       setShowKeyInput(true)
       setMessage('')
       return
     }
     // Downgrade to free
-    if (!confirm('Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos Pro.')) return
+    if (!confirm('Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos pagos.')) return
     try {
       const res = await fetch('/api/planos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plano: 'freemium' }),
+        body: JSON.stringify({ plano: 'free' }),
       })
       const data = await res.json()
       if (!res.ok) {
         setMessage('Erro ao atualizar plano: ' + data.error)
         return
       }
-      setProfile(prev => prev ? { ...prev, plano: 'freemium' } : prev)
+      setProfile(prev => prev ? { ...prev, plano: 'free' } : prev)
       setMessage('Plano alterado para Free.')
       setTimeout(() => setMessage(''), 4000)
     } catch {
@@ -89,22 +110,25 @@ export default function Planos() {
     }
     setUpgrading(true)
     setMessage('')
+    const targetPlan = selectedPlanId || 'profissional'
+    const planLabel = PLANOS.find(p => p.id === targetPlan)?.nome || targetPlan
     try {
       const res = await fetch('/api/planos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plano: 'pro', chave_ativacao: chaveAtivacao.trim() }),
+        body: JSON.stringify({ plano: targetPlan, chave_ativacao: chaveAtivacao.trim() }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setMessage(data.error || 'Erro ao ativar plano Pro.')
+        setMessage(data.error || `Erro ao ativar plano ${planLabel}.`)
         setUpgrading(false)
         return
       }
-      setProfile(prev => prev ? { ...prev, plano: 'pro' } : prev)
+      setProfile(prev => prev ? { ...prev, plano: targetPlan } : prev)
       setShowKeyInput(false)
+      setSelectedPlanId('')
       setChaveAtivacao('')
-      setMessage('Parabéns! Seu plano foi atualizado para Pro!')
+      setMessage(`Parabéns! Seu plano foi atualizado para ${planLabel}!`)
       setTimeout(() => setMessage(''), 5000)
     } catch {
       setMessage('Erro de conexão ao ativar plano.')
@@ -123,7 +147,8 @@ export default function Planos() {
     )
   }
 
-  const planoAtual = profile?.plano || 'freemium'
+  const planoAtualLabel = PLANOS.find(p => p.id === planoAtualEfetivo)?.nome || 'Free'
+  const planoAtualCor = PLANOS.find(p => p.id === planoAtualEfetivo)?.cor || '#6B7280'
 
   return (
     <AppShell currentPage="planos">
@@ -131,8 +156,8 @@ export default function Planos() {
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{ color: '#1E3A5F', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Escolha seu plano</h1>
         <p style={{ color: '#6B7280', fontSize: '16px', margin: '0' }}>
-          Seu plano atual: <strong style={{ color: planoAtual === 'pro' ? '#7C3AED' : '#6B7280' }}>
-            {planoAtual === 'pro' ? 'Pro' : 'Free'}
+          Seu plano atual: <strong style={{ color: planoAtualCor }}>
+            {planoAtualLabel}
           </strong>
         </p>
       </div>
@@ -150,9 +175,9 @@ export default function Planos() {
         )
       })()}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px', maxWidth: '900px', margin: '0 auto 40px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px', maxWidth: '1100px', margin: '0 auto 40px' }}>
         {PLANOS.map(plano => {
-          const isAtual = planoAtual === plano.id
+          const isAtual = planoAtualEfetivo === plano.id
           return (
             <div key={plano.id} style={{
               background: '#ffffff', borderRadius: '16px', padding: '32px',
@@ -201,7 +226,7 @@ export default function Planos() {
                 borderRadius: '10px', fontSize: '15px', fontWeight: 'bold',
                 cursor: isAtual ? 'default' : 'pointer'
               }}>
-                {isAtual ? 'Plano atual' : plano.id === 'pro' ? 'Fazer upgrade' : 'Mudar para Free'}
+                {isAtual ? 'Plano atual' : plano.id === 'free' ? 'Mudar para Free' : `Ativar ${plano.nome}`}
               </button>
             </div>
           )
@@ -209,18 +234,22 @@ export default function Planos() {
       </div>
 
       {/* Painel de chave de ativação */}
-      {showKeyInput && planoAtual !== 'pro' && (
+      {showKeyInput && (() => {
+        const targetPlan = PLANOS.find(p => p.id === selectedPlanId)
+        const targetNome = targetPlan?.nome || 'Profissional'
+        const targetCor = targetPlan?.cor || '#7C3AED'
+        return (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '28px 32px',
-          boxShadow: '0 4px 20px rgba(124,58,237,0.15)', border: '2px solid #7C3AED',
+          boxShadow: `0 4px 20px ${targetCor}25`, border: `2px solid ${targetCor}`,
           maxWidth: '500px', margin: '0 auto 32px', textAlign: 'center'
         }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔑</div>
           <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-            Ativar Plano Pro
+            Ativar Plano {targetNome}
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 20px 0' }}>
-            Digite sua chave de ativacao para liberar o plano Pro
+            Digite sua chave de ativação para liberar o plano {targetNome}
           </p>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input
@@ -238,7 +267,7 @@ export default function Planos() {
             />
             <button onClick={handleActivateKey} disabled={upgrading} style={{
               padding: '12px 24px',
-              background: upgrading ? '#9CA3AF' : '#7C3AED',
+              background: upgrading ? '#9CA3AF' : targetCor,
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '15px', fontWeight: 'bold',
               cursor: upgrading ? 'not-allowed' : 'pointer',
@@ -247,14 +276,15 @@ export default function Planos() {
               {upgrading ? 'Ativando...' : 'Ativar'}
             </button>
           </div>
-          <button onClick={() => { setShowKeyInput(false); setChaveAtivacao(''); setMessage('') }} style={{
+          <button onClick={() => { setShowKeyInput(false); setSelectedPlanId(''); setChaveAtivacao(''); setMessage('') }} style={{
             background: 'none', border: 'none', color: '#9CA3AF',
             fontSize: '13px', cursor: 'pointer'
           }}>
             Cancelar
           </button>
         </div>
-      )}
+        )
+      })()}
 
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '24px 32px',

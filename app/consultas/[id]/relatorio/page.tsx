@@ -96,7 +96,16 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
 
-  const isFree = profile?.plano !== 'pro'
+  // Plan-based PDF access
+  const _planoEfetivo = (() => {
+    const p = (profile?.plano || '').toLowerCase().trim()
+    if (p === 'pro' || p === 'profissional') return 'profissional' as const
+    if (p === 'simples') return 'simples' as const
+    return 'free' as const
+  })()
+  const isFree = _planoEfetivo === 'free'
+  const isSimples = _planoEfetivo === 'simples'
+  const needsWatermark = isSimples
 
   useEffect(() => {
     async function load() {
@@ -180,14 +189,14 @@ export default function Relatorio() {
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
-      if (isFree) {
+      if (needsWatermark) {
         const totalPages = pdf.getNumberOfPages()
         for (let i = 1; i <= totalPages; i++) {
           pdf.setPage(i)
-          pdf.setFontSize(50)
+          pdf.setFontSize(40)
           pdf.setTextColor(200, 200, 200)
           pdf.saveGraphicsState()
-          pdf.text('VERSAO GRATUITA', imgWidth / 2, pageHeight / 2, { align: 'center', angle: 45 })
+          pdf.text('Gerado com FengShui Studio \u2014 Plano Simples', imgWidth / 2, pageHeight / 2, { align: 'center', angle: 45 })
           pdf.restoreGraphicsState()
         }
       }
@@ -205,8 +214,35 @@ export default function Relatorio() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF5', fontFamily: "Georgia, 'Times New Roman', serif" }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', color: '#B8860B', marginBottom: '16px' }}>風水</div>
-          <p style={{ color: '#B8860B', fontSize: '14px' }}>Gerando relatório...</p>
+          <div style={{ fontSize: '48px', color: '#B8860B', marginBottom: '16px' }}>\u98a8\u6c34</div>
+          <p style={{ color: '#B8860B', fontSize: '14px' }}>Gerando relat\u00f3rio...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Free plan: block PDF access entirely
+  if (isFree) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF5', fontFamily: "Georgia, 'Times New Roman', serif" }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px', padding: '32px' }}>
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>🔒</div>
+          <h1 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', marginBottom: '12px' }}>
+            Relat\u00f3rio PDF
+          </h1>
+          <p style={{ color: '#6B7280', fontSize: '15px', marginBottom: '24px' }}>
+            Relat\u00f3rio PDF dispon\u00edvel nos planos pagos.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button onClick={() => router.push('/planos')} style={{
+              background: '#7C3AED', color: '#fff', border: 'none', padding: '10px 28px',
+              borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
+            }}>Ver planos</button>
+            <button onClick={() => router.push(`/consultas/${id}`)} style={{
+              background: 'transparent', color: '#6B7280', border: '1px solid #D1D5DB', padding: '10px 20px',
+              borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
+            }}>Voltar</button>
+          </div>
         </div>
       </div>
     )
@@ -269,9 +305,9 @@ export default function Relatorio() {
           <span style={{ color: gold, fontSize: '18px', fontWeight: 'bold' }}>FengShui Studio</span>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {isFree && (
+          {needsWatermark && (
             <span style={{ color: '#FBBF24', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
-              Plano Free — PDF com marca d&apos;agua
+              Plano Simples — PDF com marca d&apos;\u00e1gua
             </span>
           )}
           <button onClick={() => router.push(`/consultas/${id}`)} style={{

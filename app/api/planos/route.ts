@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  if (!plano || !['freemium', 'pro'].includes(plano)) {
+  if (!plano || !['freemium', 'free', 'simples', 'pro', 'profissional'].includes(plano)) {
     return NextResponse.json({ error: 'Plano inválido' }, { status: 400 })
   }
 
@@ -48,7 +48,9 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (plano === 'pro' && profile?.plano !== 'pro') {
+  const isPaidPlan = ['pro', 'profissional', 'simples'].includes(plano)
+  const currentIsPaid = ['pro', 'profissional', 'simples'].includes(profile?.plano || '')
+  if (isPaidPlan && !currentIsPaid) {
     const validEnvKey = process.env.PRO_ACTIVATION_KEY
     const allowFree = process.env.ALLOW_FREE_UPGRADE === 'true'
 
