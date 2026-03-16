@@ -1055,6 +1055,9 @@ function BaguaPlantaContent() {
   }
 
   // ── upload ─────────────────────────────────────────────────────────────────
+  // Track upload promise so salvarRascunho can wait for URL before saving
+  const uploadPromiseRef = useRef<Promise<string|null>|null>(null)
+
   function onUpload(e:React.ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0]; if(!file) return
     // Load image locally first
@@ -1063,23 +1066,27 @@ function BaguaPlantaContent() {
       const i=new Image()
       i.onload=()=>{
         setImg(i); setRot(0); setStep('configurar')
-        // Upload to Supabase storage in background
+        // Upload to Supabase storage and wait for URL
         if(consultaId){
           const fd=new FormData()
           fd.append('consulta_id',consultaId)
           fd.append('planta',file)
-          fetch('/api/consultas/bagua-planta',{method:'POST',body:fd})
+          const uploadP = fetch('/api/consultas/bagua-planta',{method:'POST',body:fd})
             .then(r=>r.json())
             .then(d=>{
               if(d.url){
                 setPlantaUrl(d.url)
+                plantaUrlRef.current=d.url
                 // Save initial draft state
                 supabase.from('consultas').update({
                   bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'configurar',rotacao:0,lado:'centro'}
                 }).eq('id',consultaId).then(()=>{})
+                return d.url as string
               }
+              return null
             })
-            .catch(()=>{})
+            .catch(()=>null)
+          uploadPromiseRef.current=uploadP
         }
       }
       i.src=ev.target?.result as string
@@ -1090,11 +1097,18 @@ function BaguaPlantaContent() {
   // Save analysis state as draft (called on key transitions)
   async function salvarRascunho(overrides?:Partial<{etapa:Step;rotacao:number;bordas:Bounds|null;lhV:number[];lvV:number[];entradaV:{x:number;y:number}|null;ladoV:Lado;setoresV:Setor[]}>){
     if(!consultaId||restaurandoRef.current) return
+    // Wait for upload to complete if planta_url is not yet available
+    let url = plantaUrlRef.current
+    if(!url && uploadPromiseRef.current){
+      url = await uploadPromiseRef.current
+      if(!url) return // upload failed, skip saving
+    }
+    if(!url) return // no plant image, nothing to save
     const b=overrides?.bordas??boundsRef.current
     const curLh=overrides?.lhV??lhRef.current
     const curLv=overrides?.lvV??lvRef.current
     const draft:any={
-      planta_url:plantaUrlRef.current,
+      planta_url:url,
       etapa:overrides?.etapa??step,
       rotacao:overrides?.rotacao??rot,
       lado:overrides?.ladoV??lado,
@@ -1414,7 +1428,8 @@ function BaguaPlantaContent() {
         lh:lhRef.current, lv:lvRef.current,
         rotacao:rot, etapa:'resultado',
       }
-      if(plantaUrl) finalizacao.planta_url=plantaUrl
+      const urlFinal = plantaUrlRef.current || plantaUrl
+      if(urlFinal) finalizacao.planta_url=urlFinal
       // Save sector draft data for restoration
       if(setores.length===9){
         finalizacao.setores_rascunho=setores.map(sc=>({
