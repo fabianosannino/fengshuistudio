@@ -134,10 +134,14 @@ type Setor  = {
   /** Area metrics (pixel-based, proportional) */
   aq:number;  // theoretical area (1/9 of bounds)
   ac:number;  // construction inside bounds within sector
-  av:number;  // void inside bounds (aq - ac, clamped ≥0)
-  ae:number;  // construction outside bounds in sector direction
-  ar:number;  // effective area (ac - ae, clamped ≥0)
-  desvio:number; // ((ar - aq) / aq) * 100
+  av:number;  // void inside bounds = A_falta (aq - ac, clamped ≥0)
+  ae:number;  // construction outside bounds = A_excesso
+  ar:number;  // effective area = AQ - AV - AE (clamped ≥0)
+  desvio:number; // ((ar - aq) / aq) * 100  — always ≤ 0 or ≈ 0
+  /** Manual adjustment (Nível 3) */
+  ajusteManual:number|null;  // manual override % (null = use calculated)
+  ajusteTipo:'equilibrado'|'faltante'|'excedente'|null;
+  obs:string; // consultant text observation
 }
 
 const DRAG = 18
@@ -244,10 +248,12 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     if(col===2) aeTotal += constructionCount(b.x+b.w,y0,b.x+b.w+mgW,y1)
     const ae = aeTotal
 
-    // AR: effective area (AC minus external construction)
-    const ar = Math.max(0, ac - ae)
+    // AR = AQ - A_falta - A_excesso (clamped ≥ 0)
+    // A_falta = AV (void inside), A_excesso = AE (construction outside)
+    const ar = Math.max(0, aq - av - ae)
 
     // Deviation percentage (completely independent per sector)
+    // AR ≤ AQ always, so desvio ≤ 0 (or ≈ 0 when equilibrado)
     const desvio = aq > 0 ? ((ar - aq) / aq) * 100 : 0
 
     // Independent per-sector diagnosis — no cross-sector contamination
@@ -258,15 +264,20 @@ function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): S
     const absD = Math.abs(desvio)
     const geo = absD <= 5 ? 100 : absD <= 15 ? 80 : absD <= 40 ? 50 : absD <= 70 ? 25 : 10
 
-    return {criterios:Array(8).fill(1),geo,falta,excesso,aq,ac,av,ae,ar,desvio}
+    return {criterios:Array(8).fill(1),geo,falta,excesso,aq,ac,av,ae,ar,desvio,ajusteManual:null,ajusteTipo:null,obs:''}
   })
 }
 
-function desvioTipo(d:number):{tipo:string;icon:string;intensidade:string;cor:string}{
+function desvioTipo(d:number,sc?:Setor):{tipo:string;icon:string;intensidade:string;cor:string}{
   const abs=Math.abs(d)
   if(abs<=5)  return {tipo:'Equilibrado',icon:'✓',intensidade:'—',cor:'#15803D'}
   const intensidade=abs<=15?'Leve':abs<=40?'Moderado':abs<=70?'Acentuado':'Ausente'
   const cor=abs<=15?'#D97706':abs<=40?'#EA580C':'#DC2626'
+  // Determine type based on what caused the deviation
+  if(sc){
+    if(sc.av>0&&sc.ae>0) return {tipo:'Faltante',icon:'▼',intensidade,cor}
+    if(sc.ae>0&&sc.av===0) return {tipo:'Excesso ext.',icon:'▲',intensidade,cor}
+  }
   if(d<0) return {tipo:'Faltante',icon:'▼',intensidade,cor}
   return {tipo:'Excedente',icon:'▲',intensidade,cor}
 }
@@ -435,7 +446,7 @@ function BaguaPlantaContent() {
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
       ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const dt=desvioTipo(sc.desvio)
+        const dt=desvioTipo(sc.desvio,sc)
         ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#000000aa'
         ctx.fillText(`AR: ${Math.round(sc.ar).toLocaleString()} px²`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(7,fs-2)}px Arial`
@@ -566,7 +577,7 @@ function BaguaPlantaContent() {
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
       ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const dt=desvioTipo(sc.desvio)
+        const dt=desvioTipo(sc.desvio,sc)
         ctx.font=`${Math.max(8,fs-1)}px Arial`; ctx.fillStyle='#000000aa'
         ctx.fillText(`AR: ${Math.round(sc.ar).toLocaleString()} px²`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(8,fs-1)}px Arial`
@@ -867,6 +878,18 @@ function BaguaPlantaContent() {
 
   function setCrit(si:number,ci:number,val:number){
     setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,criterios:sc.criterios.map((v,j)=>j===ci?val:v)}))
+  }
+  function setAjusteManual(si:number,val:number|null){
+    setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,ajusteManual:val}))
+  }
+  function setAjusteTipo(si:number,val:'equilibrado'|'faltante'|'excedente'|null){
+    setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,ajusteTipo:val}))
+  }
+  function setObs(si:number,val:string){
+    setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,obs:val}))
+  }
+  function resetAjuste(si:number){
+    setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,ajusteManual:null,ajusteTipo:null,obs:''}))
   }
 
   const [salvandoTudo,setSalvandoTudo] = useState(false)
@@ -1188,7 +1211,7 @@ function BaguaPlantaContent() {
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const sel=ativo===i
-                          const dt=desvioTipo(sc.desvio)
+                          const dt=desvioTipo(sc.desvio,sc)
                           const dStr=sc.desvio>0?`+${Math.round(sc.desvio)}%`:`${Math.round(sc.desvio)}%`
                           const statusCor=desvioCorCanvas(sc.desvio)
                           return(
@@ -1245,77 +1268,122 @@ function BaguaPlantaContent() {
                   <button onClick={()=>setAtivo(null)} style={{background:'transparent',border:'none',fontSize:'18px',cursor:'pointer',color:'#9CA3AF'}}>×</button>
                 </div>
 
-                {/* Scores */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'4px',marginBottom:'10px'}}>
-                  {[
-                    {l:'Geométrico',v:scAtivo.geo,n:'forma'},
-                    {l:'Físico',v:fisico(scAtivo.criterios),n:'critérios'},
-                    {l:'Total',v:total(scAtivo.geo,scAtivo.criterios),n:'40%+60%'},
-                  ].map(s=>(
-                    <div key={s.l} style={{padding:'6px 4px',background:'#F9FAFB',borderRadius:'6px',textAlign:'center'}}>
-                      <div style={{fontSize:'9px',color:'#6B7280'}}>{s.l}</div>
-                      <div style={{fontSize:'18px',fontWeight:'bold',color:cor(s.v)}}>{s.v}</div>
-                      <div style={{fontSize:'8px',color:'#9CA3AF'}}>{s.n}</div>
-                    </div>
-                  ))}
+                {/* Cores / Elemento */}
+                <div style={{padding:'6px 8px',background:'#F9FAFB',borderRadius:'6px',marginBottom:'10px',fontSize:'10px',color:'#374151',display:'flex',gap:'10px',flexWrap:'wrap'}}>
+                  <span>Elemento: <strong>{stAtivo.elem}</strong></span>
+                  <span>Direção: <strong>{stAtivo.dir}</strong></span>
                 </div>
 
-                {/* ── Métricas de área ── */}
+                {/* ── MÉTRICAS DE ÁREA ── */}
                 {(()=>{
-                  const dt=desvioTipo(scAtivo.desvio)
-                  const dStr=scAtivo.desvio>0?`+${Math.round(scAtivo.desvio)}%`:`${Math.round(scAtivo.desvio)}%`
-                  const metrics:[string,number,string,string][] = [
-                    ['AQ',scAtivo.aq,'Área teórica','1/9 do retângulo'],
-                    ['AC',scAtivo.ac,'Construção interna','dentro das bordas'],
-                    ['AV',scAtivo.av,'Vazio interno','AQ − AC'],
-                    ['AE',scAtivo.ae,'Construção externa','fora das bordas'],
-                    ['AR',scAtivo.ar,'Área resultante','AC − AE'],
+                  const dt=desvioTipo(scAtivo.desvio,scAtivo)
+                  const autoDesvio=Math.round(scAtivo.desvio)
+                  const finalDesvio=scAtivo.ajusteManual!==null?scAtivo.ajusteManual:autoDesvio
+                  const finalDt=scAtivo.ajusteManual!==null?desvioTipo(-Math.abs(scAtivo.ajusteManual)):dt
+                  // Metrics: only show AV/AE if > 0
+                  const metricRows:[string,number,string][] = [
+                    ['AQ  Área teórica',scAtivo.aq,'1/9 do retângulo'],
                   ]
+                  if(scAtivo.av>0) metricRows.push(['A_falta (vazio interno)',scAtivo.av,'AQ − AC'])
+                  if(scAtivo.ae>0) metricRows.push(['A_excesso (constr. externa)',scAtivo.ae,'fora das bordas'])
+                  metricRows.push(['AR  Área resultante',scAtivo.ar,'AQ − falta − excesso'])
                   return (
                     <div style={{marginBottom:'10px'}}>
                       <div style={{fontSize:'11px',fontWeight:'bold',color:'#374151',marginBottom:'6px'}}>📐 Métricas de área</div>
                       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
-                        {metrics.map(([label,val,desc,formula])=>(
-                          <div key={label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#F9FAFB',borderRadius:'4px'}}>
-                            <div style={{display:'flex',alignItems:'baseline',gap:'5px'}}>
-                              <span style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{label}</span>
-                              <span style={{fontSize:'9px',color:'#9CA3AF'}}>{desc}</span>
-                            </div>
+                        {metricRows.map(([label,val,formula],mi)=>(
+                          <div key={mi} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:mi===metricRows.length-1?'#EFF6FF':'#F9FAFB',borderRadius:'4px'}}>
+                            <span style={{fontSize:'10px',fontWeight:mi===metricRows.length-1?'bold':'normal',color:'#1E3A5F'}}>{label}</span>
                             <div style={{display:'flex',alignItems:'baseline',gap:'4px'}}>
-                              <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>{val.toFixed(1)}</span>
+                              <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>{Math.round(val).toLocaleString()} px²</span>
                               <span style={{fontSize:'8px',color:'#D1D5DB'}}>{formula}</span>
                             </div>
                           </div>
                         ))}
                       </div>
+
+                      {/* Multi-level desvio display */}
+                      <div style={{marginTop:'8px',display:'flex',flexDirection:'column',gap:'3px'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#F9FAFB',borderRadius:'4px'}}>
+                          <span style={{fontSize:'10px',color:'#6B7280'}}>Automático:</span>
+                          <span style={{fontSize:'11px',fontWeight:'bold',color:dt.cor}}>{autoDesvio}% {dt.icon} {dt.tipo}</span>
+                        </div>
+                        {scAtivo.ajusteManual!==null&&(
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#EDE9FE',borderRadius:'4px',borderLeft:'3px solid #7C3AED'}}>
+                            <span style={{fontSize:'10px',color:'#5B21B6',fontWeight:'bold'}}>Final (consultor):</span>
+                            <span style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>{-Math.abs(scAtivo.ajusteManual)}% {finalDt.icon} {finalDt.tipo}</span>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Desvio banner */}
                       <div style={{marginTop:'6px',padding:'6px 8px',borderRadius:'6px',display:'flex',alignItems:'center',gap:'6px',
-                        background:dt.cor+'15',borderLeft:`3px solid ${dt.cor}`}}>
-                        <span style={{fontSize:'14px'}}>{dt.icon}</span>
+                        background:finalDt.cor+'15',borderLeft:`3px solid ${finalDt.cor}`}}>
+                        <span style={{fontSize:'14px'}}>{finalDt.icon}</span>
                         <div>
-                          <div style={{fontSize:'11px',fontWeight:'bold',color:dt.cor}}>Desvio: {dStr}</div>
-                          <div style={{fontSize:'9px',color:dt.cor}}>{dt.tipo}{dt.intensidade!=='—'?` · ${dt.intensidade}`:''}</div>
+                          <div style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>Desvio: {finalDesvio}%</div>
+                          <div style={{fontSize:'9px',color:finalDt.cor}}>{finalDt.tipo}{finalDt.intensidade!=='—'?` · ${finalDt.intensidade}`:''}</div>
                         </div>
                       </div>
-                      {/* Explanatory message based on AV/AE */}
+
+                      {/* Explanatory messages */}
                       {scAtivo.av > 0 && (
                         <div style={{marginTop:'6px',padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626',fontSize:'10px',color:'#7F1D1D',lineHeight:'1.5'}}>
-                          ⚠ Este setor possui {Math.round(scAtivo.av).toLocaleString()} px² de área sem construção dentro de seus limites (vazio interno). Isso indica <strong>FALTA</strong> de energia no Guá de {stAtivo.nome}.
+                          ⚠ Este setor possui {Math.round(scAtivo.av).toLocaleString()} px² de área sem construção dentro de seus limites. Isso indica <strong>FALTA</strong> de energia no Guá de {stAtivo.nome}. AR = AQ − A_falta{scAtivo.ae>0?' − A_excesso':''}
                         </div>
                       )}
                       {scAtivo.ae > 0 && (
                         <div style={{marginTop:'4px',padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C',fontSize:'10px',color:'#78350F',lineHeight:'1.5'}}>
-                          ⚠ Este setor possui {Math.round(scAtivo.ae).toLocaleString()} px² de construção fora das bordas definidas. Essa área foi descontada pois não integra o mapa do Baguá. Indica <strong>EXCESSO</strong> não integrado no Guá de {stAtivo.nome}.
+                          ⚠ Este setor possui {Math.round(scAtivo.ae).toLocaleString()} px² de construção fora das bordas. Essa área foi descontada pois não integra o Baguá. AR = AQ − {scAtivo.av>0?'A_falta − ':''}A_excesso
                         </div>
                       )}
-                      {scAtivo.av === 0 && scAtivo.ae === 0 && Math.abs(scAtivo.desvio) <= 5 && (
+                      {scAtivo.av === 0 && scAtivo.ae === 0 && (
                         <div style={{marginTop:'4px',padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D',fontSize:'10px',color:'#14532D',lineHeight:'1.5'}}>
-                          ✓ Setor completamente construído dentro das bordas. Sem vazio interno, sem excesso externo. Guá de {stAtivo.nome} equilibrado.
+                          ✓ Setor completamente equilibrado dentro das bordas. Sem falta nem excesso. AR = AQ
                         </div>
                       )}
                     </div>
                   )
                 })()}
+
+                {/* ── AJUSTE DO CONSULTOR (Nível 3) ── */}
+                <div style={{marginBottom:'10px',padding:'10px',background:'#FAFAFA',borderRadius:'8px',border:'1px solid #E5E7EB'}}>
+                  <div style={{fontSize:'11px',fontWeight:'bold',color:'#374151',marginBottom:'8px'}}>🎛 Ajuste do consultor</div>
+                  <div style={{display:'flex',gap:'6px',alignItems:'center',marginBottom:'6px'}}>
+                    <label style={{fontSize:'10px',color:'#6B7280',whiteSpace:'nowrap'}}>Desvio manual (%):</label>
+                    <input type="number" min={-100} max={0} step={1}
+                      value={scAtivo.ajusteManual??''}
+                      placeholder="—"
+                      onChange={e=>{
+                        const v=e.target.value
+                        setAjusteManual(ativo!,v===''?null:Number(v))
+                      }}
+                      style={{width:'60px',padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'11px',textAlign:'center'}}
+                    />
+                    <select value={scAtivo.ajusteTipo??''}
+                      onChange={e=>setAjusteTipo(ativo!,(e.target.value||null) as any)}
+                      style={{flex:1,padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px'}}>
+                      <option value="">Tipo automático</option>
+                      <option value="equilibrado">Equilibrado</option>
+                      <option value="faltante">Faltante</option>
+                      <option value="excedente">Excedente</option>
+                    </select>
+                  </div>
+                  <textarea value={scAtivo.obs} placeholder="Observações do consultor (opcional)"
+                    onChange={e=>setObs(ativo!,e.target.value)}
+                    style={{width:'100%',padding:'6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px',resize:'vertical',minHeight:'36px',boxSizing:'border-box'}}
+                  />
+                  {scAtivo.ajusteManual!==null&&(
+                    <button onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'10px',color:'#6B7280',cursor:'pointer'}}>
+                      ↺ Usar valor calculado
+                    </button>
+                  )}
+                  {scAtivo.ajusteManual!==null&&(
+                    <div style={{marginTop:'4px',fontSize:'9px',color:'#7C3AED',fontWeight:'bold'}}>
+                      Ajustado manualmente — este valor sobrescreve o automático
+                    </div>
+                  )}
+                </div>
 
                 {/* ── Recomendações dinâmicas (ACIMA dos critérios) ── */}
                 {(()=>{
