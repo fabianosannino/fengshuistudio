@@ -36,35 +36,40 @@ export async function POST(request: Request) {
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 
-  if (isProfessional) {
-    // Professional free plan: 3 consultations per month
-    if (plano !== 'profissional') {
-      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+  // Professional users with 'profissional' plan: unlimited
+  // Professional users with free/simples plan: 3 consultations per month
+  // Personal 'simples' plan: 1 active consultation at a time
+  // Personal 'free' plan: 3 total properties
+  const planoEfet = isProfessional ? 'profissional' as const : plano
+
+  if (planoEfet !== 'profissional') {
+    if (plano === 'simples') {
+      // Simples plan: max 1 active (non-archived) consultation
       const { count } = await supabase
         .from('consultas')
         .select('*', { count: 'exact', head: true })
         .eq('consultor_id', user.id)
-        .gte('criado_em', inicioMes)
+        .neq('status', 'arquivado')
 
-      if ((count || 0) >= MAX_CONSULTAS_MES_FREE) {
+      if ((count || 0) >= 1) {
         return NextResponse.json(
-          { error: 'Limite de 3 consultas/mês no plano Free. Faça upgrade para continuar.' },
+          { error: 'Limite de 1 imóvel ativo no plano Simples. Arquive o atual ou faça upgrade.' },
           { status: 403 }
         )
       }
-    }
-  } else {
-    // Personal user: max 3 properties total
-    const { count } = await supabase
-      .from('consultas')
-      .select('*', { count: 'exact', head: true })
-      .eq('consultor_id', user.id)
+    } else {
+      // Free plan: max 3 total properties
+      const { count } = await supabase
+        .from('consultas')
+        .select('*', { count: 'exact', head: true })
+        .eq('consultor_id', user.id)
 
-    if ((count || 0) >= MAX_IMOVEIS_PESSOAL) {
-      return NextResponse.json(
-        { error: 'Limite de 3 imóveis atingido na conta pessoal. Mude para uma conta profissional para continuar.' },
-        { status: 403 }
-      )
+      if ((count || 0) >= MAX_IMOVEIS_PESSOAL) {
+        return NextResponse.json(
+          { error: 'Limite de 3 imóveis atingido. Faça upgrade para continuar.' },
+          { status: 403 }
+        )
+      }
     }
   }
 
