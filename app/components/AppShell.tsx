@@ -31,7 +31,9 @@ export default function AppShell({
     || profile?.role === 'consultor'
 
   const isAdmin = profile?.role === 'admin'
-  const plano = planoEfetivo(profile?.plano)
+  const planoDb = planoEfetivo(profile?.plano)
+  // Professional users always get professional-level features
+  const plano = isProfessional ? 'profissional' as const : planoDb
 
   // Build nav items based on plan
   const buildNav = (): NavItem[] => {
