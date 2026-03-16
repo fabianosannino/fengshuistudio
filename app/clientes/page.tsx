@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import Skeleton from '../components/Skeleton'
+import Image from 'next/image'
 import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, podeClientes } from '../../src/lib/plano-utils'
@@ -17,7 +19,9 @@ export default function Clientes() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [userId, setUserId] = useState<string | null>(null)
   const [form, setForm] = useState({
     nome_completo: '',
     email: '',
@@ -36,31 +40,49 @@ export default function Clientes() {
   const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
+  const loadClientes = useCallback(async (pageNum: number, uid?: string) => {
+    const id = uid || userId
+    if (!id) return
+
+    setLoading(true)
+    const from = pageNum * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    const { data, count } = await supabase
+      .from('clientes')
+      .select('*', { count: 'exact' })
+      .eq('consultor_id', id)
+      .eq('ativo', true)
+      .order('criado_em', { ascending: false })
+      .range(from, to)
+
+    setClientes(data || [])
+    setTotalCount(count || 0)
+    setCurrentPage(pageNum)
+    setLoading(false)
+  }, [userId])
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
       setUser(user)
+      setUserId(user.id)
       const { data: prof } = await supabase
         .from('profiles')
         .select('plano')
         .eq('id', user.id)
         .single()
       setProfile(prof)
-      await loadClientes(user.id)
-      setLoading(false)
+      await loadClientes(0, user.id)
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadClientes(userId: string) {
-    const { data } = await supabase
-      .from('clientes')
-      .select('*')
-      .eq('consultor_id', userId)
-      .eq('ativo', true)
-      .order('criado_em', { ascending: false })
-    setClientes(data || [])
+  function handlePageChange(newPage: number) {
+    loadClientes(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -89,7 +111,7 @@ export default function Clientes() {
         setFotoFile(null)
         setFotoPreview(null)
         setShowForm(false)
-        if (user) await loadClientes(user.id)
+        await loadClientes(0)
       }
     } catch {
       setMessage('Erro de conexão ao salvar cliente.')
@@ -144,19 +166,19 @@ export default function Clientes() {
     setFotoPreview(URL.createObjectURL(file))
   }
 
-  if (loading) {
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  if (loading && clientes.length === 0) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+      <AppShell currentPage="clientes">
+        <div style={{ marginBottom: '24px' }}>
+          <Skeleton width="200px" height="24px" />
+          <div style={{ marginTop: '8px' }}><Skeleton width="260px" height="16px" /></div>
         </div>
-      </div>
+        <Skeleton variant="list" rows={4} />
+      </AppShell>
     )
   }
-
-  const totalPages = Math.ceil(clientes.length / PAGE_SIZE)
-  const paginatedItems = clientes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <AppShell currentPage="clientes">
@@ -164,7 +186,7 @@ export default function Clientes() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meus Clientes</h1>
-          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{clientes.length} cliente(s) cadastrado(s)</p>
+          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{totalCount} cliente(s) cadastrado(s)</p>
         </div>
         <button onClick={() => {
           const p = planoEfetivo(profile?.plano)
@@ -217,10 +239,10 @@ export default function Clientes() {
               <div style={{
                 width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
                 background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '2px dashed #D1D5DB', flexShrink: 0,
+                border: '2px dashed #D1D5DB', flexShrink: 0, position: 'relative' as const,
               }}>
                 {fotoPreview ? (
-                  <img src={fotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Image src={fotoPreview} alt="Preview" fill unoptimized style={{ objectFit: 'cover' }} />
                 ) : (
                   <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
                 )}
@@ -331,7 +353,9 @@ export default function Clientes() {
         </div>
       )}
 
-      {clientes.length === 0 ? (
+      {loading ? (
+        <Skeleton variant="list" rows={4} />
+      ) : totalCount === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
@@ -342,7 +366,7 @@ export default function Clientes() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-          {paginatedItems.map(cliente => (
+          {clientes.map(cliente => (
             <div key={cliente.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7C3AED'
@@ -352,10 +376,10 @@ export default function Clientes() {
                   width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
                   background: '#7C3AED', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
-                  flexShrink: 0,
+                  flexShrink: 0, position: 'relative' as const,
                 }}>
                   {cliente.foto_url ? (
-                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
                   ) : (
                     cliente.nome_completo.charAt(0).toUpperCase()
                   )}
@@ -393,27 +417,27 @@ export default function Clientes() {
           gap: '8px', marginTop: '24px',
         }}>
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 0}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
-              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
-              color: currentPage === 1 ? '#D1D5DB' : '#374151',
-              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              background: currentPage === 0 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 0 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
               fontSize: '13px', fontWeight: 'bold',
             }}
           >← Anterior</button>
           <span style={{ color: '#6B7280', fontSize: '13px' }}>
-            Página {currentPage} de {totalPages}
+            Página {currentPage + 1} de {totalPages}
           </span>
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage + 1 >= totalPages}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
-              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
-              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
-              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              background: currentPage + 1 >= totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage + 1 >= totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage + 1 >= totalPages ? 'not-allowed' : 'pointer',
               fontSize: '13px', fontWeight: 'bold',
             }}
           >Próximo →</button>

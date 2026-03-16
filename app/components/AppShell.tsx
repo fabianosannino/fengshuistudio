@@ -26,7 +26,7 @@ export default function AppShell({
   const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  const isProfessional = profile?.plano === 'pro' || profile?.plano === 'profissional'
+  const isProfessional = planoEfetivo(profile?.plano) === 'profissional'
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 

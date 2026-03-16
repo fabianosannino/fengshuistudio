@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import ConfirmModal from '../components/ConfirmModal'
@@ -30,6 +30,9 @@ export default function Pagamentos() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [userId, setUserId] = useState<string | null>(null)
   const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
   const [consultas, setConsultas] = useState<Pick<Consulta, 'id' | 'nome_imovel'>[]>([])
 
@@ -43,7 +46,12 @@ export default function Pagamentos() {
 
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState<string>('todos')
-  const [currentPage, setCurrentPage] = useState(1)
+
+  // KPI totals (loaded separately, not paginated)
+  const [totalRecebido, setTotalRecebido] = useState(0)
+  const [totalPendente, setTotalPendente] = useState(0)
+  const [totalAtrasado, setTotalAtrasado] = useState(0)
+  const [allCount, setAllCount] = useState(0)
 
   // Form
   const [form, setForm] = useState({
@@ -58,19 +66,59 @@ export default function Pagamentos() {
     observacoes: '',
   })
 
+  const loadPagamentos = useCallback(async (pageNum: number, statusFilter?: string, uid?: string) => {
+    const id = uid || userId
+    if (!id) return
+
+    setLoading(true)
+    const from = pageNum * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const filter = statusFilter !== undefined ? statusFilter : filtroStatus
+
+    let query = supabase
+      .from('pagamentos')
+      .select('*, clientes(nome_completo), consultas(nome_imovel)', { count: 'exact' })
+      .eq('consultor_id', id)
+      .order('data_vencimento', { ascending: false })
+
+    if (filter !== 'todos') {
+      query = query.eq('status', filter)
+    }
+
+    const { data, count } = await query.range(from, to)
+
+    setPagamentos(data || [])
+    setTotalCount(count || 0)
+    setCurrentPage(pageNum)
+    setLoading(false)
+  }, [userId, filtroStatus])
+
+  const loadKpiTotals = useCallback(async (uid: string) => {
+    // Load all pagamentos just for KPI computation (no pagination, only needed fields)
+    const { data: allPags, count } = await supabase
+      .from('pagamentos')
+      .select('valor, status, data_vencimento', { count: 'exact' })
+      .eq('consultor_id', uid)
+
+    setAllCount(count || 0)
+
+    if (allPags) {
+      const hoje = new Date(new Date().toISOString().split('T')[0])
+      const recebido = allPags.filter(p => p.status === 'pago').reduce((a, p) => a + Number(p.valor), 0)
+      const pendente = allPags.filter(p => p.status === 'pendente').reduce((a, p) => a + Number(p.valor), 0)
+      const atrasado = allPags.filter(p => p.status === 'atrasado' || (p.status === 'pendente' && new Date(p.data_vencimento) < hoje)).reduce((a, p) => a + Number(p.valor), 0)
+      setTotalRecebido(recebido)
+      setTotalPendente(pendente)
+      setTotalAtrasado(atrasado)
+    }
+  }, [])
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
       setUser(user)
-
-      // Pagamentos
-      const { data: pags } = await supabase
-        .from('pagamentos')
-        .select('*, clientes(nome_completo), consultas(nome_imovel)')
-        .eq('consultor_id', user.id)
-        .order('data_vencimento', { ascending: false })
-      setPagamentos(pags || [])
+      setUserId(user.id)
 
       // Clientes (para select)
       const { data: cls } = await supabase
@@ -89,10 +137,24 @@ export default function Pagamentos() {
         .order('criado_em', { ascending: false })
       setConsultas(cons || [])
 
-      setLoading(false)
+      await Promise.all([
+        loadPagamentos(0, 'todos', user.id),
+        loadKpiTotals(user.id),
+      ])
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function handlePageChange(newPage: number) {
+    loadPagamentos(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleFiltroChange(newFiltro: string) {
+    setFiltroStatus(newFiltro)
+    loadPagamentos(0, newFiltro)
+  }
 
   function resetForm() {
     setForm({
@@ -150,13 +212,11 @@ export default function Pagamentos() {
       if (error) { setMessage('Erro ao criar: ' + error.message); setSaving(false); return }
     }
 
-    // Reload
-    const { data: pags } = await supabase
-      .from('pagamentos')
-      .select('*, clientes(nome_completo), consultas(nome_imovel)')
-      .eq('consultor_id', user!.id)
-      .order('data_vencimento', { ascending: false })
-    setPagamentos(pags || [])
+    // Reload current page and KPIs
+    await Promise.all([
+      loadPagamentos(currentPage, undefined, user!.id),
+      loadKpiTotals(user!.id),
+    ])
 
     setShowModal(false)
     resetForm()
@@ -169,7 +229,11 @@ export default function Pagamentos() {
     if (error) {
       setMessage('Erro ao excluir pagamento: ' + error.message)
     } else {
-      setPagamentos(pagamentos.filter(p => p.id !== deleteTarget))
+      // Reload current page and KPIs
+      await Promise.all([
+        loadPagamentos(currentPage, undefined, user!.id),
+        loadKpiTotals(user!.id),
+      ])
     }
     setDeleteTarget(null)
   }
@@ -184,7 +248,11 @@ export default function Pagamentos() {
       setMessage('Erro ao marcar como pago: ' + error.message)
       return
     }
-    setPagamentos(pagamentos.map(p => p.id === pag.id ? { ...p, status: 'pago', data_pagamento: hoje } : p))
+    // Reload current page and KPIs
+    await Promise.all([
+      loadPagamentos(currentPage, undefined, user!.id),
+      loadKpiTotals(user!.id),
+    ])
   }
 
   function formatCurrency(value: number) {
@@ -202,20 +270,9 @@ export default function Pagamentos() {
     return new Date(pag.data_vencimento) < new Date(new Date().toISOString().split('T')[0])
   }
 
-  // Filtro
-  const pagsFiltrados = filtroStatus === 'todos'
-    ? pagamentos
-    : pagamentos.filter(p => p.status === filtroStatus)
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
-  const totalPages = Math.ceil(pagsFiltrados.length / PAGE_SIZE)
-  const paginatedItems = pagsFiltrados.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-
-  // Totais
-  const totalRecebido = pagamentos.filter(p => p.status === 'pago').reduce((a, p) => a + Number(p.valor), 0)
-  const totalPendente = pagamentos.filter(p => p.status === 'pendente').reduce((a, p) => a + Number(p.valor), 0)
-  const totalAtrasado = pagamentos.filter(p => p.status === 'atrasado' || isVencido(p)).reduce((a, p) => a + Number(p.valor), 0)
-
-  if (loading) {
+  if (loading && pagamentos.length === 0) {
     return (
       <AppShell currentPage="pagamentos">
         <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -239,7 +296,7 @@ export default function Pagamentos() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Pagamentos</h1>
-          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{pagamentos.length} pagamento(s) registrado(s)</p>
+          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{allCount} pagamento(s) registrado(s)</p>
         </div>
         <button onClick={openNew} style={{
           background: '#7C3AED', color: '#ffffff', border: 'none',
@@ -267,7 +324,7 @@ export default function Pagamentos() {
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {['todos', 'pendente', 'pago', 'atrasado', 'cancelado'].map(f => (
-          <button key={f} onClick={() => { setFiltroStatus(f); setCurrentPage(1) }} style={{
+          <button key={f} onClick={() => handleFiltroChange(f)} style={{
             padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold',
             cursor: 'pointer', border: 'none',
             background: filtroStatus === f ? '#1E3A5F' : '#F3F4F6',
@@ -278,8 +335,18 @@ export default function Pagamentos() {
         ))}
       </div>
 
+      {message && (
+        <div style={{
+          marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
+          background: '#FEF2F2', border: '1px solid #FECACA',
+          color: '#DC2626', fontSize: '14px',
+        }}>{message}</div>
+      )}
+
       {/* Lista */}
-      {pagsFiltrados.length === 0 ? (
+      {loading ? (
+        <Skeleton variant="list" rows={5} />
+      ) : totalCount === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
@@ -295,7 +362,7 @@ export default function Pagamentos() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {paginatedItems.map(pag => {
+          {pagamentos.map(pag => {
             const st = STATUS_CONFIG[pag.status] || STATUS_CONFIG.pendente
             const vencido = isVencido(pag)
             return (
@@ -369,27 +436,27 @@ export default function Pagamentos() {
           gap: '8px', marginTop: '24px',
         }}>
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 0}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
-              background: currentPage === 1 ? '#F9FAFB' : '#ffffff',
-              color: currentPage === 1 ? '#D1D5DB' : '#374151',
-              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              background: currentPage === 0 ? '#F9FAFB' : '#ffffff',
+              color: currentPage === 0 ? '#D1D5DB' : '#374151',
+              cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
               fontSize: '13px', fontWeight: 'bold',
             }}
           >← Anterior</button>
           <span style={{ color: '#6B7280', fontSize: '13px' }}>
-            Página {currentPage} de {totalPages}
+            Página {currentPage + 1} de {totalPages}
           </span>
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage + 1 >= totalPages}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB',
-              background: currentPage === totalPages ? '#F9FAFB' : '#ffffff',
-              color: currentPage === totalPages ? '#D1D5DB' : '#374151',
-              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              background: currentPage + 1 >= totalPages ? '#F9FAFB' : '#ffffff',
+              color: currentPage + 1 >= totalPages ? '#D1D5DB' : '#374151',
+              cursor: currentPage + 1 >= totalPages ? 'not-allowed' : 'pointer',
               fontSize: '13px', fontWeight: 'bold',
             }}
           >Próximo →</button>

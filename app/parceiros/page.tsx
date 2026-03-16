@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import { planoEfetivo } from '../../src/lib/plano-utils'
 
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
@@ -189,7 +190,7 @@ export default function Parceiros() {
                         background: `${tipo.cor}15`, color: tipo.cor,
                         padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold'
                       }}>{tipo.label}</span>
-                      {(parceiro.plano === 'pro' || parceiro.plano === 'profissional') && (
+                      {planoEfetivo(parceiro.plano) === 'profissional' && (
                         <span style={{
                           background: 'rgba(124,58,237,0.1)', color: '#7C3AED',
                           padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold'

@@ -51,69 +51,52 @@ export async function POST(request: Request) {
   const isPaidPlan = ['pro', 'profissional', 'simples'].includes(plano)
   const currentIsPaid = ['pro', 'profissional', 'simples'].includes(profile?.plano || '')
   if (isPaidPlan && !currentIsPaid) {
-    const validEnvKey = process.env.PRO_ACTIVATION_KEY
-    const allowFree = process.env.ALLOW_FREE_UPGRADE === 'true'
-
-    let keyValidated = false
-
-    if (allowFree) {
-      keyValidated = true
-    } else if (validEnvKey && chave_ativacao && safeCompare(chave_ativacao, validEnvKey)) {
-      // Legacy env-based key still works
-      keyValidated = true
-    } else if (chave_ativacao) {
-      // Try database-based activation key
-      const { data: dbKey } = await supabase
-        .from('activation_keys')
-        .select('id, status, expires_at')
-        .eq('key', chave_ativacao.trim().toUpperCase())
-        .eq('status', 'available')
-        .single()
-
-      if (dbKey) {
-        // Check expiration
-        if (dbKey.expires_at && new Date(dbKey.expires_at) < new Date()) {
-          // Mark as expired
-          await supabase.from('activation_keys').update({ status: 'expired' }).eq('id', dbKey.id)
-          return NextResponse.json(
-            { error: 'Chave de ativação expirada.', requiresPayment: true },
-            { status: 403 }
-          )
-        }
-
-        // Mark key as used
-        await supabase.from('activation_keys').update({
-          status: 'used',
-          used_at: new Date().toISOString(),
-          used_by: user.id,
-        }).eq('id', dbKey.id)
-
-        // Audit log
-        await supabase.from('admin_audit_log').insert({
-          action: 'use_key',
-          target_type: 'activation_key',
-          target_id: dbKey.id,
-          details: { user_id: user.id, key_partial: chave_ativacao.trim().toUpperCase().slice(0, 8) + '...' },
-          performed_by: user.id,
-        })
-
-        keyValidated = true
-      }
+    if (!chave_ativacao) {
+      return NextResponse.json(
+        { error: 'Informe uma chave de ativação válida para ativar este plano.', requiresPayment: true },
+        { status: 402 }
+      )
     }
 
-    if (!keyValidated) {
-      if (chave_ativacao) {
-        return NextResponse.json(
-          { error: 'Chave de ativação inválida. Verifique e tente novamente.', requiresPayment: true },
-          { status: 403 }
-        )
-      } else {
-        return NextResponse.json(
-          { error: 'Pagamento necessário. Utilize uma chave de ativação ou aguarde a integração com pagamento.', requiresPayment: true },
-          { status: 402 }
-        )
-      }
+    // Look up activation key in database
+    const { data: dbKey } = await supabase
+      .from('activation_keys')
+      .select('id, key, status, expires_at')
+      .eq('key', chave_ativacao.trim().toUpperCase())
+      .eq('status', 'available')
+      .single()
+
+    if (!dbKey || !safeCompare(chave_ativacao.trim().toUpperCase(), dbKey.key)) {
+      return NextResponse.json(
+        { error: 'Chave de ativação inválida. Verifique e tente novamente.', requiresPayment: true },
+        { status: 403 }
+      )
     }
+
+    // Check expiration
+    if (dbKey.expires_at && new Date(dbKey.expires_at) < new Date()) {
+      await supabase.from('activation_keys').update({ status: 'expired' }).eq('id', dbKey.id)
+      return NextResponse.json(
+        { error: 'Chave de ativação expirada.', requiresPayment: true },
+        { status: 403 }
+      )
+    }
+
+    // Mark key as used
+    await supabase.from('activation_keys').update({
+      status: 'used',
+      used_at: new Date().toISOString(),
+      used_by: user.id,
+    }).eq('id', dbKey.id)
+
+    // Audit log
+    await supabase.from('admin_audit_log').insert({
+      action: 'use_key',
+      target_type: 'activation_key',
+      target_id: dbKey.id,
+      details: { user_id: user.id, key_partial: chave_ativacao.trim().toUpperCase().slice(0, 8) + '...' },
+      performed_by: user.id,
+    })
   }
 
   const { error } = await supabase

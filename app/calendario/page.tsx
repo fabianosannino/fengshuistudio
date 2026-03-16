@@ -6,6 +6,7 @@ import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import type { Ritual, Profile, Cliente } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { planoEfetivo, podeCalendario } from '../../src/lib/plano-utils'
 
 function getMoonPhase(date: Date): { fase: string; emoji: string; percentual: number } {
   const known = new Date(2000, 0, 6, 18, 14)
@@ -195,8 +196,8 @@ export default function Calendario() {
 
   const rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
 
-  const _plano = (profile?.plano || '').toLowerCase().trim()
-  const _isFree = _plano !== 'pro' && _plano !== 'profissional' && _plano !== 'simples'
+  const _plano = planoEfetivo(profile?.plano)
+  const _isFree = !podeCalendario(_plano)
   if (_isFree) {
     return (
       <AppShell currentPage="calendario">

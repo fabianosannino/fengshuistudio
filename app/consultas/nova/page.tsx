@@ -45,7 +45,7 @@ export default function NovaConsulta() {
   const [setoresAtivos, setSetoresAtivos] = useState<number[]>([])
   const [consultaId, setConsultaId] = useState<string | null>(null)
 
-  const isProfessional = profile?.plano === 'pro' || profile?.plano === 'profissional'
+  const isProfessional = planoEfetivo(profile?.plano) === 'profissional'
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 
@@ -62,7 +62,7 @@ export default function NovaConsulta() {
         .single()
       setProfile(prof)
 
-      const userIsProfessional = prof?.plano === 'pro' || prof?.plano === 'profissional'
+      const userIsProfessional = planoEfetivo(prof?.plano) === 'profissional'
         || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
         || prof?.role === 'consultor'
 

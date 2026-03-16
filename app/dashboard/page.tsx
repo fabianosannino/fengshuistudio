@@ -1,17 +1,36 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import type { Profile, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoLabel } from '../../src/lib/plano-utils'
-import {
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  LineChart, Line,
-} from 'recharts'
+import { planoEfetivo, planoLabel } from '../../src/lib/plano-utils'
+
+const ChartLoadingSkeleton = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Skeleton variant="chart" />
+  </div>
+)
+
+const StatusPieChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.StatusPieChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
+const PagamentosBarChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.PagamentosBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
+const ConsultasLineChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.ConsultasLineChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
+const ClientesBarChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.ClientesBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
 
 const CORES_STATUS: Record<string, string> = {
   rascunho: '#94A3B8',
@@ -64,7 +83,7 @@ export default function Dashboard() {
       if (!user) { window.location.href = '/login'; return }
       setUser(user)
 
-      // Profile
+      // Profile (loaded first -- needed for plan checks)
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -72,35 +91,104 @@ export default function Dashboard() {
         .single()
       setProfile(profile)
 
-      // KPI: Clientes ativos
-      const { count } = await supabase
-        .from('clientes')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-        .eq('ativo', true)
-      setTotalClientes(count || 0)
+      // Date constants for agenda queries
+      const hoje = new Date().toISOString().split('T')[0]
+      const em30dias = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-      // KPI: Total consultas
-      const { count: countConsultas } = await supabase
-        .from('consultas')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-      setTotalConsultas(countConsultas || 0)
+      // ── Run all independent queries in parallel ──
+      const [
+        clientesCountRes,
+        consultasCountRes,
+        rituaisCountRes,
+        allConsultasRes,
+        allPagamentosRes,
+        consultasComDataRes,
+        clientesComDataRes,
+        rituaisAgendaRes,
+        consultasAndamentoRes,
+        pagProximosRes,
+        consultasBaguaRes,
+      ] = await Promise.all([
+        // KPI: Clientes ativos
+        supabase
+          .from('clientes')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id)
+          .eq('ativo', true),
+        // KPI: Total consultas
+        supabase
+          .from('consultas')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id),
+        // KPI: Rituais pendentes
+        supabase
+          .from('rituais')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id)
+          .eq('status', 'pendente'),
+        // CHART 1: Status das consultas (Pie)
+        supabase
+          .from('consultas')
+          .select('status')
+          .eq('consultor_id', user.id),
+        // CHART 2: Pagamentos por mes (Bar empilhado)
+        supabase
+          .from('pagamentos')
+          .select('*')
+          .eq('consultor_id', user.id),
+        // CHART 3: Evolucao de consultas por mes (Line)
+        supabase
+          .from('consultas')
+          .select('criado_em')
+          .eq('consultor_id', user.id),
+        // CHART 4: Clientes cadastrados por mes (Bar)
+        supabase
+          .from('clientes')
+          .select('criado_em')
+          .eq('consultor_id', user.id),
+        // AGENDA: Rituais pendentes (proximos 30 dias)
+        supabase
+          .from('rituais')
+          .select('*, clientes(nome_completo)')
+          .eq('consultor_id', user.id)
+          .eq('status', 'pendente')
+          .gte('data_ritual', hoje)
+          .lte('data_ritual', em30dias)
+          .order('data_ritual', { ascending: true })
+          .limit(5),
+        // AGENDA: Consultas em andamento
+        supabase
+          .from('consultas')
+          .select('*, clientes(nome_completo)')
+          .eq('consultor_id', user.id)
+          .eq('status', 'em_andamento')
+          .order('criado_em', { ascending: false })
+          .limit(5),
+        // AGENDA: Pagamentos pendentes proximos
+        supabase
+          .from('pagamentos')
+          .select('*, clientes(nome_completo)')
+          .eq('consultor_id', user.id)
+          .in('status', ['pendente', 'atrasado'])
+          .order('data_vencimento', { ascending: true })
+          .limit(5),
+        // Analises Bagua recentes
+        supabase
+          .from('consultas')
+          .select('id, nome_imovel, bagua_entrada, clientes(nome_completo)')
+          .eq('consultor_id', user.id)
+          .not('bagua_entrada', 'is', null)
+          .order('criado_em', { ascending: false })
+          .limit(20),
+      ])
 
-      // KPI: Rituais pendentes
-      const { count: countRituais } = await supabase
-        .from('rituais')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-        .eq('status', 'pendente')
-      setTotalRituais(countRituais || 0)
+      // ── Process KPI results ──
+      setTotalClientes(clientesCountRes.count || 0)
+      setTotalConsultas(consultasCountRes.count || 0)
+      setTotalRituais(rituaisCountRes.count || 0)
 
       // ── CHART 1: Status das consultas (Pie) ──
-      const { data: allConsultas } = await supabase
-        .from('consultas')
-        .select('status')
-        .eq('consultor_id', user.id)
-
+      const allConsultas = allConsultasRes.data
       if (allConsultas && allConsultas.length > 0) {
         const counts: Record<string, number> = {}
         allConsultas.forEach(c => {
@@ -115,11 +203,7 @@ export default function Dashboard() {
       }
 
       // ── CHART 2: Pagamentos por mês (Bar empilhado) ──
-      const { data: allPagamentos } = await supabase
-        .from('pagamentos')
-        .select('*')
-        .eq('consultor_id', user.id)
-
+      const allPagamentos = allPagamentosRes.data
       if (allPagamentos && allPagamentos.length > 0) {
         // Totais
         let recebido = 0, pendente = 0, atrasado = 0
@@ -161,11 +245,7 @@ export default function Dashboard() {
       }
 
       // ── CHART 3: Evolução de consultas por mês (Line) ──
-      const { data: consultasComData } = await supabase
-        .from('consultas')
-        .select('criado_em')
-        .eq('consultor_id', user.id)
-
+      const consultasComData = consultasComDataRes.data
       if (consultasComData && consultasComData.length > 0) {
         const now = new Date()
         const monthCounts: Record<string, number> = {}
@@ -187,11 +267,7 @@ export default function Dashboard() {
       }
 
       // ── CHART 4: Clientes cadastrados por mês (Bar) ──
-      const { data: clientesComData } = await supabase
-        .from('clientes')
-        .select('criado_em')
-        .eq('consultor_id', user.id)
-
+      const clientesComData = clientesComDataRes.data
       if (clientesComData && clientesComData.length > 0) {
         const now = new Date()
         const monthCounts: Record<string, number> = {}
@@ -212,23 +288,10 @@ export default function Dashboard() {
         setClientesMesData(barData)
       }
 
-      // ── AGENDA: Próximos rituais + consultas em andamento ──
+      // ── AGENDA: Merge rituais + consultas em andamento + pagamentos ──
       const agendaItems: AgendaItem[] = []
 
-      // Rituais pendentes (próximos 30 dias)
-      const hoje = new Date().toISOString().split('T')[0]
-      const em30dias = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-      const { data: rituais } = await supabase
-        .from('rituais')
-        .select('*, clientes(nome_completo)')
-        .eq('consultor_id', user.id)
-        .eq('status', 'pendente')
-        .gte('data_ritual', hoje)
-        .lte('data_ritual', em30dias)
-        .order('data_ritual', { ascending: true })
-        .limit(5)
-
+      const rituais = rituaisAgendaRes.data
       rituais?.forEach(r => {
         agendaItems.push({
           tipo: 'ritual',
@@ -241,15 +304,7 @@ export default function Dashboard() {
         })
       })
 
-      // Consultas em andamento
-      const { data: consultasAndamento } = await supabase
-        .from('consultas')
-        .select('*, clientes(nome_completo)')
-        .eq('consultor_id', user.id)
-        .eq('status', 'em_andamento')
-        .order('criado_em', { ascending: false })
-        .limit(5)
-
+      const consultasAndamento = consultasAndamentoRes.data
       consultasAndamento?.forEach(c => {
         agendaItems.push({
           tipo: 'consulta',
@@ -262,15 +317,7 @@ export default function Dashboard() {
         })
       })
 
-      // Pagamentos pendentes próximos
-      const { data: pagProximos } = await supabase
-        .from('pagamentos')
-        .select('*, clientes(nome_completo)')
-        .eq('consultor_id', user.id)
-        .in('status', ['pendente', 'atrasado'])
-        .order('data_vencimento', { ascending: true })
-        .limit(5)
-
+      const pagProximos = pagProximosRes.data
       pagProximos?.forEach(p => {
         agendaItems.push({
           tipo: 'pagamento',
@@ -287,14 +334,8 @@ export default function Dashboard() {
       agendaItems.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
       setAgenda(agendaItems.slice(0, 8))
 
-      // Análises Baguá recentes (consultas com bagua_entrada.finalizada_em)
-      const { data: consultasBagua } = await supabase
-        .from('consultas')
-        .select('id, nome_imovel, bagua_entrada, clientes(nome_completo)')
-        .eq('consultor_id', user.id)
-        .not('bagua_entrada', 'is', null)
-        .order('criado_em', { ascending: false })
-        .limit(20)
+      // Análises Baguá recentes
+      const consultasBagua = consultasBaguaRes.data
       const recentes = (consultasBagua || [])
         .filter((c: any) => c.bagua_entrada?.finalizada_em || c.bagua_entrada?.planta_url)
         .sort((a: any, b: any) => {
@@ -367,7 +408,7 @@ export default function Dashboard() {
           { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
           { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
           { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#7C3AED', link: '/calendario' },
-          { label: 'Plano atual', value: (profile?.plano === 'pro' || profile?.plano === 'profissional' || (profile?.tipo_usuario && ['consultor','arquiteto','feng_shui','decorador','outro_profissional'].includes(profile.tipo_usuario)) || profile?.role === 'consultor') ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
+          { label: 'Plano atual', value: planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => window.location.href = kpi.link} style={{
             background: '#ffffff', borderRadius: '12px', padding: '24px',
@@ -392,31 +433,7 @@ export default function Dashboard() {
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Status das Consultas
           </h3>
-          {statusData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%" cy="50%"
-                  innerRadius={55} outerRadius={90}
-                  paddingAngle={4} dataKey="value" stroke="none"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => [`${value} consulta(s)`, '']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
-                />
-                <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '13px', color: '#6B7280' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Nenhuma consulta registrada ainda</p>
-            </div>
-          )}
+          <StatusPieChart statusData={statusData} />
         </div>
 
         {/* CHART 2: Pagamentos - Bar empilhado */}
@@ -452,26 +469,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          {pagamentosData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={170}>
-              <BarChart data={pagamentosData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={(value) => [formatCurrency(Number(value)), '']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '12px' }}
-                />
-                <Bar dataKey="Recebido" stackId="a" fill={COR_PAGO} radius={[0, 0, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Pendente" stackId="a" fill={COR_PENDENTE} radius={[0, 0, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Atrasado" stackId="a" fill={COR_ATRASADO} radius={[4, 4, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: '170px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Nenhum pagamento registrado</p>
-            </div>
-          )}
+          <PagamentosBarChart pagamentosData={pagamentosData} />
         </div>
       </div>
 
@@ -486,27 +484,7 @@ export default function Dashboard() {
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Consultas por Mês
           </h3>
-          {consultasMesData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={consultasMesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={(value) => [`${value}`, 'Consultas']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
-                />
-                <Line type="monotone" dataKey="consultas" stroke="#15803D" strokeWidth={3}
-                  dot={{ fill: '#15803D', r: 5, strokeWidth: 2, stroke: '#ffffff' }}
-                  activeDot={{ r: 7, fill: '#15803D', stroke: '#ffffff', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Crie consultas para ver a evolução</p>
-            </div>
-          )}
+          <ConsultasLineChart consultasMesData={consultasMesData} />
         </div>
 
         {/* AGENDA */}
@@ -573,24 +551,7 @@ export default function Dashboard() {
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Novos Clientes por Mês
           </h3>
-          {clientesMesData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={clientesMesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#E5E7EB' }} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={(value) => [`${value}`, 'Clientes']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
-                />
-                <Bar dataKey="clientes" fill="#1D4ED8" radius={[6, 6, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Cadastre clientes para ver o gráfico</p>
-            </div>
-          )}
+          <ClientesBarChart clientesMesData={clientesMesData} />
         </div>
       </div>
 
@@ -657,7 +618,7 @@ export default function Dashboard() {
       </div>
 
       {/* Banner upgrade */}
-      {profile?.plano !== 'pro' && (
+      {planoEfetivo(profile?.plano) !== 'profissional' && (
         <div style={{
           background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
           borderRadius: '12px', padding: '24px 32px',

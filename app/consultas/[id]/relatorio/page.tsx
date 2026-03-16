@@ -4,8 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import FlowLayout from '../../../components/FlowLayout'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+// jsPDF and html2canvas are lazy-loaded in handleDownloadPDF() to reduce initial bundle size
 import { CRITERIOS, AREA_META, SETOR_DICAS, CRITERIO_DICAS, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
@@ -173,6 +172,8 @@ export default function Relatorio() {
     if (!printRef.current) return
     setDownloading(true)
     try {
+      const html2canvas = (await import('html2canvas')).default
+      const { jsPDF } = await import('jspdf')
       const canvas = await html2canvas(printRef.current, {
         scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
       })

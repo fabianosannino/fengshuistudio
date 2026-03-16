@@ -24,7 +24,7 @@ export default function Perfil() {
     linkedin: '', instagram: '', parceiro_visivel: false,
   })
 
-  const isProfessional = plano === 'pro' || plano === 'profissional'
+  const isProfessional = planoEfetivo(plano) === 'profissional'
     || PROF_TYPES.includes(tipoUsuario)
     || tipoUsuario === 'consultor'
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import Image from 'next/image'
 import FlowLayout from '../../components/FlowLayout'
 import TabRodaDaVida from './TabRodaDaVida'
 import TabFluxoChi from './TabFluxoChi'
@@ -286,12 +287,21 @@ export default function ConsultaDetalhe() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
 
-      const { data: consulta } = await supabase
-        .from('consultas')
-        .select('*, clientes(nome_completo)')
-        .eq('id', id)
-        .single()
+      // Run both queries in parallel (both use the id param, not each other's results)
+      const [consultaRes, setoresRes] = await Promise.all([
+        supabase
+          .from('consultas')
+          .select('*, clientes(nome_completo)')
+          .eq('id', id)
+          .single(),
+        supabase
+          .from('setores_bagua')
+          .select('*, diagnostico_criterios(*)')
+          .eq('consulta_id', id)
+          .order('numero'),
+      ])
 
+      const consulta = consultaRes.data
       if (!consulta) { router.push('/consultas'); return }
       setConsulta(consulta)
 
@@ -304,11 +314,7 @@ export default function ConsultaDetalhe() {
       setFotoGeral(consulta.foto_geral_url || null)
       setFotosComodos(Array.isArray(consulta.fotos_comodos) ? consulta.fotos_comodos : [])
 
-      const { data: setoresData } = await supabase
-        .from('setores_bagua')
-        .select('*, diagnostico_criterios(*)')
-        .eq('consulta_id', id)
-        .order('numero')
+      const setoresData = setoresRes.data
 
       setSetores(setoresData || [])
 
@@ -646,8 +652,8 @@ export default function ConsultaDetalhe() {
             marginBottom: '20px', borderRadius: '14px', overflow: 'hidden',
             maxHeight: '220px', position: 'relative',
           }}>
-            <img src={fotoGeral} alt={consulta.nome_imovel || 'Imóvel'} style={{
-              width: '100%', height: '220px', objectFit: 'cover',
+            <Image src={fotoGeral} alt={consulta.nome_imovel || 'Imóvel'} fill unoptimized style={{
+              objectFit: 'cover',
             }} />
             <div style={{
               position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -872,7 +878,7 @@ export default function ConsultaDetalhe() {
                   {/* Bagua image preview */}
                   {consulta.bagua_imagem && (
                     <div style={{ textAlign: 'center' }}>
-                      <img src={consulta.bagua_imagem} alt="Planta Ba Gua" style={{
+                      <Image src={consulta.bagua_imagem} alt="Planta Ba Gua" width={400} height={200} unoptimized style={{
                         maxWidth: '100%', maxHeight: '200px', borderRadius: '8px',
                         border: '1px solid #E5E7EB'
                       }} />
