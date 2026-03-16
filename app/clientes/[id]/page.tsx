@@ -500,7 +500,9 @@ export default function ClienteDetalhe() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {consultas.map(c => {
               const baguaData = c.bagua_entrada as any
-              const temBagua = !!(baguaData?.finalizada_em)
+              const baguaFinalizada = !!(baguaData?.finalizada_em)
+              const baguaEmAndamento = !!(baguaData?.planta_url) && !baguaFinalizada
+              const temBagua = baguaFinalizada || baguaEmAndamento
               return (
                 <div key={c.id} onClick={() => window.location.href = `/consultas/${c.id}`} style={{
                   background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
@@ -516,10 +518,13 @@ export default function ClienteDetalhe() {
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{
-                      background: temBagua ? '#F0FDF4' : '#F3F4F6',
-                      color: temBagua ? '#15803D' : '#9CA3AF',
+                      background: baguaFinalizada ? '#F0FDF4' : baguaEmAndamento ? '#FFF7ED' : '#F3F4F6',
+                      color: baguaFinalizada ? '#15803D' : baguaEmAndamento ? '#D97706' : '#9CA3AF',
                       padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
-                    }}>{temBagua ? '☯ Com análise Baguá' : '☯ Sem análise'}</span>
+                    }}>{baguaFinalizada
+                        ? `☯ Conclu\u00edda em ${new Date(baguaData.finalizada_em).toLocaleDateString('pt-BR')}`
+                        : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem an\u00e1lise'
+                    }</span>
                     <span style={{
                       background: c.status === 'finalizada' ? '#F0FDF4' : c.status === 'em_andamento' ? '#FFF7ED' : '#F3F4F6',
                       color: c.status === 'finalizada' ? '#15803D' : c.status === 'em_andamento' ? '#D97706' : '#6B7280',

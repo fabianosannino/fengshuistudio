@@ -55,7 +55,7 @@ export default function Dashboard() {
   const [agenda, setAgenda] = useState<AgendaItem[]>([])
 
   // Análises Baguá recentes
-  const [analisesBagua, setAnalisesBagua] = useState<{id:string;nome_imovel:string;finalizada_em:string;cliente_nome:string}[]>([])
+  const [analisesBagua, setAnalisesBagua] = useState<{id:string;nome_imovel:string;finalizada_em:string;cliente_nome:string;status_bagua:'concluida'|'em_andamento'}[]>([])
 
   useEffect(() => {
     async function loadAll() {
@@ -295,14 +295,19 @@ export default function Dashboard() {
         .order('criado_em', { ascending: false })
         .limit(20)
       const recentes = (consultasBagua || [])
-        .filter((c: any) => c.bagua_entrada?.finalizada_em)
-        .sort((a: any, b: any) => new Date(b.bagua_entrada.finalizada_em).getTime() - new Date(a.bagua_entrada.finalizada_em).getTime())
+        .filter((c: any) => c.bagua_entrada?.finalizada_em || c.bagua_entrada?.planta_url)
+        .sort((a: any, b: any) => {
+          const da = a.bagua_entrada?.finalizada_em || a.bagua_entrada?.etapa || ''
+          const db = b.bagua_entrada?.finalizada_em || b.bagua_entrada?.etapa || ''
+          return new Date(db).getTime() - new Date(da).getTime()
+        })
         .slice(0, 5)
         .map((c: any) => ({
           id: c.id,
           nome_imovel: c.nome_imovel || 'Imóvel',
-          finalizada_em: c.bagua_entrada.finalizada_em,
+          finalizada_em: c.bagua_entrada?.finalizada_em || '',
           cliente_nome: c.clientes?.nome_completo || '',
+          status_bagua: c.bagua_entrada?.finalizada_em ? 'concluida' as const : 'em_andamento' as const,
         }))
       setAnalisesBagua(recentes)
 
@@ -600,17 +605,24 @@ export default function Dashboard() {
                 background: '#ffffff', borderRadius: '10px', padding: '14px 18px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                borderLeft: '4px solid #15803D'
+                borderLeft: `4px solid ${a.status_bagua==='concluida'?'#15803D':'#D97706'}`
               }}>
                 <div>
                   <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '14px', margin: '0 0 2px 0' }}>{a.nome_imovel}</p>
                   <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0' }}>
                     {a.cliente_nome && `${a.cliente_nome} · `}
-                    Concluída em {new Date(a.finalizada_em).toLocaleDateString('pt-BR')} às {new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {a.status_bagua==='concluida'
+                      ? `Conclu\u00edda em ${new Date(a.finalizada_em).toLocaleDateString('pt-BR')} \u00e0s ${new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                      : 'An\u00e1lise em andamento'
+                    }
                   </p>
                 </div>
-                <span style={{ background: '#F0FDF4', color: '#15803D', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' }}>
-                  ✓ Concluída
+                <span style={{
+                  background: a.status_bagua==='concluida'?'#F0FDF4':'#FFF7ED',
+                  color: a.status_bagua==='concluida'?'#15803D':'#D97706',
+                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
+                }}>
+                  {a.status_bagua==='concluida' ? '\u2713 Conclu\u00edda' : '\u25cb Em andamento'}
                 </span>
               </div>
             ))}
