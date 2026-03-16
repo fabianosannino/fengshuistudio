@@ -30,9 +30,9 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  const isProfessional = profile?.tipo_usuario
-    ? PROF_TYPES.includes(profile.tipo_usuario)
-    : (profile?.role === 'consultor')
+  const isProfessional = profile?.plano === 'pro'
+    || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
+    || profile?.role === 'consultor'
 
   if (isProfessional) {
     // Professional free plan: 3 consultations per month

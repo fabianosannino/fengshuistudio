@@ -316,8 +316,15 @@ function BaguaPlantaContent() {
         .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[]))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
-        supabase.from('consultas').select('nome_imovel').eq('id',consultaId).single()
-          .then(({data})=>{ if(data) setConsultaNome(data.nome_imovel) })
+        supabase.from('consultas').select('nome_imovel,bagua_entrada').eq('id',consultaId).single()
+          .then(({data})=>{
+            if(data) setConsultaNome(data.nome_imovel)
+            if(data?.bagua_entrada){
+              const e=data.bagua_entrada as {x:number;y:number;lado:string}
+              setEntrada({x:e.x,y:e.y})
+              setLado(e.lado as Lado)
+            }
+          })
         supabase.from('setores_bagua')
           .select('numero,score_percentual,diagnostico_criterios(criterio,score)')
           .eq('consulta_id',consultaId).order('numero')
@@ -432,13 +439,52 @@ function BaguaPlantaContent() {
       ctx.setLineDash([])
     }
 
-    // ── seta de entrada ──
+    // ── marcador de entrada ──
     if(entrada){
-      const ex=entrada.x*s,ey=entrada.y*s,aw=14,ah=20
-      ctx.fillStyle='#22C55E'
-      ctx.beginPath(); ctx.moveTo(ex,ey-ah*0.6); ctx.lineTo(ex+aw*0.5,ey); ctx.lineTo(ex-aw*0.5,ey); ctx.closePath(); ctx.fill()
-      ctx.fillRect(ex-aw*0.25,ey,aw*0.5,ah*0.45)
-      ctx.fillStyle='#fff'; ctx.font='bold 9px Arial'; ctx.textAlign='center'; ctx.fillText('E',ex,ey+ah*0.4)
+      const ex=entrada.x*s,ey=entrada.y*s
+      const r2=7 // circle radius (14px diameter / 2)
+
+      // Chi direction arrow (pointing inward from closest wall)
+      if(bounds){
+        const bx2=bounds.x*s,by2=bounds.y*s,bw2=bounds.w*s,bh2=bounds.h*s
+        const distTop=Math.abs(ey-by2),distBot=Math.abs(ey-(by2+bh2))
+        const distLeft=Math.abs(ex-bx2),distRight=Math.abs(ex-(bx2+bw2))
+        const minDist=Math.min(distTop,distBot,distLeft,distRight)
+        let ax=0,ay=0 // arrow direction (inward)
+        if(minDist===distTop){ay=1} else if(minDist===distBot){ay=-1}
+        else if(minDist===distLeft){ax=1} else {ax=-1}
+        const aLen=28, aStart=r2+4
+        const sx2=ex+ax*aStart,sy2=ey+ay*aStart
+        const ex2=ex+ax*(aStart+aLen),ey2=ey+ay*(aStart+aLen)
+        // Arrow shaft
+        ctx.strokeStyle='#DC2626'; ctx.lineWidth=2.5
+        ctx.beginPath(); ctx.moveTo(sx2,sy2); ctx.lineTo(ex2,ey2); ctx.stroke()
+        // Arrowhead
+        const headLen=8,headAng=Math.PI/5
+        const angle=Math.atan2(ey2-sy2,ex2-sx2)
+        ctx.fillStyle='#DC2626'; ctx.beginPath()
+        ctx.moveTo(ex2,ey2)
+        ctx.lineTo(ex2-headLen*Math.cos(angle-headAng),ey2-headLen*Math.sin(angle-headAng))
+        ctx.lineTo(ex2-headLen*Math.cos(angle+headAng),ey2-headLen*Math.sin(angle+headAng))
+        ctx.closePath(); ctx.fill()
+      }
+
+      // Red circle with white border
+      ctx.beginPath(); ctx.arc(ex,ey,r2,0,Math.PI*2)
+      ctx.fillStyle='#DC2626'; ctx.fill()
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke()
+
+      // "Entrada" label
+      const lbl2='Entrada'
+      ctx.font='bold 11px Arial'; ctx.textAlign='left'
+      const tw=ctx.measureText(lbl2).width
+      const lx=ex+r2+6,ly=ey-r2-2
+      ctx.fillStyle='rgba(220,38,38,0.85)'
+      const pad=3
+      ctx.beginPath()
+      ctx.roundRect(lx-pad,ly-10-pad,tw+pad*2,14+pad*2,4)
+      ctx.fill()
+      ctx.fillStyle='#ffffff'; ctx.fillText(lbl2,lx,ly+2)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[bounds,entrada,lado,escola,lh,lv,modo,setores,ativo])
@@ -523,13 +569,48 @@ function BaguaPlantaContent() {
       ctx.setLineDash([])
     }
 
-    // Entry arrow
+    // Entry marker (fullscreen version)
     if(entrada){
-      const ex2=entrada.x*s,ey2=entrada.y*s,aw=18,ah=26
-      ctx.fillStyle='#22C55E'
-      ctx.beginPath(); ctx.moveTo(ex2,ey2-ah*0.6); ctx.lineTo(ex2+aw*0.5,ey2); ctx.lineTo(ex2-aw*0.5,ey2); ctx.closePath(); ctx.fill()
-      ctx.fillRect(ex2-aw*0.25,ey2,aw*0.5,ah*0.45)
-      ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.textAlign='center'; ctx.fillText('E',ex2,ey2+ah*0.4)
+      const ex2=entrada.x*s,ey2=entrada.y*s
+      const r2=9
+
+      // Chi direction arrow
+      if(bounds){
+        const bx2=bounds.x*s,by2=bounds.y*s,bw2=bounds.w*s,bh2=bounds.h*s
+        const distTop=Math.abs(ey2-by2),distBot=Math.abs(ey2-(by2+bh2))
+        const distLeft=Math.abs(ex2-bx2),distRight=Math.abs(ex2-(bx2+bw2))
+        const minDist=Math.min(distTop,distBot,distLeft,distRight)
+        let ax2=0,ay2=0
+        if(minDist===distTop){ay2=1} else if(minDist===distBot){ay2=-1}
+        else if(minDist===distLeft){ax2=1} else {ax2=-1}
+        const aLen=36, aStart=r2+5
+        const sx3=ex2+ax2*aStart,sy3=ey2+ay2*aStart
+        const ex3=ex2+ax2*(aStart+aLen),ey3=ey2+ay2*(aStart+aLen)
+        ctx.strokeStyle='#DC2626'; ctx.lineWidth=3
+        ctx.beginPath(); ctx.moveTo(sx3,sy3); ctx.lineTo(ex3,ey3); ctx.stroke()
+        const headLen=10,headAng=Math.PI/5
+        const angle=Math.atan2(ey3-sy3,ex3-sx3)
+        ctx.fillStyle='#DC2626'; ctx.beginPath()
+        ctx.moveTo(ex3,ey3)
+        ctx.lineTo(ex3-headLen*Math.cos(angle-headAng),ey3-headLen*Math.sin(angle-headAng))
+        ctx.lineTo(ex3-headLen*Math.cos(angle+headAng),ey3-headLen*Math.sin(angle+headAng))
+        ctx.closePath(); ctx.fill()
+      }
+
+      ctx.beginPath(); ctx.arc(ex2,ey2,r2,0,Math.PI*2)
+      ctx.fillStyle='#DC2626'; ctx.fill()
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2.5; ctx.stroke()
+
+      const lbl2='Entrada'
+      ctx.font='bold 13px Arial'; ctx.textAlign='left'
+      const tw=ctx.measureText(lbl2).width
+      const lx=ex2+r2+8,ly=ey2-r2-2
+      ctx.fillStyle='rgba(220,38,38,0.85)'
+      const pad=4
+      ctx.beginPath()
+      ctx.roundRect(lx-pad,ly-12-pad,tw+pad*2,16+pad*2,5)
+      ctx.fill()
+      ctx.fillStyle='#ffffff'; ctx.fillText(lbl2,lx,ly+2)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[fullscreen,bounds,entrada,lado,escola,lh,lv,modo,setores])
@@ -614,8 +695,14 @@ function BaguaPlantaContent() {
     if(isDrag.current) return
     const{cx,cy}=cc(e); const s=scale()
     if(step==='entrada'){
-      setEntrada({x:cx/s,y:cy/s})
-      setLado((cx/s)<(rotRef.current?.width||1)*0.33?'esquerda':(cx/s)>(rotRef.current?.width||1)*0.67?'direita':'centro')
+      const ex=cx/s, ey=cy/s
+      const newLado:Lado=(ex)<(rotRef.current?.width||1)*0.33?'esquerda':(ex)>(rotRef.current?.width||1)*0.67?'direita':'centro'
+      setEntrada({x:ex,y:ey})
+      setLado(newLado)
+      // Persist entrance point
+      if(consultaId){
+        supabase.from('consultas').update({bagua_entrada:{x:ex,y:ey,lado:newLado}}).eq('id',consultaId).then(()=>{})
+      }
       return
     }
     if(step==='resultado'&&modo==='nenhum'&&bounds){
@@ -739,6 +826,13 @@ function BaguaPlantaContent() {
   // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div style={{minHeight:'100vh',background:'#F9FAFB',fontFamily:'Arial,sans-serif'}}>
+      <style>{`
+        @keyframes pulseEntrada {
+          0%   { transform: scale(1);   opacity: 1; }
+          50%  { transform: scale(1.5); opacity: 0.4; }
+          100% { transform: scale(1);   opacity: 1; }
+        }
+      `}</style>
 
       <header style={{background:'#1E3A5F',padding:'0 20px',height:'52px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
@@ -814,19 +908,39 @@ function BaguaPlantaContent() {
               )}
 
               {/* ══ CANVAS ÚNICO — nunca sai do DOM ══ */}
-              <canvas ref={cvRef}
-                onClick={step==='entrada'||step==='resultado'?onClick:undefined}
-                onMouseDown={step==='resultado'?onMD:undefined}
-                onMouseMove={step==='resultado'?onMM:undefined}
-                onMouseUp={step==='resultado'?onMU:undefined}
-                onMouseLeave={step==='resultado'?onMU:undefined}
-                style={{
-                  maxWidth:'100%',display:'block',
-                  border:'1px solid #E5E7EB',borderRadius:'8px',
-                  cursor: step==='entrada'?'crosshair':modo!=='nenhum'?'move':'pointer',
-                  userSelect:'none',
-                }}
-              />
+              <div style={{position:'relative',display:'inline-block'}}>
+                <canvas ref={cvRef}
+                  onClick={step==='entrada'||step==='resultado'?onClick:undefined}
+                  onMouseDown={step==='resultado'?onMD:undefined}
+                  onMouseMove={step==='resultado'?onMM:undefined}
+                  onMouseUp={step==='resultado'?onMU:undefined}
+                  onMouseLeave={step==='resultado'?onMU:undefined}
+                  style={{
+                    maxWidth:'100%',display:'block',
+                    border:'1px solid #E5E7EB',borderRadius:'8px',
+                    cursor: step==='entrada'?'crosshair':modo!=='nenhum'?'move':'pointer',
+                    userSelect:'none',
+                  }}
+                />
+                {/* Pulse animation overlay for entrance marker */}
+                {entrada&&cvRef.current&&(()=>{
+                  const cv=cvRef.current!
+                  const s2=cv.width/(rotRef.current?.width||1)
+                  const cssScaleX=cv.getBoundingClientRect().width/cv.width
+                  const cssScaleY=cv.getBoundingClientRect().height/cv.height
+                  const px=(entrada.x*s2)*cssScaleX
+                  const py=(entrada.y*s2)*cssScaleY
+                  return (
+                    <div style={{
+                      position:'absolute',left:px-7,top:py-7,
+                      width:14,height:14,borderRadius:'50%',
+                      border:'2px solid rgba(220,38,38,0.5)',
+                      animation:'pulseEntrada 1.2s ease-in-out infinite',
+                      pointerEvents:'none',
+                    }}/>
+                  )
+                })()}
+              </div>
 
               {/* Controles CONFIGURAR */}
               {step==='configurar'&&(

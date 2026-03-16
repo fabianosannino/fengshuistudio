@@ -25,13 +25,13 @@ export default function Consultas() {
 
       const { data: prof } = await supabase
         .from('profiles')
-        .select('tipo_usuario, role')
+        .select('plano, tipo_usuario, role')
         .eq('id', user.id)
         .single()
 
-      const isProf = prof?.tipo_usuario
-        ? PROF_TYPES.includes(prof.tipo_usuario)
-        : (prof?.role === 'consultor')
+      const isProf = prof?.plano === 'pro'
+        || (prof?.tipo_usuario ? PROF_TYPES.includes(prof.tipo_usuario) : false)
+        || prof?.role === 'consultor'
       setIsProfessional(isProf)
 
       const { data } = await supabase
