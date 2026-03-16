@@ -183,11 +183,11 @@ export default function AppShell({
             padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}>
             <span style={{
-              background: plano === 'profissional' ? 'rgba(124,58,237,0.2)' : plano === 'simples' ? 'rgba(59,130,246,0.2)' : 'rgba(184,134,11,0.2)',
-              color: plano === 'profissional' ? '#C4B5FD' : plano === 'simples' ? '#93C5FD' : '#FDE68A',
+              background: (isProfessional || plano === 'profissional') ? 'rgba(124,58,237,0.2)' : plano === 'simples' ? 'rgba(59,130,246,0.2)' : 'rgba(184,134,11,0.2)',
+              color: (isProfessional || plano === 'profissional') ? '#C4B5FD' : plano === 'simples' ? '#93C5FD' : '#FDE68A',
               padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
             }}>
-              {planoLabel(profile?.plano)}
+              {isProfessional ? 'Profissional' : planoLabel(profile?.plano)}
             </span>
           </div>
         )}

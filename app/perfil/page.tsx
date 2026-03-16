@@ -172,11 +172,11 @@ export default function Perfil() {
             <p style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>{form.nome_completo || 'Seu nome'}</p>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>{user?.email}</p>
             <span style={{
-              background: planoEfetivo(plano) === 'profissional' ? 'rgba(124,58,237,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
-              color: planoEfetivo(plano) === 'profissional' ? '#7C3AED' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#B8860B',
+              background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(124,58,237,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
+              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#7C3AED' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#B8860B',
               padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
             }}>
-              {planoLabel(plano)}
+              {isProfessional ? 'Profissional' : planoLabel(plano)}
             </span>
             {form.nome_empresa && <p style={{ color: '#7C3AED', fontSize: '13px', margin: '4px 0 0 0' }}>{form.nome_empresa}</p>}
           </div>

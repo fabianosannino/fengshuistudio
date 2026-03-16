@@ -216,12 +216,13 @@ export default function NovaConsulta() {
     )
   }
 
-  const plano = planoEfetivo(profile?.plano)
+  const plano = isProfessional ? 'profissional' as const : planoEfetivo(profile?.plano)
   const limite = limiteImoveis(plano)
+  // Professional users: never limited
   // Free: max 3 total
-  const freeLimitReached = plano === 'free' && totalConsultas >= 3
+  const freeLimitReached = !isProfessional && plano === 'free' && totalConsultas >= 3
   // Simples: max 1 active (non-archived)
-  const simplesLimitReached = plano === 'simples' && consultasAtivas >= 1
+  const simplesLimitReached = !isProfessional && plano === 'simples' && consultasAtivas >= 1
   const limitReached = freeLimitReached || simplesLimitReached
 
   return (
