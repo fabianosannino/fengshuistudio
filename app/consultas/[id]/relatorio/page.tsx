@@ -521,6 +521,12 @@ export default function Relatorio() {
                   const isWarn = pct >= 40 && pct < 70
                   const bgRow = isUrgent ? '#FEF2F2' : isWarn ? '#FFFBEB' : '#F0FDF4'
                   const borderCol = isUrgent ? '#EF4444' : isWarn ? '#F59E0B' : '#22C55E'
+                  // Value origin: check if manually adjusted criteria exist
+                  const crits = setor.diagnostico_criterios || []
+                  const hasManualNotes = crits.some((c: DiagnosticoCriterio) => c.notas && c.notas.trim() !== '')
+                  const hasCustomRec = Array.isArray(setor.recomendacoes_custom) && setor.recomendacoes_custom.length > 0
+                  const origem = hasManualNotes || hasCustomRec ? 'Ajustado pelo consultor' : crits.length > 0 ? 'Com marcações' : 'Automático'
+                  const origemCor = hasManualNotes || hasCustomRec ? '#7C3AED' : crits.length > 0 ? '#1D4ED8' : '#6B7280'
                   return (
                     <div key={setor.id} style={{
                       display: 'flex', alignItems: 'center', gap: '9px',
@@ -529,6 +535,7 @@ export default function Relatorio() {
                     }}>
                       <div style={{ fontSize: '11px', width: '105px', flexShrink: 0, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                         {setor.nome}
+                        <div style={{ fontSize: '8px', color: origemCor, marginTop: '1px' }}>{origem}</div>
                       </div>
                       <div style={{ flex: 1, height: '6px', background: '#EAE5DB', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{ height: '100%', borderRadius: '3px', background: lvl.color, width: `${pct}%`, transition: 'width 0.5s ease' }} />
