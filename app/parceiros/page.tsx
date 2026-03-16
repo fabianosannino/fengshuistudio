@@ -30,11 +30,10 @@ export default function Parceiros() {
       const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
       setUserPlano(prof?.plano || '')
 
-      // Fetch professional profiles that opted to be visible as partners
+      // Fetch profiles that opted to be visible as partners
       const { data } = await supabase
         .from('profiles')
-        .select('id, nome_completo, tipo_usuario, profissao, area_atuacao, registro_profissional, linkedin, instagram, cidade, estado, bio')
-        .in('tipo_usuario', ['arquiteto', 'feng_shui', 'decorador', 'outro_profissional'])
+        .select('id, nome_completo, tipo_usuario, plano, profissao, area_atuacao, registro_profissional, linkedin, instagram, cidade, estado, bio')
         .eq('parceiro_visivel', true)
         .order('nome_completo')
 
@@ -62,36 +61,15 @@ export default function Parceiros() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>\u262f</div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
           <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando parceiros...</p>
         </div>
       </div>
     )
   }
 
-  // Free plan: block access to partner network
   const _pPlano = (userPlano || '').toLowerCase().trim()
   const _pIsFree = _pPlano !== 'pro' && _pPlano !== 'profissional' && _pPlano !== 'simples'
-  if (_pIsFree) {
-    return (
-      <AppShell currentPage="parceiros">
-        <div style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', padding: '48px 32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>\ud83e\udd1d</div>
-            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Rede de Parceiros</h1>
-            <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
-              A rede de parceiros est\u00e1 dispon\u00edvel nos planos Simples e Profissional.
-            </p>
-            <button onClick={() => window.location.href = '/planos'} style={{
-              padding: '14px 32px', background: '#7C3AED', color: '#fff',
-              border: 'none', borderRadius: '10px', fontSize: '16px',
-              fontWeight: 'bold', cursor: 'pointer'
-            }}>Ver planos</button>
-          </div>
-        </div>
-      </AppShell>
-    )
-  }
 
   return (
     <AppShell currentPage="parceiros">
@@ -101,9 +79,27 @@ export default function Parceiros() {
           Rede de Parceiros
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-          Encontre profissionais para ajudar com o resultado do seu diagnostico Feng Shui
+          Encontre profissionais para ajudar com o resultado do seu diagnóstico Feng Shui
         </p>
       </div>
+
+      {/* Free user: info banner */}
+      {_pIsFree && (
+        <div style={{
+          marginBottom: '20px', padding: '14px 20px', borderRadius: '10px',
+          background: '#F5F0FF', border: '1px solid #E9D5FF', display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
+        }}>
+          <p style={{ color: '#6B21A8', fontSize: '13px', margin: 0 }}>
+            Para aparecer na rede, faça upgrade para o plano Simples ou Profissional.
+          </p>
+          <a href="/planos" style={{
+            padding: '7px 18px', background: '#7C3AED', color: '#fff',
+            border: 'none', borderRadius: '6px', fontSize: '12px',
+            fontWeight: 'bold', textDecoration: 'none'
+          }}>Ver planos</a>
+        </div>
+      )}
 
       {/* Filters */}
       <div style={{
@@ -181,10 +177,18 @@ export default function Parceiros() {
                     <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 2px 0' }}>
                       {parceiro.nome_completo}
                     </h3>
-                    <span style={{
-                      background: `${tipo.cor}15`, color: tipo.cor,
-                      padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold'
-                    }}>{tipo.label}</span>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: `${tipo.cor}15`, color: tipo.cor,
+                        padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold'
+                      }}>{tipo.label}</span>
+                      {(parceiro.plano === 'pro' || parceiro.plano === 'profissional') && (
+                        <span style={{
+                          background: 'rgba(124,58,237,0.1)', color: '#7C3AED',
+                          padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold'
+                        }}>Profissional</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

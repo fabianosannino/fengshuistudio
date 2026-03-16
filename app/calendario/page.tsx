@@ -206,9 +206,9 @@ export default function Calendario() {
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>\ud83c\udf19</div>
-            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calend\u00e1rio Lunar</h1>
+            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calendário Lunar</h1>
             <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
-              O Calend\u00e1rio Lunar est\u00e1 dispon\u00edvel nos planos Simples e Profissional.
+              O Calendário Lunar está disponível nos planos Simples e Profissional.
             </p>
             <button onClick={() => window.location.href = '/planos'} style={{
               padding: '14px 32px', background: '#7C3AED', color: '#fff',

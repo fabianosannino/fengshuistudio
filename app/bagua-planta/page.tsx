@@ -352,7 +352,7 @@ function desvioTipoFinal(sc:Setor):{tipo:string;icon:string;intensidade:string;c
   // Override tipo with manual type when adjusted
   if(ajustado&&sc.ajusteTipo){
     const tipoMap:{[k:string]:string}={equilibrado:'Equilibrado',faltante:'Faltante',excedente:'Excedente'}
-    const iconMap:{[k:string]:string}={equilibrado:'\u2713',faltante:'\u25BC',excedente:'\u25B2'}
+    const iconMap:{[k:string]:string}={equilibrado:'✓',faltante:'\u25BC',excedente:'\u25B2'}
     return {...dt,tipo:tipoMap[sc.ajusteTipo]||dt.tipo,icon:iconMap[sc.ajusteTipo]||dt.icon,ajustado}
   }
   return {...dt,ajustado}
@@ -634,7 +634,7 @@ function BaguaPlantaContent() {
         ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.5)
         if(dt.ajustado){
           ctx.font=`${Math.max(6,fs-3)}px Arial`; ctx.fillStyle='#7C3AED'
-          ctx.fillText('\u270F',x0+fw/2,y0+fh/2+fs*2.4)
+          ctx.fillText('✏',x0+fw/2,y0+fh/2+fs*2.4)
         }
       }
     }
@@ -812,7 +812,7 @@ function BaguaPlantaContent() {
         ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.7)
         if(dt.ajustado){
           ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#7C3AED'
-          ctx.fillText('\u270F',x0+fw/2,y0+fh/2+fs*2.6)
+          ctx.fillText('✏',x0+fw/2,y0+fh/2+fs*2.6)
         }
       }
     }
@@ -1513,15 +1513,15 @@ function BaguaPlantaContent() {
             <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
               <button onClick={restaurarRascunho}
                 style={{background:'#15803D',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
-                Continuar an\u00e1lise
+                Continuar análise
               </button>
               <button onClick={()=>{
-                if(confirm('Tem certeza que deseja recomecar do zero? Todos os dados salvos ser\u00e3o apagados.')){
+                if(confirm('Tem certeza que deseja recomecar do zero? Todos os dados salvos serão apagados.')){
                   recomecarAnalise()
                 }
               }}
                 style={{background:'#fff',color:'#DC2626',border:'2px solid #DC2626',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
-                Recome\u00e7ar do zero
+                Recomeçar do zero
               </button>
             </div>
           </div>
@@ -1827,7 +1827,7 @@ function BaguaPlantaContent() {
                       {/* Multi-level desvio display */}
                       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#F9FAFB',borderRadius:'4px'}}>
-                          <span style={{fontSize:'10px',color:'#6B7280'}}>Autom\u00e1tico:</span>
+                          <span style={{fontSize:'10px',color:'#6B7280'}}>Automático:</span>
                           <span style={{fontSize:'11px',fontWeight:'bold',color:dt.cor}}>{autoDesvio}% {dt.icon} {dt.tipo}</span>
                         </div>
                         {scAtivo.ajusteManual!==null&&(
@@ -1844,7 +1844,7 @@ function BaguaPlantaContent() {
                         <span style={{fontSize:'14px'}}>{finalDt.icon}</span>
                         <div>
                           <div style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>Desvio: {finalDesvio}%</div>
-                          <div style={{fontSize:'9px',color:finalDt.cor}}>{finalDt.tipo}{finalDt.intensidade!=='\u2014'?` \u00b7 ${finalDt.intensidade}`:''}</div>
+                          <div style={{fontSize:'9px',color:finalDt.cor}}>{finalDt.tipo}{finalDt.intensidade!=='—'?` · ${finalDt.intensidade}`:''}</div>
                         </div>
                       </div>
                     </div>

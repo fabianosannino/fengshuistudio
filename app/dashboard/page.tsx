@@ -612,8 +612,8 @@ export default function Dashboard() {
                   <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0' }}>
                     {a.cliente_nome && `${a.cliente_nome} · `}
                     {a.status_bagua==='concluida'
-                      ? `Conclu\u00edda em ${new Date(a.finalizada_em).toLocaleDateString('pt-BR')} \u00e0s ${new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-                      : 'An\u00e1lise em andamento'
+                      ? `Concluída em ${new Date(a.finalizada_em).toLocaleDateString('pt-BR')} às ${new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                      : 'Análise em andamento'
                     }
                   </p>
                 </div>
@@ -622,7 +622,7 @@ export default function Dashboard() {
                   color: a.status_bagua==='concluida'?'#15803D':'#D97706',
                   padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
                 }}>
-                  {a.status_bagua==='concluida' ? '\u2713 Conclu\u00edda' : '\u25cb Em andamento'}
+                  {a.status_bagua==='concluida' ? '✓ Concluída' : '○ Em andamento'}
                 </span>
               </div>
             ))}

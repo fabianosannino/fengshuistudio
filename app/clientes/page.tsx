@@ -169,7 +169,7 @@ export default function Clientes() {
         <button onClick={() => {
           const p = planoEfetivo(profile?.plano)
           if (!podeClientes(p)) {
-            setMessage('Cadastro de clientes dispon\u00edvel no plano Profissional.')
+            setMessage('Cadastro de clientes disponível no plano Profissional.')
             return
           }
           setShowForm(!showForm); setMessage('')
@@ -187,7 +187,7 @@ export default function Clientes() {
           marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
           background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '13px'
         }}>
-          Cadastro de clientes externos dispon\u00edvel no plano Profissional.{' '}
+          Cadastro de clientes externos disponível no plano Profissional.{' '}
           <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Ver planos</a>
         </div>
       )}
