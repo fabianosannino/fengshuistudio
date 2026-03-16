@@ -4,10 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, planoLabel, podeClientes, podeCalendario } from '../../src/lib/plano-utils'
-
-// Professional user types (have client management, dashboard, payments, etc.)
-const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional as isProfissionalFn, planoUsuario } from '../../src/lib/plano-utils'
 
 type NavItem = { label: string; icon: string; href: string; bloqueado?: boolean }
 
@@ -26,14 +23,9 @@ export default function AppShell({
   const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  const isProfessional = planoEfetivo(profile?.plano) === 'profissional'
-    || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
-    || profile?.role === 'consultor'
-
+  const isProfessional = isProfissionalFn(profile)
   const isAdmin = profile?.role === 'admin'
-  const planoDb = planoEfetivo(profile?.plano)
-  // Professional users always get professional-level features
-  const plano = isProfessional ? 'profissional' as const : planoDb
+  const plano = planoUsuario(profile)
 
   // Build nav items based on plan
   const buildNav = (): NavItem[] => {

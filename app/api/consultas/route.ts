@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
-import { planoEfetivo, podeClientes } from '../../../src/lib/plano-utils'
-
-const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
+import { planoEfetivo, podeClientes, isProfissional as isProfissionalFn, planoUsuario } from '../../../src/lib/plano-utils'
 const MAX_CONSULTAS_MES_FREE = 3
 const MAX_IMOVEIS_PESSOAL = 3
 
@@ -31,18 +29,14 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  const plano = planoEfetivo(profile?.plano)
-  const isProfessional = plano === 'profissional'
-    || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
-    || profile?.role === 'consultor'
+  const isProfessional = isProfissionalFn(profile)
+  const plano = planoUsuario(profile)
 
-  // Professional users with 'profissional' plan: unlimited
-  // Professional users with free/simples plan: 3 consultations per month
-  // Personal 'simples' plan: 1 active consultation at a time
-  // Personal 'free' plan: 3 total properties
-  const planoEfet = isProfessional ? 'profissional' as const : plano
+  // Professional users: unlimited (plano is already 'profissional' via planoUsuario)
+  // Simples plan: 1 active consultation at a time
+  // Free plan: 3 total properties
 
-  if (planoEfet !== 'profissional') {
+  if (plano !== 'profissional') {
     if (plano === 'simples') {
       // Simples plan: max 1 active (non-archived) consultation
       const { count } = await supabase

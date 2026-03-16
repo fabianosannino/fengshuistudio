@@ -5,6 +5,29 @@
 
 export type PlanoEfetivo = 'free' | 'simples' | 'profissional'
 
+/** Professional user types — used across all pages for consistent detection */
+export const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional'] as const
+
+/**
+ * Determine if a user profile represents a professional user.
+ * Centralised check to avoid inconsistencies across pages.
+ */
+export function isProfissional(profile?: { plano?: string | null; tipo_usuario?: string | null; role?: string | null } | null): boolean {
+  if (!profile) return false
+  return planoEfetivo(profile.plano) === 'profissional'
+    || (profile.tipo_usuario ? (PROF_TYPES as readonly string[]).includes(profile.tipo_usuario) : false)
+    || profile.role === 'consultor'
+}
+
+/**
+ * Resolve the effective plan considering the user's professional status.
+ * Professional users always get 'profissional' features regardless of DB plan field.
+ */
+export function planoUsuario(profile?: { plano?: string | null; tipo_usuario?: string | null; role?: string | null } | null): PlanoEfetivo {
+  if (isProfissional(profile)) return 'profissional'
+  return planoEfetivo(profile?.plano)
+}
+
 /**
  * Resolve the effective plan from the stored value.
  * Handles backward compatibility: 'freemium' → 'free', 'pro' → 'profissional'
