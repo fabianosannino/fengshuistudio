@@ -60,5 +60,15 @@ USING (
   )
 );
 
--- 4. Refresh PostgREST schema cache
+-- 4. Set initial admin user (profiles.id matches auth.users.id)
+-- The email lives in auth.users, not in profiles, so we join:
+UPDATE profiles
+SET role = 'admin'
+WHERE id = (
+  SELECT id FROM auth.users
+  WHERE email = 'fsannino@gmail.com'
+  LIMIT 1
+);
+
+-- 5. Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
