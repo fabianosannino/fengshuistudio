@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useParams } from 'next/navigation'
+import Image from 'next/image'
 import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
 import Skeleton from '../../components/Skeleton'
@@ -271,10 +272,10 @@ export default function ClienteDetalhe() {
                   width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
                   background: '#7C3AED', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px',
-                  flexShrink: 0,
+                  flexShrink: 0, position: 'relative' as const,
                 }}>
                   {cliente.foto_url ? (
-                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
                   ) : (
                     cliente.nome_completo?.charAt(0).toUpperCase()
                   )}
@@ -349,12 +350,12 @@ export default function ClienteDetalhe() {
                 <div style={{
                   width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden',
                   background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px dashed #D1D5DB', flexShrink: 0,
+                  border: '2px dashed #D1D5DB', flexShrink: 0, position: 'relative' as const,
                 }}>
                   {fotoPreview ? (
-                    <img src={fotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Image src={fotoPreview} alt="Preview" fill unoptimized style={{ objectFit: 'cover' }} />
                   ) : cliente.foto_url ? (
-                    <img src={cliente.foto_url} alt={cliente.nome_completo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
                   ) : (
                     <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
                   )}

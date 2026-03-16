@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
+import { planoEfetivo } from '../../../../src/lib/plano-utils'
 
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
   }
 
-  if (target.plano === 'pro') {
+  if (planoEfetivo(target.plano) === 'profissional') {
     return NextResponse.json({ error: 'Usuário já possui plano Pro' }, { status: 400 })
   }
 

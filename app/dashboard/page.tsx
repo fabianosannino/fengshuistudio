@@ -1,17 +1,36 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import type { Profile, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoLabel } from '../../src/lib/plano-utils'
-import {
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  LineChart, Line,
-} from 'recharts'
+import { planoEfetivo, planoLabel } from '../../src/lib/plano-utils'
+
+const ChartLoadingSkeleton = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Skeleton variant="chart" />
+  </div>
+)
+
+const StatusPieChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.StatusPieChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
+const PagamentosBarChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.PagamentosBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
+const ConsultasLineChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.ConsultasLineChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
+const ClientesBarChart = dynamic(
+  () => import('../components/DashboardCharts').then(mod => mod.ClientesBarChart),
+  { ssr: false, loading: ChartLoadingSkeleton }
+)
 
 const CORES_STATUS: Record<string, string> = {
   rascunho: '#94A3B8',
@@ -367,7 +386,7 @@ export default function Dashboard() {
           { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
           { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
           { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#7C3AED', link: '/calendario' },
-          { label: 'Plano atual', value: (profile?.plano === 'pro' || profile?.plano === 'profissional' || (profile?.tipo_usuario && ['consultor','arquiteto','feng_shui','decorador','outro_profissional'].includes(profile.tipo_usuario)) || profile?.role === 'consultor') ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
+          { label: 'Plano atual', value: planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => window.location.href = kpi.link} style={{
             background: '#ffffff', borderRadius: '12px', padding: '24px',
@@ -392,31 +411,7 @@ export default function Dashboard() {
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Status das Consultas
           </h3>
-          {statusData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%" cy="50%"
-                  innerRadius={55} outerRadius={90}
-                  paddingAngle={4} dataKey="value" stroke="none"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => [`${value} consulta(s)`, '']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
-                />
-                <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '13px', color: '#6B7280' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Nenhuma consulta registrada ainda</p>
-            </div>
-          )}
+          <StatusPieChart statusData={statusData} />
         </div>
 
         {/* CHART 2: Pagamentos - Bar empilhado */}
@@ -657,7 +652,7 @@ export default function Dashboard() {
       </div>
 
       {/* Banner upgrade */}
-      {profile?.plano !== 'pro' && (
+      {planoEfetivo(profile?.plano) !== 'profissional' && (
         <div style={{
           background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
           borderRadius: '12px', padding: '24px 32px',

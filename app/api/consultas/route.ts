@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
+import { planoEfetivo, podeClientes } from '../../../src/lib/plano-utils'
 
 const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional']
 const MAX_CONSULTAS_MES_FREE = 3
@@ -30,13 +31,14 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  const isProfessional = profile?.plano === 'pro'
+  const plano = planoEfetivo(profile?.plano)
+  const isProfessional = plano === 'profissional'
     || (profile?.tipo_usuario ? PROF_TYPES.includes(profile.tipo_usuario) : false)
     || profile?.role === 'consultor'
 
   if (isProfessional) {
     // Professional free plan: 3 consultations per month
-    if (profile?.plano !== 'pro') {
+    if (plano !== 'profissional') {
       const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
       const { count } = await supabase
         .from('consultas')

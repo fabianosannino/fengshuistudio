@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
+import { planoEfetivo, podeClientes } from '../../../src/lib/plano-utils'
 
 const MAX_CLIENTES_FREE = 5
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.plano !== 'pro') {
+  if (!podeClientes(planoEfetivo(profile?.plano))) {
     const { count } = await supabase
       .from('clientes')
       .select('*', { count: 'exact', head: true })
