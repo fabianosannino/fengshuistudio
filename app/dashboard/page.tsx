@@ -367,7 +367,7 @@ export default function Dashboard() {
           { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
           { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
           { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#7C3AED', link: '/calendario' },
-          { label: 'Plano atual', value: planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
+          { label: 'Plano atual', value: (profile?.plano === 'pro' || profile?.plano === 'profissional' || (profile?.tipo_usuario && ['consultor','arquiteto','feng_shui','decorador','outro_profissional'].includes(profile.tipo_usuario)) || profile?.role === 'consultor') ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => window.location.href = kpi.link} style={{
             background: '#ffffff', borderRadius: '12px', padding: '24px',
