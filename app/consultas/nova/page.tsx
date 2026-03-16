@@ -57,7 +57,7 @@ export default function NovaConsulta() {
 
       const { data: prof } = await supabase
         .from('profiles')
-        .select('plano, tipo_usuario, role, nome_completo')
+        .select('*')
         .eq('id', user.id)
         .single()
       setProfile(prof)

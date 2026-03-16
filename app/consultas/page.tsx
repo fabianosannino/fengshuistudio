@@ -25,7 +25,7 @@ export default function Consultas() {
 
       const { data: prof } = await supabase
         .from('profiles')
-        .select('plano, tipo_usuario, role')
+        .select('*')
         .eq('id', user.id)
         .single()
 

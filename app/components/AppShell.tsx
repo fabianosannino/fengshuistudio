@@ -81,7 +81,7 @@ export default function AppShell({
         setUser(user)
         const { data } = await supabase
           .from('profiles')
-          .select('nome_completo, plano, tipo_usuario, role')
+          .select('*')
           .eq('id', user.id)
           .single()
         if (data) {
