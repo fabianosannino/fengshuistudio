@@ -44,13 +44,15 @@ export default function FlowLayout({
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('nome_completo')
           .eq('id', user.id)
           .single()
         if (data?.nome_completo) setUserName(data.nome_completo)
+        else if (user.user_metadata?.nome_completo) setUserName(user.user_metadata.nome_completo)
         else setUserName(user.email || '')
+        if (error) console.warn('FlowLayout: profiles query failed, using fallback.', error.message)
       }
     }
     loadUser()
