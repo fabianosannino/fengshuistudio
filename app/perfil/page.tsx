@@ -34,22 +34,23 @@ export default function Perfil() {
       setUser(user)
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profile) {
-        setTipoUsuario(profile.tipo_usuario || profile.role || '')
-        setPlano(profile.plano || '')
+        const p = profile as Record<string, unknown>
+        setTipoUsuario((p.tipo_usuario || p.role || '') as string)
+        setPlano((p.plano || '') as string)
         setForm({
-          nome_completo: profile.nome_completo || '',
-          nome_empresa: profile.nome_empresa || '',
-          telefone: profile.telefone || '',
-          cidade: profile.cidade || '',
-          estado: profile.estado || '',
-          bio: profile.bio || '',
-          site: profile.site || '',
-          profissao: profile.profissao || '',
-          area_atuacao: profile.area_atuacao || '',
-          registro_profissional: profile.registro_profissional || '',
-          linkedin: profile.linkedin || '',
-          instagram: profile.instagram || '',
-          parceiro_visivel: profile.parceiro_visivel || false,
+          nome_completo: (p.nome_completo || '') as string,
+          nome_empresa: (p.nome_empresa || '') as string,
+          telefone: (p.telefone || '') as string,
+          cidade: (p.cidade || '') as string,
+          estado: (p.estado || '') as string,
+          bio: (p.bio || '') as string,
+          site: (p.site || '') as string,
+          profissao: (p.profissao || '') as string,
+          area_atuacao: (p.area_atuacao || '') as string,
+          registro_profissional: (p.registro_profissional || '') as string,
+          linkedin: (p.linkedin || '') as string,
+          instagram: (p.instagram || '') as string,
+          parceiro_visivel: (p.parceiro_visivel || false) as boolean,
         })
       } else {
         // Fallback to user metadata
@@ -75,8 +76,7 @@ export default function Perfil() {
     setSaving(true)
     setMessage('')
 
-    // Only send professional fields if user is professional
-    const updateData: Record<string, string | boolean | null> = {
+    const basicData: Record<string, string | boolean | null> = {
       nome_completo: form.nome_completo,
       nome_empresa: form.nome_empresa,
       telefone: form.telefone,
@@ -86,18 +86,40 @@ export default function Perfil() {
       site: form.site,
     }
 
-    if (isProfessional) {
-      updateData.profissao = form.profissao
-      updateData.area_atuacao = form.area_atuacao
-      updateData.registro_profissional = form.registro_profissional
-      updateData.linkedin = form.linkedin
-      updateData.instagram = form.instagram
-      updateData.parceiro_visivel = form.parceiro_visivel
+    const profData: Record<string, string | boolean | null> = {
+      profissao: form.profissao,
+      area_atuacao: form.area_atuacao,
+      registro_profissional: form.registro_profissional,
+      linkedin: form.linkedin,
+      instagram: form.instagram,
+      parceiro_visivel: form.parceiro_visivel,
     }
 
+    const updateData = isProfessional ? { ...basicData, ...profData } : basicData
+
     const { error } = await supabase.from('profiles').update(updateData).eq('id', user!.id)
-    if (error) { setMessage('Erro ao salvar: ' + error.message) }
-    else { setMessage('Perfil atualizado com sucesso!'); setTimeout(() => setMessage(''), 3000) }
+
+    if (error) {
+      const isSchemaError = error.message?.includes('column') && error.message?.includes('schema cache')
+
+      if (isSchemaError && isProfessional) {
+        // Fallback: save only basic fields if professional columns are missing
+        console.error('Perfil: colunas profissionais ausentes no banco, salvando dados básicos.', error.message)
+        const { error: fallbackError } = await supabase.from('profiles').update(basicData).eq('id', user!.id)
+        if (fallbackError) {
+          console.error('Perfil fallback error:', fallbackError.message)
+          setMessage('Não foi possível salvar as alterações. Tente novamente ou entre em contato com o suporte.')
+        } else {
+          setMessage('Dados básicos salvos. Os campos profissionais exigem atualização do banco de dados — execute a migration em supabase/migrations/.')
+        }
+      } else {
+        console.error('Perfil update error:', error.message)
+        setMessage('Não foi possível salvar as alterações. Tente novamente ou entre em contato com o suporte.')
+      }
+    } else {
+      setMessage('Perfil atualizado com sucesso!')
+      setTimeout(() => setMessage(''), 3000)
+    }
     setSaving(false)
   }
 
