@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
-import AppShell from '../../components/AppShell'
+import FlowLayout from '../../components/FlowLayout'
 import Skeleton from '../../components/Skeleton'
 import type { Profile, Cliente } from '../../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
@@ -205,14 +205,14 @@ export default function NovaConsulta() {
 
   if (loading) {
     return (
-      <AppShell currentPage="consultas">
+      <FlowLayout backLabel="Consultas" backHref="/consultas">
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <Skeleton width="200px" height="24px" />
           <div style={{ marginTop: '24px' }}>
             <Skeleton variant="card" />
           </div>
         </div>
-      </AppShell>
+      </FlowLayout>
     )
   }
 
@@ -225,7 +225,7 @@ export default function NovaConsulta() {
   const limitReached = freeLimitReached || simplesLimitReached
 
   return (
-    <AppShell currentPage="consultas">
+    <FlowLayout backLabel="Consultas" backHref="/consultas">
 
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
@@ -458,8 +458,9 @@ export default function NovaConsulta() {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={() => setStep(1)} style={{
-                padding: '12px 24px', background: '#F3F4F6', color: '#374151',
-                border: 'none', borderRadius: '8px', fontSize: '15px', cursor: 'pointer'
+                padding: '10px 20px', background: 'transparent', color: '#6B7280',
+                border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '14px',
+                fontWeight: 400, cursor: 'pointer'
               }}>← Voltar</button>
               <button onClick={() => { setSetoresAtivos([1,2,3,4,5,6,7,8,9]) }} style={{
                 padding: '12px 24px', background: '#F3F4F6', color: '#374151',
@@ -475,6 +476,6 @@ export default function NovaConsulta() {
         )}
       </div>
 
-    </AppShell>
+    </FlowLayout>
   )
 }

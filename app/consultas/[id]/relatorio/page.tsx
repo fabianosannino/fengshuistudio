@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import FlowLayout from '../../../components/FlowLayout'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { CRITERIOS, AREA_META, SETOR_DICAS, CRITERIO_DICAS, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
@@ -212,10 +213,10 @@ export default function Relatorio() {
 
   if (loading || !consulta) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF5', fontFamily: "Georgia, 'Times New Roman', serif" }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', color: '#B8860B', marginBottom: '16px' }}>\u98a8\u6c34</div>
-          <p style={{ color: '#B8860B', fontSize: '14px' }}>Gerando relat\u00f3rio...</p>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Gerando relatório...</p>
         </div>
       </div>
     )
@@ -239,9 +240,10 @@ export default function Relatorio() {
               borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
             }}>Ver planos</button>
             <button onClick={() => router.push(`/consultas/${id}`)} style={{
-              background: 'transparent', color: '#6B7280', border: '1px solid #D1D5DB', padding: '10px 20px',
-              borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
-            }}>Voltar</button>
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              background: 'transparent', color: '#6B7280', border: '1px solid #E5E7EB', padding: '6px 14px',
+              borderRadius: '6px', fontSize: '14px', fontWeight: 400, cursor: 'pointer'
+            }}>← Voltar</button>
           </div>
         </div>
       </div>
@@ -304,29 +306,31 @@ export default function Relatorio() {
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => router.push(`/consultas/${id}`)}>☯</span>
           <span style={{ color: gold, fontSize: '18px', fontWeight: 'bold' }}>FengShui Studio</span>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {needsWatermark && (
             <span style={{ color: '#FBBF24', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
-              Plano Simples — PDF com marca d&apos;\u00e1gua
+              Plano Simples — PDF com marca d&apos;água
             </span>
           )}
           <button onClick={() => router.push(`/consultas/${id}`)} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
-            color: '#ffffff', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
+            color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
+            cursor: 'pointer', fontSize: '14px', fontWeight: 400,
           }}>← Voltar</button>
           <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
             background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
-            color: '#b8860b', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
-          }}>治 Curas</button>
+            color: '#b8860b', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
+          }}>Curas</button>
           <button onClick={handlePrint} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.3)',
-            color: '#ffffff', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
+            color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
+            cursor: 'pointer', fontSize: '14px'
           }}>Imprimir</button>
           <button onClick={handleDownloadPDF} disabled={downloading} style={{
             background: downloading ? '#9CA3AF' : gold, border: 'none',
-            color: '#ffffff', padding: '8px 24px', borderRadius: '4px',
-            cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '600',
-            letterSpacing: '0.05em'
+            color: '#ffffff', padding: '6px 20px', borderRadius: '6px',
+            cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
           }}>{downloading ? 'Gerando PDF...' : 'Baixar PDF'}</button>
         </div>
       </div>

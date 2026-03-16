@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import FlowLayout from '../../components/FlowLayout'
 import TabRodaDaVida from './TabRodaDaVida'
 import TabFluxoChi from './TabFluxoChi'
 import TabFotos from './TabFotos'
@@ -475,7 +476,7 @@ export default function ConsultaDetalhe() {
   const recSetorData = recModal ? setores.find(s => s.id === recModal) : null
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+    <FlowLayout showHeader backLabel="Consultas" backHref="/consultas">
 
       {/* ── Modal Recomendações ─────────────────────────────────────────────── */}
       {recModal && recSetorData && (() => {
@@ -636,21 +637,6 @@ export default function ConsultaDetalhe() {
           </div>
         )
       })()}
-
-      <header style={{
-        background: '#1E3A5F', padding: '0 32px', height: '64px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '28px', cursor: 'pointer' }} onClick={() => router.push('/dashboard')}>☯</span>
-          <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span onClick={() => router.push('/consultas')} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', cursor: 'pointer' }}>← Consultas</span>
-          <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>Diagnóstico</span>
-        </div>
-      </header>
 
       <main style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto' }}>
 
@@ -1198,6 +1184,6 @@ export default function ConsultaDetalhe() {
           />
         )}
       </main>
-    </div>
+    </FlowLayout>
   )
 }

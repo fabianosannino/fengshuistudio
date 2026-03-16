@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -1157,7 +1158,11 @@ function BaguaPlantaContent() {
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <div style={{minHeight:'100vh',background:'#F9FAFB',fontFamily:'Arial,sans-serif'}}>
+    <FlowLayout
+      showHeader
+      backLabel={consultaNome || 'Consulta'}
+      backHref={consultaId ? `/consultas/${consultaId}` : '/consultas'}
+    >
       <style>{`
         @keyframes pulseEntrada {
           0%   { transform: scale(1);   opacity: 1; }
@@ -1165,20 +1170,6 @@ function BaguaPlantaContent() {
           100% { transform: scale(1);   opacity: 1; }
         }
       `}</style>
-
-      <header style={{background:'#1E3A5F',padding:'0 20px',height:'52px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <span style={{fontSize:'22px',cursor:'pointer'}} onClick={()=>router.push('/dashboard')}>☯</span>
-          <span style={{color:'#B8860B',fontSize:'17px',fontWeight:'bold'}}>FengShui Studio</span>
-        </div>
-        <div style={{display:'flex',gap:'14px',alignItems:'center'}}>
-          {consultaId && (
-            <span onClick={()=>router.push(`/consultas/${consultaId}`)} style={{color:'#B8860B',fontSize:'13px',cursor:'pointer',fontWeight:'bold'}}>← {consultaNome||'Consulta'}</span>
-          )}
-          <span onClick={()=>router.push('/dashboard')} style={{color:'rgba(255,255,255,0.7)',fontSize:'13px',cursor:'pointer'}}>Dashboard</span>
-          <span onClick={()=>router.push('/consultas')} style={{color:'rgba(255,255,255,0.7)',fontSize:'13px',cursor:'pointer'}}>Consultas</span>
-        </div>
-      </header>
 
       <main style={{padding:'14px 18px',maxWidth:'1160px',margin:'0 auto'}}>
 
@@ -1363,7 +1354,7 @@ function BaguaPlantaContent() {
               {step==='entrada'&&(
                 <div style={{marginTop:'10px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
                   <button onClick={()=>setStep('configurar')}
-                    style={{padding:'7px 14px',background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',borderRadius:'6px',fontSize:'12px',cursor:'pointer'}}>
+                    style={{padding:'6px 14px',background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:'6px',fontSize:'14px',fontWeight:400,cursor:'pointer'}}>
                     ← Voltar
                   </button>
                   {entrada&&(
@@ -1771,7 +1762,7 @@ function BaguaPlantaContent() {
         )}
 
       </main>
-    </div>
+    </FlowLayout>
   )
 }
 
