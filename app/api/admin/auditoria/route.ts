@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
+import { logger } from '../../../../src/lib/logger'
 
 export async function GET(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     .range((page - 1) * pageSize, page * pageSize - 1)
 
   if (error) {
-    console.error('Audit log error:', error.message)
+    logger.error('Audit log error', { route: '/api/admin/auditoria', error: error.message })
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 

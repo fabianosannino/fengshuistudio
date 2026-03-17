@@ -160,9 +160,9 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   }
 
   function handleRemoveComodo(idx: number) {
-    // Delete all photos in the room
+    // Delete all photos in the room (fire-and-forget with error logging)
     const comodo = fotosComodos[idx]
-    comodo.fotos.forEach(url => deleteFile(url))
+    Promise.all(comodo.fotos.map(url => deleteFile(url).catch(e => console.error('Erro ao excluir foto:', url, e))))
     const updated = fotosComodos
       .filter((_, i) => i !== idx)
       .map((c, i) => ({ ...c, ordem: i }))
