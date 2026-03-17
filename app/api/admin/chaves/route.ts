@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
+import { logger } from '../../../../src/lib/logger'
 
 // Characters without ambiguous glyphs (no 0, O, I, 1)
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -59,15 +60,18 @@ export async function GET(request: Request) {
   }
 
   if (search) {
-    // Search by key or by user email/name via separate query
-    query = query.ilike('key', `%${search}%`)
+    // Limit search length to prevent abuse; strip special SQL characters
+    const sanitized = search.slice(0, 50).replace(/[%_\\]/g, '')
+    if (sanitized.length > 0) {
+      query = query.ilike('key', `%${sanitized}%`)
+    }
   }
 
   query = query.range((page - 1) * pageSize, page * pageSize - 1)
 
   const { data, count, error } = await query
   if (error) {
-    console.error('Admin keys list error:', error.message)
+    logger.error('Admin keys list error', { route: '/api/admin/chaves', action: 'list', error: error.message })
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
@@ -137,7 +141,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase.from('activation_keys').insert(keys).select()
   if (error) {
-    console.error('Admin key generation error:', error.message)
+    logger.error('Admin key generation error', { route: '/api/admin/chaves', action: 'generate', error: error.message })
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 

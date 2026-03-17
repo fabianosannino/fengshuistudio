@@ -439,7 +439,7 @@ function BaguaPlantaContent() {
     supabase.auth.getUser().then(({data:{user}})=>{
       if(!user){router.push('/login');return}
       supabase.from('consultas').select('id,nome_imovel').eq('consultor_id',user.id)
-        .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[]))
+        .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>console.error('Erro ao carregar consultas:',e))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
         supabase.from('consultas').select('nome_imovel,bagua_entrada').eq('id',consultaId).single()
@@ -468,7 +468,7 @@ function BaguaPlantaContent() {
                 setLado((be.lado||'centro') as Lado)
               }
             }
-          })
+          }).then(null,(e: Error)=>console.error('Erro ao carregar consulta:',e))
         supabase.from('setores_bagua')
           .select('numero,score_percentual,diagnostico_criterios(criterio,score)')
           .eq('consulta_id',consultaId).order('numero')
@@ -488,7 +488,7 @@ function BaguaPlantaContent() {
               })
               return next
             })
-          })
+          }).then(null,(e: Error)=>console.error('Erro ao carregar setores:',e))
       }
     })
   },[router,consultaId])
@@ -568,7 +568,7 @@ function BaguaPlantaContent() {
     lhRef.current=[1/3,2/3]; lvRef.current=[1/3,2/3]
     // Clear saved draft (keep planta_url for storage but clear state)
     if(consultaId){
-      supabase.from('consultas').update({bagua_entrada:null,bagua_imagem:null}).eq('id',consultaId).then(()=>{})
+      supabase.from('consultas').update({bagua_entrada:null,bagua_imagem:null}).eq('id',consultaId).then(()=>{}).then(null,(e: Error)=>console.error('Erro ao limpar rascunho:',e))
     }
   }
 
@@ -1083,7 +1083,7 @@ function BaguaPlantaContent() {
                 // Save initial draft state
                 supabase.from('consultas').update({
                   bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'configurar',rotacao:0,lado:'centro'}
-                }).eq('id',consultaId).then(()=>{})
+                }).eq('id',consultaId).then(()=>{}).then(null,(e: Error)=>console.error('Erro ao salvar rascunho:',e))
                 return d.url as string
               }
               setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.')

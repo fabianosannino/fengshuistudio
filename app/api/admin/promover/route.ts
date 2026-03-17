@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
+import { logger } from '../../../../src/lib/logger'
 import { planoEfetivo } from '../../../../src/lib/plano-utils'
 
 export async function POST(request: Request) {
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     .eq('id', body.user_id)
 
   if (error) {
-    console.error('Admin promote error:', error.message)
+    logger.error('Admin promote error', { route: '/api/admin/promover', action: 'promote', userId: body.user_id, error: error.message })
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url)
-  const q = url.searchParams.get('q') || ''
+  const q = (url.searchParams.get('q') || '').slice(0, 100).replace(/[%_\\]/g, '')
   if (q.length < 2) {
     return NextResponse.json({ users: [] })
   }

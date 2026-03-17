@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
+import { logger } from '../../../../src/lib/logger'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       .single()
 
     if (consultaError) {
-      console.error('Consulta query error:', consultaError.message)
+      logger.error('Consulta query error', { route: '/api/consultas/bagua-planta', error: consultaError.message })
       return NextResponse.json({ error: 'Erro ao verificar consulta: ' + consultaError.message }, { status: 500 })
     }
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
       .list(`${consultaId}/bagua-planta`)
 
     if (listError) {
-      console.error('Storage list error:', listError.message)
+      logger.error('Storage list error', { route: '/api/consultas/bagua-planta', error: listError.message })
       // Continue anyway - bucket might be empty or not exist yet for this path
     }
 
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
       .upload(filePath, buffer, { contentType: file.type, upsert: true })
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError.message)
+      logger.error('Storage upload error', { route: '/api/consultas/bagua-planta', error: uploadError.message })
       return NextResponse.json(
         { error: `Erro ao enviar imagem. Verifique se o bucket "${BUCKET}" existe no Supabase Storage. Detalhe: ${uploadError.message}` },
         { status: 500 }
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: urlData.publicUrl })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
-    console.error('bagua-planta route error:', message)
+    logger.error('bagua-planta route error', { route: '/api/consultas/bagua-planta', error: message })
     return NextResponse.json({ error: `Erro interno: ${message}` }, { status: 500 })
   }
 }

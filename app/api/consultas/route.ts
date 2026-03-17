@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
+import { logger } from '../../../src/lib/logger'
 import { planoEfetivo, podeClientes, isProfissional as isProfissionalFn, planoUsuario } from '../../../src/lib/plano-utils'
 const MAX_CONSULTAS_MES_FREE = 3
 const MAX_IMOVEIS_PESSOAL = 3
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    console.error('Consulta insert error:', error.message)
+    logger.error('Consulta insert error', { route: '/api/consultas', error: error.message })
     return NextResponse.json({ error: 'Erro ao criar consulta. Tente novamente.' }, { status: 400 })
   }
 

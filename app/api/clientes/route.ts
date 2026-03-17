@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
+import { logger } from '../../../src/lib/logger'
 import { planoEfetivo, podeClientes } from '../../../src/lib/plano-utils'
 
 const MAX_CLIENTES_FREE = 5
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    console.error('Cliente insert error:', error.message)
+    logger.error('Cliente insert error', { route: '/api/clientes', error: error.message })
     return NextResponse.json({ error: 'Erro ao cadastrar cliente. Tente novamente.' }, { status: 400 })
   }
 

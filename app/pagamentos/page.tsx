@@ -228,13 +228,14 @@ export default function Pagamentos() {
     const { error } = await supabase.from('pagamentos').delete().eq('id', deleteTarget)
     if (error) {
       setMessage('Erro ao excluir pagamento: ' + error.message)
-    } else {
-      // Reload current page and KPIs
-      await Promise.all([
-        loadPagamentos(currentPage, undefined, user!.id),
-        loadKpiTotals(user!.id),
-      ])
+      setDeleteTarget(null)
+      return
     }
+    // Reload current page and KPIs
+    await Promise.all([
+      loadPagamentos(currentPage, undefined, user!.id),
+      loadKpiTotals(user!.id),
+    ])
     setDeleteTarget(null)
   }
 

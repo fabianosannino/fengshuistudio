@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
+import { logger } from '../../../../src/lib/logger'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     })
 
   if (uploadError) {
-    console.error('Upload error:', uploadError.message)
+    logger.error('Upload error', { route: '/api/clientes/foto', error: uploadError.message })
     return NextResponse.json({ error: 'Erro ao fazer upload da foto.' }, { status: 500 })
   }
 
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     .eq('id', clienteId)
 
   if (updateError) {
-    console.error('Update error:', updateError.message)
+    logger.error('Update error', { route: '/api/clientes/foto', error: updateError.message })
     return NextResponse.json({ error: 'Erro ao atualizar cliente.' }, { status: 500 })
   }
 

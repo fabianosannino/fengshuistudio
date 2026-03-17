@@ -6,6 +6,7 @@ import AppShell from '../components/AppShell'
 import { planoEfetivo } from '../../src/lib/plano-utils'
 
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
+const PAGE_SIZE = 50
 
 const TIPOS_PROFISSIONAL: Record<string, { label: string; icon: string; cor: string }> = {
   arquiteto: { label: 'Arquiteto(a)', icon: '🏗️', cor: '#1D4ED8' },
@@ -21,6 +22,8 @@ export default function Parceiros() {
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroBusca, setFiltroBusca] = useState('')
   const [userPlano, setUserPlano] = useState<string>('')
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -31,12 +34,13 @@ export default function Parceiros() {
       const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
       setUserPlano(prof?.plano || '')
 
-      // Fetch profiles that opted to be visible as partners
+      // Fetch profiles that opted to be visible as partners (paginated)
       let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('parceiro_visivel', true)
         .order('nome_completo')
+        .range(0, PAGE_SIZE - 1)
 
       // If parceiro_visivel column doesn't exist yet, query returns 400
       // Fallback: fetch nothing (column needs to be created via migration)
@@ -46,10 +50,29 @@ export default function Parceiros() {
       }
 
       setParceiros(data || [])
+      setHasMore((data || []).length === PAGE_SIZE)
       setLoading(false)
     }
     load()
   }, [])
+
+  async function loadMore() {
+    const nextPage = page + 1
+    const from = nextPage * PAGE_SIZE
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('parceiro_visivel', true)
+      .order('nome_completo')
+      .range(from, from + PAGE_SIZE - 1)
+    if (data && data.length > 0) {
+      setParceiros(prev => [...prev, ...data])
+      setPage(nextPage)
+      setHasMore(data.length === PAGE_SIZE)
+    } else {
+      setHasMore(false)
+    }
+  }
 
   const filtered = parceiros.filter(p => {
     if (filtroEstado && p.estado !== filtroEstado) return false
@@ -165,7 +188,7 @@ export default function Parceiros() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-          {filtered.map(parceiro => {
+          {filtered.slice(0, (page + 1) * PAGE_SIZE).map(parceiro => {
             const tipo = TIPOS_PROFISSIONAL[parceiro.tipo_usuario] || TIPOS_PROFISSIONAL.outro_profissional
             return (
               <div key={parceiro.id} style={{
@@ -246,6 +269,16 @@ export default function Parceiros() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {hasMore && (
+        <div style={{ textAlign: 'center', marginTop: '24px' }}>
+          <button onClick={loadMore} style={{
+            padding: '10px 32px', background: '#7C3AED', color: '#fff',
+            border: 'none', borderRadius: '8px', fontSize: '14px',
+            fontWeight: 'bold', cursor: 'pointer'
+          }}>Carregar mais</button>
         </div>
       )}
 

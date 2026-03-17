@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
+import { logger } from '../../../src/lib/logger'
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a.trim())
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
     .eq('id', user.id)
 
   if (error) {
-    console.error('Planos update error:', error.message)
+    logger.error('Planos update error', { route: '/api/planos', error: error.message })
     return NextResponse.json({ error: 'Erro ao atualizar plano. Tente novamente.' }, { status: 400 })
   }
 
