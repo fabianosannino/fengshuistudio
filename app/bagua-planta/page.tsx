@@ -485,9 +485,10 @@ function BaguaPlantaContent() {
   const resizeCanvas = useCallback(()=>{
     const r=rotRef.current, cv=cvRef.current
     if(!r||!cv) return
-    const maxW=Math.min(640,window.innerWidth-40)
-    const maxH=Math.max(200,window.innerHeight-300)
-    const s=Math.min(maxW/r.width,maxH/r.height,1)
+    // Allow canvas to use most of the available width (container will constrain via max-width)
+    const maxW=Math.min(900,window.innerWidth-60)
+    const maxH=Math.max(300,window.innerHeight-220)
+    const s=Math.min(maxW/r.width,maxH/r.height)
     cv.width=Math.round(r.width*s); cv.height=Math.round(r.height*s)
     cv.style.width  = cv.width  + 'px'
     cv.style.height = cv.height + 'px'
@@ -1664,7 +1665,10 @@ function BaguaPlantaContent() {
                   {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
                   {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
                   {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
-                  {msg            &&<div style={{marginTop:'5px',padding:'6px 10px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'11px',fontWeight:'bold'}}>✅ {msg}</div>}
+                  {msg&&(()=>{
+                    const isError=msg.toLowerCase().includes('erro')
+                    return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FEF2F2':'#F0FDF4',borderRadius:'5px',color:isError?'#DC2626':'#15803D',fontSize:'11px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
+                  })()}
                   {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
                   {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
 
