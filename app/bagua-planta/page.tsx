@@ -229,7 +229,7 @@ function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[
     const excessoArea=excessoExterno[idx]
     const faltaPct = sectorArea > 0 ? (faltaArea / sectorArea) * 100 : 0
     const excessoPct = sectorArea > 0 ? (excessoArea / sectorArea) * 100 : 0
-    const geo = 100 - faltaPct + excessoPct
+    const geo = 100 - faltaPct - excessoPct
 
     return {criterios:Array(8).fill(2),geo,faltaArea,excessoArea,faltaPct,excessoPct,ajusteManual:null,ajusteTipo:null,obs:''}
   })
@@ -243,15 +243,18 @@ function scoreFisico(c:number[]):number{return c.reduce((s,v)=>s+(FISICO_MAP[v]?
 function geoEfetivo(sc:Setor):number{return sc.ajusteManual!==null?sc.ajusteManual:sc.geo}
 // Total score = geo + physical
 function scoreTotal(sc:Setor):number{return Math.round(geoEfetivo(sc)+scoreFisico(sc.criterios))}
-// Geo color: Green (=100), Red (>100), Blue (<100)
-function corGeo(geo:number):string{
+// Geo color based on sector data: Green (equilibrado), Red (falta), Orange (excesso)
+function corGeo(geo:number, sc?:Setor):string{
   if(Math.abs(geo-100)<0.5) return '#15803D'
-  return geo>100?'#DC2626':'#1D4ED8'
+  if(sc && sc.excessoPct > sc.faltaPct) return '#D97706' // Orange for excesso-dominant
+  return '#DC2626' // Red for falta-dominant
 }
-// Geo label
-function lblGeo(geo:number):string{
+// Geo label based on sector data
+function lblGeo(geo:number, sc?:Setor):string{
   if(Math.abs(geo-100)<0.5) return 'Equilibrado'
-  return geo>100?'Excesso':'Falta'
+  if(sc && sc.excessoPct > sc.faltaPct) return 'Excesso'
+  if(sc && sc.faltaPct > sc.excessoPct) return 'Falta'
+  return 'Desequilíbrio'
 }
 // Total score color (quality scale)
 function corTotal(t:number):string{return t>=95?'#15803D':t>=80?'#65A30D':t>=60?'#D97706':t>=40?'#EA580C':'#DC2626'}
@@ -285,6 +288,7 @@ function BaguaPlantaContent() {
   const [setores,  setSetores]  = useState<Setor[]>([])
   const [ativo,    setAtivo]    = useState<number|null>(null)
   const [msg,      setMsg]      = useState('')
+  const [msgTipo,  setMsgTipo]  = useState<'erro'|'sucesso'>('sucesso')
   const [consultas,setConsultas]= useState<{id:string;nome_imovel:string}[]>([])
   const [fullscreen,setFullscreen] = useState(false)
   const [showInstrucao,setShowInstrucao] = useState(true)
@@ -461,7 +465,7 @@ function BaguaPlantaContent() {
     i.onerror=()=>{
       setCarregandoPlanta(false)
       restaurandoRef.current=false
-      setMsg('Erro ao carregar planta salva. Faça novo upload.')
+      setMsg('Erro ao carregar planta salva. Faça novo upload.'); setMsgTipo('erro')
       setStep('upload')
     }
     i.src=be.planta_url
@@ -486,8 +490,8 @@ function BaguaPlantaContent() {
     const r=rotRef.current, cv=cvRef.current
     if(!r||!cv) return
     // Allow canvas to use most of the available width (container will constrain via max-width)
-    const maxW=Math.min(900,window.innerWidth-60)
-    const maxH=Math.max(300,window.innerHeight-220)
+    const maxW=Math.min(1200,window.innerWidth-40)
+    const maxH=Math.max(400,window.innerHeight-180)
     const s=Math.min(maxW/r.width,maxH/r.height)
     cv.width=Math.round(r.width*s); cv.height=Math.round(r.height*s)
     cv.style.width  = cv.width  + 'px'
@@ -531,22 +535,16 @@ function BaguaPlantaContent() {
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0,sel=ativo===idx
       const geoVal=sc?geoEfetivo(sc):100
-      const c=sc?corGeo(geoVal):st.cor
-      ctx.fillStyle=c+(sel?'55':'28'); ctx.fillRect(x0,y0,fw,fh)
+      const c=sc?corGeo(geoVal,sc):st.cor
+      ctx.fillStyle=c+(sel?'44':'18'); ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=sel?'#000':c; ctx.lineWidth=sel?3:1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(8,Math.min(12,fw/11))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
-      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
+      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.3:0))
       if(sc){
-        ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#000000aa'
-        ctx.fillText(`${Math.round(geoVal)} pts`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(7,fs-2)}px Arial`
         ctx.fillStyle=c
-        ctx.fillText(lblGeo(geoVal),x0+fw/2,y0+fh/2+fs*1.5)
-        if(sc.ajusteManual!==null){
-          ctx.font=`${Math.max(6,fs-3)}px Arial`; ctx.fillStyle='#7C3AED'
-          ctx.fillText('✏',x0+fw/2,y0+fh/2+fs*2.4)
-        }
+        ctx.fillText(lblGeo(geoVal,sc),x0+fw/2,y0+fh/2+fs*0.9)
       }
     }
 
@@ -576,9 +574,12 @@ function BaguaPlantaContent() {
       const ex=entrada.x*s,ey=entrada.y*s
       const r2=7 // circle radius (14px diameter / 2)
 
-      // Chi direction arrow (always pointing up)
+      // Chi direction arrow (pointing toward center of bounds)
       if(bounds){
-        const ax=0,ay=-1 // always point up
+        const cx=bx+bw/2, cy=by+bh/2
+        const dx=cx-ex, dy=cy-ey
+        const dist=Math.sqrt(dx*dx+dy*dy)||1
+        const ax=dx/dist, ay=dy/dist
         const aLen=28, aStart=r2+4
         const sx2=ex+ax*aStart,sy2=ey+ay*aStart
         const ex2=ex+ax*(aStart+aLen),ey2=ey+ay*(aStart+aLen)
@@ -622,8 +623,10 @@ function BaguaPlantaContent() {
       ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
       // Label
-      const area=Math.round(m.w*m.h)
-      const label=`${isFalta?'FALTA':'EXCESSO'} · ${area} px²`
+      const marcArea=m.w*m.h
+      const boundsArea=bounds?bounds.w*bounds.h:1
+      const pctArea=Math.round((marcArea/boundsArea)*100)
+      const label=`${isFalta?'FALTA':'EXCESSO'} · ${pctArea}%`
       const fs2=Math.max(8,Math.min(11,mw/10))
       ctx.font=`bold ${fs2}px Arial`; ctx.textAlign='center'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
@@ -696,22 +699,16 @@ function BaguaPlantaContent() {
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0
       const geoVal2=sc?geoEfetivo(sc):100
-      const c=sc?corGeo(geoVal2):st.cor
-      ctx.fillStyle=c+'28'; ctx.fillRect(x0,y0,fw,fh)
+      const c=sc?corGeo(geoVal2,sc):st.cor
+      ctx.fillStyle=c+'18'; ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=c; ctx.lineWidth=1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(10,Math.min(16,fw/9))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
-      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
+      ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.3:0))
       if(sc){
-        ctx.font=`${Math.max(8,fs-1)}px Arial`; ctx.fillStyle='#000000aa'
-        ctx.fillText(`${Math.round(geoVal2)} pts`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(8,fs-1)}px Arial`
         ctx.fillStyle=c
-        ctx.fillText(lblGeo(geoVal2),x0+fw/2,y0+fh/2+fs*1.7)
-        if(sc.ajusteManual!==null){
-          ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#7C3AED'
-          ctx.fillText('✏',x0+fw/2,y0+fh/2+fs*2.6)
-        }
+        ctx.fillText(lblGeo(geoVal2,sc),x0+fw/2,y0+fh/2+fs*0.9)
       }
     }
 
@@ -741,9 +738,12 @@ function BaguaPlantaContent() {
       const ex2=entrada.x*s,ey2=entrada.y*s
       const r2=9
 
-      // Chi direction arrow (always pointing up)
+      // Chi direction arrow (pointing toward center of bounds)
       if(bounds){
-        const ax2=0,ay2=-1 // always point up
+        const cx2=bx+bw/2, cy2=by+bh/2
+        const ddx=cx2-ex2, ddy=cy2-ey2
+        const dist2=Math.sqrt(ddx*ddx+ddy*ddy)||1
+        const ax2=ddx/dist2, ay2=ddy/dist2
         const aLen=36, aStart=r2+5
         const sx3=ex2+ax2*aStart,sy3=ey2+ay2*aStart
         const ex3=ex2+ax2*(aStart+aLen),ey3=ey2+ay2*(aStart+aLen)
@@ -782,8 +782,10 @@ function BaguaPlantaContent() {
       ctx.fillRect(mx,my,mw,mh)
       ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
-      const area=Math.round(m.w*m.h)
-      const label=`${isFalta?'FALTA':'EXCESSO'} · ${area} px²`
+      const marcArea2=m.w*m.h
+      const boundsArea2=bounds?bounds.w*bounds.h:1
+      const pctArea2=Math.round((marcArea2/boundsArea2)*100)
+      const label=`${isFalta?'FALTA':'EXCESSO'} · ${pctArea2}%`
       const fs2=Math.max(10,Math.min(14,mw/8))
       ctx.font=`bold ${fs2}px Arial`; ctx.textAlign='center'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
@@ -960,12 +962,12 @@ function BaguaPlantaContent() {
                 }).eq('id',consultaId).then(()=>{}).then(null,(e: Error)=>console.error('Erro ao salvar rascunho:',e))
                 return d.url as string
               }
-              setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.')
+              setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.'); setMsgTipo('erro')
               return null
             })
             .catch(err=>{
               console.error('Upload planta error:', err)
-              setMsg('Erro ao enviar planta para o servidor. Verifique se o bucket de storage existe no Supabase.')
+              setMsg('Erro ao enviar planta para o servidor. Verifique se o bucket de storage existe no Supabase.'); setMsgTipo('erro')
               return null
             })
           uploadPromiseRef.current=uploadP
@@ -1225,7 +1227,7 @@ function BaguaPlantaContent() {
       posicao_grid:String(orderIdx+1),
       score_percentual:scoreTotal(sc)
     },{onConflict:'consulta_id,numero'}).select('id').single()
-    if(e1||!setorRow){setMsg('Erro: '+(e1?.message||JSON.stringify(e1)||'sem retorno'));return}
+    if(e1||!setorRow){setMsg('Erro: '+(e1?.message||JSON.stringify(e1)||'sem retorno'));setMsgTipo('erro');return}
     // salvar criterios
     const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
     const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
@@ -1239,7 +1241,7 @@ function BaguaPlantaContent() {
         await supabase.from('consultas').update({bagua_imagem:dataUrl}).eq('id',consultaId)
       }
     } catch{}
-    setMsg(`"${stDef.nome}" salvo!`)
+    setMsg(`"${stDef.nome}" salvo!`); setMsgTipo('sucesso')
     setTimeout(()=>setMsg(''),3000)
   }
 
@@ -1317,12 +1319,12 @@ function BaguaPlantaContent() {
         status:'em_andamento',
       }).eq('id',consultaId)
       // Show toast
-      setMsg('✓ Análise salva com sucesso. Todas as páginas foram atualizadas.')
+      setMsg('✓ Análise salva com sucesso. Todas as páginas foram atualizadas.'); setMsgTipo('sucesso')
       setTimeout(()=>{
         router.push(`/consultas/${consultaId}`)
       },1000)
     }catch(err:any){
-      setMsg('Erro ao salvar: '+(err?.message||'erro desconhecido'))
+      setMsg('Erro ao salvar: '+(err?.message||'erro desconhecido')); setMsgTipo('erro')
     }finally{
       setSalvandoTudo(false)
     }
@@ -1666,7 +1668,7 @@ function BaguaPlantaContent() {
                   {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
                   {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
                   {msg&&(()=>{
-                    const isError=msg.toLowerCase().includes('erro')
+                    const isError=msgTipo==='erro'
                     return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FEF2F2':'#F0FDF4',borderRadius:'5px',color:isError?'#DC2626':'#15803D',fontSize:'11px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
                   })()}
                   {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
@@ -1691,11 +1693,14 @@ function BaguaPlantaContent() {
                               <div style={{display:'flex',flexDirection:'column',gap:'1px',marginTop:'2px'}}>
                                 <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
                                   <span style={{color:'#6B7280'}}>Geo:</span>
-                                  <span style={{color:corGeo(gv),fontWeight:'bold'}}>{Math.round(gv)} pts</span>
+                                  <span style={{color:corGeo(gv,sc),fontWeight:'bold'}}>{Math.round(gv)} pts</span>
                                 </div>
                                 <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
                                   <span style={{color:'#6B7280'}}>Físico:</span>
-                                  <span style={{color:sf>=0?'#15803D':'#DC2626',fontWeight:'bold'}}>{sf>=0?'+':''}{sf} pts</span>
+                                  {criteriosAvaliados(sc.criterios)
+                                    ? <span style={{color:sf>=0?'#15803D':'#DC2626',fontWeight:'bold'}}>{sf>=0?'+':''}{sf} pts</span>
+                                    : <span style={{color:'#9CA3AF',fontStyle:'italic'}}>Não avaliado</span>
+                                  }
                                 </div>
                               </div>
                               <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts} pts · {lblTotal(ts)}</div>
@@ -1734,7 +1739,7 @@ function BaguaPlantaContent() {
 
             {/* ════ PAINEL LATERAL ════ */}
             {step==='resultado'&&ativo!==null&&stAtivo&&scAtivo&&(
-              <div style={{width:'276px',flexShrink:0,background:'#fff',borderRadius:'12px',padding:'14px',
+              <div style={{width:'260px',flexShrink:0,background:'#fff',borderRadius:'12px',padding:'14px',
                 boxShadow:'0 2px 12px rgba(0,0,0,0.12)',border:`3px solid ${stAtivo.cor}`,
                 position:'sticky',top:'16px',maxHeight:'calc(100vh - 100px)',overflowY:'auto'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
@@ -1760,26 +1765,29 @@ function BaguaPlantaContent() {
                     <div style={{marginBottom:'10px'}}>
                       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
                         {/* Geo score */}
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:`3px solid ${corGeo(gv)}`}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:`3px solid ${corGeo(gv,scAtivo)}`}}>
                           <span style={{fontSize:'10px',color:'#6B7280'}}>Geométrico:</span>
-                          <span style={{fontSize:'11px',fontWeight:'bold',color:corGeo(gv)}}>{Math.round(gv)} pts · {lblGeo(gv)}</span>
+                          <span style={{fontSize:'11px',fontWeight:'bold',color:corGeo(gv,scAtivo)}}>{Math.round(gv)} pts · {lblGeo(gv,scAtivo)}</span>
                         </div>
                         {scAtivo.faltaPct>0&&(
-                          <div style={{fontSize:'9px',color:'#1D4ED8',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
+                          <div style={{fontSize:'9px',color:'#DC2626',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
                         )}
                         {scAtivo.excessoPct>0&&(
-                          <div style={{fontSize:'9px',color:'#DC2626',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
+                          <div style={{fontSize:'9px',color:'#D97706',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
                         )}
                         {scAtivo.ajusteManual!==null&&(
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 8px',background:'#EDE9FE',borderRadius:'4px',borderLeft:'3px solid #7C3AED'}}>
                             <span style={{fontSize:'9px',color:'#5B21B6',fontWeight:'bold'}}>Geo ajustado:</span>
-                            <span style={{fontSize:'10px',fontWeight:'bold',color:corGeo(scAtivo.ajusteManual)}}>{scAtivo.ajusteManual} pts</span>
+                            <span style={{fontSize:'10px',fontWeight:'bold',color:corGeo(scAtivo.ajusteManual,scAtivo)}}>{scAtivo.ajusteManual} pts</span>
                           </div>
                         )}
                         {/* Physical score */}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:'3px solid #6B7280'}}>
                           <span style={{fontSize:'10px',color:'#6B7280'}}>Físico:</span>
-                          <span style={{fontSize:'11px',fontWeight:'bold',color:sf>=0?'#15803D':'#DC2626'}}>{sf>=0?'+':''}{sf} pts</span>
+                          {criteriosAvaliados(scAtivo.criterios)
+                            ? <span style={{fontSize:'11px',fontWeight:'bold',color:sf>=0?'#15803D':'#DC2626'}}>{sf>=0?'+':''}{sf} pts</span>
+                            : <span style={{fontSize:'11px',color:'#9CA3AF',fontStyle:'italic'}}>Não avaliado</span>
+                          }
                         </div>
                         {/* Total score */}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:corTotal(ts)+'15',borderRadius:'5px',borderLeft:`3px solid ${corTotal(ts)}`}}>
