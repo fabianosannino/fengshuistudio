@@ -17,26 +17,40 @@
 
 import Stripe from 'stripe'
 
-// ── Validate required environment variables ──────────────────────────────────
+// ── Create the Stripe client lazily ──────────────────────────────────────────
+// We use a lazy getter so the build doesn't fail when STRIPE_SECRET_KEY
+// is not yet configured. The error is thrown at runtime when an API route
+// actually tries to use the client, not at build/import time.
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error(
-    '❌ STRIPE_SECRET_KEY is not set.\n' +
-    'Please add your Stripe secret key to .env.local:\n' +
-    '  STRIPE_SECRET_KEY=sk_test_...\n' +
-    'Get it from: https://dashboard.stripe.com/apikeys'
-  )
+let _stripeClient: Stripe | null = null
+
+function getStripeClient(): Stripe {
+  if (_stripeClient) return _stripeClient
+
+  const secretKey = process.env.STRIPE_SECRET_KEY
+  if (!secretKey) {
+    throw new Error(
+      '❌ STRIPE_SECRET_KEY is not set.\n' +
+      'Please add your Stripe secret key to your environment variables:\n' +
+      '  STRIPE_SECRET_KEY=sk_test_...\n' +
+      'Get it from: https://dashboard.stripe.com/apikeys'
+    )
+  }
+
+  _stripeClient = new Stripe(secretKey, {
+    appInfo: {
+      name: 'FengShui Studio',
+      version: '1.0.0',
+    },
+  })
+
+  return _stripeClient
 }
 
-// ── Create the Stripe client ─────────────────────────────────────────────────
-// The SDK automatically uses the latest API version (2026-03-25.dahlia).
-// We pass the secret key and identify our application for Stripe's logs.
-
-const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  // Identify this integration in Stripe's dashboard logs
-  appInfo: {
-    name: 'FengShui Studio',
-    version: '1.0.0',
+// Export a proxy that lazily initializes the client on first use
+const stripeClient = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    return (getStripeClient() as unknown as Record<string | symbol, unknown>)[prop]
   },
 })
 
