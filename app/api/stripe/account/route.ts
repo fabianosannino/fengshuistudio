@@ -1,12 +1,8 @@
 /**
- * Stripe Connected Account API
+ * Stripe Connected Account API (V1)
  *
- * POST /api/stripe/account — Create a new Stripe Connected Account (V2 API)
- *   Body: { display_name: string, email: string }
- *   Creates an account and stores the mapping in the user's profile.
- *
- * GET /api/stripe/account — Retrieve the current user's connected account status
- *   Returns account details including onboarding status and capabilities.
+ * POST /api/stripe/account — Create a new Stripe Connected Account
+ * GET  /api/stripe/account — Retrieve the current user's connected account status
  */
 
 import { NextResponse } from 'next/server'
@@ -17,7 +13,6 @@ import { logger } from '../../../../src/lib/logger'
 export async function POST(request: Request) {
   const supabase = await createRouteHandlerClient()
 
-  // ── Authenticate the user ──────────────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
@@ -28,40 +23,23 @@ export async function POST(request: Request) {
   const email = body.email || user.email || ''
 
   try {
-    // ── Create a V2 Connected Account ──────────────────────────────────────
-    // Uses the V2 API with specific properties:
-    // - dashboard: 'full' gives the connected account access to their own Stripe Dashboard
-    // - fees_collector & losses_collector: 'stripe' means Stripe handles fees and losses
-    // - card_payments capability: allows the account to accept card payments
-    // - identity.country: 'us' sets the account's country (change as needed)
-    // NOTE: Do NOT pass `type` at the top level. V2 accounts don't use type: 'express' etc.
-    const account = await stripeClient.v2.core.accounts.create({
-      display_name: displayName,
-      contact_email: email,
-      identity: {
-        country: 'us', // TODO: Change to 'br' for Brazil when available
+    // Create a V1 Express Connected Account
+    const account = await stripeClient.accounts.create({
+      type: 'express',
+      country: 'BR',
+      email: email,
+      business_type: 'individual',
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
       },
-      dashboard: 'full',
-      defaults: {
-        responsibilities: {
-          fees_collector: 'stripe',
-          losses_collector: 'stripe',
-        },
-      },
-      configuration: {
-        customer: {},
-        merchant: {
-          capabilities: {
-            card_payments: {
-              requested: true,
-            },
-          },
-        },
+      business_profile: {
+        name: displayName,
+        mcc: '7299', // Miscellaneous personal services
       },
     })
 
-    // ── Store the Stripe account ID in the user's profile ────────────────
-    // This creates a mapping between our user and their Stripe Connected Account
+    // Store the Stripe account ID in the user's profile
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ stripe_account_id: account.id })
@@ -88,11 +66,9 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-  // ── Get the user's Stripe account ID from the database ─────────────────
   const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
   const stripeAccountId = profile?.stripe_account_id
 
-  // Check URL param as fallback (for return URL from onboarding)
   const url = new URL(request.url)
   const accountIdParam = url.searchParams.get('accountId')
   const accountId = stripeAccountId || accountIdParam
@@ -102,36 +78,31 @@ export async function GET(request: Request) {
   }
 
   try {
-    // ── Retrieve the V2 account with expanded fields ─────────────────────
-    // We include merchant configuration and requirements to check:
-    // 1. Whether card_payments capability is active (ready to process payments)
-    // 2. Whether onboarding requirements are complete
-    const account = await stripeClient.v2.core.accounts.retrieve(accountId, {
-      include: ['configuration.merchant', 'requirements'],
-    })
+    // Retrieve the V1 account
+    const account = await stripeClient.accounts.retrieve(accountId)
 
-    // ── Check if the account is ready to accept payments ─────────────────
-    // card_payments status must be 'active' for the account to process charges
-    const readyToProcessPayments = account?.configuration
-      ?.merchant?.capabilities?.card_payments?.status === 'active'
+    const readyToProcessPayments = account.capabilities?.card_payments === 'active'
 
-    // ── Check onboarding completion status ────────────────────────────────
-    // Requirements summary tells us if there are outstanding items:
-    // - 'currently_due': items that must be collected now
-    // - 'past_due': items that are overdue
-    // - If neither, onboarding is complete
-    const requirementsStatus = account.requirements?.summary?.minimum_deadline?.status
-    const onboardingComplete = requirementsStatus !== 'currently_due' && requirementsStatus !== 'past_due'
+    // Check if onboarding is complete
+    const currentlyDue = account.requirements?.currently_due || []
+    const pastDue = account.requirements?.past_due || []
+    const onboardingComplete = currentlyDue.length === 0 && pastDue.length === 0
+
+    const requirementsStatus = pastDue.length > 0
+      ? 'past_due'
+      : currentlyDue.length > 0
+        ? 'currently_due'
+        : 'none'
 
     return NextResponse.json({
       has_account: true,
       account_id: accountId,
-      display_name: account.display_name,
+      display_name: account.business_profile?.name || account.email,
       ready_to_process_payments: readyToProcessPayments,
       onboarding_complete: onboardingComplete,
-      requirements_status: requirementsStatus || 'none',
+      requirements_status: requirementsStatus,
       capabilities: {
-        card_payments: account?.configuration?.merchant?.capabilities?.card_payments?.status || 'inactive',
+        card_payments: account.capabilities?.card_payments || 'inactive',
       },
     })
   } catch (err) {

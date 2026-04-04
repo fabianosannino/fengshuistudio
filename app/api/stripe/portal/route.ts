@@ -1,17 +1,10 @@
 /**
- * Stripe Billing Portal API
+ * Stripe Billing Portal API (V1)
  *
  * POST /api/stripe/portal — Create a billing portal session
- *   Body: { account_id? }
  *
- * The Billing Portal is a Stripe-hosted page where users can:
- * - View their subscription details
- * - Update their payment method
- * - Cancel or change their subscription
- * - View invoice history
- *
- * With V2 accounts, we use `customer_account` (the connected account ID)
- * instead of a separate `customer` ID.
+ * The Billing Portal lets users view/update subscriptions and payment methods.
+ * Uses a standard Stripe Customer (not customer_account).
  */
 
 import { NextResponse } from 'next/server'
@@ -19,34 +12,29 @@ import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { logger } from '../../../../src/lib/logger'
 
-export async function POST(request: Request) {
+export async function POST() {
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-  let body: { account_id?: string }
-  try { body = await request.json() } catch { body = {} }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('stripe_customer_id')
+    .eq('id', user.id)
+    .single()
 
-  // ── Get the connected account ID ───────────────────────────────────────
-  let accountId = body.account_id
-  if (!accountId) {
-    const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
-    accountId = profile?.stripe_account_id
+  const customerId = profile?.stripe_customer_id
+
+  if (!customerId) {
+    return NextResponse.json({ error: 'Nenhum cliente Stripe vinculado. Assine um plano primeiro.' }, { status: 400 })
   }
 
-  if (!accountId) {
-    return NextResponse.json({ error: 'Nenhuma conta Stripe vinculada' }, { status: 400 })
-  }
-
-  const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
   try {
-    // ── Create a Billing Portal session ──────────────────────────────────
-    // customer_account: the connected account (V2 accounts use this instead of customer)
-    // return_url: where to redirect when the user is done managing their subscription
     const session = await stripeClient.billingPortal.sessions.create({
-      customer_account: accountId,
+      customer: customerId,
       return_url: `${origin}/stripe/onboard`,
     })
 
