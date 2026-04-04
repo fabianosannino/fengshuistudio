@@ -295,6 +295,7 @@ function BaguaPlantaContent() {
   const [bordaModificada,setBordaModificada] = useState(false)
   const [ultimoRecalculo,setUltimoRecalculo] = useState<string|null>(null)
   const fsCvRef = useRef<HTMLCanvasElement>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
   // Refs to always have latest values (avoids stale closures in drag handlers)
   const boundsRef = useRef<Bounds|null>(null)
   const lhRef = useRef([1/3,2/3])
@@ -489,9 +490,11 @@ function BaguaPlantaContent() {
   const resizeCanvas = useCallback(()=>{
     const r=rotRef.current, cv=cvRef.current
     if(!r||!cv) return
-    // Allow canvas to use most of the available width (container will constrain via max-width)
-    const maxW=Math.min(1200,window.innerWidth-40)
-    const maxH=Math.max(400,window.innerHeight-180)
+    // Use actual container width for accurate sizing
+    const container=canvasContainerRef.current
+    const containerW=container?container.clientWidth:window.innerWidth-40
+    const maxW=Math.min(containerW,window.innerWidth-40)
+    const maxH=Math.max(500,window.innerHeight-180)
     const s=Math.min(maxW/r.width,maxH/r.height)
     cv.width=Math.round(r.width*s); cv.height=Math.round(r.height*s)
     cv.style.width  = cv.width  + 'px'
@@ -574,12 +577,16 @@ function BaguaPlantaContent() {
       const ex=entrada.x*s,ey=entrada.y*s
       const r2=7 // circle radius (14px diameter / 2)
 
-      // Chi direction arrow (pointing toward center of bounds)
+      // Chi direction arrow (perpendicular to nearest edge, pointing inward)
       if(bounds){
-        const cx=bx+bw/2, cy=by+bh/2
-        const dx=cx-ex, dy=cy-ey
-        const dist=Math.sqrt(dx*dx+dy*dy)||1
-        const ax=dx/dist, ay=dy/dist
+        const dTop=Math.abs(ey-by), dBot=Math.abs(ey-(by+bh))
+        const dLeft=Math.abs(ex-bx), dRight=Math.abs(ex-(bx+bw))
+        const minD=Math.min(dTop,dBot,dLeft,dRight)
+        let ax=0, ay=0
+        if(minD===dTop) ay=1       // nearest to top edge → point down
+        else if(minD===dBot) ay=-1  // nearest to bottom → point up
+        else if(minD===dLeft) ax=1  // nearest to left → point right
+        else ax=-1                  // nearest to right → point left
         const aLen=28, aStart=r2+4
         const sx2=ex+ax*aStart,sy2=ey+ay*aStart
         const ex2=ex+ax*(aStart+aLen),ey2=ey+ay*(aStart+aLen)
@@ -740,10 +747,14 @@ function BaguaPlantaContent() {
 
       // Chi direction arrow (pointing toward center of bounds)
       if(bounds){
-        const cx2=bx+bw/2, cy2=by+bh/2
-        const ddx=cx2-ex2, ddy=cy2-ey2
-        const dist2=Math.sqrt(ddx*ddx+ddy*ddy)||1
-        const ax2=ddx/dist2, ay2=ddy/dist2
+        const dTop2=Math.abs(ey2-by), dBot2=Math.abs(ey2-(by+bh))
+        const dLeft2=Math.abs(ex2-bx), dRight2=Math.abs(ex2-(bx+bw))
+        const minD2=Math.min(dTop2,dBot2,dLeft2,dRight2)
+        let ax2=0, ay2=0
+        if(minD2===dTop2) ay2=1
+        else if(minD2===dBot2) ay2=-1
+        else if(minD2===dLeft2) ax2=1
+        else ax2=-1
         const aLen=36, aStart=r2+5
         const sx3=ex2+ax2*aStart,sy3=ey2+ay2*aStart
         const ex3=ex2+ax2*(aStart+aLen),ey3=ey2+ay2*(aStart+aLen)
@@ -1495,7 +1506,7 @@ function BaguaPlantaContent() {
               )}
 
               {/* ══ CANVAS ÚNICO — nunca sai do DOM ══ */}
-              <div style={{position:'relative',display:'inline-block'}}>
+              <div ref={canvasContainerRef} style={{position:'relative',display:'inline-block',width:'100%'}}>
                 <canvas ref={cvRef}
                   onClick={step==='entrada'||step==='resultado'?onClick:undefined}
                   onMouseDown={step==='resultado'?onMD:undefined}
@@ -1503,7 +1514,7 @@ function BaguaPlantaContent() {
                   onMouseUp={step==='resultado'?onMU:undefined}
                   onMouseLeave={step==='resultado'?onMU:undefined}
                   style={{
-                    maxWidth:'100%',display:'block',height:'auto',
+                    display:'block',
                     border:'1px solid #E5E7EB',borderRadius:'8px',
                     cursor: step==='entrada'?'crosshair':(modo==='marcarFalta'||modo==='marcarExcesso')?'crosshair':modo!=='nenhum'?'move':'pointer',
                     userSelect:'none',
