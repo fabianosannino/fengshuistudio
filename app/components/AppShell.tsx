@@ -246,11 +246,11 @@ export default function AppShell({
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
-            borderRadius: '8px', background: 'transparent', border: 'none',
-            color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '14px', width: '100%'
+            borderRadius: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+            color: '#FCA5A5', cursor: 'pointer', fontSize: '14px', width: '100%', fontWeight: 'bold'
           }}>
             <span style={{ fontSize: '18px' }} aria-hidden="true">🚪</span>
-            {sidebarOpen && <span>Sair</span>}
+            {sidebarOpen && <span>Sair da conta</span>}
           </button>
         </div>
       </aside>
@@ -287,6 +287,14 @@ export default function AppShell({
                 borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
               }}>{plano === 'profissional' ? 'PRO' : 'SIMPLES'}</span>
             )}
+            <button onClick={handleLogout} title="Sair da conta" style={{
+              background: 'none', border: '1px solid ' + t.border, borderRadius: '8px',
+              padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+              color: t.textSoft, fontSize: '13px',
+            }}>
+              <span aria-hidden="true">🚪</span>
+              <span>Sair</span>
+            </button>
           </div>
         </header>
 
