@@ -79,8 +79,8 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    logger.error('Cliente insert error', { route: '/api/clientes', error: error.message })
-    return NextResponse.json({ error: 'Erro ao cadastrar cliente. Tente novamente.' }, { status: 400 })
+    logger.error('Cliente insert error', { route: '/api/clientes', error: error.message, code: error.code, details: error.details })
+    return NextResponse.json({ error: `Erro ao cadastrar cliente: ${error.message}` }, { status: 400 })
   }
 
   return NextResponse.json(data)
