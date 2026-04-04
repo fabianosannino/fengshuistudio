@@ -40,11 +40,13 @@ function gerarRecomendacoes(nomeSetor: string, scorePct: number, criteriosSetor:
   const melhoria: string[] = []
   const manutencao: string[] = []
 
+  // Scale: 0=Crítico(-2), 1=Ruim(-1), 2=Neutro(0), 3=Bom(+1), 4=Ótimo(+2)
   CRITERIOS.forEach((criterio, ci) => {
     const val = criteriosSetor[criterio] ?? -1
     const dicas = CRITERIO_DICAS[ci] || []
     if (val === 0) urgente.push(...dicas.slice(0, 2))
-    else if (val === 1) melhoria.push(dicas[0] || '')
+    else if (val === 1) melhoria.push(...dicas.slice(0, 2))
+    else if (val === 2) melhoria.push(dicas[0] || '')
   })
 
   const dicasSetor = SETOR_DICAS[nomeSetor] ?? []
@@ -847,7 +849,7 @@ export default function Relatorio() {
                             fontFamily: 'Helvetica Neue, Arial, sans-serif'
                           }}>
                             <span style={{ color: '#666' }}>{c.criterio}</span>
-                            <span style={{ color: scoreColor(c.score * 33), fontWeight: 700 }}>{c.score}/3</span>
+                            <span style={{ color: scoreColor(c.score * 25), fontWeight: 700 }}>{['-2','-1','0','+1','+2'][c.score] ?? c.score}</span>
                           </div>
                         ))}
                       </div>

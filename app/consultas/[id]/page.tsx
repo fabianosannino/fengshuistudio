@@ -122,11 +122,13 @@ function gerarRecomendacoes(nomeSetor: string, scorePct: number, criteriosSetor:
   const melhoria: string[] = []
   const manutencao: string[] = []
 
+  // Scale: 0=Crítico(-2), 1=Ruim(-1), 2=Neutro(0), 3=Bom(+1), 4=Ótimo(+2)
   CRITERIOS.forEach((criterio, ci) => {
     const val = criteriosSetor[criterio] ?? -1
     const dicas = CRITERIO_DICAS[ci] || []
     if (val === 0) urgente.push(...dicas.slice(0, 2))
-    else if (val === 1) melhoria.push(dicas[0] || '')
+    else if (val === 1) melhoria.push(...dicas.slice(0, 2))
+    else if (val === 2) melhoria.push(dicas[0] || '')
   })
 
   const dicasSetor = SETOR_DICAS[nomeSetor] ?? []
@@ -355,7 +357,7 @@ export default function ConsultaDetalhe() {
     const scores = Object.values(criterios[setorId] || {})
     if (scores.length === 0) return null
     const total = scores.reduce((a, b) => a + b, 0)
-    return Math.round((total / (scores.length * 3)) * 100)
+    return Math.round((total / (scores.length * 4)) * 100)
   }
 
   function scoreColor(pct: number | null) {
@@ -1047,7 +1049,11 @@ export default function ConsultaDetalhe() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <label style={{ color: '#374151', fontSize: '14px', fontWeight: 'bold' }}>{criterio}</label>
                         <div style={{ display: 'flex', gap: '6px' }}>
-                          {[0, 1, 2, 3].map(val => (
+                          {[0, 1, 2, 3, 4].map(val => {
+                            const LABELS=['-2','-1','0','+1','+2']
+                            const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
+                            const cur = criterios[setorAtivoData.id]?.[criterio]
+                            return (
                             <button key={val} onClick={() => {
                               setCriterios(prev => ({
                                 ...prev,
@@ -1055,20 +1061,20 @@ export default function ConsultaDetalhe() {
                               }))
                             }} style={{
                               width: '36px', height: '36px', borderRadius: '8px', border: 'none',
-                              cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
-                              background: criterios[setorAtivoData.id]?.[criterio] === val
-                                ? val === 0 ? '#DC2626' : val === 1 ? '#D97706' : val === 2 ? '#2563EB' : '#15803D'
-                                : '#E5E7EB',
-                              color: criterios[setorAtivoData.id]?.[criterio] === val ? '#fff' : '#6B7280'
-                            }}>{val}</button>
-                          ))}
+                              cursor: 'pointer', fontWeight: 'bold', fontSize: '13px',
+                              background: cur === val ? CORES[val] : '#E5E7EB',
+                              color: cur === val ? '#fff' : '#6B7280'
+                            }}>{LABELS[val]}</button>
+                            )
+                          })}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: '#9CA3AF', marginBottom: '8px' }}>
-                        <span style={{ color: '#DC2626' }}>0=Crítico</span>
-                        <span style={{ color: '#D97706' }}>1=Regular</span>
-                        <span style={{ color: '#2563EB' }}>2=Bom</span>
-                        <span style={{ color: '#15803D' }}>3=Ótimo</span>
+                      <div style={{ display: 'flex', gap: '6px', fontSize: '11px', color: '#9CA3AF', marginBottom: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ color: '#DC2626' }}>-2 Crítico</span>
+                        <span style={{ color: '#EA580C' }}>-1 Ruim</span>
+                        <span style={{ color: '#6B7280' }}>0 Neutro</span>
+                        <span style={{ color: '#65A30D' }}>+1 Bom</span>
+                        <span style={{ color: '#15803D' }}>+2 Ótimo</span>
                       </div>
                       <input
                         placeholder="Observação (opcional)"
