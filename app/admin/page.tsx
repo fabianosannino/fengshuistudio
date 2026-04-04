@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 
 export default function AdminRedirect() {
   useEffect(() => {
-    window.location.href = '/admin/chaves'
+    window.location.href = '/admin/pagamentos'
   }, [])
 
   return (
