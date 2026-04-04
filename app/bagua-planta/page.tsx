@@ -95,11 +95,12 @@ function gerarRecomendacoes(
     melhoria.push('Use divisórias simbólicas ou espelhos para definir limites energéticos claros')
   }
 
-  // Critérios físicos com score baixo (0 = crítico, 1 = ruim)
+  // Critérios físicos com score baixo (0=Crítico, 1=Ruim, 2=Neutro)
   sc.criterios.forEach((val, ci) => {
     const dicas = CRITERIO_DICAS[ci] || []
     if (val === 0) urgente.push(...dicas.slice(0,2))
-    else if (val === 1) melhoria.push(dicas[0])
+    else if (val === 1) melhoria.push(...dicas.slice(0,2))
+    else if (val === 2) melhoria.push(dicas[0])
   })
 
   // Dicas específicas do setor se score total baixo
@@ -162,10 +163,56 @@ function buildRot(img: HTMLImageElement, deg: number): HTMLCanvasElement {
   return c
 }
 
+// Compute overlap area between two rectangles
+function rectOverlap(r:{x:number;y:number;w:number;h:number}, sx:number,sy:number,sw:number,sh:number):number{
+  const ox=Math.max(0,Math.min(r.x+r.w,sx+sw)-Math.max(r.x,sx))
+  const oy=Math.max(0,Math.min(r.y+r.h,sy+sh)-Math.max(r.y,sy))
+  return ox*oy
+}
+
+// For excesso: compute only the area OUTSIDE the main bounds
+function excessoAreaExterna(m:Marcacao, b:Bounds):number{
+  const totalArea=m.w*m.h
+  const overlapComBounds=rectOverlap(m,b.x,b.y,b.w,b.h)
+  return Math.max(0,totalArea-overlapComBounds)
+}
+
 // New calculation: purely from manual marcacoes, no pixel detection
 function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[]): Setor[] {
   const boundsArea = b.w * b.h
   const sectorArea = boundsArea / 9
+
+  // Pre-compute external excesso areas and distribute to nearest sectors
+  const excessoExterno = Array(9).fill(0) as number[]
+  for(const m of marcacoes){
+    if(m.tipo!=='excesso') continue
+    const extArea=excessoAreaExterna(m,b)
+    if(extArea<=0) continue
+    // Distribute external area to the sectors whose edges are closest
+    // Find which sectors the excesso is adjacent to by extending sector boundaries
+    const sectorWeights=Array(9).fill(0) as number[]
+    let totalWeight=0
+    for(let idx=0;idx<9;idx++){
+      const row=Math.floor(idx/3),col=idx%3
+      const sx0=b.x+(col===0?0:b.w*lv[col-1]),sx1=b.x+(col===2?b.w:b.w*lv[col])
+      const sy0=b.y+(row===0?0:b.h*lh[row-1]),sy1=b.y+(row===2?b.h:b.h*lh[row])
+      // Extend sector bounds outward (large extent for edge sectors)
+      const ext=Math.max(b.w,b.h)*2
+      const exX0=col===0?sx0-ext:sx0, exX1=col===2?sx1+ext:sx1
+      const exY0=row===0?sy0-ext:sy0, exY1=row===2?sy1+ext:sy1
+      const overlap=rectOverlap(m,exX0,exY0,exX1-exX0,exY1-exY0)
+      // Subtract overlap with the actual sector (internal part)
+      const internalOverlap=rectOverlap(m,sx0,sy0,sx1-sx0,sy1-sy0)
+      const weight=Math.max(0,overlap-internalOverlap)
+      sectorWeights[idx]=weight
+      totalWeight+=weight
+    }
+    if(totalWeight>0){
+      for(let idx=0;idx<9;idx++){
+        excessoExterno[idx]+=extArea*(sectorWeights[idx]/totalWeight)
+      }
+    }
+  }
 
   return Array(9).fill(0).map((_,idx)=>{
     const row=Math.floor(idx/3),col=idx%3
@@ -173,14 +220,13 @@ function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[
     const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
     const sw=x1-x0,sh=y1-y0
 
-    let faltaArea=0, excessoArea=0
+    let faltaArea=0
     for(const m of marcacoes){
+      if(m.tipo!=='falta') continue
       const overlap=rectOverlap(m,x0,y0,sw,sh)
-      if(overlap>0){
-        if(m.tipo==='falta') faltaArea+=overlap
-        else excessoArea+=overlap
-      }
+      if(overlap>0) faltaArea+=overlap
     }
+    const excessoArea=excessoExterno[idx]
     const faltaPct = sectorArea > 0 ? (faltaArea / sectorArea) * 100 : 0
     const excessoPct = sectorArea > 0 ? (excessoArea / sectorArea) * 100 : 0
     const geo = 100 - faltaPct + excessoPct
@@ -189,16 +235,10 @@ function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[
   })
 }
 
-// Compute overlap area between a marcacao rect and a sector rect
-function rectOverlap(r:{x:number;y:number;w:number;h:number}, sx:number,sy:number,sw:number,sh:number):number{
-  const ox=Math.max(0,Math.min(r.x+r.w,sx+sw)-Math.max(r.x,sx))
-  const oy=Math.max(0,Math.min(r.y+r.h,sy+sh)-Math.max(r.y,sy))
-  return ox*oy
-}
-
 // ─── NEW SCORING SYSTEM ──────────────────────────────────────────────────────
-// Physical score: 0→-2, 1→-1, 2→+1, 3→+2
-function scoreFisico(c:number[]):number{return c.reduce((s,v)=>s+(v===0?-2:v===1?-1:v===2?1:2),0)}
+// Physical score: 0→-2, 1→-1, 2→0, 3→+1, 4→+2
+const FISICO_MAP=[-2,-1,0,1,2]
+function scoreFisico(c:number[]):number{return c.reduce((s,v)=>s+(FISICO_MAP[v]??0),0)}
 // Effective geo (with manual adjustment if set)
 function geoEfetivo(sc:Setor):number{return sc.ajusteManual!==null?sc.ajusteManual:sc.geo}
 // Total score = geo + physical
@@ -441,24 +481,29 @@ function BaguaPlantaContent() {
   }
 
   // ── reconstruir imagem rotacionada + redimensionar canvas ─────────────────
-  // ÚNICA vez que o canvas é redimensionado = quando image ou rotacao muda
+  // Resize canvas to fit current viewport
+  const resizeCanvas = useCallback(()=>{
+    const r=rotRef.current, cv=cvRef.current
+    if(!r||!cv) return
+    const maxW=Math.min(640,window.innerWidth-40)
+    const maxH=Math.max(200,window.innerHeight-300)
+    const s=Math.min(maxW/r.width,maxH/r.height,1)
+    cv.width=Math.round(r.width*s); cv.height=Math.round(r.height*s)
+    cv.style.width  = cv.width  + 'px'
+    cv.style.height = cv.height + 'px'
+  },[])
+
   useEffect(()=>{
     if(!img) return
     const r=buildRot(img,rot)
     rotRef.current=r
     const cv=cvRef.current; if(!cv) return
-    const maxW=Math.min(640,window.innerWidth-80)
-    const maxH=Math.max(200,window.innerHeight-440)
-    const s=Math.min(maxW/r.width,maxH/r.height)
-    cv.width=r.width*s; cv.height=r.height*s
-    // Fixar CSS igual aos pixels — impede width:100% de distorcer canvas portrait
-    cv.style.width  = cv.width  + 'px'
-    cv.style.height = cv.height + 'px'
+    resizeCanvas()
     // Skip reset during restoration (bounds/setores are set by restaurarRascunho)
     if(restaurandoRef.current) return
     // reset posicionamento ao girar
     setBounds(null); setEntrada(null); setSetores([])
-  },[img,rot])
+  },[img,rot,resizeCanvas])
 
   // ── escala pixels do rotCanvas → pixels do canvas de exibição ─────────────
   const scale=useCallback(()=>{
@@ -530,15 +575,9 @@ function BaguaPlantaContent() {
       const ex=entrada.x*s,ey=entrada.y*s
       const r2=7 // circle radius (14px diameter / 2)
 
-      // Chi direction arrow (pointing inward from closest wall)
+      // Chi direction arrow (always pointing up)
       if(bounds){
-        const bx2=bounds.x*s,by2=bounds.y*s,bw2=bounds.w*s,bh2=bounds.h*s
-        const distTop=Math.abs(ey-by2),distBot=Math.abs(ey-(by2+bh2))
-        const distLeft=Math.abs(ex-bx2),distRight=Math.abs(ex-(bx2+bw2))
-        const minDist=Math.min(distTop,distBot,distLeft,distRight)
-        let ax=0,ay=0 // arrow direction (inward)
-        if(minDist===distTop){ay=1} else if(minDist===distBot){ay=-1}
-        else if(minDist===distLeft){ax=1} else {ax=-1}
+        const ax=0,ay=-1 // always point up
         const aLen=28, aStart=r2+4
         const sx2=ex+ax*aStart,sy2=ey+ay*aStart
         const ex2=ex+ax*(aStart+aLen),ey2=ey+ay*(aStart+aLen)
@@ -623,6 +662,14 @@ function BaguaPlantaContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{ draw() },[step])
 
+  // Responsive: recalculate canvas on window resize
+  useEffect(()=>{
+    if(!img) return
+    function handleResize(){ resizeCanvas(); draw() }
+    window.addEventListener('resize',handleResize)
+    return ()=>window.removeEventListener('resize',handleResize)
+  },[img,resizeCanvas,draw])
+
   // ── fullscreen canvas draw ──────────────────────────────────────────────────
   const drawFS = useCallback(()=>{
     const cv=fsCvRef.current, r=rotRef.current; if(!cv||!r||!fullscreen) return
@@ -693,15 +740,9 @@ function BaguaPlantaContent() {
       const ex2=entrada.x*s,ey2=entrada.y*s
       const r2=9
 
-      // Chi direction arrow
+      // Chi direction arrow (always pointing up)
       if(bounds){
-        const bx2=bounds.x*s,by2=bounds.y*s,bw2=bounds.w*s,bh2=bounds.h*s
-        const distTop=Math.abs(ey2-by2),distBot=Math.abs(ey2-(by2+bh2))
-        const distLeft=Math.abs(ex2-bx2),distRight=Math.abs(ex2-(bx2+bw2))
-        const minDist=Math.min(distTop,distBot,distLeft,distRight)
-        let ax2=0,ay2=0
-        if(minDist===distTop){ay2=1} else if(minDist===distBot){ay2=-1}
-        else if(minDist===distLeft){ax2=1} else {ax2=-1}
+        const ax2=0,ay2=-1 // always point up
         const aLen=36, aStart=r2+5
         const sx3=ex2+ax2*aStart,sy3=ey2+ay2*aStart
         const ex3=ex2+ax2*(aStart+aLen),ey3=ey2+ay2*(aStart+aLen)
@@ -1459,7 +1500,7 @@ function BaguaPlantaContent() {
                   onMouseUp={step==='resultado'?onMU:undefined}
                   onMouseLeave={step==='resultado'?onMU:undefined}
                   style={{
-                    maxWidth:'100%',display:'block',
+                    maxWidth:'100%',display:'block',height:'auto',
                     border:'1px solid #E5E7EB',borderRadius:'8px',
                     cursor: step==='entrada'?'crosshair':(modo==='marcarFalta'||modo==='marcarExcesso')?'crosshair':modo!=='nenhum'?'move':'pointer',
                     userSelect:'none',
@@ -1643,11 +1684,17 @@ function BaguaPlantaContent() {
                               border:`2px solid ${sel?corTotal(ts):'#E5E7EB'}`,background:sel?corTotal(ts)+'18':'#F9FAFB',
                             }}>
                               <div style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{st.nome}</div>
-                              <div style={{display:'flex',gap:'4px',marginTop:'2px',flexWrap:'wrap'}}>
-                                <span style={{fontSize:'9px',color:corGeo(gv),fontWeight:'bold'}}>{Math.round(gv)} geo</span>
-                                <span style={{fontSize:'9px',color:'#6B7280'}}>{sf>=0?'+':''}{sf} fis</span>
+                              <div style={{display:'flex',flexDirection:'column',gap:'1px',marginTop:'2px'}}>
+                                <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
+                                  <span style={{color:'#6B7280'}}>Geo:</span>
+                                  <span style={{color:corGeo(gv),fontWeight:'bold'}}>{Math.round(gv)} pts</span>
+                                </div>
+                                <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
+                                  <span style={{color:'#6B7280'}}>Físico:</span>
+                                  <span style={{color:sf>=0?'#15803D':'#DC2626',fontWeight:'bold'}}>{sf>=0?'+':''}{sf} pts</span>
+                                </div>
                               </div>
-                              <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'1px'}}>{ts} pts · {lblTotal(ts)}</div>
+                              <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts} pts · {lblTotal(ts)}</div>
                               {sc.ajusteManual!==null&&<div style={{fontSize:'7px',color:'#7C3AED',marginTop:'1px'}}>&#x270F; Ajustado</div>}
                             </div>
                           )
@@ -1740,9 +1787,44 @@ function BaguaPlantaContent() {
                   )
                 })()}
 
-                {/* ���─ AJUSTE DO CONSULTOR (Avançado - colapsável) ── */}
-                <details style={{marginBottom:'10px'}}>
-                  <summary style={{fontSize:'11px',fontWeight:'bold',color:'#7C3AED',cursor:'pointer',padding:'6px 0',userSelect:'none'}}>
+                {/* ── Avaliação física (critérios) ── */}
+                <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
+                  Avaliação física
+                </div>
+                {CRITERIOS.map((crit,ci)=>{
+                  const LABELS=['-2','-1','0','+1','+2']
+                  const NOMES=['Crítico','Ruim','Neutro','Bom','Ótimo']
+                  const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
+                  const BGS=['#FEF2F2','#FFF7ED','#F9FAFB','#F0FDF4','#DCFCE7']
+                  const val=scAtivo.criterios[ci]??2
+                  return (
+                  <div key={ci} style={{marginBottom:'9px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:'3px'}}>
+                      <span style={{fontSize:'10px',color:'#374151'}}>{crit}</span>
+                      <span style={{fontSize:'10px',fontWeight:'bold',color:CORES[val]}}>
+                        {NOMES[val]}
+                      </span>
+                    </div>
+                    <div style={{display:'flex',gap:'3px'}}>
+                      {[0,1,2,3,4].map(v=>(
+                        <button key={v} onClick={()=>setCrit(ativo!,ci,v)} style={{
+                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                          borderColor:val===v?CORES[v]:'#D1D5DB',
+                          background:val===v?BGS[v]:'#fff',
+                          color:val===v?CORES[v]:'#9CA3AF',
+                        }}>{LABELS[v]}</button>
+                      ))}
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:'8px',color:'#D1D5DB',marginTop:'1px'}}>
+                      <span>Crítico</span><span>Ótimo</span>
+                    </div>
+                  </div>
+                  )
+                })}
+
+                {/* ── Avançado — Ajuste do consultor (colapsável) ── */}
+                <details style={{marginBottom:'10px',marginTop:'4px'}}>
+                  <summary style={{fontSize:'11px',fontWeight:'bold',color:'#7C3AED',cursor:'pointer',padding:'6px 0',userSelect:'none',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
                     🎛 Avançado — Ajuste do consultor
                   </summary>
                   <div style={{padding:'10px',background:'#FAFAFA',borderRadius:'8px',border:'1px solid #E5E7EB',marginTop:'4px'}}>
@@ -1783,15 +1865,17 @@ function BaguaPlantaContent() {
                   </div>
                 </details>
 
-                {/* ── Recomendações dinâmicas (ACIMA dos critérios) ── */}
+                {/* ── Recomendações dinâmicas (colapsável) ── */}
                 {(()=>{
                   const rec = gerarRecomendacoes(stAtivo, scAtivo)
                   const hasRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0
                   if (!hasRec) return null
                   return (
-                    <div style={{marginBottom:'12px',borderTop:'1px solid #F3F4F6',paddingTop:'10px'}}>
-                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px'}}>💡 Recomendações</div>
-
+                    <details style={{marginBottom:'10px'}}>
+                      <summary style={{fontSize:'11px',fontWeight:'bold',color:'#374151',cursor:'pointer',padding:'6px 0',userSelect:'none'}}>
+                        💡 Recomendações
+                      </summary>
+                      <div style={{padding:'10px 0',marginTop:'4px'}}>
                       {rec.urgente.length>0&&(
                         <div style={{marginBottom:'8px'}}>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
@@ -1833,37 +1917,10 @@ function BaguaPlantaContent() {
                           ))}
                         </div>
                       )}
-                    </div>
+                      </div>
+                    </details>
                   )
                 })()}
-
-                {/* Critérios */}
-                <div style={{fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'8px',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
-                  Avaliação física
-                </div>
-                {CRITERIOS.map((crit,ci)=>(
-                  <div key={ci} style={{marginBottom:'9px'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:'3px'}}>
-                      <span style={{fontSize:'10px',color:'#374151'}}>{crit}</span>
-                      <span style={{fontSize:'10px',fontWeight:'bold',color:['#DC2626','#D97706','#65A30D','#15803D'][scAtivo.criterios[ci]]}}>
-                        {['Crítico','Regular','Bom','Ótimo'][scAtivo.criterios[ci]]}
-                      </span>
-                    </div>
-                    <div style={{display:'flex',gap:'3px'}}>
-                      {[0,1,2,3].map(v=>(
-                        <button key={v} onClick={()=>setCrit(ativo!,ci,v)} style={{
-                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'11px',fontWeight:'bold',cursor:'pointer',
-                          borderColor:scAtivo.criterios[ci]===v?['#DC2626','#D97706','#65A30D','#15803D'][v]:'#D1D5DB',
-                          background:scAtivo.criterios[ci]===v?['#FEF2F2','#FFF7ED','#F0FDF4','#DCFCE7'][v]:'#fff',
-                          color:scAtivo.criterios[ci]===v?['#DC2626','#D97706','#65A30D','#15803D'][v]:'#9CA3AF',
-                        }}>{v}</button>
-                      ))}
-                    </div>
-                    <div style={{display:'flex',justifyContent:'space-between',fontSize:'8px',color:'#D1D5DB',marginTop:'1px'}}>
-                      <span>Crítico</span><span>Ótimo</span>
-                    </div>
-                  </div>
-                ))}
 
                 <button onClick={()=>salvarSetorDB(ativo!)}
                   style={{width:'100%',marginTop:'8px',background:consultaId?'#7C3AED':'#1E3A5F',color:'#fff',border:'none',padding:'9px',borderRadius:'7px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
