@@ -23,7 +23,7 @@ const PLANOS = [
     ]
   },
   {
-    id: 'simples', nome: 'Simples', precoMensal: 97, precoAnual: 814.80,
+    id: 'simples', nome: 'Simples', precoMensal: 20, precoAnual: 168,
     descricao: 'Para uso pessoal', cor: '#059669', destaque: false,
     recursos: [
       { nome: 'Cadastro de imóveis', valor: '1 ativo', disponivel: true },
@@ -37,7 +37,7 @@ const PLANOS = [
     ]
   },
   {
-    id: 'profissional', nome: 'Profissional', precoMensal: 247, precoAnual: 2076,
+    id: 'profissional', nome: 'Profissional', precoMensal: 49, precoAnual: 411.60,
     descricao: 'Para consultores profissionais', cor: '#7C3AED', destaque: true,
     recursos: [
       { nome: 'Cadastro de imóveis', valor: 'Ilimitados', disponivel: true },
