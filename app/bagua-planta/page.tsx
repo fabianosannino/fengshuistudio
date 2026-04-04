@@ -82,13 +82,16 @@ function gerarRecomendacoes(
   const melhoria:   string[] = []
   const manutencao: string[] = []
 
+  // Only generate if criteria have been evaluated
+  if (!criteriosAvaliados(sc.criterios)) return { urgente: [], melhoria: [], manutencao: [] }
+
   // Problemas geométricos
-  if (sc.falta) {
-    urgente.push(`⚠ Setor com área construída insuficiente — a energia de ${setor.nome} está enfraquecida neste imóvel`)
+  if (sc.faltaPct > 5) {
+    urgente.push(`⚠ Setor com área faltante (${Math.round(sc.faltaPct)}%) — a energia de ${setor.nome} está enfraquecida`)
     urgente.push('Compense com ativação energética intensa: mais objetos do elemento, cores e intenção')
   }
-  if (sc.excesso) {
-    melhoria.push(`↑ Setor com projeção além dos limites — excesso pode gerar desequilíbrio em ${setor.nome}`)
+  if (sc.excessoPct > 5) {
+    melhoria.push(`↑ Setor com excesso (${Math.round(sc.excessoPct)}%) — pode gerar desequilíbrio em ${setor.nome}`)
     melhoria.push('Use divisórias simbólicas ou espelhos para definir limites energéticos claros')
   }
 
@@ -100,7 +103,7 @@ function gerarRecomendacoes(
   })
 
   // Dicas específicas do setor se score total baixo
-  const ts = total(sc.geo, sc.criterios)
+  const ts = scoreTotal(sc)
   const dicasSetor = setor.dicas ?? []
   if (ts < 40) {
     urgente.push(...dicasSetor.slice(0,3))
@@ -125,27 +128,24 @@ function gridOrder(escola: string, lado: string): number[] {
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
-type Step   = 'upload' | 'configurar' | 'entrada' | 'resultado'
+type Step   = 'upload' | 'metragem' | 'configurar' | 'entrada' | 'resultado'
 type Lado   = 'esquerda' | 'centro' | 'direita'
 type Bounds = { x:number; y:number; w:number; h:number }
 type Marcacao = { id:string; tipo:'falta'|'excesso'; x:number; y:number; w:number; h:number }
 type Drag   = { tipo:'borda'; lado:'top'|'bottom'|'left'|'right' }
-            | { tipo:'linhaH'|'linhaV'; index:number }
             | { tipo:'marcacao-mover'; id:string; offX:number; offY:number }
             | { tipo:'marcacao-resize'; id:string; canto:'tl'|'tr'|'bl'|'br' }
 type Setor  = {
-  criterios:number[]; geo:number; falta:boolean; excesso:boolean;
-  /** Area metrics (pixel-based, proportional) */
-  aq:number;  // theoretical area (1/9 of bounds)
-  ac:number;  // construction inside bounds within sector
-  av:number;  // void inside bounds = A_falta (aq - ac, clamped ≥0)
-  ae:number;  // construction outside bounds = A_excesso
-  ar:number;  // effective area = AQ - AV - AE (clamped ≥0)
-  desvio:number; // ((ar - aq) / aq) * 100  — always ≤ 0 or ≈ 0
-  /** Manual adjustment (Nível 3) */
-  ajusteManual:number|null;  // manual override % (null = use calculated)
+  criterios:number[];
+  geo:number;         // 100 base - faltaPct + excessoPct (points)
+  faltaArea:number;   // falta area in px² for this sector
+  excessoArea:number; // excesso area in px² for this sector
+  faltaPct:number;    // falta as % of sector area
+  excessoPct:number;  // excesso as % of sector area
+  /** Manual geo adjustment — fine-tuning (Avançado) */
+  ajusteManual:number|null;
   ajusteTipo:'equilibrado'|'faltante'|'excedente'|null;
-  obs:string; // consultant text observation
+  obs:string;
 }
 
 const DRAG = 18
@@ -162,113 +162,30 @@ function buildRot(img: HTMLImageElement, deg: number): HTMLCanvasElement {
   return c
 }
 
-function calcBounds(src: HTMLCanvasElement): Bounds {
-  const ctx=src.getContext('2d',{willReadFrequently:true})!
-  const d=ctx.getImageData(0,0,src.width,src.height).data
-  let x0=src.width,x1=0,y0=src.height,y1=0
-  for(let y=0;y<src.height;y++) for(let x=0;x<src.width;x++){
-    const i=(y*src.width+x)*4
-    if(d[i+3]>30&&!(d[i]>230&&d[i+1]>230&&d[i+2]>230)){
-      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y
-    }
-  }
-  const m=10
-  const bx=Math.max(0,x0-m)
-  const by=Math.max(0,y0-m)
-  const bw=Math.min(src.width -bx, x1-bx+m)
-  const bh=Math.min(src.height-by, y1-by+m)
-  return {x:bx,y:by,w:bw,h:bh}
-}
-
-function analisar(src: HTMLCanvasElement, b:Bounds, lh:number[], lv:number[]): Setor[] {
-  const ctx=src.getContext('2d',{willReadFrequently:true})!, W=src.width, H=src.height
-  const d=ctx.getImageData(0,0,W,H).data
-
-  // Helper: classify a pixel as vegetation/outdoor
-  function isVegetation(r:number,g:number,b:number){
-    // Green-dominant: grass, trees, bushes, garden
-    return g > r*1.12 && g > b*1.12 && g > 55
-  }
-  // Helper: classify a pixel as construction (walls, furniture, indoor floors)
-  // Excludes vegetation, sky, and plain white backgrounds
-  function isConstruction(r:number,g:number,b:number){
-    if(isVegetation(r,g,b)) return false
-    const brightness=(r+g+b)/3
-    // Very bright = empty/background
-    if(brightness>225) return false
-    // Walls: very dark lines
-    if(brightness<100) return true
-    // Furniture/fixtures: medium dark, non-green
-    if(brightness<170) return true
-    // Colored elements (non-green): saturated pixels like colored walls/tiles
-    const maxC=Math.max(r,g,b), minC=Math.min(r,g,b)
-    const sat=maxC>0?(maxC-minC)/maxC:0
-    if(sat>0.3 && brightness<210) return true
-    return false
-  }
-
-  // Calculate construction pixel count inside a region
-  function constructionCount(x0:number,y0:number,x1:number,y1:number){
-    let construction=0, sampled=0
-    const sx=Math.max(0,Math.floor(x0)), ex2=Math.min(W,Math.ceil(x1))
-    const sy=Math.max(0,Math.floor(y0)), ey2=Math.min(H,Math.ceil(y1))
-    const stp = Math.max(1, Math.floor(Math.min(ex2-sx, ey2-sy) / 200))
-    for(let y=sy;y<ey2;y+=stp) for(let x=sx;x<ex2;x+=stp){
-      const i=(y*W+x)*4, r=d[i],g=d[i+1],bv=d[i+2],a=d[i+3]
-      if(a<30) continue
-      sampled++
-      if(isConstruction(r,g,bv)) construction++
-    }
-    const regionArea = (ex2-sx)*(ey2-sy)
-    if(sampled===0) return 0
-    return (construction/sampled)*regionArea
-  }
-
-  // ARE = bounds area (from orange handles only), AQ = uniform for all 9 sectors
-  const ARE = b.w * b.h
-  const aqUnit = ARE / 9
-  // Margin for detecting construction outside bounds (15% of boundary)
-  const mgW = b.w * 0.15, mgH = b.h * 0.15
+// New calculation: purely from manual marcacoes, no pixel detection
+function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[]): Setor[] {
+  const boundsArea = b.w * b.h
+  const sectorArea = boundsArea / 9
 
   return Array(9).fill(0).map((_,idx)=>{
     const row=Math.floor(idx/3),col=idx%3
     const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
     const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
+    const sw=x1-x0,sh=y1-y0
 
-    // AQ: theoretical area = ARE / 9 (equal for all 9 sectors)
-    const aq = aqUnit
+    let faltaArea=0, excessoArea=0
+    for(const m of marcacoes){
+      const overlap=rectOverlap(m,x0,y0,sw,sh)
+      if(overlap>0){
+        if(m.tipo==='falta') faltaArea+=overlap
+        else excessoArea+=overlap
+      }
+    }
+    const faltaPct = sectorArea > 0 ? (faltaArea / sectorArea) * 100 : 0
+    const excessoPct = sectorArea > 0 ? (excessoArea / sectorArea) * 100 : 0
+    const geo = 100 - faltaPct + excessoPct
 
-    // AC: construction pixels inside bounds within this sector
-    const ac = constructionCount(x0,y0,x1,y1)
-
-    // AV: void inside sector (theoretical minus actual, clamped ≥ 0)
-    const av = ac < aq ? aq - ac : 0
-
-    // AE: construction outside bounds in this sector's edge direction
-    let aeTotal = 0
-    if(row===0) aeTotal += constructionCount(x0,b.y-mgH,x1,b.y)
-    if(row===2) aeTotal += constructionCount(x0,b.y+b.h,x1,b.y+b.h+mgH)
-    if(col===0) aeTotal += constructionCount(b.x-mgW,y0,b.x,y1)
-    if(col===2) aeTotal += constructionCount(b.x+b.w,y0,b.x+b.w+mgW,y1)
-    const ae = aeTotal
-
-    // AR = AQ - A_falta - A_excesso (clamped ≥ 0)
-    // A_falta = AV (void inside), A_excesso = AE (construction outside)
-    const ar = Math.max(0, aq - av - ae)
-
-    // Deviation percentage (completely independent per sector)
-    // AR ≤ AQ always, so desvio ≤ 0 (or ≈ 0 when equilibrado)
-    const desvio = aq > 0 ? ((ar - aq) / aq) * 100 : 0
-
-    // Independent per-sector diagnosis — no cross-sector contamination
-    const falta = av > 0
-    const excesso = ae > 0
-
-    // Geo score based on absolute deviation (independent per sector)
-    const absD = Math.abs(desvio)
-    const geo = absD <= 5 ? 100 : absD <= 15 ? 80 : absD <= 40 ? 50 : absD <= 70 ? 25 : 10
-
-    return {criterios:Array(8).fill(1),geo,falta,excesso,aq,ac,av,ae,ar,desvio,ajusteManual:null,ajusteTipo:null,obs:''}
+    return {criterios:Array(8).fill(2),geo,faltaArea,excessoArea,faltaPct,excessoPct,ajusteManual:null,ajusteTipo:null,obs:''}
   })
 }
 
@@ -279,84 +196,28 @@ function rectOverlap(r:{x:number;y:number;w:number;h:number}, sx:number,sy:numbe
   return ox*oy
 }
 
-// Apply marcacoes to setores — adjusts AR based on manual falta/excesso rectangles
-function aplicarMarcacoes(setoresBase:Setor[], b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[]):Setor[]{
-  if(marcacoes.length===0) return setoresBase
-  return setoresBase.map((sc,idx)=>{
-    const row=Math.floor(idx/3),col=idx%3
-    const x0=b.x+(col===0?0:b.w*lv[col-1])
-    const x1=b.x+(col===2?b.w:b.w*lv[col])
-    const y0=b.y+(row===0?0:b.h*lh[row-1])
-    const y1=b.y+(row===2?b.h:b.h*lh[row])
-    const sw=x1-x0, sh=y1-y0
-
-    let faltaArea=0, excessoArea=0
-    for(const m of marcacoes){
-      const overlap=rectOverlap(m,x0,y0,sw,sh)
-      if(overlap>0){
-        if(m.tipo==='falta') faltaArea+=overlap
-        else excessoArea+=overlap
-      }
-    }
-    if(faltaArea===0 && excessoArea===0) return sc
-    const newAv = sc.av + faltaArea
-    const newAe = sc.ae + excessoArea
-    const newAr = Math.max(0, sc.aq - newAv - newAe)
-    const newDesvio = sc.aq > 0 ? ((newAr - sc.aq) / sc.aq) * 100 : 0
-    const absD = Math.abs(newDesvio)
-    const newGeo = absD <= 5 ? 100 : absD <= 15 ? 80 : absD <= 40 ? 50 : absD <= 70 ? 25 : 10
-    return {...sc, av:newAv, ae:newAe, ar:newAr, desvio:newDesvio, geo:newGeo,
-      falta:newAv>0, excesso:newAe>0}
-  })
+// ─── NEW SCORING SYSTEM ──────────────────────────────────────────────────────
+// Physical score: 0→-2, 1→-1, 2→+1, 3→+2
+function scoreFisico(c:number[]):number{return c.reduce((s,v)=>s+(v===0?-2:v===1?-1:v===2?1:2),0)}
+// Effective geo (with manual adjustment if set)
+function geoEfetivo(sc:Setor):number{return sc.ajusteManual!==null?sc.ajusteManual:sc.geo}
+// Total score = geo + physical
+function scoreTotal(sc:Setor):number{return Math.round(geoEfetivo(sc)+scoreFisico(sc.criterios))}
+// Geo color: Green (=100), Red (>100), Blue (<100)
+function corGeo(geo:number):string{
+  if(Math.abs(geo-100)<0.5) return '#15803D'
+  return geo>100?'#DC2626':'#1D4ED8'
 }
-
-function desvioTipo(d:number,sc?:Setor):{tipo:string;icon:string;intensidade:string;cor:string}{
-  const abs=Math.abs(d)
-  if(abs<=5)  return {tipo:'Equilibrado',icon:'✓',intensidade:'—',cor:'#15803D'}
-  const intensidade=abs<=15?'Leve':abs<=40?'Moderado':abs<=70?'Acentuado':'Ausente'
-  const cor=abs<=15?'#D97706':abs<=40?'#EA580C':'#DC2626'
-  // Determine type based on what caused the deviation
-  if(sc){
-    if(sc.av>0&&sc.ae>0) return {tipo:'Faltante',icon:'▼',intensidade,cor}
-    if(sc.ae>0&&sc.av===0) return {tipo:'Excesso ext.',icon:'▲',intensidade,cor}
-  }
-  if(d<0) return {tipo:'Faltante',icon:'▼',intensidade,cor}
-  return {tipo:'Excedente',icon:'▲',intensidade,cor}
+// Geo label
+function lblGeo(geo:number):string{
+  if(Math.abs(geo-100)<0.5) return 'Equilibrado'
+  return geo>100?'Excesso':'Falta'
 }
-function desvioCorCanvas(d:number):string{
-  const abs=Math.abs(d)
-  if(abs<=5)  return '#15803D'
-  if(abs<=15) return '#D97706'
-  if(abs<=40) return '#EA580C'
-  return '#DC2626'
-}
-
-function fisico(c:number[]){return Math.round(c.reduce((a,b)=>a+b,0)/(c.length*3)*100)}
-function total(geo:number,c:number[]){return Math.round(geo*0.4+fisico(c)*0.6)}
-function cor(s:number){return s>=80?'#15803D':s>=60?'#65A30D':s>=40?'#D97706':s>=20?'#EA580C':'#DC2626'}
-function lbl(s:number){return s>=80?'Excelente':s>=60?'Bom':s>=40?'Regular':s>=20?'Ruim':'Crítico'}
-
-// Effective deviation considering 3-level hierarchy (manual → calculated)
-function desvioFinal(sc:Setor):{desvio:number;ajustado:boolean}{
-  if(sc.ajusteManual!==null&&sc.ajusteManual!==undefined){
-    // Nível 3: manual override — use the manual value as desvio
-    const sign=sc.ajusteTipo==='excedente'?1:(sc.ajusteTipo==='equilibrado'?0:-1)
-    return {desvio:sign===0?0:sign*Math.abs(sc.ajusteManual),ajustado:true}
-  }
-  return {desvio:sc.desvio,ajustado:false}
-}
-function desvioTipoFinal(sc:Setor):{tipo:string;icon:string;intensidade:string;cor:string;ajustado:boolean}{
-  const {desvio:d,ajustado}=desvioFinal(sc)
-  if(ajustado&&sc.ajusteTipo==='equilibrado') return {...desvioTipo(0),ajustado}
-  const dt=desvioTipo(d,sc)
-  // Override tipo with manual type when adjusted
-  if(ajustado&&sc.ajusteTipo){
-    const tipoMap:{[k:string]:string}={equilibrado:'Equilibrado',faltante:'Faltante',excedente:'Excedente'}
-    const iconMap:{[k:string]:string}={equilibrado:'✓',faltante:'\u25BC',excedente:'\u25B2'}
-    return {...dt,tipo:tipoMap[sc.ajusteTipo]||dt.tipo,icon:iconMap[sc.ajusteTipo]||dt.icon,ajustado}
-  }
-  return {...dt,ajustado}
-}
+// Total score color (quality scale)
+function corTotal(t:number):string{return t>=95?'#15803D':t>=80?'#65A30D':t>=60?'#D97706':t>=40?'#EA580C':'#DC2626'}
+function lblTotal(t:number):string{return t>=95?'Excelente':t>=80?'Bom':t>=60?'Regular':t>=40?'Ruim':'Crítico'}
+// Check if criteria have been evaluated (changed from default 2)
+function criteriosAvaliados(c:number[]):boolean{return c.some(v=>v!==2)}
 
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
@@ -380,7 +241,7 @@ function BaguaPlantaContent() {
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
   const [lh,       setLh]       = useState([1/3,2/3])
   const [lv,       setLv]       = useState([1/3,2/3])
-  const [modo,     setModo]     = useState<'nenhum'|'bordas'|'grid'|'marcarFalta'|'marcarExcesso'>('nenhum')
+  const [modo,     setModo]     = useState<'nenhum'|'bordas'|'marcarFalta'|'marcarExcesso'>('nenhum')
   const [setores,  setSetores]  = useState<Setor[]>([])
   const [ativo,    setAtivo]    = useState<number|null>(null)
   const [msg,      setMsg]      = useState('')
@@ -406,6 +267,11 @@ function BaguaPlantaContent() {
   const marcacoesRef = useRef<Marcacao[]>([])
   const desenhandoRef = useRef<{startX:number;startY:number;tipo:'falta'|'excesso'}|null>(null)
   const [desenhandoPreview, setDesenhandoPreview] = useState<{x:number;y:number;w:number;h:number}|null>(null)
+  // Metragem real (m²)
+  const [metragemReal, setMetragemReal] = useState<number>(0)
+  const metragemRef = useRef<number>(0)
+  // Recalculate pending state
+  const [recalculoPendente, setRecalculoPendente] = useState(false)
 
   // Dismiss instruction card via localStorage
   useEffect(()=>{
@@ -434,6 +300,7 @@ function BaguaPlantaContent() {
   useEffect(()=>{ lvRef.current=lv },[lv])
   useEffect(()=>{ plantaUrlRef.current=plantaUrl },[plantaUrl])
   useEffect(()=>{ marcacoesRef.current=marcacoes },[marcacoes])
+  useEffect(()=>{ metragemRef.current=metragemReal },[metragemReal])
 
   useEffect(()=>{
     supabase.auth.getUser().then(({data:{user}})=>{
@@ -531,8 +398,7 @@ function BaguaPlantaContent() {
           const bRestored={x:be.bordas.x,y:be.bordas.y,w:be.bordas.w,h:be.bordas.h}
           const lhRestored=be.lh||[1/3,2/3]
           const lvRestored=be.lv||[1/3,2/3]
-          const base=analisar(r2,bRestored,lhRestored,lvRestored)
-          const novos=aplicarMarcacoes(base,bRestored,lhRestored,lvRestored,savedMarcacoes)
+          const novos=calcularSetores(bRestored,lhRestored,lvRestored,savedMarcacoes)
           // Merge saved sector data (criterios, ajustes) with recalculated geometry
           const setoresRasc=be.setores_rascunho as any[]|undefined
           setSetores(novos.map((n,idx)=>{
@@ -545,6 +411,8 @@ function BaguaPlantaContent() {
               obs:saved?.obs??'',
             }
           }))
+          // Restore metragem
+          if(be.metragem_real) { setMetragemReal(be.metragem_real); metragemRef.current=be.metragem_real }
         }
         setCarregandoPlanta(false)
         restaurandoRef.current=false
@@ -616,23 +484,20 @@ function BaguaPlantaContent() {
       const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0,sel=ativo===idx
-      const ef=sc?desvioFinal(sc):null
-      const efD=ef?.desvio??0
-      const c=sc?desvioCorCanvas(efD):st.cor
+      const geoVal=sc?geoEfetivo(sc):100
+      const c=sc?corGeo(geoVal):st.cor
       ctx.fillStyle=c+(sel?'55':'28'); ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=sel?'#000':c; ctx.lineWidth=sel?3:1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(8,Math.min(12,fw/11))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
       ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const dt=desvioTipoFinal(sc)
         ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#000000aa'
-        const dStr=efD>0?`+${Math.round(efD)}%`:`${Math.round(efD)}%`
-        ctx.fillText(`${dStr}`,x0+fw/2,y0+fh/2+fs*0.5)
+        ctx.fillText(`${Math.round(geoVal)} pts`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(7,fs-2)}px Arial`
-        ctx.fillStyle=desvioCorCanvas(efD)
-        ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.5)
-        if(dt.ajustado){
+        ctx.fillStyle=c
+        ctx.fillText(lblGeo(geoVal),x0+fw/2,y0+fh/2+fs*1.5)
+        if(sc.ajusteManual!==null){
           ctx.font=`${Math.max(6,fs-3)}px Arial`; ctx.fillStyle='#7C3AED'
           ctx.fillText('✏',x0+fw/2,y0+fh/2+fs*2.4)
         }
@@ -654,23 +519,11 @@ function BaguaPlantaContent() {
       })
     }
 
-    // ── linhas grid ──
-    if(modo==='grid'){
-      ctx.strokeStyle='#FF4500'; ctx.lineWidth=2.5; ctx.setLineDash([6,4])
-      lh.forEach(h=>{
-        const ly=by+bh*h
-        ctx.beginPath(); ctx.moveTo(bx,ly); ctx.lineTo(bx+bw,ly); ctx.stroke()
-        ctx.beginPath(); ctx.arc(bx+bw/2,ly,10,0,Math.PI*2)
-        ctx.fillStyle='#FF4500'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
-      })
-      lv.forEach(v=>{
-        const lx=bx+bw*v
-        ctx.beginPath(); ctx.moveTo(lx,by); ctx.lineTo(lx,by+bh); ctx.stroke()
-        ctx.beginPath(); ctx.arc(lx,by+bh/2,10,0,Math.PI*2)
-        ctx.fillStyle='#FF4500'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
-      })
-      ctx.setLineDash([])
-    }
+    // ── linhas grid (fixas 1/3 x 1/3, sem arraste) ──
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,4])
+    lh.forEach(h=>{const ly=by+bh*h; ctx.beginPath(); ctx.moveTo(bx,ly); ctx.lineTo(bx+bw,ly); ctx.stroke()})
+    lv.forEach(v=>{const lx=bx+bw*v; ctx.beginPath(); ctx.moveTo(lx,by); ctx.lineTo(lx,by+bh); ctx.stroke()})
+    ctx.setLineDash([])
 
     // ── marcador de entrada ──
     if(entrada){
@@ -794,23 +647,20 @@ function BaguaPlantaContent() {
       const x0=bx+(col===0?0:bw*lv[col-1]),x1=bx+(col===2?bw:bw*lv[col])
       const y0=by+(row===0?0:bh*lh[row-1]),y1=by+(row===2?bh:bh*lh[row])
       const fw=x1-x0,fh=y1-y0
-      const ef2=sc?desvioFinal(sc):null
-      const efD2=ef2?.desvio??0
-      const c=sc?desvioCorCanvas(efD2):st.cor
+      const geoVal2=sc?geoEfetivo(sc):100
+      const c=sc?corGeo(geoVal2):st.cor
       ctx.fillStyle=c+'28'; ctx.fillRect(x0,y0,fw,fh)
       ctx.strokeStyle=c; ctx.lineWidth=1.5; ctx.strokeRect(x0,y0,fw,fh)
       const fs=Math.max(10,Math.min(16,fw/9))
       ctx.fillStyle='#000000cc'; ctx.font=`bold ${fs}px Arial`; ctx.textAlign='center'
       ctx.fillText(st.nome,x0+fw/2,y0+fh/2-(sc?fs*0.6:0))
       if(sc){
-        const dt=desvioTipoFinal(sc)
-        const dStr2=efD2>0?`+${Math.round(efD2)}%`:`${Math.round(efD2)}%`
         ctx.font=`${Math.max(8,fs-1)}px Arial`; ctx.fillStyle='#000000aa'
-        ctx.fillText(`${dStr2}`,x0+fw/2,y0+fh/2+fs*0.5)
+        ctx.fillText(`${Math.round(geoVal2)} pts`,x0+fw/2,y0+fh/2+fs*0.5)
         ctx.font=`bold ${Math.max(8,fs-1)}px Arial`
-        ctx.fillStyle=desvioCorCanvas(efD2)
-        ctx.fillText(`${dt.icon} ${dt.tipo}`,x0+fw/2,y0+fh/2+fs*1.7)
-        if(dt.ajustado){
+        ctx.fillStyle=c
+        ctx.fillText(lblGeo(geoVal2),x0+fw/2,y0+fh/2+fs*1.7)
+        if(sc.ajusteManual!==null){
           ctx.font=`${Math.max(7,fs-2)}px Arial`; ctx.fillStyle='#7C3AED'
           ctx.fillText('✏',x0+fw/2,y0+fh/2+fs*2.6)
         }
@@ -832,23 +682,11 @@ function BaguaPlantaContent() {
       })
     }
 
-    // Grid lines
-    if(modo==='grid'){
-      ctx.strokeStyle='#FF4500'; ctx.lineWidth=2.5; ctx.setLineDash([8,5])
-      lh.forEach(h=>{
-        const ly=by+bh*h
-        ctx.beginPath(); ctx.moveTo(bx,ly); ctx.lineTo(bx+bw,ly); ctx.stroke()
-        ctx.beginPath(); ctx.arc(bx+bw/2,ly,14,0,Math.PI*2)
-        ctx.fillStyle='#FF4500'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
-      })
-      lv.forEach(v=>{
-        const lx=bx+bw*v
-        ctx.beginPath(); ctx.moveTo(lx,by); ctx.lineTo(lx,by+bh); ctx.stroke()
-        ctx.beginPath(); ctx.arc(lx,by+bh/2,14,0,Math.PI*2)
-        ctx.fillStyle='#FF4500'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
-      })
-      ctx.setLineDash([])
-    }
+    // Grid lines (fixed 1/3 x 1/3)
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1; ctx.setLineDash([6,4])
+    lh.forEach(h=>{const ly=by+bh*h; ctx.beginPath(); ctx.moveTo(bx,ly); ctx.lineTo(bx+bw,ly); ctx.stroke()})
+    lv.forEach(v=>{const lx=bx+bw*v; ctx.beginPath(); ctx.moveTo(lx,by); ctx.lineTo(lx,by+bh); ctx.stroke()})
+    ctx.setLineDash([])
 
     // Entry marker (fullscreen version)
     if(entrada){
@@ -953,10 +791,6 @@ function BaguaPlantaContent() {
       if(Math.abs(cx-bx)<T&&cy>=by-T&&cy<=by+bh+T) return{tipo:'borda',lado:'left'}
       if(Math.abs(cx-bx-bw)<T&&cy>=by-T&&cy<=by+bh+T) return{tipo:'borda',lado:'right'}
     }
-    if(modo==='grid'){
-      for(let i=0;i<lh.length;i++) if(Math.abs(cy-(by+bh*lh[i]))<T) return{tipo:'linhaH',index:i}
-      for(let i=0;i<lv.length;i++) if(Math.abs(cx-(bx+bw*lv[i]))<T) return{tipo:'linhaV',index:i}
-    }
     return null
   }
   function onFsMD(e:React.MouseEvent<HTMLCanvasElement>){
@@ -1028,8 +862,6 @@ function BaguaPlantaContent() {
         boundsRef.current=nb; return nb
       })
     }
-    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lhRef.current=n;return n})}
-    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lvRef.current=n;return n})}
   }
   function onFsMU(){
     if(desenhandoRef.current&&desenhandoPreview&&desenhandoPreview.w>3&&desenhandoPreview.h>3){
@@ -1037,11 +869,11 @@ function BaguaPlantaContent() {
         tipo:desenhandoRef.current.tipo,...desenhandoPreview}
       const next=[...marcacoes,m]
       setMarcacoes(next); marcacoesRef.current=next
-      recalcularComMarcacoes(next)
+      marcacaoAlterada()
     }
     desenhandoRef.current=null; setDesenhandoPreview(null)
     if(dragRef.current&&(dragRef.current.tipo==='marcacao-mover'||dragRef.current.tipo==='marcacao-resize')){
-      if(isDrag.current) recalcularComMarcacoes(marcacoesRef.current)
+      if(isDrag.current) marcacaoAlterada()
       dragRef.current=null; setTimeout(()=>{isDrag.current=false},50); return
     }
     if(isDrag.current) recalcular()
@@ -1065,7 +897,7 @@ function BaguaPlantaContent() {
     reader.onload=ev=>{
       const i=new Image()
       i.onload=()=>{
-        setImg(i); setRot(0); setStep('configurar')
+        setImg(i); setRot(0); setStep('metragem')
         // Upload to Supabase storage and wait for URL
         if(consultaId){
           const fd=new FormData()
@@ -1082,7 +914,7 @@ function BaguaPlantaContent() {
                 plantaUrlRef.current=d.url
                 // Save initial draft state
                 supabase.from('consultas').update({
-                  bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'configurar',rotacao:0,lado:'centro'}
+                  bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'metragem',rotacao:0,lado:'centro'}
                 }).eq('id',consultaId).then(()=>{}).then(null,(e: Error)=>console.error('Erro ao salvar rascunho:',e))
                 return d.url as string
               }
@@ -1120,6 +952,7 @@ function BaguaPlantaContent() {
       etapa:overrides?.etapa??step,
       rotacao:overrides?.rotacao??rot,
       lado:overrides?.ladoV??lado,
+      metragem_real:metragemRef.current||undefined,
     }
     if(overrides?.entradaV??entrada){
       const ent=overrides?.entradaV??entrada
@@ -1169,36 +1002,27 @@ function BaguaPlantaContent() {
     }
   }
 
-  // ── marcação helpers ─────────────────────────────────────────────────────
-  function recalcularComMarcacoes(newMarcacoes:Marcacao[]){
-    const r=rotRef.current, b=boundsRef.current
-    const curLh=lhRef.current, curLv=lvRef.current
-    if(!r||!b) return
-    const base=analisar(r,b,curLh,curLv)
-    const novos=aplicarMarcacoes(base,b,curLh,curLv,newMarcacoes)
-    setSetores(prev=>{
-      const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios,
-        ajusteManual:prev[i]?.ajusteManual??null,ajusteTipo:prev[i]?.ajusteTipo??null,obs:prev[i]?.obs??''}))
-      salvarRascunho({etapa:'resultado',bordas:b,lhV:curLh,lvV:curLv,setoresV:merged})
-      return merged
-    })
-    setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
+  // ── marcação helpers — just mark as pending, don't auto-recalculate ─────
+  function marcacaoAlterada(){
+    setRecalculoPendente(true)
+    setBordaModificada(true)
   }
   function removeMarcacao(id:string){
     const next=marcacoes.filter(m=>m.id!==id)
     setMarcacoes(next); marcacoesRef.current=next
-    recalcularComMarcacoes(next)
+    setRecalculoPendente(true); setBordaModificada(true)
   }
 
   // ── calcular ───────────────────────────────────────────────────────────────
   function calcular(){
     const r=rotRef.current; if(!r) return
-    const b=calcBounds(r)
+    // Default bounds to full image with 5% margin
+    const m5=0.05
+    const b={x:Math.round(r.width*m5),y:Math.round(r.height*m5),w:Math.round(r.width*(1-2*m5)),h:Math.round(r.height*(1-2*m5))}
     setBounds(b); boundsRef.current=b
     setLh([1/3,2/3]); lhRef.current=[1/3,2/3]
     setLv([1/3,2/3]); lvRef.current=[1/3,2/3]
-    const base=analisar(r,b,[1/3,2/3],[1/3,2/3])
-    const novosSetores=aplicarMarcacoes(base,b,[1/3,2/3],[1/3,2/3],marcacoesRef.current)
+    const novosSetores=calcularSetores(b,[1/3,2/3],[1/3,2/3],marcacoesRef.current)
     setSetores(novosSetores)
     setStep('resultado'); setModo('nenhum')
     setBordaModificada(false)
@@ -1208,19 +1032,18 @@ function BaguaPlantaContent() {
   }
 
   function recalcular(){
-    const r=rotRef.current
     const b=boundsRef.current
     const curLh=lhRef.current
     const curLv=lvRef.current
-    if(!r||!b) return
-    const base=analisar(r,b,curLh,curLv)
-    const novos=aplicarMarcacoes(base,b,curLh,curLv,marcacoesRef.current)
+    if(!b) return
+    const novos=calcularSetores(b,curLh,curLv,marcacoesRef.current)
     setSetores(prev=>{
-      const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios}))
-      // Save draft after recalculation
+      const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios,
+        ajusteManual:prev[i]?.ajusteManual??null,ajusteTipo:prev[i]?.ajusteTipo??null,obs:prev[i]?.obs??''}))
       salvarRascunho({etapa:'resultado',bordas:b,lhV:curLh,lvV:curLv,setoresV:merged})
       return merged
     })
+    setRecalculoPendente(false)
     setBordaModificada(false)
     setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
   }
@@ -1235,10 +1058,6 @@ function BaguaPlantaContent() {
       if(Math.abs(cy-by-bh)<T    &&cx>=bx-T&&cx<=bx+bw+T) return{tipo:'borda',lado:'bottom'}
       if(Math.abs(cx-bx)<T       &&cy>=by-T&&cy<=by+bh+T) return{tipo:'borda',lado:'left'}
       if(Math.abs(cx-bx-bw)<T    &&cy>=by-T&&cy<=by+bh+T) return{tipo:'borda',lado:'right'}
-    }
-    if(modo==='grid'){
-      for(let i=0;i<lh.length;i++) if(Math.abs(cy-(by+bh*lh[i]))<T) return{tipo:'linhaH',index:i}
-      for(let i=0;i<lv.length;i++) if(Math.abs(cx-(bx+bw*lv[i]))<T) return{tipo:'linhaV',index:i}
     }
     return null
   }
@@ -1327,8 +1146,6 @@ function BaguaPlantaContent() {
         boundsRef.current=b; return b
       })
     }
-    if(t.tipo==='linhaH'){const rel=Math.max(0.05,Math.min(0.95,(cy-by)/bh));setLh(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lhRef.current=n;return n})}
-    if(t.tipo==='linhaV'){const rel=Math.max(0.05,Math.min(0.95,(cx-bx)/bw));setLv(p=>{const n=p.map((v,i)=>i===t.index?rel:v);lvRef.current=n;return n})}
   }
 
   function onMU(){
@@ -1338,12 +1155,12 @@ function BaguaPlantaContent() {
         tipo:desenhandoRef.current.tipo,...desenhandoPreview}
       const next=[...marcacoes,m]
       setMarcacoes(next); marcacoesRef.current=next
-      recalcularComMarcacoes(next)
+      marcacaoAlterada()
     }
     desenhandoRef.current=null; setDesenhandoPreview(null)
     // Finish moving/resizing marcacao
     if(dragRef.current&&(dragRef.current.tipo==='marcacao-mover'||dragRef.current.tipo==='marcacao-resize')){
-      if(isDrag.current) recalcularComMarcacoes(marcacoesRef.current)
+      if(isDrag.current) marcacaoAlterada()
       dragRef.current=null; setTimeout(()=>{isDrag.current=false},50); return
     }
     if(isDrag.current) recalcular()
@@ -1364,7 +1181,7 @@ function BaguaPlantaContent() {
       nome:stDef.nome,
       elemento:stDef.elem,
       posicao_grid:String(orderIdx+1),
-      score_percentual:Math.round(sc.geo*0.4+(sc.criterios.reduce((a:number,b:number)=>a+b,0)/24*100)*0.6)
+      score_percentual:scoreTotal(sc)
     },{onConflict:'consulta_id,numero'}).select('id').single()
     if(e1||!setorRow){setMsg('Erro: '+(e1?.message||JSON.stringify(e1)||'sem retorno'));return}
     // salvar criterios
@@ -1411,7 +1228,7 @@ function BaguaPlantaContent() {
       for(let i=0;i<9;i++){
         const stDef=SETORES[order[i]]
         const sc=setores[i]
-        const scorePct=Math.round(sc.geo*0.4+(sc.criterios.reduce((a:number,b:number)=>a+b,0)/24*100)*0.6)
+        const scorePct=scoreTotal(sc)
         const {data:setorRow,error:e1}=await supabase.from('setores_bagua').upsert({
           consulta_id:consultaId,
           numero:i+1,
@@ -1435,6 +1252,7 @@ function BaguaPlantaContent() {
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
         rotacao:rot, etapa:'resultado',
+        metragem_real:metragemRef.current||undefined,
       }
       const urlFinal = plantaUrlRef.current || plantaUrl
       if(urlFinal) finalizacao.planta_url=urlFinal
@@ -1469,7 +1287,7 @@ function BaguaPlantaContent() {
   }
 
   const order  = gridOrder(escola,lado)
-  const stepN  = {upload:0,configurar:1,entrada:2,resultado:3}[step]
+  const stepN  = {upload:0,metragem:1,configurar:2,entrada:3,resultado:4}[step]
   const stAtivo= ativo!==null?SETORES[order[ativo]]:null
   const scAtivo= ativo!==null?setores[ativo]:null
 
@@ -1486,6 +1304,11 @@ function BaguaPlantaContent() {
           50%  { transform: scale(1.5); opacity: 0.4; }
           100% { transform: scale(1);   opacity: 1; }
         }
+        @keyframes pulseRecalc {
+          0%   { box-shadow: 0 0 0 0 rgba(234,88,12,0.5); }
+          70%  { box-shadow: 0 0 0 8px rgba(234,88,12,0); }
+          100% { box-shadow: 0 0 0 0 rgba(234,88,12,0); }
+        }
       `}</style>
 
       <main style={{padding:'14px 18px',maxWidth:'1160px',margin:'0 auto'}}>
@@ -1497,7 +1320,7 @@ function BaguaPlantaContent() {
 
         {/* Steps */}
         <div style={{display:'flex',gap:'6px',marginBottom:'12px',alignItems:'center'}}>
-          {['Upload','Configurar','Entrada','Resultado'].map((s,i)=>(
+          {['Upload','Metragem','Configurar','Entrada','Resultado'].map((s,i)=>(
             <div key={i} style={{display:'flex',alignItems:'center',gap:'5px'}}>
               <div style={{width:'20px',height:'20px',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',
                 fontSize:'10px',fontWeight:'bold',
@@ -1506,7 +1329,7 @@ function BaguaPlantaContent() {
                 {i<stepN?'✓':i+1}
               </div>
               <span style={{color:'#374151',fontSize:'12px'}}>{s}</span>
-              {i<3&&<span style={{color:'#D1D5DB',fontSize:'10px'}}>→</span>}
+              {i<4&&<span style={{color:'#D1D5DB',fontSize:'10px'}}>→</span>}
             </div>
           ))}
         </div>
@@ -1530,7 +1353,7 @@ function BaguaPlantaContent() {
             <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>
               {rascunhoRef.current?.finalizada_em
                 ?`Finalizada em ${new Date(rascunhoRef.current.finalizada_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}`
-                :`Etapa: ${({upload:'Upload',configurar:'Configurar',entrada:'Entrada',resultado:'Resultado'} as Record<string,string>)[rascunhoRef.current?.etapa||'upload']||'Upload'}`
+                :`Etapa: ${({upload:'Upload',metragem:'Metragem',configurar:'Configurar',entrada:'Entrada',resultado:'Resultado'} as Record<string,string>)[rascunhoRef.current?.etapa||'upload']||'Upload'}`
               }
             </p>
             <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
@@ -1564,8 +1387,49 @@ function BaguaPlantaContent() {
           </div>
         )}
 
+        {/* ════ METRAGEM ════ */}
+        {step==='metragem'&&!showRetomar&&!carregandoPlanta&&(
+          <div style={{background:'#fff',borderRadius:'12px',padding:'36px',boxShadow:'0 1px 4px rgba(0,0,0,0.08)',maxWidth:'480px',margin:'0 auto'}}>
+            <div style={{fontSize:'36px',textAlign:'center',marginBottom:'10px'}}>📐</div>
+            <h3 style={{color:'#1E3A5F',fontSize:'16px',textAlign:'center',marginBottom:'6px'}}>Metragem do imóvel</h3>
+            <p style={{color:'#6B7280',fontSize:'12px',textAlign:'center',marginBottom:'20px'}}>
+              Informe a área total construída para converter os valores de pixels em metros quadrados
+            </p>
+            <div style={{marginBottom:'16px'}}>
+              <label htmlFor="metragem-input" style={{display:'block',color:'#374151',fontSize:'13px',fontWeight:'bold',marginBottom:'6px'}}>
+                Área total (m²)
+              </label>
+              <input id="metragem-input" type="number" min={1} max={99999} step={0.1}
+                value={metragemReal||''}
+                placeholder="Ex: 120"
+                onChange={e=>{const v=Number(e.target.value); setMetragemReal(v); metragemRef.current=v}}
+                style={{width:'100%',padding:'10px 14px',borderRadius:'8px',border:'2px solid #D1D5DB',fontSize:'16px',boxSizing:'border-box',textAlign:'center'}}
+              />
+              <p style={{color:'#9CA3AF',fontSize:'10px',marginTop:'4px',textAlign:'center'}}>
+                Área construída total conforme planta baixa
+              </p>
+            </div>
+            <div style={{display:'flex',gap:'10px'}}>
+              <button onClick={()=>setStep('upload')}
+                style={{flex:1,padding:'10px',background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:'8px',fontSize:'14px',cursor:'pointer'}}>
+                ← Voltar
+              </button>
+              <button onClick={()=>setStep('configurar')}
+                style={{flex:2,padding:'10px',background:metragemReal>0?'#1E3A5F':'#93C5FD',color:'#fff',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:metragemReal>0?'pointer':'not-allowed',opacity:metragemReal>0?1:0.6}}
+                disabled={metragemReal<=0}>
+                Continuar → Configurar planta
+              </button>
+            </div>
+            {metragemReal<=0&&(
+              <p style={{color:'#D97706',fontSize:'10px',textAlign:'center',marginTop:'8px'}}>
+                Informe a metragem para continuar
+              </p>
+            )}
+          </div>
+        )}
+
         {/* ════ CANVAS AREA (sempre no DOM quando há imagem) ════ */}
-        {step!=='upload'&&!showRetomar&&!carregandoPlanta&&(
+        {step!=='upload'&&step!=='metragem'&&!showRetomar&&!carregandoPlanta&&(
           <div style={{display:'flex',gap:'12px',alignItems:'flex-start'}}>
             <div style={{flex:1,minWidth:0,background:'#fff',borderRadius:'12px',padding:'14px',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
 
@@ -1734,10 +1598,6 @@ function BaguaPlantaContent() {
                       style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='bordas'?'🔒 Finalizar':'⬜ Bordas'}
                     </button>
-                    <button onClick={()=>setModo(modo==='grid'?'nenhum':'grid')}
-                      style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
-                      {modo==='grid'?'🔒 Finalizar':'⊞ Grid'}
-                    </button>
                     <button onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
                       style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarFalta'?'🔒 Finalizar':'▭ Marcar Falta'}
@@ -1746,9 +1606,10 @@ function BaguaPlantaContent() {
                       style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Marcar Excesso'}
                     </button>
-                    <button onClick={recalcular} disabled={!bordaModificada}
-                      style={{background:bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:bordaModificada?'pointer':'not-allowed',opacity:bordaModificada?1:0.6}}>
-                      🔄 Recalcular
+                    <button onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
+                      style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                        animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
+                      🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
                     <button onClick={()=>setFullscreen(true)}
                       style={{background:'#15803D',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
@@ -1760,7 +1621,6 @@ function BaguaPlantaContent() {
                     </button>
                   </div>
                   {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
-                  {modo==='grid'  &&<div style={{marginTop:'5px',padding:'5px 9px',background:'#EDE9FE',borderRadius:'5px',color:'#5B21B6',fontSize:'10px'}}>Arraste as linhas laranja para reposicionar os setores</div>}
                   {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
                   {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
                   {msg            &&<div style={{marginTop:'5px',padding:'6px 10px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'11px',fontWeight:'bold'}}>✅ {msg}</div>}
@@ -1774,19 +1634,21 @@ function BaguaPlantaContent() {
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const sel=ativo===i
-                          const ef3=desvioFinal(sc)
-                          const dt=desvioTipoFinal(sc)
-                          const dStr=ef3.desvio>0?`+${Math.round(ef3.desvio)}%`:`${Math.round(ef3.desvio)}%`
-                          const statusCor=desvioCorCanvas(ef3.desvio)
+                          const gv=geoEfetivo(sc)
+                          const ts=scoreTotal(sc)
+                          const sf=scoreFisico(sc.criterios)
                           return(
                             <div key={i} onClick={()=>setAtivo(i===ativo?null:i)} style={{
                               padding:'7px',borderRadius:'6px',cursor:'pointer',
-                              border:`2px solid ${sel?statusCor:'#E5E7EB'}`,background:sel?statusCor+'18':'#F9FAFB',
+                              border:`2px solid ${sel?corTotal(ts):'#E5E7EB'}`,background:sel?corTotal(ts)+'18':'#F9FAFB',
                             }}>
                               <div style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{st.nome}</div>
-                              <div style={{fontSize:'10px',color:statusCor,fontWeight:'bold',marginTop:'2px'}}>{dt.icon} {dStr} {dt.tipo}</div>
-                              <div style={{fontSize:'8px',color:statusCor}}>{dt.intensidade!=='—'?dt.intensidade:''}</div>
-                              {dt.ajustado&&<div style={{fontSize:'7px',color:'#7C3AED',marginTop:'1px'}}>&#x270F; Ajustado</div>}
+                              <div style={{display:'flex',gap:'4px',marginTop:'2px',flexWrap:'wrap'}}>
+                                <span style={{fontSize:'9px',color:corGeo(gv),fontWeight:'bold'}}>{Math.round(gv)} geo</span>
+                                <span style={{fontSize:'9px',color:'#6B7280'}}>{sf>=0?'+':''}{sf} fis</span>
+                              </div>
+                              <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'1px'}}>{ts} pts · {lblTotal(ts)}</div>
+                              {sc.ajusteManual!==null&&<div style={{fontSize:'7px',color:'#7C3AED',marginTop:'1px'}}>&#x270F; Ajustado</div>}
                             </div>
                           )
                         })}
@@ -1795,11 +1657,11 @@ function BaguaPlantaContent() {
                   )}
 
                   {/* Balanced banner */}
-                  {setores.length===9&&setores.every(s=>Math.abs(desvioFinal(s).desvio)<=5)&&(
+                  {setores.length===9&&setores.every(s=>scoreTotal(s)>=90)&&(
                     <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'8px',textAlign:'center'}}>
                       <div style={{fontSize:'20px',marginBottom:'4px'}}>☯</div>
                       <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
-                      <div style={{fontSize:'10px',color:'#16A34A',marginTop:'2px'}}>Todos os setores com desvio ≤ 5%</div>
+                      <div style={{fontSize:'10px',color:'#16A34A',marginTop:'2px'}}>Todos os setores com score total ≥ 90</div>
                     </div>
                   )}
 
@@ -1838,80 +1700,88 @@ function BaguaPlantaContent() {
                   <span>Direção: <strong>{stAtivo.dir}</strong></span>
                 </div>
 
-                {/* ── DESVIO ── */}
+                {/* ── 3-SCORE DISPLAY ── */}
                 {(()=>{
-                  const dt=desvioTipo(scAtivo.desvio,scAtivo)
-                  const autoDesvio=Math.round(scAtivo.desvio)
-                  const ef=desvioFinal(scAtivo)
-                  const finalDt=scAtivo.ajusteManual!==null?desvioTipoFinal(scAtivo):dt
-                  const finalDesvio=scAtivo.ajusteManual!==null?Math.round(ef.desvio):autoDesvio
+                  const gv=geoEfetivo(scAtivo)
+                  const sf=scoreFisico(scAtivo.criterios)
+                  const ts=scoreTotal(scAtivo)
                   return (
                     <div style={{marginBottom:'10px'}}>
-                      {/* Multi-level desvio display */}
                       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#F9FAFB',borderRadius:'4px'}}>
-                          <span style={{fontSize:'10px',color:'#6B7280'}}>Automático:</span>
-                          <span style={{fontSize:'11px',fontWeight:'bold',color:dt.cor}}>{autoDesvio}% {dt.icon} {dt.tipo}</span>
+                        {/* Geo score */}
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:`3px solid ${corGeo(gv)}`}}>
+                          <span style={{fontSize:'10px',color:'#6B7280'}}>Geométrico:</span>
+                          <span style={{fontSize:'11px',fontWeight:'bold',color:corGeo(gv)}}>{Math.round(gv)} pts · {lblGeo(gv)}</span>
                         </div>
+                        {scAtivo.faltaPct>0&&(
+                          <div style={{fontSize:'9px',color:'#1D4ED8',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
+                        )}
+                        {scAtivo.excessoPct>0&&(
+                          <div style={{fontSize:'9px',color:'#DC2626',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
+                        )}
                         {scAtivo.ajusteManual!==null&&(
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 7px',background:'#EDE9FE',borderRadius:'4px',borderLeft:'3px solid #7C3AED'}}>
-                            <span style={{fontSize:'10px',color:'#5B21B6',fontWeight:'bold'}}>Final (consultor):</span>
-                            <span style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>{finalDesvio}% {finalDt.icon} {finalDt.tipo}</span>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 8px',background:'#EDE9FE',borderRadius:'4px',borderLeft:'3px solid #7C3AED'}}>
+                            <span style={{fontSize:'9px',color:'#5B21B6',fontWeight:'bold'}}>Geo ajustado:</span>
+                            <span style={{fontSize:'10px',fontWeight:'bold',color:corGeo(scAtivo.ajusteManual)}}>{scAtivo.ajusteManual} pts</span>
                           </div>
                         )}
-                      </div>
-
-                      {/* Desvio banner */}
-                      <div style={{marginTop:'6px',padding:'6px 8px',borderRadius:'6px',display:'flex',alignItems:'center',gap:'6px',
-                        background:finalDt.cor+'15',borderLeft:`3px solid ${finalDt.cor}`}}>
-                        <span style={{fontSize:'14px'}}>{finalDt.icon}</span>
-                        <div>
-                          <div style={{fontSize:'11px',fontWeight:'bold',color:finalDt.cor}}>Desvio: {finalDesvio}%</div>
-                          <div style={{fontSize:'9px',color:finalDt.cor}}>{finalDt.tipo}{finalDt.intensidade!=='—'?` · ${finalDt.intensidade}`:''}</div>
+                        {/* Physical score */}
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:'3px solid #6B7280'}}>
+                          <span style={{fontSize:'10px',color:'#6B7280'}}>Físico:</span>
+                          <span style={{fontSize:'11px',fontWeight:'bold',color:sf>=0?'#15803D':'#DC2626'}}>{sf>=0?'+':''}{sf} pts</span>
+                        </div>
+                        {/* Total score */}
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:corTotal(ts)+'15',borderRadius:'5px',borderLeft:`3px solid ${corTotal(ts)}`}}>
+                          <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>Total:</span>
+                          <span style={{fontSize:'13px',fontWeight:'bold',color:corTotal(ts)}}>{ts} pts · {lblTotal(ts)}</span>
                         </div>
                       </div>
                     </div>
                   )
                 })()}
 
-                {/* ── AJUSTE DO CONSULTOR (Nível 3) ── */}
-                <div style={{marginBottom:'10px',padding:'10px',background:'#FAFAFA',borderRadius:'8px',border:'1px solid #E5E7EB'}}>
-                  <div style={{fontSize:'11px',fontWeight:'bold',color:'#374151',marginBottom:'8px'}}>🎛 Ajuste do consultor</div>
-                  <div style={{display:'flex',gap:'6px',alignItems:'center',marginBottom:'6px'}}>
-                    <label style={{fontSize:'10px',color:'#6B7280',whiteSpace:'nowrap'}}>Desvio manual (%):</label>
-                    <input type="number" min={-100} max={0} step={1}
-                      value={scAtivo.ajusteManual??''}
-                      placeholder="—"
-                      onChange={e=>{
-                        const v=e.target.value
-                        setAjusteManual(ativo!,v===''?null:Number(v))
-                      }}
-                      style={{width:'60px',padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'11px',textAlign:'center'}}
-                    />
-                    <select value={scAtivo.ajusteTipo??''}
-                      onChange={e=>setAjusteTipo(ativo!,(e.target.value||null) as any)}
-                      style={{flex:1,padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px'}}>
-                      <option value="">Tipo automático</option>
-                      <option value="equilibrado">Equilibrado</option>
-                      <option value="faltante">Faltante</option>
-                      <option value="excedente">Excedente</option>
-                    </select>
-                  </div>
-                  <textarea value={scAtivo.obs} placeholder="Observações do consultor (opcional)"
-                    onChange={e=>setObs(ativo!,e.target.value)}
-                    style={{width:'100%',padding:'6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px',resize:'vertical',minHeight:'36px',boxSizing:'border-box'}}
-                  />
-                  {scAtivo.ajusteManual!==null&&(
-                    <button onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'10px',color:'#6B7280',cursor:'pointer'}}>
-                      ↺ Usar valor calculado
-                    </button>
-                  )}
-                  {scAtivo.ajusteManual!==null&&(
-                    <div style={{marginTop:'4px',fontSize:'9px',color:'#7C3AED',fontWeight:'bold'}}>
-                      Ajustado manualmente — este valor sobrescreve o automático
+                {/* ���─ AJUSTE DO CONSULTOR (Avançado - colapsável) ── */}
+                <details style={{marginBottom:'10px'}}>
+                  <summary style={{fontSize:'11px',fontWeight:'bold',color:'#7C3AED',cursor:'pointer',padding:'6px 0',userSelect:'none'}}>
+                    🎛 Avançado — Ajuste do consultor
+                  </summary>
+                  <div style={{padding:'10px',background:'#FAFAFA',borderRadius:'8px',border:'1px solid #E5E7EB',marginTop:'4px'}}>
+                    <div style={{display:'flex',gap:'6px',alignItems:'center',marginBottom:'6px'}}>
+                      <label style={{fontSize:'10px',color:'#6B7280',whiteSpace:'nowrap'}}>Geo manual (pts):</label>
+                      <input type="number" min={0} max={200} step={1}
+                        value={scAtivo.ajusteManual??''}
+                        placeholder={String(Math.round(scAtivo.geo))}
+                        onChange={e=>{
+                          const v=e.target.value
+                          setAjusteManual(ativo!,v===''?null:Number(v))
+                        }}
+                        style={{width:'60px',padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'11px',textAlign:'center'}}
+                      />
+                      <select value={scAtivo.ajusteTipo??''}
+                        onChange={e=>setAjusteTipo(ativo!,(e.target.value||null) as any)}
+                        style={{flex:1,padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px'}}>
+                        <option value="">Tipo automático</option>
+                        <option value="equilibrado">Equilibrado</option>
+                        <option value="faltante">Faltante</option>
+                        <option value="excedente">Excedente</option>
+                      </select>
                     </div>
-                  )}
-                </div>
+                    <textarea value={scAtivo.obs} placeholder="Observações do consultor (opcional)"
+                      onChange={e=>setObs(ativo!,e.target.value)}
+                      style={{width:'100%',padding:'6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px',resize:'vertical',minHeight:'36px',boxSizing:'border-box'}}
+                    />
+                    {scAtivo.ajusteManual!==null&&(
+                      <button onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'10px',color:'#6B7280',cursor:'pointer'}}>
+                        ↺ Usar valor calculado
+                      </button>
+                    )}
+                    {scAtivo.ajusteManual!==null&&(
+                      <div style={{marginTop:'4px',fontSize:'9px',color:'#7C3AED',fontWeight:'bold'}}>
+                        Valor geo sobrescrito — total recalculado automaticamente
+                      </div>
+                    )}
+                  </div>
+                </details>
 
                 {/* ── Recomendações dinâmicas (ACIMA dos critérios) ── */}
                 {(()=>{
@@ -2027,10 +1897,6 @@ function BaguaPlantaContent() {
                   style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='bordas'?'🔒 Finalizar bordas':'⬜ Ajustar bordas'}
                 </button>
-                <button onClick={()=>setModo(modo==='grid'?'nenhum':'grid')}
-                  style={{background:modo==='grid'?'#DC2626':'#7C3AED',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
-                  {modo==='grid'?'🔒 Finalizar grid':'⊞ Ajustar grid'}
-                </button>
                 <button onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
                   style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarFalta'?'🔒 Finalizar':'▭ Falta'}
@@ -2039,9 +1905,10 @@ function BaguaPlantaContent() {
                   style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Excesso'}
                 </button>
-                <button onClick={recalcular} disabled={!bordaModificada}
-                  style={{background:bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:bordaModificada?'pointer':'not-allowed',opacity:bordaModificada?1:0.6}}>
-                  🔄 Recalcular
+                <button onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
+                  style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                    animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
+                  🔄 Recalcular{recalculoPendente?' (pendente)':''}
                 </button>
                 <button onClick={()=>{setModo('nenhum');setFullscreen(false)}}
                   style={{background:'#15803D',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
@@ -2069,13 +1936,6 @@ function BaguaPlantaContent() {
                 Clique e arraste para marcar uma area de EXCESSO
               </div>
             )}
-            {modo==='grid'&&(
-              <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#EDE9FE',borderRadius:'6px',color:'#5B21B6',fontSize:'12px',zIndex:1}}>
-                Arraste as linhas para reposicionar as divisoes dos setores Ba Gua
-              </div>
-            )}
-
             {/* Fullscreen canvas */}
             <canvas ref={fsCvRef}
               onMouseDown={onFsMD}
