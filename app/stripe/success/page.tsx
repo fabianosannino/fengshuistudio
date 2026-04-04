@@ -8,9 +8,18 @@
 
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-export default function StripeSuccess() {
+export default function StripeSuccessPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>}>
+      <StripeSuccess />
+    </Suspense>
+  )
+}
+
+function StripeSuccess() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
   const type = searchParams.get('type')

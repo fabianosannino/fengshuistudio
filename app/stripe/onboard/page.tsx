@@ -14,7 +14,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
 
@@ -28,7 +28,15 @@ interface AccountStatus {
   capabilities?: { card_payments?: string }
 }
 
-export default function StripeOnboard() {
+export default function StripeOnboardPage() {
+  return (
+    <Suspense fallback={<AppShell currentPage="stripe/onboard"><div style={{ textAlign: 'center', padding: '60px' }}><p style={{ color: '#7C3AED' }}>Carregando...</p></div></AppShell>}>
+      <StripeOnboard />
+    </Suspense>
+  )
+}
+
+function StripeOnboard() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<AccountStatus | null>(null)
   const [loading, setLoading] = useState(true)
