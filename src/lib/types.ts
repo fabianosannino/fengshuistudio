@@ -219,6 +219,96 @@ export interface AuditLogEntry {
   performer?: { nome_completo: string } | null
 }
 
+// ─── Billing / Subscription Types ────────────────────────────────────────────
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trial' | 'paused' | 'gratuidade'
+export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled' | 'refunded'
+export type BillingCycle = 'monthly' | 'yearly'
+
+export interface Plan {
+  id: string
+  name: string
+  slug: string
+  price_monthly: number
+  price_yearly: number
+  description?: string | null
+  features?: Record<string, unknown> | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface Subscription {
+  id: string
+  user_id: string
+  plan_id: string
+  billing_cycle: BillingCycle
+  status: SubscriptionStatus
+  price_paid?: number | null
+  started_at: string
+  current_period_start?: string | null
+  current_period_end?: string | null
+  next_billing_date?: string | null
+  cancelled_at?: string | null
+  cancel_at_period_end?: boolean
+  activated_by_key?: string | null
+  gratuidade_motivo?: string | null
+  created_at: string
+  updated_at: string
+  /** Joined */
+  plans?: Plan | null
+  profiles?: Pick<Profile, 'id' | 'nome_completo'> | null
+}
+
+export interface Invoice {
+  id: string
+  user_id: string
+  subscription_id?: string | null
+  plan_id?: string | null
+  amount: number
+  discount: number
+  amount_paid: number
+  status: InvoiceStatus
+  billing_cycle?: string | null
+  due_date: string
+  paid_at?: string | null
+  paid_manually?: boolean
+  paid_method?: string | null
+  paid_by_admin?: string | null
+  description?: string | null
+  installments: number
+  installment_number: number
+  notes?: string | null
+  refunded_at?: string | null
+  refund_amount?: number | null
+  created_at: string
+  /** Joined */
+  plans?: Plan | null
+  profiles?: Pick<Profile, 'id' | 'nome_completo'> | null
+}
+
+export interface PaymentNotification {
+  id: string
+  user_id: string
+  invoice_id?: string | null
+  type: string
+  channel: string
+  sent_at?: string | null
+  read_at?: string | null
+  content?: string | null
+  created_at: string
+}
+
+export interface WeeklyReport {
+  id: string
+  week_start: string
+  week_end: string
+  generated_at: string
+  data: Record<string, unknown>
+  is_manual: boolean
+  sent_to?: string[] | null
+  created_at: string
+}
+
 // ─── Dashboard Chart Types ───────────────────────────────────────────────────
 
 export interface StatusChartEntry {

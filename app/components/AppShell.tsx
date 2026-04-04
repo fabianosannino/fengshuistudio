@@ -5,6 +5,7 @@ import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional as isProfissionalFn, planoUsuario } from '../../src/lib/plano-utils'
+import PaymentBanner from './PaymentBanner'
 
 type NavItem = { label: string; icon: string; href: string; bloqueado?: boolean }
 
@@ -53,7 +54,13 @@ export default function AppShell({
   }
   const baseNav = buildNav()
   const navItems: NavItem[] = isAdmin
-    ? [...baseNav, { label: 'Admin', icon: '\ud83d\udd27', href: '/admin/chaves' }]
+    ? [
+        ...baseNav,
+        { label: 'Admin Chaves', icon: '\ud83d\udd11', href: '/admin/chaves' },
+        { label: 'Admin Pgtos', icon: '\ud83d\udcb3', href: '/admin/pagamentos' },
+        { label: 'Relatórios', icon: '\ud83d\udcca', href: '/admin/relatorios' },
+        { label: 'Auditoria', icon: '\ud83d\udcdd', href: '/admin/auditoria' },
+      ]
     : baseNav
 
   useEffect(() => {
@@ -284,6 +291,7 @@ export default function AppShell({
         </header>
 
         <main id="main-content" role="main" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+          <PaymentBanner />
           {children}
         </main>
       </div>
