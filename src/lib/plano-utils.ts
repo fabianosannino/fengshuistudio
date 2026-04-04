@@ -10,13 +10,12 @@ export const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', '
 
 /**
  * Determine if a user profile represents a professional user.
- * Centralised check to avoid inconsistencies across pages.
+ * Only the stored plan (from payment or activation key) grants professional access.
+ * tipo_usuario and role are informational only — they do NOT grant paid features.
  */
 export function isProfissional(profile?: { plano?: string | null; tipo_usuario?: string | null; role?: string | null } | null): boolean {
   if (!profile) return false
   return planoEfetivo(profile.plano) === 'profissional'
-    || (profile.tipo_usuario ? (PROF_TYPES as readonly string[]).includes(profile.tipo_usuario) : false)
-    || profile.role === 'consultor'
 }
 
 /**
