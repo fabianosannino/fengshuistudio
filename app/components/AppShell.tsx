@@ -70,11 +70,15 @@ export default function AppShell({
     function handleResize() { setIsMobile(window.innerWidth < 768) }
     window.addEventListener('resize', handleResize)
 
-    const saved = localStorage.getItem('fengshui-dark')
-    if (saved === 'true') setDarkMode(true)
+    try {
+      const saved = localStorage.getItem('fengshui-dark')
+      if (saved === 'true') setDarkMode(true)
 
-    const savedSidebar = localStorage.getItem('fengshui-sidebar')
-    if (savedSidebar === 'false') setSidebarOpen(false)
+      const savedSidebar = localStorage.getItem('fengshui-sidebar')
+      if (savedSidebar === 'false') setSidebarOpen(false)
+    } catch {
+      // localStorage unavailable (private browsing, SSR)
+    }
 
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -107,13 +111,13 @@ export default function AppShell({
   function toggleDark() {
     const next = !darkMode
     setDarkMode(next)
-    localStorage.setItem('fengshui-dark', String(next))
+    try { localStorage.setItem('fengshui-dark', String(next)) } catch { /* ignore */ }
   }
 
   function toggleSidebar() {
     const next = !sidebarOpen
     setSidebarOpen(next)
-    localStorage.setItem('fengshui-sidebar', String(next))
+    try { localStorage.setItem('fengshui-sidebar', String(next)) } catch { /* ignore */ }
   }
 
   async function handleLogout() {
@@ -197,7 +201,7 @@ export default function AppShell({
           {navItems.map((item) => {
             const active = currentPage === item.href.replace('/', '')
             return (
-              <a key={item.href} href={item.href} onClick={() => setMobileOpen(false)} style={{
+              <a key={item.href} href={item.href} onClick={() => setMobileOpen(false)} aria-current={active ? 'page' : undefined} aria-label={!sidebarOpen ? item.label : undefined} style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
                 padding: sidebarOpen ? '10px 14px' : '10px 0',
                 justifyContent: sidebarOpen ? 'flex-start' : 'center',
@@ -208,7 +212,7 @@ export default function AppShell({
                 fontWeight: active ? 'bold' : 'normal',
                 transition: 'all 0.2s ease', cursor: 'pointer'
               }}>
-                <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ fontSize: '18px', flexShrink: 0 }} aria-hidden="true">{item.icon}</span>
                 {sidebarOpen && <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>}
               </a>
             )

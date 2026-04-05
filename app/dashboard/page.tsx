@@ -95,58 +95,46 @@ export default function Dashboard() {
       const hoje = new Date().toISOString().split('T')[0]
       const em30dias = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-      // ── Run all independent queries in parallel ──
-      const [
-        clientesCountRes,
-        consultasCountRes,
-        rituaisCountRes,
-        allConsultasRes,
-        allPagamentosRes,
-        consultasComDataRes,
-        clientesComDataRes,
-        rituaisAgendaRes,
-        consultasAndamentoRes,
-        pagProximosRes,
-        consultasBaguaRes,
-      ] = await Promise.all([
-        // KPI: Clientes ativos
+      // ── Run all independent queries in parallel (with graceful failure handling) ──
+      const results = await Promise.allSettled([
+        // 0 - KPI: Clientes ativos
         supabase
           .from('clientes')
           .select('*', { count: 'exact', head: true })
           .eq('consultor_id', user.id)
           .eq('ativo', true),
-        // KPI: Total consultas
+        // 1 - KPI: Total consultas
         supabase
           .from('consultas')
           .select('*', { count: 'exact', head: true })
           .eq('consultor_id', user.id),
-        // KPI: Rituais pendentes
+        // 2 - KPI: Rituais pendentes
         supabase
           .from('rituais')
           .select('*', { count: 'exact', head: true })
           .eq('consultor_id', user.id)
           .eq('status', 'pendente'),
-        // CHART 1: Status das consultas (Pie)
+        // 3 - CHART 1: Status das consultas (Pie)
         supabase
           .from('consultas')
           .select('status')
           .eq('consultor_id', user.id),
-        // CHART 2: Pagamentos por mes (Bar empilhado)
+        // 4 - CHART 2: Pagamentos por mes (Bar empilhado)
         supabase
           .from('pagamentos')
           .select('*')
           .eq('consultor_id', user.id),
-        // CHART 3: Evolucao de consultas por mes (Line)
+        // 5 - CHART 3: Evolucao de consultas por mes (Line)
         supabase
           .from('consultas')
           .select('criado_em')
           .eq('consultor_id', user.id),
-        // CHART 4: Clientes cadastrados por mes (Bar)
+        // 6 - CHART 4: Clientes cadastrados por mes (Bar)
         supabase
           .from('clientes')
           .select('criado_em')
           .eq('consultor_id', user.id),
-        // AGENDA: Rituais pendentes (proximos 30 dias)
+        // 7 - AGENDA: Rituais pendentes (proximos 30 dias)
         supabase
           .from('rituais')
           .select('*, clientes(nome_completo)')
@@ -156,7 +144,7 @@ export default function Dashboard() {
           .lte('data_ritual', em30dias)
           .order('data_ritual', { ascending: true })
           .limit(5),
-        // AGENDA: Consultas em andamento
+        // 8 - AGENDA: Consultas em andamento
         supabase
           .from('consultas')
           .select('*, clientes(nome_completo)')
@@ -164,7 +152,7 @@ export default function Dashboard() {
           .eq('status', 'em_andamento')
           .order('criado_em', { ascending: false })
           .limit(5),
-        // AGENDA: Pagamentos pendentes proximos
+        // 9 - AGENDA: Pagamentos pendentes proximos
         supabase
           .from('pagamentos')
           .select('*, clientes(nome_completo)')
@@ -172,7 +160,7 @@ export default function Dashboard() {
           .in('status', ['pendente', 'atrasado'])
           .order('data_vencimento', { ascending: true })
           .limit(5),
-        // Analises Bagua recentes
+        // 10 - Analises Bagua recentes
         supabase
           .from('consultas')
           .select('id, nome_imovel, bagua_entrada, clientes(nome_completo)')
@@ -181,6 +169,19 @@ export default function Dashboard() {
           .order('criado_em', { ascending: false })
           .limit(20),
       ])
+
+      // ── Extract results with graceful fallbacks ──
+      const clientesCountRes = results[0].status === 'fulfilled' ? results[0].value : { count: 0, data: null, error: null }
+      const consultasCountRes = results[1].status === 'fulfilled' ? results[1].value : { count: 0, data: null, error: null }
+      const rituaisCountRes = results[2].status === 'fulfilled' ? results[2].value : { count: 0, data: null, error: null }
+      const allConsultasRes = results[3].status === 'fulfilled' ? results[3].value : { data: [], error: null }
+      const allPagamentosRes = results[4].status === 'fulfilled' ? results[4].value : { data: [], error: null }
+      const consultasComDataRes = results[5].status === 'fulfilled' ? results[5].value : { data: [], error: null }
+      const clientesComDataRes = results[6].status === 'fulfilled' ? results[6].value : { data: [], error: null }
+      const rituaisAgendaRes = results[7].status === 'fulfilled' ? results[7].value : { data: [], error: null }
+      const consultasAndamentoRes = results[8].status === 'fulfilled' ? results[8].value : { data: [], error: null }
+      const pagProximosRes = results[9].status === 'fulfilled' ? results[9].value : { data: [], error: null }
+      const consultasBaguaRes = results[10].status === 'fulfilled' ? results[10].value : { data: [], error: null }
 
       // ── Process KPI results ──
       setTotalClientes(clientesCountRes.count || 0)
@@ -376,12 +377,31 @@ export default function Dashboard() {
   if (loading) {
     return (
       <AppShell currentPage="dashboard">
+        {/* Header skeleton */}
         <div style={{ marginBottom: '32px' }}>
           <Skeleton width="280px" height="24px" />
           <div style={{ marginTop: '8px' }}><Skeleton width="320px" height="16px" /></div>
         </div>
+        {/* KPI cards skeleton */}
         <Skeleton variant="kpi" />
-        <div style={{ marginTop: '20px' }}><Skeleton variant="chart" /></div>
+        {/* Row 1: Two chart skeletons side by side */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+          <Skeleton variant="chart" />
+          <Skeleton variant="chart" />
+        </div>
+        {/* Row 2: Chart + Agenda skeletons side by side */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+          <Skeleton variant="chart" />
+          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+            <Skeleton width="180px" height="18px" />
+            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[1, 2, 3, 4].map(i => (
+                <Skeleton key={i} width="100%" height="48px" />
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Row 3: Full-width chart skeleton */}
         <div style={{ marginTop: '20px' }}><Skeleton variant="chart" /></div>
       </AppShell>
     )

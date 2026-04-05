@@ -18,6 +18,7 @@
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { logger } from '../../../../src/lib/logger'
+import { validateCurrency } from '../../../../src/lib/validation'
 
 // ── Application fee percentage ───────────────────────────────────────────────
 // This is the percentage the platform (FengShui Studio) takes from each sale.
@@ -45,6 +46,10 @@ export async function POST(request: Request) {
 
   if (!body.price_id && !body.unit_amount) {
     return NextResponse.json({ error: 'price_id ou unit_amount é obrigatório' }, { status: 400 })
+  }
+
+  if (body.unit_amount != null && !validateCurrency(body.unit_amount)) {
+    return NextResponse.json({ error: 'unit_amount deve ser positivo e no máximo 999999.99' }, { status: 400 })
   }
 
   const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
