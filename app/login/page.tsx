@@ -12,15 +12,6 @@ const TIPOS_USUARIO = [
   { id: 'outro_profissional', label: 'Outro profissional', desc: 'Outro tipo de profissional' },
 ]
 
-const inputStyle = {
-  width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB',
-  borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const,
-}
-
-const labelStyle = {
-  display: 'block', color: '#374151', fontSize: '13px', fontWeight: 'bold' as const, marginBottom: '4px',
-}
-
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -150,96 +141,65 @@ function LoginForm() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1E3A5F 0%, #2d5a8e 50%, #1E3A5F 100%)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif', padding: '20px'
-    }}>
-      <div style={{
-        background: '#ffffff', borderRadius: '16px', padding: '40px 36px',
-        width: '100%', maxWidth: isSignUp && signUpStep === 2 ? '520px' : '420px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-        transition: 'max-width 0.3s ease'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '4px' }}>☯</div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '26px', fontWeight: 'bold', margin: '0' }}>FengShui Studio</h1>
-          <p style={{ color: '#7C3AED', fontSize: '13px', margin: '4px 0 0 0' }}>
+    <div className="min-h-screen bg-gradient-to-br from-[#1E3A5F] via-[#2d5a8e] to-[#1E3A5F] flex items-center justify-center font-[Arial,sans-serif] p-5">
+      <div className={`bg-white rounded-2xl px-9 py-10 w-full ${isSignUp && signUpStep === 2 ? 'max-w-[520px]' : 'max-w-[420px]'} shadow-2xl transition-all duration-300`}>
+        <div className="text-center mb-6">
+          <div className="text-[40px] mb-1">☯</div>
+          <h1 className="text-[#1E3A5F] text-[26px] font-bold m-0">FengShui Studio</h1>
+          <p className="text-purple-600 text-[13px] mt-1 mb-0">
             {isSignUp ? (signUpStep === 2 ? 'Dados profissionais' : 'Crie sua conta') : 'Plataforma para Consultores e Usuários'}
           </p>
         </div>
 
         {!isSignUp && (
-          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
-            <button onClick={() => { setIsSignUp(false); setMessage('') }} style={{
-              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-              fontSize: '14px', fontWeight: 'bold',
-              background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
-            }}>Entrar</button>
-            <button onClick={() => { setIsSignUp(true); setMessage(''); setSignUpStep(1) }} style={{
-              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-              fontSize: '14px', fontWeight: 'bold',
-              background: 'transparent', color: '#6B7280'
-            }}>Cadastrar</button>
+          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+            <button onClick={() => { setIsSignUp(false); setMessage('') }} className="flex-1 p-2 border-none rounded-md cursor-pointer text-sm font-bold bg-white text-[#1E3A5F] shadow">
+              Entrar
+            </button>
+            <button onClick={() => { setIsSignUp(true); setMessage(''); setSignUpStep(1) }} className="flex-1 p-2 border-none rounded-md cursor-pointer text-sm font-bold bg-transparent text-gray-500">
+              Cadastrar
+            </button>
           </div>
         )}
 
         {isSignUp && !signUpDone && (
-          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
-            <button onClick={() => { setIsSignUp(false); setMessage(''); setSignUpStep(1) }} style={{
-              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-              fontSize: '14px', fontWeight: 'bold',
-              background: 'transparent', color: '#6B7280'
-            }}>Entrar</button>
-            <button style={{
-              flex: 1, padding: '8px', border: 'none', borderRadius: '6px',
-              fontSize: '14px', fontWeight: 'bold',
-              background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
-            }}>Cadastrar</button>
+          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+            <button onClick={() => { setIsSignUp(false); setMessage(''); setSignUpStep(1) }} className="flex-1 p-2 border-none rounded-md cursor-pointer text-sm font-bold bg-transparent text-gray-500">
+              Entrar
+            </button>
+            <button className="flex-1 p-2 border-none rounded-md text-sm font-bold bg-white text-[#1E3A5F] shadow">
+              Cadastrar
+            </button>
           </div>
         )}
 
         {/* ── SIGN UP DONE ──────────────────────────────────── */}
         {signUpDone ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉️</div>
-            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+          <div className="text-center">
+            <div className="text-5xl mb-4">✉️</div>
+            <h2 className="text-[#1E3A5F] text-lg font-bold mb-3 mt-0">
               Verifique seu e-mail
             </h2>
-            <p style={{ color: '#374151', fontSize: '14px', marginBottom: '8px' }}>
+            <p className="text-gray-700 text-sm mb-2">
               Enviamos um link de confirmação para:
             </p>
-            <p style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>
+            <p className="text-purple-600 text-[15px] font-bold mb-4">
               {email}
             </p>
-            <div style={{
-              background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px',
-              padding: '12px 16px', marginBottom: '20px', textAlign: 'left'
-            }}>
-              <p style={{ color: '#92400E', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 'bold' }}>
+            <div className="bg-amber-100 border border-[#FDE68A] rounded-lg px-4 py-3 mb-5 text-left">
+              <p className="text-amber-800 text-[13px] mb-1.5 mt-0 font-bold">
                 Não recebeu o e-mail?
               </p>
-              <ul style={{ color: '#92400E', fontSize: '13px', margin: '0', paddingLeft: '16px' }}>
+              <ul className="text-amber-800 text-[13px] m-0 pl-4">
                 <li>Verifique a pasta de <strong>spam/lixo eletrônico</strong></li>
                 <li>Aguarde alguns minutos e tente reenviar</li>
                 <li>Confirme se o e-mail digitado está correto</li>
               </ul>
             </div>
-            <button onClick={handleResendConfirmation} disabled={resending} style={{
-              width: '100%', padding: '12px',
-              background: resending ? '#9CA3AF' : '#7C3AED',
-              color: '#ffffff', border: 'none', borderRadius: '8px',
-              fontSize: '15px', fontWeight: 'bold',
-              cursor: resending ? 'not-allowed' : 'pointer', marginBottom: '12px'
-            }}>
+            <button onClick={handleResendConfirmation} disabled={resending} className={`w-full p-3 ${resending ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 cursor-pointer'} text-white border-none rounded-lg text-[15px] font-bold mb-3`}>
               {resending ? 'Reenviando...' : 'Reenviar e-mail de confirmação'}
             </button>
-            <button onClick={resetSignUp} style={{
-              width: '100%', padding: '12px', background: '#F3F4F6',
-              color: '#374151', border: 'none', borderRadius: '8px',
-              fontSize: '14px', cursor: 'pointer'
-            }}>
+            <button onClick={resetSignUp} className="w-full p-3 bg-gray-100 text-gray-700 border-none rounded-lg text-sm cursor-pointer">
               Voltar para o login
             </button>
           </div>
@@ -247,26 +207,20 @@ function LoginForm() {
         /* ── LOGIN FORM ──────────────────────────────────── */
         ) : !isSignUp ? (
           <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: '16px' }}>
-              <label htmlFor="login-email" style={labelStyle}>E-mail</label>
+            <div className="mb-4">
+              <label htmlFor="login-email" className="block text-gray-700 text-[13px] font-bold mb-1">E-mail</label>
               <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="seu@email.com" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
+                placeholder="seu@email.com" required className="w-full py-3 px-3.5 border border-gray-300 rounded-lg text-[15px] outline-none box-border" />
             </div>
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="login-senha" style={labelStyle}>Senha</label>
+            <div className="mb-6">
+              <label htmlFor="login-senha" className="block text-gray-700 text-[13px] font-bold mb-1">Senha</label>
               <input id="login-senha" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="Sua senha" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
+                placeholder="Sua senha" required className="w-full py-3 px-3.5 border border-gray-300 rounded-lg text-[15px] outline-none box-border" />
             </div>
-            <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
-              <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
+            <div className="text-right -mt-4 mb-5">
+              <a href="/esqueci-senha" className="text-purple-600 text-[13px] no-underline">Esqueci minha senha</a>
             </div>
-            <button type="submit" disabled={loading} style={{
-              width: '100%', padding: '14px',
-              background: loading ? '#9CA3AF' : '#7C3AED',
-              color: '#ffffff', border: 'none', borderRadius: '8px',
-              fontSize: '16px', fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}>
+            <button type="submit" disabled={loading} className={`w-full py-3.5 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 cursor-pointer'} text-white border-none rounded-lg text-base font-bold`}>
               {loading ? 'Aguarde...' : 'Entrar'}
             </button>
           </form>
@@ -274,59 +228,43 @@ function LoginForm() {
         /* ── SIGN UP STEP 1 ──────────────────────────────── */
         ) : signUpStep === 1 ? (
           <form onSubmit={handleStep1}>
-            <div style={{ marginBottom: '14px' }}>
-              <label htmlFor="signup-nome" style={labelStyle}>Nome completo</label>
+            <div className="mb-3.5">
+              <label htmlFor="signup-nome" className="block text-gray-700 text-[13px] font-bold mb-1">Nome completo</label>
               <input id="signup-nome" type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="Seu nome completo" required style={inputStyle} />
+                placeholder="Seu nome completo" required className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
             </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label htmlFor="signup-email" style={labelStyle}>E-mail</label>
+            <div className="mb-3.5">
+              <label htmlFor="signup-email" className="block text-gray-700 text-[13px] font-bold mb-1">E-mail</label>
               <input id="signup-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="seu@email.com" required style={inputStyle} />
+                placeholder="seu@email.com" required className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
             </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label htmlFor="signup-senha" style={labelStyle}>Senha</label>
+            <div className="mb-3.5">
+              <label htmlFor="signup-senha" className="block text-gray-700 text-[13px] font-bold mb-1">Senha</label>
               <input id="signup-senha" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres" required style={inputStyle} />
+                placeholder="Mínimo 6 caracteres" required className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
             </div>
 
             {/* User type selector */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Tipo de usuário</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="mb-5">
+              <label className="block text-gray-700 text-[13px] font-bold mb-1">Tipo de usuário</label>
+              <div className="flex flex-col gap-1.5">
                 {TIPOS_USUARIO.map(tipo => (
-                  <label key={tipo.id} onClick={() => setTipoUsuario(tipo.id)} style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
-                    border: `2px solid ${tipoUsuario === tipo.id ? '#7C3AED' : '#E5E7EB'}`,
-                    background: tipoUsuario === tipo.id ? '#F5F0FF' : '#ffffff',
-                    transition: 'all 0.2s'
-                  }}>
-                    <div style={{
-                      width: '18px', height: '18px', borderRadius: '50%',
-                      border: `2px solid ${tipoUsuario === tipo.id ? '#7C3AED' : '#D1D5DB'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                    }}>
+                  <label key={tipo.id} onClick={() => setTipoUsuario(tipo.id)} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer border-2 transition-all duration-200 ${tipoUsuario === tipo.id ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-white'}`}>
+                    <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 ${tipoUsuario === tipo.id ? 'border-purple-600' : 'border-gray-300'}`}>
                       {tipoUsuario === tipo.id && (
-                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#7C3AED' }} />
+                        <div className="w-2.5 h-2.5 rounded-full bg-purple-600" />
                       )}
                     </div>
                     <div>
-                      <span style={{ color: '#111827', fontSize: '14px', fontWeight: 'bold' }}>{tipo.label}</span>
-                      <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '6px' }}>{tipo.desc}</span>
+                      <span className="text-gray-900 text-sm font-bold">{tipo.label}</span>
+                      <span className="text-gray-400 text-xs ml-1.5">{tipo.desc}</span>
                     </div>
                   </label>
                 ))}
               </div>
             </div>
 
-            <button type="submit" disabled={loading} style={{
-              width: '100%', padding: '14px',
-              background: loading ? '#9CA3AF' : '#7C3AED',
-              color: '#ffffff', border: 'none', borderRadius: '8px',
-              fontSize: '16px', fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}>
+            <button type="submit" disabled={loading} className={`w-full py-3.5 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 cursor-pointer'} text-white border-none rounded-lg text-base font-bold`}>
               {loading ? 'Aguarde...' : isProfessional ? 'Próximo: dados profissionais' : 'Criar conta'}
             </button>
           </form>
@@ -334,67 +272,57 @@ function LoginForm() {
         /* ── SIGN UP STEP 2: Professional Details ────────── */
         ) : (
           <form onSubmit={handleStep2}>
-            <div style={{
-              background: '#F5F0FF', borderRadius: '8px', padding: '10px 14px',
-              marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'
-            }}>
-              <span style={{ fontSize: '18px' }}>
+            <div className="bg-purple-50 rounded-lg px-3.5 py-2.5 mb-4 flex items-center gap-2">
+              <span className="text-lg">
                 {tipoUsuario === 'arquiteto' ? '🏗️' : tipoUsuario === 'feng_shui' ? '☯' : tipoUsuario === 'decorador' ? '🎨' : '💼'}
               </span>
-              <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
+              <span className="text-purple-600 text-[13px] font-bold">
                 {TIPOS_USUARIO.find(t => t.id === tipoUsuario)?.label}
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label htmlFor="signup-profissao" style={labelStyle}>Profissão *</label>
+                <label htmlFor="signup-profissao" className="block text-gray-700 text-[13px] font-bold mb-1">Profissão *</label>
                 <input id="signup-profissao" type="text" value={profForm.profissao}
                   onChange={e => setProfForm({ ...profForm, profissao: e.target.value })}
-                  placeholder="Ex: Arquiteto, Consultor" required style={inputStyle} />
+                  placeholder="Ex: Arquiteto, Consultor" required className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
               </div>
               <div>
-                <label htmlFor="signup-area-atuacao" style={labelStyle}>Área de atuação *</label>
+                <label htmlFor="signup-area-atuacao" className="block text-gray-700 text-[13px] font-bold mb-1">Área de atuação *</label>
                 <input id="signup-area-atuacao" type="text" value={profForm.area_atuacao}
                   onChange={e => setProfForm({ ...profForm, area_atuacao: e.target.value })}
-                  placeholder="Ex: Residencial, Comercial" required style={inputStyle} />
+                  placeholder="Ex: Residencial, Comercial" required className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
               </div>
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <label htmlFor="signup-registro" style={labelStyle}>Registro profissional</label>
+            <div className="mb-3">
+              <label htmlFor="signup-registro" className="block text-gray-700 text-[13px] font-bold mb-1">Registro profissional</label>
               <input id="signup-registro" type="text" value={profForm.registro_profissional}
                 onChange={e => setProfForm({ ...profForm, registro_profissional: e.target.value })}
-                placeholder="Ex: CAU A12345-6, CREA 12345" style={inputStyle} />
+                placeholder="Ex: CAU A12345-6, CREA 12345" className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+            <div className="grid grid-cols-2 gap-3 mb-5">
               <div>
-                <label htmlFor="signup-linkedin" style={labelStyle}>LinkedIn (portfolio)</label>
+                <label htmlFor="signup-linkedin" className="block text-gray-700 text-[13px] font-bold mb-1">LinkedIn (portfolio)</label>
                 <input id="signup-linkedin" type="url" value={profForm.linkedin}
                   onChange={e => setProfForm({ ...profForm, linkedin: e.target.value })}
-                  placeholder="https://linkedin.com/in/..." style={inputStyle} />
+                  placeholder="https://linkedin.com/in/..." className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
               </div>
               <div>
-                <label htmlFor="signup-instagram" style={labelStyle}>Instagram (portfolio)</label>
+                <label htmlFor="signup-instagram" className="block text-gray-700 text-[13px] font-bold mb-1">Instagram (portfolio)</label>
                 <input id="signup-instagram" type="text" value={profForm.instagram}
                   onChange={e => setProfForm({ ...profForm, instagram: e.target.value })}
-                  placeholder="@seuperfil" style={inputStyle} />
+                  placeholder="@seuperfil" className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none box-border" />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => setSignUpStep(1)} style={{
-                padding: '14px 20px', background: '#F3F4F6', color: '#374151',
-                border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
-              }}>Voltar</button>
-              <button type="submit" disabled={loading} style={{
-                flex: 1, padding: '14px',
-                background: loading ? '#9CA3AF' : '#7C3AED',
-                color: '#ffffff', border: 'none', borderRadius: '8px',
-                fontSize: '16px', fontWeight: 'bold',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => setSignUpStep(1)} className="py-3.5 px-5 bg-gray-100 text-gray-700 border-none rounded-lg text-sm cursor-pointer">
+                Voltar
+              </button>
+              <button type="submit" disabled={loading} className={`flex-1 py-3.5 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 cursor-pointer'} text-white border-none rounded-lg text-base font-bold`}>
                 {loading ? 'Aguarde...' : 'Criar conta'}
               </button>
             </div>
@@ -404,19 +332,13 @@ function LoginForm() {
         {message && (() => {
           const isError = message.includes('Erro') || message.includes('incorretos') || message.includes('já está cadastrado')
           return (
-            <div style={{
-              marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-              background: isError ? '#FEF2F2' : '#F0FDF4',
-              border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
-              color: isError ? '#DC2626' : '#15803D',
-              fontSize: '14px', textAlign: 'center'
-            }}>
+            <div className={`mt-5 px-4 py-3 rounded-lg text-sm text-center ${isError ? 'bg-red-50 border border-[#FECACA] text-red-600' : 'bg-green-50 border border-[#BBF7D0] text-green-700'}`}>
               {message}
             </div>
           )
         })()}
 
-        <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '12px', marginTop: '24px', marginBottom: '0' }}>
+        <p className="text-center text-gray-400 text-xs mt-6 mb-0">
           FengShui Studio 2026 - CollabZ Consultoria
         </p>
       </div>
@@ -427,10 +349,10 @@ function LoginForm() {
 export default function Login() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1E3A5F' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#ffffff', fontSize: '16px', fontFamily: 'Arial, sans-serif' }}>Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#1E3A5F]">
+        <div className="text-center">
+          <div className="text-5xl mb-4">☯</div>
+          <p className="text-white text-base font-[Arial,sans-serif]">Carregando...</p>
         </div>
       </div>
     }>
