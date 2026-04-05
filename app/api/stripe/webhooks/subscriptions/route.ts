@@ -54,7 +54,11 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case 'customer.subscription.created': {
-        const subscription = event.data.object as Stripe.Subscription
+        const subscription = event.data.object as Stripe.Subscription & {
+          start_date?: number
+          current_period_start?: number
+          current_period_end?: number
+        }
         const customerId = resolveCustomerId(subscription.customer)
         const status = subscription.status
 
@@ -108,10 +112,10 @@ export async function POST(request: Request) {
           price_paid: subscription.items?.data?.[0]?.price?.unit_amount
             ? subscription.items.data[0].price.unit_amount / 100
             : 0,
-          started_at: new Date(subscription.start_date * 1000).toISOString(),
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          next_billing_date: new Date(subscription.current_period_end * 1000).toISOString(),
+          started_at: subscription.start_date ? new Date(subscription.start_date * 1000).toISOString() : new Date().toISOString(),
+          current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : new Date().toISOString(),
+          current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
+          next_billing_date: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
           gateway_subscription_id: subscription.id,
         })
 
@@ -127,7 +131,10 @@ export async function POST(request: Request) {
       }
 
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription
+        const subscription = event.data.object as Stripe.Subscription & {
+          current_period_start?: number
+          current_period_end?: number
+        }
         const customerId = resolveCustomerId(subscription.customer)
         const status = subscription.status
         const cancelAtPeriodEnd = subscription.cancel_at_period_end
@@ -153,9 +160,9 @@ export async function POST(request: Request) {
         const updateData = {
           status: mapStripeStatus(status),
           cancel_at_period_end: cancelAtPeriodEnd,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          next_billing_date: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : undefined,
+          current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : undefined,
+          next_billing_date: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : undefined,
           updated_at: new Date().toISOString(),
         }
 
