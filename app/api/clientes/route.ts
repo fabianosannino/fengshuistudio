@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
 import { planoUsuario, podeClientes } from '../../../src/lib/plano-utils'
+import { validateEmail, validatePhone } from '../../../src/lib/validation'
 
 const MAX_CLIENTES_FREE = 5
 
@@ -60,6 +61,14 @@ export async function POST(request: Request) {
 
   if (!nome_completo || typeof nome_completo !== 'string' || nome_completo.trim().length === 0) {
     return NextResponse.json({ error: 'Nome completo é obrigatório' }, { status: 400 })
+  }
+
+  if (email && !validateEmail(email)) {
+    return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
+  }
+
+  if (telefone && !validatePhone(telefone)) {
+    return NextResponse.json({ error: 'Telefone inválido' }, { status: 400 })
   }
 
   const { error, data } = await supabase.from('clientes').insert({

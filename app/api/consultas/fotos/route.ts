@@ -66,10 +66,11 @@ export async function POST(request: Request) {
   const uploadedUrls: string[] = []
 
   for (const file of files) {
-    const timestamp = Date.now()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const allowedExt = ['jpg', 'jpeg', 'png', 'webp']
+    const safeExt = allowedExt.includes(ext) ? ext : 'jpg'
     const folder = tipo === 'geral' ? 'geral' : comodo!.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
-    const filePath = `${consultaId}/${folder}/${timestamp}_${safeName}`
+    const filePath = `${consultaId}/${folder}/${crypto.randomUUID()}.${safeExt}`
 
     const buffer = await file.arrayBuffer()
     const { error: uploadError } = await supabase.storage
