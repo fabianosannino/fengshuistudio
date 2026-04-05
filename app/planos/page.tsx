@@ -77,6 +77,7 @@ export default function Planos() {
   const [selectedPlanId, setSelectedPlanId] = useState('')
   const [chaveAtivacao, setChaveAtivacao] = useState('')
   const [upgrading, setUpgrading] = useState(false)
+  const [subscription, setSubscription] = useState<{ status: string; cancel_at_period_end: boolean; current_period_end: string | null } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -85,6 +86,17 @@ export default function Planos() {
       setUser(user)
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(data)
+
+      // Load current subscription
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('status, cancel_at_period_end, current_period_end, billing_cycle')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'past_due', 'trial', 'gratuidade'])
+        .limit(1)
+        .single()
+      if (subs) setSubscription(subs)
+
       setLoading(false)
     }
     load()
@@ -105,6 +117,7 @@ export default function Planos() {
         const data = await res.json()
         if (!res.ok) { setMessage('Erro: ' + data.error); return }
         setProfile(prev => prev ? { ...prev, plano: 'free' } : prev)
+        setSubscription(null)
         setMessage('Plano alterado para Free.')
         setTimeout(() => setMessage(''), 4000)
       } catch { setMessage('Erro de conexão.') }
@@ -113,6 +126,23 @@ export default function Planos() {
     setSelectedPlanId(planoId)
     setShowKeyInput(true)
     setMessage('')
+  }
+
+  async function handleStripeCheckout(planoId: string) {
+    setUpgrading(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/stripe/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_slug: planoId, billing_cycle: ciclo }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setMessage('Erro: ' + (data.error || 'Erro ao criar checkout')); setUpgrading(false); return }
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch { setMessage('Erro de conexão.'); setUpgrading(false) }
   }
 
   async function handleActivateKey() {
@@ -139,6 +169,33 @@ export default function Planos() {
     setUpgrading(false)
   }
 
+  async function handleCancelSubscription() {
+    if (!confirm('Tem certeza que deseja cancelar sua assinatura? Você continuará com acesso até o fim do período atual.')) return
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/subscription/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (!res.ok) { setMessage('Erro: ' + data.error); setUpgrading(false); return }
+      setSubscription(prev => prev ? { ...prev, cancel_at_period_end: true } : prev)
+      setMessage('Assinatura será cancelada ao final do período atual.')
+      setTimeout(() => setMessage(''), 5000)
+    } catch { setMessage('Erro de conexão.') }
+    setUpgrading(false)
+  }
+
+  async function handleManageBilling() {
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setMessage('Erro: ' + data.error); setUpgrading(false); return }
+      if (data.url) window.location.href = data.url
+    } catch { setMessage('Erro de conexão.'); setUpgrading(false) }
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
@@ -157,9 +214,39 @@ export default function Planos() {
     <AppShell currentPage="planos">
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h1 style={{ color: '#1E3A5F', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Escolha seu plano</h1>
-        <p style={{ color: '#6B7280', fontSize: '16px', margin: '0 0 24px 0' }}>
+        <p style={{ color: '#6B7280', fontSize: '16px', margin: '0 0 8px 0' }}>
           Seu plano atual: <strong style={{ color: planoAtualCor }}>{planoAtualLabel}</strong>
         </p>
+
+        {/* Subscription status info */}
+        {subscription && (
+          <div style={{ marginBottom: '16px' }}>
+            {subscription.cancel_at_period_end && (
+              <p style={{ color: '#DC2626', fontSize: '13px', margin: '4px 0' }}>
+                Cancelamento agendado — acesso até {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString('pt-BR') : 'fim do período'}
+              </p>
+            )}
+            {subscription.status === 'past_due' && (
+              <p style={{ color: '#DC2626', fontSize: '13px', margin: '4px 0' }}>
+                Pagamento pendente — atualize seu meio de pagamento para manter o acesso
+              </p>
+            )}
+            {subscription.status === 'active' && !subscription.cancel_at_period_end && planoAtualEfetivo !== 'free' && (
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
+                <button onClick={handleManageBilling} disabled={upgrading} style={{
+                  padding: '6px 16px', background: '#F3F4F6', color: '#374151',
+                  border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '12px',
+                  cursor: 'pointer'
+                }}>Gerenciar pagamento</button>
+                <button onClick={handleCancelSubscription} disabled={upgrading} style={{
+                  padding: '6px 16px', background: '#FEF2F2', color: '#DC2626',
+                  border: '1px solid #FECACA', borderRadius: '6px', fontSize: '12px',
+                  cursor: 'pointer'
+                }}>Cancelar assinatura</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Toggle Mensal / Anual */}
         <div style={{ display: 'inline-flex', background: '#F3F4F6', borderRadius: '10px', padding: '4px' }}>
@@ -252,16 +339,34 @@ export default function Planos() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => handleSelectPlan(plano.id)} disabled={isAtual} style={{
-                width: '100%', padding: '14px',
-                background: isAtual ? '#E5E7EB' : plano.destaque ? '#7C3AED' : '#ffffff',
-                color: isAtual ? '#9CA3AF' : plano.destaque ? '#ffffff' : '#7C3AED',
-                border: isAtual ? 'none' : plano.destaque ? 'none' : '2px solid #7C3AED',
-                borderRadius: '10px', fontSize: '15px', fontWeight: 'bold',
-                cursor: isAtual ? 'default' : 'pointer'
-              }}>
-                {isAtual ? 'Plano atual' : plano.id === 'free' ? 'Mudar para Free' : 'Assinar'}
-              </button>
+
+              {/* Action buttons */}
+              {isAtual ? (
+                <button disabled style={{
+                  width: '100%', padding: '14px', background: '#E5E7EB', color: '#9CA3AF',
+                  border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold', cursor: 'default'
+                }}>Plano atual</button>
+              ) : plano.id === 'free' ? (
+                <button onClick={() => handleSelectPlan('free')} style={{
+                  width: '100%', padding: '14px', background: '#ffffff', color: '#6B7280',
+                  border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
+                }}>Mudar para Free</button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button onClick={() => handleStripeCheckout(plano.id)} disabled={upgrading} style={{
+                    width: '100%', padding: '14px',
+                    background: upgrading ? '#9CA3AF' : plano.destaque ? '#7C3AED' : '#ffffff',
+                    color: upgrading ? '#fff' : plano.destaque ? '#ffffff' : '#7C3AED',
+                    border: plano.destaque ? 'none' : '2px solid #7C3AED',
+                    borderRadius: '10px', fontSize: '15px', fontWeight: 'bold',
+                    cursor: upgrading ? 'not-allowed' : 'pointer'
+                  }}>{upgrading ? 'Redirecionando...' : `Assinar ${ciclo === 'yearly' ? 'Anual' : 'Mensal'}`}</button>
+                  <button onClick={() => handleSelectPlan(plano.id)} style={{
+                    width: '100%', padding: '8px', background: 'transparent', color: '#9CA3AF',
+                    border: 'none', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline'
+                  }}>Tenho uma chave de ativação</button>
+                </div>
+              )}
             </div>
           )
         })}
@@ -298,9 +403,6 @@ export default function Planos() {
                 cursor: upgrading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap'
               }}>{upgrading ? 'Ativando...' : 'Ativar'}</button>
             </div>
-            <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0 0 12px 0' }}>
-              Pagamento online em breve. Use uma chave de ativação para acessar agora.
-            </p>
             <button onClick={() => { setShowKeyInput(false); setSelectedPlanId(''); setChaveAtivacao(''); setMessage('') }}
               style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: '13px', cursor: 'pointer' }}>
               Cancelar
@@ -344,38 +446,6 @@ export default function Planos() {
           </table>
         </div>
       </div>
-
-      {/* Standalone Key Activation */}
-      {!showKeyInput && (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '24px 32px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)', maxWidth: '600px', margin: '0 auto 32px', textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔑</div>
-          <h4 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Tem uma chave de ativação?</h4>
-          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>Digite abaixo para ativar seu plano diretamente</p>
-          <div style={{ display: 'flex', gap: '10px', maxWidth: '400px', margin: '0 auto' }}>
-            <input type="text" value={chaveAtivacao} onChange={e => setChaveAtivacao(e.target.value)}
-              placeholder="XXXX-XXXX-XXXX-XXXX" onKeyDown={e => {
-                if (e.key === 'Enter' && chaveAtivacao.trim()) {
-                  setSelectedPlanId('profissional')
-                  handleActivateKey()
-                }
-              }}
-              style={{
-                flex: 1, padding: '10px 14px', border: '1px solid #E5E7EB', borderRadius: '8px',
-                fontSize: '14px', textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold'
-              }} />
-            <button onClick={() => {
-              if (chaveAtivacao.trim()) { setSelectedPlanId('profissional'); handleActivateKey() }
-              else { setMessage('Digite a chave de ativação.') }
-            }} style={{
-              padding: '10px 20px', background: '#7C3AED', color: '#fff', border: 'none',
-              borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
-            }}>Ativar</button>
-          </div>
-        </div>
-      )}
 
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '24px 32px',

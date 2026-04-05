@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import stripeClient from '../../../../src/lib/stripe'
 
 async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
 
     const pastDueAmount = (allInvoices || [])
       .filter(inv => inv.status === 'overdue')
-      .reduce((sum, inv) => sum + (inv.amount - inv.amount_paid), 0)
+      .reduce((sum: number, inv: { amount: number; amount_paid: number }) => sum + (inv.amount - inv.amount_paid), 0)
 
     const metrics = {
       mrr: Math.round(mrr * 100) / 100,
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
       .from('profiles')
       .select(`
         id, nome_completo, plano, tipo_usuario, role, criado_em,
-        subscriptions(id, plan_id, billing_cycle, status, price_paid, started_at, current_period_end, next_billing_date, cancelled_at, gratuidade_motivo, plans(name, slug, price_monthly, price_yearly))
+        subscriptions(id, plan_id, billing_cycle, status, price_paid, started_at, current_period_end, next_billing_date, cancelled_at, cancel_at_period_end, gratuidade_motivo, gateway_subscription_id, plans(name, slug, price_monthly, price_yearly))
       `, { count: 'exact' })
       .order(sortBy === 'nome_completo' ? 'nome_completo' : 'criado_em', { ascending: sortDir })
 
@@ -163,9 +164,8 @@ export async function POST(request: Request) {
           ? new Date(now.getTime() + durationMonths * 30 * 24 * 60 * 60 * 1000)
           : null
 
-        // Cancel existing active subscriptions
-        await supabase.from('subscriptions').update({ status: 'cancelled', cancelled_at: now.toISOString() })
-          .eq('user_id', targetUserId).in('status', ['active', 'past_due', 'gratuidade'])
+        // Cancel existing active subscriptions (both local and Stripe)
+        await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
 
         // Create gratuidade subscription
         const { error: subErr } = await supabase.from('subscriptions').insert({
@@ -213,12 +213,11 @@ export async function POST(request: Request) {
         const { data: plan } = await supabase.from('plans').select('*').eq('slug', newPlan).single()
         if (!plan) return NextResponse.json({ error: 'Plano não encontrado' }, { status: 404 })
 
-        // Cancel existing subscriptions
-        const now = new Date()
-        await supabase.from('subscriptions').update({ status: 'cancelled', cancelled_at: now.toISOString() })
-          .eq('user_id', targetUserId).in('status', ['active', 'past_due', 'gratuidade'])
+        // Cancel existing subscriptions (both local and Stripe)
+        await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
 
         if (newPlan !== 'free') {
+          const now = new Date()
           // Create new subscription
           await supabase.from('subscriptions').insert({
             user_id: targetUserId,
@@ -252,11 +251,33 @@ export async function POST(request: Request) {
         const now = new Date()
 
         if (immediate) {
-          await supabase.from('subscriptions').update({ status: 'cancelled', cancelled_at: now.toISOString() })
-            .eq('user_id', targetUserId).in('status', ['active', 'past_due', 'gratuidade'])
+          // Cancel in Stripe first
+          await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
           await supabase.from('profiles').update({ plano: 'free' }).eq('id', targetUserId)
         } else {
-          await supabase.from('subscriptions').update({ cancel_at_period_end: true })
+          // Cancel at period end — sync with Stripe
+          const { data: activeSubs } = await supabase
+            .from('subscriptions')
+            .select('id, gateway_subscription_id')
+            .eq('user_id', targetUserId)
+            .in('status', ['active', 'gratuidade'])
+
+          for (const sub of activeSubs || []) {
+            if (sub.gateway_subscription_id) {
+              try {
+                await stripeClient.subscriptions.update(sub.gateway_subscription_id, {
+                  cancel_at_period_end: true,
+                })
+              } catch (err) {
+                logger.warn('Failed to set cancel_at_period_end on Stripe', {
+                  subscriptionId: sub.gateway_subscription_id,
+                  error: String(err),
+                })
+              }
+            }
+          }
+
+          await supabase.from('subscriptions').update({ cancel_at_period_end: true, updated_at: now.toISOString() })
             .eq('user_id', targetUserId).in('status', ['active', 'gratuidade'])
         }
 
@@ -266,6 +287,17 @@ export async function POST(request: Request) {
           target_id: targetUserId,
           details: { user_nome: targetProfile.nome_completo, immediate, motivo, previous_plan: targetProfile.plano },
           performed_by: admin.user.id,
+        })
+
+        // Notify user
+        await supabase.from('payment_notifications').insert({
+          user_id: targetUserId,
+          type: immediate ? 'subscription_cancelled' : 'subscription_cancel_scheduled',
+          channel: 'in_app',
+          sent_at: now.toISOString(),
+          content: immediate
+            ? `Sua assinatura foi cancelada. Motivo: ${motivo}`
+            : `Sua assinatura será cancelada ao final do período atual. Motivo: ${motivo}`,
         })
 
         return NextResponse.json({ success: true, message: immediate ? 'Assinatura cancelada imediatamente' : 'Assinatura será cancelada ao final do período' })
@@ -282,6 +314,11 @@ export async function POST(request: Request) {
         const { data: invoice } = await supabase.from('invoices').select('*').eq('id', invoiceId).single()
         if (!invoice) return NextResponse.json({ error: 'Fatura não encontrada' }, { status: 404 })
 
+        // Prevent double-marking
+        if (invoice.status === 'paid') {
+          return NextResponse.json({ error: 'Fatura já está marcada como paga' }, { status: 400 })
+        }
+
         await supabase.from('invoices').update({
           status: 'paid',
           paid_at: paidDate || new Date().toISOString(),
@@ -294,7 +331,7 @@ export async function POST(request: Request) {
 
         // Reactivate subscription if it was past_due
         if (invoice.subscription_id) {
-          await supabase.from('subscriptions').update({ status: 'active' })
+          await supabase.from('subscriptions').update({ status: 'active', updated_at: new Date().toISOString() })
             .eq('id', invoice.subscription_id).eq('status', 'past_due')
         }
 
@@ -320,24 +357,93 @@ export async function POST(request: Request) {
         const { data: invoice } = await supabase.from('invoices').select('*').eq('id', invoiceId).single()
         if (!invoice) return NextResponse.json({ error: 'Fatura não encontrada' }, { status: 404 })
 
+        if (invoice.status === 'refunded') {
+          return NextResponse.json({ error: 'Fatura já foi reembolsada' }, { status: 400 })
+        }
+
         const amount = refundAmount || invoice.amount_paid
+        let stripeRefundId: string | null = null
+
+        // Process real Stripe refund if the invoice has a gateway_invoice_id and it's not just a credit
+        if (!isCredit && invoice.gateway_invoice_id) {
+          try {
+            // Get the Stripe invoice to find the payment intent
+            const stripeInvoice = await stripeClient.invoices.retrieve(invoice.gateway_invoice_id)
+            const paymentIntentId = typeof stripeInvoice.payment_intent === 'string'
+              ? stripeInvoice.payment_intent
+              : (stripeInvoice.payment_intent as { id: string })?.id
+
+            if (paymentIntentId) {
+              const refund = await stripeClient.refunds.create({
+                payment_intent: paymentIntentId,
+                amount: Math.round(amount * 100), // Convert BRL to centavos
+                reason: 'requested_by_customer',
+                metadata: {
+                  admin_id: admin.user.id,
+                  motivo,
+                  invoice_id: invoiceId,
+                },
+              })
+              stripeRefundId = refund.id
+              logger.info('Stripe refund processed', {
+                route: '/api/admin/subscriptions',
+                refundId: refund.id,
+                amount,
+                invoiceId,
+              })
+            }
+          } catch (err) {
+            logger.error('Stripe refund failed', {
+              route: '/api/admin/subscriptions',
+              error: String(err),
+              invoiceId,
+            })
+            return NextResponse.json({
+              error: `Erro ao processar reembolso no Stripe: ${String(err)}. Use "crédito" para registrar sem reembolso real.`,
+            }, { status: 500 })
+          }
+        }
 
         await supabase.from('invoices').update({
           status: isCredit ? 'paid' : 'refunded',
           refunded_at: new Date().toISOString(),
           refund_amount: amount,
-          notes: `${isCredit ? 'Crédito' : 'Reembolso'}: ${motivo}`,
+          notes: `${isCredit ? 'Crédito' : 'Reembolso'}: ${motivo}${stripeRefundId ? ` (Stripe: ${stripeRefundId})` : ''}`,
         }).eq('id', invoiceId)
+
+        // Notify user
+        await supabase.from('payment_notifications').insert({
+          user_id: targetUserId,
+          invoice_id: invoiceId,
+          type: isCredit ? 'credit_applied' : 'refund_processed',
+          channel: 'in_app',
+          sent_at: new Date().toISOString(),
+          content: isCredit
+            ? `Crédito de R$ ${amount.toFixed(2)} aplicado à sua conta. Motivo: ${motivo}`
+            : `Reembolso de R$ ${amount.toFixed(2)} processado. O valor será devolvido ao seu meio de pagamento original.`,
+        })
 
         await supabase.from('admin_audit_log').insert({
           action: isCredit ? 'credit' : 'refund',
           target_type: 'invoice',
           target_id: invoiceId,
-          details: { user_nome: targetProfile.nome_completo, amount, motivo, is_credit: isCredit },
+          details: {
+            user_nome: targetProfile.nome_completo,
+            amount,
+            motivo,
+            is_credit: isCredit,
+            stripe_refund_id: stripeRefundId,
+          },
           performed_by: admin.user.id,
         })
 
-        return NextResponse.json({ success: true, message: isCredit ? 'Crédito registrado' : 'Reembolso processado' })
+        return NextResponse.json({
+          success: true,
+          message: isCredit
+            ? 'Crédito registrado'
+            : `Reembolso de R$ ${amount.toFixed(2)} processado${stripeRefundId ? ' via Stripe' : ''}`,
+          stripe_refund_id: stripeRefundId,
+        })
       }
 
       default:
@@ -347,4 +453,43 @@ export async function POST(request: Request) {
     logger.error('Admin subscription action error', { route: '/api/admin/subscriptions', action, error: String(err) })
     return NextResponse.json({ error: `Erro ao executar ação: ${String(err)}` }, { status: 500 })
   }
+}
+
+// ── Helper: Cancel all active subscriptions (local DB + Stripe) ──────────────
+
+async function cancelExistingSubscriptions(
+  supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>,
+  userId: string,
+  stripeCustomerId?: string | null
+) {
+  const now = new Date().toISOString()
+
+  // Get active subscriptions with Stripe IDs
+  const { data: activeSubs } = await supabase
+    .from('subscriptions')
+    .select('id, gateway_subscription_id')
+    .eq('user_id', userId)
+    .in('status', ['active', 'past_due', 'gratuidade', 'trial'])
+
+  // Cancel each in Stripe
+  for (const sub of activeSubs || []) {
+    if (sub.gateway_subscription_id) {
+      try {
+        await stripeClient.subscriptions.cancel(sub.gateway_subscription_id)
+      } catch (err) {
+        // Log but don't fail — subscription may already be cancelled in Stripe
+        logger.warn('Failed to cancel Stripe subscription', {
+          subscriptionId: sub.gateway_subscription_id,
+          error: String(err),
+        })
+      }
+    }
+  }
+
+  // Cancel all locally
+  await supabase
+    .from('subscriptions')
+    .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
+    .eq('user_id', userId)
+    .in('status', ['active', 'past_due', 'gratuidade', 'trial'])
 }
