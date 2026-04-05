@@ -100,8 +100,10 @@ export default function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Dark mode
-    const saved = localStorage.getItem('fengshui-dark')
-    if (saved === 'true') setDarkMode(true)
+    try {
+      const saved = localStorage.getItem('fengshui-dark')
+      if (saved === 'true') setDarkMode(true)
+    } catch { /* ignore */ }
 
     // Auth + profile
     refreshProfile().finally(() => setLoading(false))
@@ -112,6 +114,13 @@ export default function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener('online', goOnline)
     window.addEventListener('offline', goOffline)
     setOnline(navigator.onLine)
+
+    // Register service worker (PWA)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // SW registration failed — not critical
+      })
+    }
 
     return () => {
       window.removeEventListener('online', goOnline)

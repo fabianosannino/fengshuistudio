@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import AppProvider from './components/AppProvider'
+import Analytics from './components/Analytics'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://fengshuistudio.vercel.app'),
@@ -61,6 +63,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <head>
         <meta charSet="UTF-8" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1E3A5F" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="FengShui Studio" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <style>{`
           .skip-link {
             position: absolute;
@@ -83,6 +91,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Pular para o conteúdo principal
         </a>
         <AppProvider>
+          <Suspense fallback={null}>
+            <Analytics />
+          </Suspense>
           {children}
         </AppProvider>
       </body>

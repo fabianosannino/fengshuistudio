@@ -1,0 +1,42 @@
+{
+  "name": "FengShui Studio",
+  "short_name": "FengShui",
+  "description": "Plataforma profissional de consultoria Feng Shui. Análises, relatórios e harmonização de ambientes.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F9FAFB",
+  "theme_color": "#1E3A5F",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["business", "productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nova Consulta",
+      "short_name": "Consulta",
+      "url": "/consultas/nova",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
