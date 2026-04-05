@@ -396,11 +396,11 @@ export async function POST(request: Request) {
         if (paymentIntentId) {
           // Try to find the Stripe invoice linked to this payment intent
           try {
-            const invoices = await stripeClient.invoices.list({
+            const invoicesResponse = await stripeClient.invoices.list({
               customer: customerId,
               limit: 10,
-            })
-            const matchedInvoice = invoices.data.find(inv => inv.payment_intent === paymentIntentId)
+            }) as unknown as { data: Array<{ id: string; payment_intent: string | null }> }
+            const matchedInvoice = invoicesResponse.data.find(inv => inv.payment_intent === paymentIntentId)
 
             if (matchedInvoice) {
               await supabase

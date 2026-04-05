@@ -368,10 +368,12 @@ export async function POST(request: Request) {
         if (!isCredit && invoice.gateway_invoice_id) {
           try {
             // Get the Stripe invoice to find the payment intent
-            const stripeInvoice = await stripeClient.invoices.retrieve(invoice.gateway_invoice_id)
-            const paymentIntentId = typeof stripeInvoice.payment_intent === 'string'
-              ? stripeInvoice.payment_intent
-              : (stripeInvoice.payment_intent as { id: string })?.id
+            // Stripe SDK v22 returns Response<Invoice>, cast to access properties
+            const stripeInvoiceResponse = await stripeClient.invoices.retrieve(invoice.gateway_invoice_id) as unknown as Record<string, unknown>
+            const piField = stripeInvoiceResponse.payment_intent
+            const paymentIntentId = typeof piField === 'string'
+              ? piField
+              : (piField as { id: string } | null)?.id
 
             if (paymentIntentId) {
               const refund = await stripeClient.refunds.create({
