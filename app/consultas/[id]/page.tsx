@@ -880,8 +880,8 @@ export default function ConsultaDetalhe() {
                   {/* Bagua image preview */}
                   {consulta.bagua_imagem && (
                     <div style={{ textAlign: 'center' }}>
-                      <Image src={consulta.bagua_imagem} alt="Planta Ba Gua" width={400} height={200} unoptimized style={{
-                        maxWidth: '100%', maxHeight: '200px', borderRadius: '8px',
+                      <Image src={consulta.bagua_imagem} alt="Planta Ba Gua" width={800} height={500} unoptimized style={{
+                        width: '100%', height: 'auto', borderRadius: '8px',
                         border: '1px solid #E5E7EB'
                       }} />
                     </div>
