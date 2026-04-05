@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createSupabaseMiddlewareClient } from './lib/supabase-server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha']
+const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha', '/landing', '/termos', '/privacidade']
 
 function isSafeRedirect(path: string): boolean {
   // Only allow relative paths starting with / and no protocol://
@@ -51,6 +51,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|icons/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|js)$).*)',
   ],
 }
