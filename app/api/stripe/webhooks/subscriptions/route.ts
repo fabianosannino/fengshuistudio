@@ -243,7 +243,13 @@ export async function POST(request: Request) {
       }
 
       case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | null
+          due_date?: number | null
+          attempt_count?: number
+          number?: string | null
+          amount_paid?: number
+        }
         const customerId = typeof invoice.customer === 'string'
           ? invoice.customer
           : invoice.customer?.id
@@ -303,7 +309,9 @@ export async function POST(request: Request) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
+        const invoice = event.data.object as Stripe.Invoice & {
+          attempt_count?: number
+        }
         const customerId = typeof invoice.customer === 'string'
           ? invoice.customer
           : invoice.customer?.id
@@ -378,7 +386,10 @@ export async function POST(request: Request) {
       }
 
       case 'charge.refunded': {
-        const charge = event.data.object as Stripe.Charge
+        const charge = event.data.object as Stripe.Charge & {
+          amount_refunded?: number
+          refunded?: boolean
+        }
         const customerId = typeof charge.customer === 'string'
           ? charge.customer
           : (charge.customer as Stripe.Customer)?.id
