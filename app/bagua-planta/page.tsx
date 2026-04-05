@@ -506,7 +506,12 @@ function BaguaPlantaContent() {
     const r=buildRot(img,rot)
     rotRef.current=r
     const cv=cvRef.current; if(!cv) return
-    resizeCanvas()
+    // Use requestAnimationFrame to ensure container is laid out before measuring
+    requestAnimationFrame(()=>{
+      resizeCanvas()
+      // Second frame to catch late layout shifts
+      requestAnimationFrame(()=>{ resizeCanvas() })
+    })
     // Skip reset during restoration (bounds/setores are set by restaurarRascunho)
     if(restaurandoRef.current) return
     // reset posicionamento ao girar
@@ -673,12 +678,24 @@ function BaguaPlantaContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{ draw() },[step])
 
-  // Responsive: recalculate canvas on window resize
+  // Responsive: recalculate canvas on window resize + container resize
   useEffect(()=>{
     if(!img) return
     function handleResize(){ resizeCanvas(); draw() }
     window.addEventListener('resize',handleResize)
-    return ()=>window.removeEventListener('resize',handleResize)
+
+    // ResizeObserver catches container size changes (sidebar toggle, layout shifts)
+    const container = canvasContainerRef.current
+    let ro: ResizeObserver | undefined
+    if(container && typeof ResizeObserver !== 'undefined'){
+      ro = new ResizeObserver(()=>{ resizeCanvas(); draw() })
+      ro.observe(container)
+    }
+
+    return ()=>{
+      window.removeEventListener('resize',handleResize)
+      ro?.disconnect()
+    }
   },[img,resizeCanvas,draw])
 
   // ── fullscreen canvas draw ──────────────────────────────────────────────────
