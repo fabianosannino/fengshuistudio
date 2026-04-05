@@ -3,32 +3,76 @@
  *
  * POST /api/stripe/subscribe — Create a subscription checkout session
  *
+ * Body: { plan_slug?: string, billing_cycle?: 'monthly' | 'yearly' }
+ *
  * Creates a Checkout Session in 'subscription' mode on the platform account.
- * The user is charged as a Stripe Customer (not a connected account).
+ * Supports both monthly and yearly billing cycles with different Stripe prices.
+ *
+ * Price resolution order:
+ * 1. Environment variables: STRIPE_PRICE_SIMPLES_MONTHLY, STRIPE_PRICE_SIMPLES_YEARLY,
+ *    STRIPE_PRICE_PRO_MONTHLY, STRIPE_PRICE_PRO_YEARLY
+ * 2. Fallback to STRIPE_PRICE_ID (legacy single price)
  */
 
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { logger } from '../../../../src/lib/logger'
+import { rateLimit } from '../../../../src/lib/rate-limit'
 
-export async function POST() {
+// Map of plan + cycle to Stripe Price IDs
+function getStripePriceId(planSlug: string, cycle: string): string | null {
+  const key = `${planSlug}_${cycle}`.toUpperCase()
+  const priceMap: Record<string, string | undefined> = {
+    'SIMPLES_MONTHLY': process.env.STRIPE_PRICE_SIMPLES_MONTHLY,
+    'SIMPLES_YEARLY': process.env.STRIPE_PRICE_SIMPLES_YEARLY,
+    'PROFISSIONAL_MONTHLY': process.env.STRIPE_PRICE_PRO_MONTHLY,
+    'PROFISSIONAL_YEARLY': process.env.STRIPE_PRICE_PRO_YEARLY,
+  }
+  return priceMap[key] || process.env.STRIPE_PRICE_ID || null
+}
+
+export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success: rateLimitOk } = rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  if (!rateLimitOk) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    )
+  }
+
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-  const priceId = process.env.STRIPE_PRICE_ID
+  // Parse body
+  let planSlug = 'profissional'
+  let billingCycle = 'monthly'
+  try {
+    const body = await request.json()
+    if (body.plan_slug && ['simples', 'profissional'].includes(body.plan_slug)) {
+      planSlug = body.plan_slug
+    }
+    if (body.billing_cycle === 'yearly') {
+      billingCycle = 'yearly'
+    }
+  } catch {
+    // Use defaults
+  }
+
+  const priceId = getStripePriceId(planSlug, billingCycle)
   if (!priceId) {
     return NextResponse.json({
-      error: 'STRIPE_PRICE_ID não configurado. Crie um preço recorrente no Stripe Dashboard e adicione ao .env.local.',
+      error: 'Preço do Stripe não configurado para este plano/ciclo. Configure as variáveis STRIPE_PRICE_* no ambiente.',
     }, { status: 500 })
   }
 
   // Get or create a Stripe Customer for this user
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, stripe_account_id')
+    .select('stripe_customer_id')
     .eq('id', user.id)
     .single()
 
@@ -43,7 +87,6 @@ export async function POST() {
       })
       customerId = customer.id
 
-      // Store the customer ID for future use
       await supabase
         .from('profiles')
         .update({ stripe_customer_id: customerId })
@@ -63,8 +106,16 @@ export async function POST() {
       line_items: [
         { price: priceId, quantity: 1 },
       ],
+      subscription_data: {
+        metadata: {
+          plan_slug: planSlug,
+          billing_cycle: billingCycle,
+          supabase_user_id: user.id,
+        },
+      },
       success_url: `${origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}&type=subscription`,
       cancel_url: `${origin}/planos`,
+      allow_promotion_codes: true,
     })
 
     return NextResponse.json({ url: session.url, session_id: session.id })
