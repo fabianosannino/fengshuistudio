@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -96,6 +96,13 @@ const CATEGORIAS_PRODUTOS = [
   },
 ]
 
+// Extract all unique tags from all products across all categories
+const ALL_TAGS = Array.from(
+  new Set(
+    CATEGORIAS_PRODUTOS.flatMap(cat => cat.produtos.map(p => p.tag))
+  )
+).sort()
+
 function ProdutosContent() {
   const searchParams = useSearchParams()
   const categoriaParam = searchParams.get('categoria')
@@ -103,6 +110,11 @@ function ProdutosContent() {
   const [categoriaAtiva, setCategoriaAtiva] = useState(categoriaParam || 'espelhos')
   const [produtosAfiliados, setProdutosAfiliados] = useState<any[]>([])
   const [filtroBusca, setFiltroBusca] = useState('')
+
+  // New filter states
+  const [searchProd, setSearchProd] = useState('')
+  const [filtroTag, setFiltroTag] = useState('todos')
+  const [filtroCategoria, setFiltroCategoria] = useState('todos')
 
   useEffect(() => {
     async function load() {
@@ -125,6 +137,19 @@ function ProdutosContent() {
     load()
   }, [])
 
+  // Filtered categories based on filtroCategoria
+  const categoriasVisiveis = useMemo(() => {
+    if (filtroCategoria === 'todos') return CATEGORIAS_PRODUTOS
+    return CATEGORIAS_PRODUTOS.filter(c => c.id === filtroCategoria)
+  }, [filtroCategoria])
+
+  // When category filter changes, auto-select first visible category
+  useEffect(() => {
+    if (filtroCategoria !== 'todos') {
+      setCategoriaAtiva(filtroCategoria)
+    }
+  }, [filtroCategoria])
+
   const categoriaData = CATEGORIAS_PRODUTOS.find(c => c.id === categoriaAtiva)
 
   // Merge DB products with defaults
@@ -133,13 +158,28 @@ function ProdutosContent() {
     ? dbProdutosCat
     : (categoriaData?.produtos || [])
 
-  const filteredProdutos = filtroBusca
-    ? produtosExibir.filter(p =>
-        (p.nome || '').toLowerCase().includes(filtroBusca.toLowerCase()) ||
-        (p.desc || p.descricao || '').toLowerCase().includes(filtroBusca.toLowerCase()) ||
-        (p.tag || '').toLowerCase().includes(filtroBusca.toLowerCase())
+  // Apply all filters: searchProd (name), filtroTag, and legacy filtroBusca
+  const filteredProdutos = useMemo(() => {
+    let result = produtosExibir
+
+    // Filter by product name search
+    const searchTerm = searchProd || filtroBusca
+    if (searchTerm) {
+      result = result.filter(p =>
+        (p.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.desc || p.descricao || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
-    : produtosExibir
+    }
+
+    // Filter by tag
+    if (filtroTag !== 'todos') {
+      result = result.filter(p =>
+        (p.tag || '').toLowerCase() === filtroTag.toLowerCase()
+      )
+    }
+
+    return result
+  }, [produtosExibir, searchProd, filtroBusca, filtroTag])
 
   if (loading) {
     return (
@@ -177,22 +217,82 @@ function ProdutosContent() {
         </p>
       </div>
 
-      {/* Search */}
-      <div style={{ marginBottom: '20px' }}>
-        <input
-          type="text"
-          value={filtroBusca}
-          onChange={e => setFiltroBusca(e.target.value)}
-          placeholder="Buscar produtos..."
-          style={{ width: '100%', maxWidth: '400px', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-        />
+      {/* Filter Bar */}
+      <div style={{
+        background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB',
+        marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center'
+      }}>
+        {/* Search by product name */}
+        <div style={{ flex: '1 1 240px', minWidth: '200px' }}>
+          <input
+            type="text"
+            value={searchProd}
+            onChange={e => setSearchProd(e.target.value)}
+            placeholder="Buscar por nome do produto..."
+            style={{
+              width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB',
+              borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        {/* Filter by tag */}
+        <div style={{ flex: '0 1 220px', minWidth: '180px' }}>
+          <select
+            value={filtroTag}
+            onChange={e => setFiltroTag(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB',
+              borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+              background: '#fff', color: filtroTag === 'todos' ? '#9CA3AF' : '#374151'
+            }}
+          >
+            <option value="todos">Todas as situações</option>
+            {ALL_TAGS.map(tag => (
+              <option key={tag} value={tag.toLowerCase()}>{tag}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Filter by category */}
+        <div style={{ flex: '0 1 220px', minWidth: '180px' }}>
+          <select
+            value={filtroCategoria}
+            onChange={e => setFiltroCategoria(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB',
+              borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+              background: '#fff', color: filtroCategoria === 'todos' ? '#9CA3AF' : '#374151'
+            }}
+          >
+            <option value="todos">Todas as categorias</option>
+            {CATEGORIAS_PRODUTOS.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.icon} {cat.nome}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Clear filters button */}
+        {(searchProd || filtroTag !== 'todos' || filtroCategoria !== 'todos') && (
+          <button
+            onClick={() => { setSearchProd(''); setFiltroTag('todos'); setFiltroCategoria('todos') }}
+            style={{
+              padding: '10px 16px', background: '#F3F4F6', color: '#6B7280',
+              border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '13px',
+              cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap'
+            }}
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '24px' }}>
 
         {/* Category sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {CATEGORIAS_PRODUTOS.map(cat => (
+          {categoriasVisiveis.map(cat => (
             <button key={cat.id} onClick={() => { setCategoriaAtiva(cat.id); setFiltroBusca('') }} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '12px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer',

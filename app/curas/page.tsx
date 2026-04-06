@@ -596,17 +596,30 @@ function CurasPageContent() {
   const [setores, setSetores] = useState<SetorBagua[]>([])
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState(ELEMENTOS[0].id)
+  const [filtroSetor, setFiltroSetor] = useState<string>('todos')
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos')
+  const [consulta, setConsulta] = useState<{ nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null } | null>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  // Load consultation sectors if consultaId provided
+  // Load consultation sectors and consulta data if consultaId provided
   useEffect(() => {
     if (consultaId) {
-      supabase
-        .from('setores_bagua')
-        .select('*')
-        .eq('consulta_id', consultaId)
-        .order('numero')
-        .then(({ data }) => { if (data) setSetores(data); setLoading(false) })
+      Promise.all([
+        supabase
+          .from('setores_bagua')
+          .select('*')
+          .eq('consulta_id', consultaId)
+          .order('numero'),
+        supabase
+          .from('consultas')
+          .select('nome_imovel, criado_em, clientes(nome_completo)')
+          .eq('id', consultaId)
+          .single(),
+      ]).then(([setoresRes, consultaRes]) => {
+        if (setoresRes.data) setSetores(setoresRes.data)
+        if (consultaRes.data) setConsulta(consultaRes.data as { nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null })
+        setLoading(false)
+      })
     } else {
       setLoading(false)
     }
@@ -704,6 +717,30 @@ function CurasPageContent() {
         )}
       </div>
 
+      {/* ── CONSULTATION CONTEXT ────────────────────────────────────── */}
+      {consultaId && consulta && (
+        <div style={{ background: '#F5F0FF', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#7C3AED' }}>
+          <strong>Vinculado à consulta:</strong> Cliente: {consulta.clientes?.nome_completo} | Imóvel: {consulta.nome_imovel} | {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
+        </div>
+      )}
+
+      {/* ── FILTER BAR ───────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <select value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
+          <option value="todos">Todos os setores</option>
+          {ELEMENTOS.map(el => <option key={el.id} value={el.id}>{el.gua} ({el.nome})</option>)}
+        </select>
+        <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
+          <option value="todos">Todos os tipos</option>
+          <option value="cristais">Cristais</option>
+          <option value="plantas">Plantas</option>
+          <option value="objetos">Objetos</option>
+          <option value="mudra">Mudras</option>
+          <option value="meditacao">Meditação</option>
+          <option value="mantras">Mantras</option>
+        </select>
+      </div>
+
       {/* ── NAVIGATION PILLS ─────────────────────────────────────────── */}
       <div style={{
         ...cardStyle, padding: '16px 20px', marginBottom: '20px',
@@ -737,7 +774,7 @@ function CurasPageContent() {
       </div>
 
       {/* ── CONTENT SECTIONS ─────────────────────────────────────────── */}
-      {ELEMENTOS.map(el => {
+      {ELEMENTOS.filter(el => filtroSetor === 'todos' || el.id === filtroSetor).map(el => {
         const score = findScore(el.gua)
         const level = score !== null ? scoreLevel(score) : null
         return (
@@ -778,6 +815,7 @@ function CurasPageContent() {
               </div>
 
               {/* ── CRISTAIS ──────────────────────────────────────────── */}
+              {(filtroTipo === 'todos' || filtroTipo === 'cristais') && (
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>💎</span> Cristais
@@ -800,8 +838,10 @@ function CurasPageContent() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* ── PLANTAS ───────────────────────────────────────────── */}
+              {(filtroTipo === 'todos' || filtroTipo === 'plantas') && (
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>🌿</span> Plantas
@@ -819,8 +859,10 @@ function CurasPageContent() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* ── OBJETOS ──────────────────────────────────────────── */}
+              {(filtroTipo === 'todos' || filtroTipo === 'objetos') && (
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>🏺</span> Objetos & Curas
@@ -839,10 +881,13 @@ function CurasPageContent() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* ── MUDRA & MEDITAÇÃO (side by side) ─────────────────── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+              {(filtroTipo === 'todos' || filtroTipo === 'mudra' || filtroTipo === 'meditacao') && (
+              <div style={{ display: 'grid', gridTemplateColumns: (filtroTipo === 'mudra' || filtroTipo === 'meditacao') ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                 {/* Mudra */}
+                {(filtroTipo === 'todos' || filtroTipo === 'mudra') && (
                 <div style={{
                   background: '#F5F0FF', borderRadius: '12px', padding: '20px',
                   border: '1px solid #E9D5FF',
@@ -860,8 +905,10 @@ function CurasPageContent() {
                     ))}
                   </ol>
                 </div>
+                )}
 
                 {/* Meditação */}
+                {(filtroTipo === 'todos' || filtroTipo === 'meditacao') && (
                 <div style={{
                   background: '#F0FDF4', borderRadius: '12px', padding: '20px',
                   border: '1px solid #BBF7D0',
@@ -880,9 +927,12 @@ function CurasPageContent() {
                     ))}
                   </ol>
                 </div>
+                )}
               </div>
+              )}
 
               {/* ── MANTRAS ──────────────────────────────────────────── */}
+              {(filtroTipo === 'todos' || filtroTipo === 'mantras') && (
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>🕉️</span> Mantras
@@ -906,10 +956,20 @@ function CurasPageContent() {
                   ))}
                 </div>
               </div>
+              )}
             </div>
           </div>
         )
       })}
+
+      {/* ── VOLTAR À CONSULTA ────────────────────────────────────────── */}
+      {consultaId && (
+        <div style={{ textAlign: 'center', marginTop: '24px' }}>
+          <a href={`/consultas/${consultaId}`} style={{ display: 'inline-block', padding: '12px 24px', background: '#7C3AED', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>
+            ← Voltar à consulta
+          </a>
+        </div>
+      )}
     </AppShell>
   )
 }
