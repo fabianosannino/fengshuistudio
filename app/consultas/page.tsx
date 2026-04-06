@@ -18,6 +18,9 @@ export default function Consultas() {
   const [currentPage, setCurrentPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [userId, setUserId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState<string>('todos')
+  const [sortBy, setSortBy] = useState<'recente' | 'antigo' | 'nome_az' | 'nome_za'>('recente')
 
   const loadData = useCallback(async (pageNum: number, uid?: string) => {
     const id = uid || userId
@@ -27,18 +30,33 @@ export default function Consultas() {
     const from = pageNum * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
-    const { data, count } = await supabase
+    let query = supabase
       .from('consultas')
       .select(`*, clientes(nome_completo)`, { count: 'exact' })
       .eq('consultor_id', id)
-      .order('criado_em', { ascending: false })
-      .range(from, to)
+      .neq('status', 'deletada')
+
+    if (filtroStatus !== 'todos') {
+      query = query.eq('status', filtroStatus)
+    }
+
+    if (sortBy === 'recente') {
+      query = query.order('criado_em', { ascending: false })
+    } else if (sortBy === 'antigo') {
+      query = query.order('criado_em', { ascending: true })
+    } else if (sortBy === 'nome_az') {
+      query = query.order('nome_imovel', { ascending: true })
+    } else if (sortBy === 'nome_za') {
+      query = query.order('nome_imovel', { ascending: false })
+    }
+
+    const { data, count } = await query.range(from, to)
 
     setConsultas(data || [])
     setTotalCount(count || 0)
     setCurrentPage(pageNum)
     setLoading(false)
-  }, [userId])
+  }, [userId, filtroStatus, sortBy])
 
   useEffect(() => {
     async function load() {
@@ -88,6 +106,14 @@ export default function Consultas() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const consultasFiltradas = consultas.filter(c => {
+    if (!search.trim()) return true
+    const s = search.toLowerCase()
+    const nome = c.nome_imovel?.toLowerCase() || ''
+    const cliente = (c.clientes as any)?.nome_completo?.toLowerCase() || ''
+    return nome.includes(s) || cliente.includes(s)
+  })
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   if (loading && consultas.length === 0) {
@@ -129,6 +155,32 @@ export default function Consultas() {
         }}>{message}</div>
       )}
 
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Search input */}
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por imóvel ou cliente..."
+          style={{ flex: 1, minWidth: '200px', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '13px' }} />
+
+        {/* Status filter */}
+        <select value={filtroStatus} onChange={e => { setFiltroStatus(e.target.value); loadData(0) }}
+          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
+          <option value="todos">Todos os status</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="finalizada">Finalizada</option>
+          <option value="rascunho">Rascunho</option>
+          <option value="arquivada">Arquivada</option>
+        </select>
+
+        {/* Sort */}
+        <select value={sortBy} onChange={e => { setSortBy(e.target.value as any); loadData(0) }}
+          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
+          <option value="recente">Mais recente</option>
+          <option value="antigo">Mais antigo</option>
+          <option value="nome_az">Nome A-Z</option>
+          <option value="nome_za">Nome Z-A</option>
+        </select>
+      </div>
+
       {loading ? (
         <Skeleton variant="list" rows={4} />
       ) : totalCount === 0 ? (
@@ -153,7 +205,7 @@ export default function Consultas() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {consultas.map(consulta => (
+          {consultasFiltradas.map(consulta => (
             <div key={consulta.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px 24px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
