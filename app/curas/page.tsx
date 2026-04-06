@@ -617,7 +617,7 @@ function CurasPageContent() {
           .single(),
       ]).then(([setoresRes, consultaRes]) => {
         if (setoresRes.data) setSetores(setoresRes.data)
-        if (consultaRes.data) setConsulta(consultaRes.data as { nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null })
+        if (consultaRes.data) setConsulta(consultaRes.data as unknown as { nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null })
         setLoading(false)
       })
     } else {
