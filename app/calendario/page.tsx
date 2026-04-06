@@ -87,6 +87,8 @@ export default function Calendario() {
   const [profile, setProfile] = useState<Pick<Profile, 'plano'> | null>(null)
   const [message, setMessage] = useState('')
   const [faseSelecionada, setFaseSelecionada] = useState<string | null>(null)
+  const [filtroCliente, setFiltroCliente] = useState<string>('todos')
+  const [visao, setVisao] = useState<'geral' | 'cliente'>('geral')
   const [form, setForm] = useState({ titulo: '', descricao: '', fase_lunar: 'nova', data_ritual: '', horario: '', cliente_id: '' })
 
   const hoje = new Date()
@@ -331,8 +333,34 @@ export default function Calendario() {
         </div>
       )}
 
+      {/* Visão por cliente / geral */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '3px' }}>
+          <button onClick={() => { setVisao('geral'); setFiltroCliente('todos') }} style={{
+            padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 'bold',
+            background: visao === 'geral' ? '#7C3AED' : 'transparent',
+            color: visao === 'geral' ? '#fff' : '#6B7280', cursor: 'pointer'
+          }}>Visão geral</button>
+          <button onClick={() => setVisao('cliente')} style={{
+            padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 'bold',
+            background: visao === 'cliente' ? '#7C3AED' : 'transparent',
+            color: visao === 'cliente' ? '#fff' : '#6B7280', cursor: 'pointer'
+          }}>Por cliente</button>
+        </div>
+        {visao === 'cliente' && (
+          <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{
+            padding: '6px 12px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '13px'
+          }}>
+            <option value="todos">Todos os clientes</option>
+            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome_completo}</option>)}
+          </select>
+        )}
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0' }}>Rituais agendados ({rituais.length})</h2>
+        <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0' }}>
+          Rituais agendados ({filtroCliente !== 'todos' ? rituais.filter(r => r.cliente_id === filtroCliente).length : rituais.length})
+        </h2>
         <button onClick={() => { setShowForm(!showForm); setMessage('') }} style={{
           background: '#7C3AED', color: '#fff', border: 'none',
           padding: '10px 20px', borderRadius: '8px', fontSize: '14px',
@@ -402,14 +430,20 @@ export default function Calendario() {
         </div>
       )}
 
-      {rituais.length === 0 ? (
+      {(() => {
+        const rituaisFiltrados = filtroCliente !== 'todos'
+          ? rituais.filter(r => r.cliente_id === filtroCliente)
+          : rituais
+        return rituaisFiltrados.length === 0 ? (
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '48px 32px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>🌙</div>
-          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>Nenhum ritual agendado para {MESES[mesAtual]}.</p>
+          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
+            {filtroCliente !== 'todos' ? 'Nenhum ritual agendado para este cliente em' : 'Nenhum ritual agendado para'} {MESES[mesAtual]}.
+          </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {rituais.map(r => (
+          {rituaisFiltrados.map(r => (
             <div key={r.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -450,7 +484,8 @@ export default function Calendario() {
             </div>
           ))}
         </div>
-      )}
+      )
+      })()}
 
     </AppShell>
   )
