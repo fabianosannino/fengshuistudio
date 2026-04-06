@@ -693,7 +693,7 @@ export default function ConsultaDetalhe() {
               background: '#1E3A5F', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
-            }}>Ver Relatório PDF</button>
+            }}>Montar Relatório</button>
             <button onClick={handleFinalizar} style={{
               background: '#15803D', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
@@ -715,7 +715,7 @@ export default function ConsultaDetalhe() {
               background: '#1E3A5F', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
-            }}>Ver Relatório PDF</button>
+            }}>Montar Relatório</button>
             <button onClick={handleFinalizar} style={{
               background: '#15803D', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
