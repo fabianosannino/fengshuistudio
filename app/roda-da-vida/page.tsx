@@ -38,7 +38,7 @@ export default function RodaDaVidaPage() {
         .neq('status', 'deletada')
         .order('criado_em', { ascending: false })
 
-      setConsultas((data || []) as Consulta[])
+      setConsultas((data || []) as unknown as Consulta[])
       setLoading(false)
     }
     load()
