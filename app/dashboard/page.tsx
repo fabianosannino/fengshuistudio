@@ -52,6 +52,16 @@ const COR_PAGO = '#15803D'
 const COR_PENDENTE = '#F59E0B'
 const COR_ATRASADO = '#DC2626'
 
+const DASHBOARD_MODULES = [
+  { key: 'status_consultas', label: 'Status das Consultas' },
+  { key: 'pagamentos', label: 'Pagamentos' },
+  { key: 'consultas_mes', label: 'Consultas por Mês' },
+  { key: 'proximas_atividades', label: 'Próximas Atividades' },
+  { key: 'novos_clientes', label: 'Novos Clientes por Mês' },
+  { key: 'analises_bagua', label: '☯ Análises Ba Gua Recentes' },
+  { key: 'acoes_rapidas', label: 'Ações Rápidas' },
+]
+
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -76,6 +86,15 @@ export default function Dashboard() {
 
   // Análises Baguá recentes
   const [analisesBagua, setAnalisesBagua] = useState<{id:string;nome_imovel:string;finalizada_em:string;cliente_nome:string;status_bagua:'concluida'|'em_andamento'}[]>([])
+
+  const [visibleModules, setVisibleModules] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('fengshui-dashboard-modules')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return Object.fromEntries(DASHBOARD_MODULES.map(m => [m.key, true]))
+  })
+  const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
     async function loadAll() {
@@ -410,14 +429,38 @@ export default function Dashboard() {
   return (
     <AppShell currentPage="dashboard">
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-          Bem-vindo ao FengShui Studio
-        </h1>
-        <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-          Gerencie seus clientes e consultas de Feng Shui
-        </p>
+      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            Bem-vindo ao FengShui Studio
+          </h1>
+          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
+            Gerencie seus clientes e consultas de Feng Shui
+          </p>
+        </div>
+        <button onClick={() => setShowSettings(!showSettings)} style={{
+          background: 'none', border: '1px solid #D1D5DB', borderRadius: '8px',
+          padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280'
+        }}>⚙️ Personalizar</button>
       </div>
+
+      {showSettings && (
+        <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#1E3A5F' }}>Escolha os módulos visíveis</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+            {DASHBOARD_MODULES.map(m => (
+              <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: 'pointer', background: visibleModules[m.key] ? '#F0FDF4' : '#F9FAFB' }}>
+                <input type="checkbox" checked={visibleModules[m.key] !== false} onChange={e => {
+                  const next = { ...visibleModules, [m.key]: e.target.checked }
+                  setVisibleModules(next)
+                  try { localStorage.setItem('fengshui-dashboard-modules', JSON.stringify(next)) } catch {}
+                }} style={{ accentColor: '#7C3AED' }} />
+                <span style={{ fontSize: '13px', color: '#374151' }}>{m.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div style={{
@@ -443,9 +486,11 @@ export default function Dashboard() {
       </div>
 
       {/* Row 1: Status Consultas (Pie) + Pagamentos (Bar) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      {(visibleModules.status_consultas !== false || visibleModules.pagamentos !== false) && (
+      <div style={{ display: 'grid', gridTemplateColumns: visibleModules.status_consultas !== false && visibleModules.pagamentos !== false ? '1fr 1fr' : '1fr', gap: '20px', marginBottom: '20px' }}>
 
         {/* CHART 1: Status Consultas - Pie */}
+        {visibleModules.status_consultas !== false && (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -455,8 +500,10 @@ export default function Dashboard() {
           </h3>
           <StatusPieChart statusData={statusData} />
         </div>
+        )}
 
         {/* CHART 2: Pagamentos - Bar empilhado */}
+        {visibleModules.pagamentos !== false && (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -491,12 +538,16 @@ export default function Dashboard() {
 
           <PagamentosBarChart pagamentosData={pagamentosData} />
         </div>
+        )}
       </div>
+      )}
 
       {/* Row 2: Consultas por mês (Line) + Agenda */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      {(visibleModules.consultas_mes !== false || visibleModules.proximas_atividades !== false) && (
+      <div style={{ display: 'grid', gridTemplateColumns: visibleModules.consultas_mes !== false && visibleModules.proximas_atividades !== false ? '1fr 1fr' : '1fr', gap: '20px', marginBottom: '20px' }}>
 
         {/* CHART 3: Evolução Consultas - Line */}
+        {visibleModules.consultas_mes !== false && (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -506,8 +557,10 @@ export default function Dashboard() {
           </h3>
           <ConsultasLineChart consultasMesData={consultasMesData} />
         </div>
+        )}
 
         {/* AGENDA */}
+        {visibleModules.proximas_atividades !== false && (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -560,9 +613,12 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        )}
       </div>
+      )}
 
       {/* Row 3: Clientes por mês (Bar) */}
+      {visibleModules.novos_clientes !== false && (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginBottom: '32px' }}>
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '24px',
@@ -574,9 +630,10 @@ export default function Dashboard() {
           <ClientesBarChart clientesMesData={clientesMesData} />
         </div>
       </div>
+      )}
 
       {/* Análises Baguá recentes */}
-      {analisesBagua.length > 0 && (
+      {visibleModules.analises_bagua !== false && analisesBagua.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
             ☯ Análises Ba Gua recentes
@@ -613,6 +670,7 @@ export default function Dashboard() {
       )}
 
       {/* Ações rápidas */}
+      {visibleModules.acoes_rapidas !== false && (
       <div style={{ marginBottom: '32px' }}>
         <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
           Ações rápidas
@@ -636,6 +694,7 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Banner upgrade */}
       {planoUsuario(profile) !== 'profissional' && (
