@@ -495,7 +495,7 @@ export default function ConsultaDetalhe() {
     if (error) {
       setMessage('Erro ao salvar Roda da Vida: ' + error.message)
     } else {
-      setConsulta(prev => prev ? { ...prev, roda_da_vida: rodaData } : prev)
+      setConsulta(prev => prev ? { ...prev, roda_da_vida: rodaData as Record<string, number> } : prev)
       setMessage('Roda da Vida salva com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
