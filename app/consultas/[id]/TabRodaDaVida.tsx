@@ -16,6 +16,54 @@ const AREAS_VIDA = [
   { key: 'saude_centro', label: 'Saúde / Centro', gua: 'Centro', elemento: 'Terra', cor: '#D97706', angulo: 320 },
 ]
 
+const PERGUNTAS_SUPORTE: Record<string, string[]> = {
+  carreira: [
+    'Você se sente realizado(a) profissionalmente?',
+    'Tem clareza sobre seus objetivos de carreira?',
+    'Sente que está no caminho certo?',
+  ],
+  espiritualidade: [
+    'Dedica tempo para reflexão e autoconhecimento?',
+    'Pratica meditação ou atividade contemplativa?',
+    'Sente conexão com algo maior que você?',
+  ],
+  familia: [
+    'Como é sua relação com familiares próximos?',
+    'Sente apoio e acolhimento da família?',
+    'Há conflitos não resolvidos?',
+  ],
+  prosperidade: [
+    'Sente-se financeiramente seguro(a)?',
+    'Tem controle sobre suas finanças?',
+    'Acredita que merece abundância?',
+  ],
+  fama: [
+    'Como você é visto(a) profissionalmente?',
+    'Sente que seu trabalho é reconhecido?',
+    'Sua reputação reflete quem você realmente é?',
+  ],
+  relacionamentos: [
+    'Está satisfeito(a) com seus relacionamentos amorosos?',
+    'Consegue se comunicar abertamente com o parceiro(a)?',
+    'Sente-se amado(a) e valorizado(a)?',
+  ],
+  criatividade: [
+    'Expressa sua criatividade regularmente?',
+    'Tem projetos que te dão prazer?',
+    'Sente-se livre para ser quem é?',
+  ],
+  pessoas_uteis: [
+    'Tem uma rede de apoio confiável?',
+    'Costuma pedir e receber ajuda quando precisa?',
+    'Sente gratidão pelas pessoas ao redor?',
+  ],
+  saude_centro: [
+    'Como avalia sua saúde física geral?',
+    'Pratica exercícios regularmente?',
+    'Cuida da alimentação e do sono?',
+  ],
+}
+
 type RodaData = Record<string, number>
 
 interface Props {
@@ -33,6 +81,7 @@ function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {
 
 export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, setores }: Props) {
   const [hovered, setHovered] = useState<string | null>(null)
+  const [expandedArea, setExpandedArea] = useState<string | null>(null)
 
   const cx = 200, cy = 200, maxR = 170
 
@@ -212,6 +261,22 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                     )}
                   </div>
                 )}
+                {/* Support questions */}
+                <div style={{ marginTop: '6px' }}>
+                  <button onClick={() => setExpandedArea(expandedArea === area.key ? null : area.key)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '11px', color: '#7C3AED', fontWeight: 'bold', padding: '2px 0'
+                  }}>
+                    {expandedArea === area.key ? '▼' : '▶'} Perguntas de apoio
+                  </button>
+                  {expandedArea === area.key && (
+                    <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px' }}>
+                      {(PERGUNTAS_SUPORTE[area.key] || []).map((q, i) => (
+                        <li key={i} style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px', lineHeight: '1.4' }}>{q}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             )
           })}
@@ -222,6 +287,30 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
             color: '#ffffff', border: 'none', borderRadius: '8px',
             fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
           }}>{saving ? 'Salvando...' : 'Salvar Roda da Vida'}</button>
+
+          {/* Diagnostic comparison */}
+          {setores.length > 0 && Object.keys(rodaData).some(k => rodaData[k] > 0) && (
+            <div style={{ marginTop: '16px', padding: '16px', background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF' }}>
+              <h3 style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+                📊 Diagnóstico comparativo: Roda da Vida × Ba Guá
+              </h3>
+              {AREAS_VIDA.map(area => {
+                const vidaScore = rodaData[area.key] ?? 0
+                const setorPct = findSetorScore(area.gua)
+                if (vidaScore === 0 && setorPct === null) return null
+                const corr = correlacao(area.key, area.gua)
+                return (
+                  <div key={area.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '12px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: area.cor }} />
+                    <span style={{ width: '120px', fontWeight: 'bold', color: '#374151' }}>{area.label}</span>
+                    <span style={{ color: '#6B7280' }}>Vida: {vidaScore}/10</span>
+                    {setorPct !== null && <span style={{ color: '#6B7280' }}>Guá: {setorPct}%</span>}
+                    {corr && <span style={{ fontWeight: 'bold', color: corr.cor }}>{corr.label}</span>}
+                  </div>
+                )
+              }).filter(Boolean)}
+            </div>
+          )}
         </div>
       </div>
     </div>
