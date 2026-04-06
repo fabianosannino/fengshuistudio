@@ -11,6 +11,14 @@ type Cliente = { id: string; nome_completo: string }
 type Acao = { acao: string; data: string; estrategia: string }
 
 const defaultAcoes = (): Acao[] => [{ acao:'', data:'', estrategia:'' },{ acao:'', data:'', estrategia:'' },{ acao:'', data:'', estrategia:'' }]
+
+function classificar(val: number): { nivel: string; cor: string; bg: string } {
+  if (val >= 8) return { nivel: 'Ótimo', cor: '#15803D', bg: '#F0FDF4' }
+  if (val >= 5) return { nivel: 'Leve', cor: '#2563EB', bg: '#EFF6FF' }
+  if (val >= 3) return { nivel: 'Moderado', cor: '#D97706', bg: '#FFFBEB' }
+  if (val >= 1) return { nivel: 'Acentuado', cor: '#DC2626', bg: '#FEF2F2' }
+  return { nivel: 'Ausente', cor: '#7F1D1D', bg: '#FEF2F2' }
+}
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) } catch { return d } }
 
 function polar(cx: number, cy: number, r: number, i: number, total: number) {
@@ -56,6 +64,9 @@ export default function RodaDaVidaPage() {
   const [consultas, setConsultas] = useState<Consulta[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [observacoes, setObservacoes] = useState<Record<string, string>>({})
+  const [observacaoGeral, setObservacaoGeral] = useState('')
+  const [expandedArea, setExpandedArea] = useState<string | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -77,8 +88,8 @@ export default function RodaDaVidaPage() {
   function openExisting(consulta: Consulta) {
     setSelectedConsultaId(consulta.id)
     const rd = consulta.roda_da_vida
-    if (rd?.respostas) { setRespostas(rd.respostas); setAcoes(rd.acoes || defaultAcoes()); setPessoaNome(rd.pessoa_nome || '') }
-    else { setRespostas(defaultRespostas()); setAcoes(defaultAcoes()); setPessoaNome('') }
+    if (rd?.respostas) { setRespostas(rd.respostas); setAcoes(rd.acoes || defaultAcoes()); setPessoaNome(rd.pessoa_nome || ''); setObservacoes(rd.observacoes || {}); setObservacaoGeral(rd.observacao_geral || '') }
+    else { setRespostas(defaultRespostas()); setAcoes(defaultAcoes()); setPessoaNome(''); setObservacoes({}); setObservacaoGeral('') }
     setStep('results')
   }
 
@@ -104,7 +115,7 @@ export default function RodaDaVidaPage() {
   async function salvar() {
     if (!user) return
     setSaving(true)
-    const payload = { respostas, acoes, pessoa_nome: pessoaNome, created_at: new Date().toISOString() }
+    const payload = { respostas, acoes, pessoa_nome: pessoaNome, observacoes, observacao_geral: observacaoGeral, created_at: new Date().toISOString() }
     let cId = clienteId
     let consultaId = selectedConsultaId
 
@@ -318,6 +329,68 @@ export default function RodaDaVidaPage() {
               </div>
             )
           })}
+        </div>
+
+        {/* Detailed area list with observations */}
+        <div style={cardStyle}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#1E3A5F' }}>Detalhamento por Área</h3>
+          {AREAS.map(a => {
+            const scores = respostas[a.key] || [5,5,5,5,5]
+            const areaAvg = avg(scores)
+            const cls = classificar(areaAvg)
+            const expanded = expandedArea === a.key
+            return (
+              <div key={a.key} style={{ padding: '10px 12px', marginBottom: 8, borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.cor }} />
+                  <span style={{ flex: 1, fontWeight: 'bold', fontSize: 13, color: '#374151' }}>{a.label}</span>
+                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: cls.bg, color: cls.cor, fontWeight: 'bold' }}>{cls.nivel}</span>
+                  <span style={{ fontSize: 16, fontWeight: 'bold', color: a.cor }}>{areaAvg.toFixed(1)}</span>
+                </div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{a.categoria}</div>
+                <button onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#7C3AED', cursor: 'pointer', padding: 0, fontWeight: 'bold' }}>
+                  {expanded ? '▼' : '▶'} Detalhes das 5 perguntas
+                </button>
+                {expanded && (
+                  <div style={{ marginTop: 6, paddingLeft: 16 }}>
+                    {a.perguntas.map((q, qi) => (
+                      <div key={qi} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151', padding: '3px 0' }}>
+                        <span>{q}</span>
+                        <span style={{ fontWeight: 'bold', color: a.cor }}>{scores[qi]}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Consultant observation */}
+                <textarea
+                  value={observacoes[a.key] || ''}
+                  onChange={e => setObservacoes(prev => ({ ...prev, [a.key]: e.target.value }))}
+                  placeholder={`Observação/recomendação para ${a.label}...`}
+                  rows={1}
+                  style={{
+                    width: '100%', marginTop: 6, padding: '6px 8px', border: '1px solid #E5E7EB', borderRadius: 6,
+                    fontSize: 11, color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const,
+                    background: observacoes[a.key] ? '#FFFBEB' : '#fff'
+                  }}
+                />
+              </div>
+            )
+          })}
+          {/* General observation */}
+          <div style={{ marginTop: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#7C3AED', marginBottom: 4 }}>Observação geral do consultor</label>
+            <textarea
+              value={observacaoGeral}
+              onChange={e => setObservacaoGeral(e.target.value)}
+              placeholder="Análise geral, recomendações de intervenção, prioridades..."
+              rows={3}
+              style={{
+                width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 8,
+                fontSize: 13, color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const,
+                background: observacaoGeral ? '#FFFBEB' : '#fff'
+              }}
+            />
+          </div>
         </div>
 
         {/* Action Plan */}
