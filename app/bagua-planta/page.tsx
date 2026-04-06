@@ -292,6 +292,7 @@ function BaguaPlantaContent() {
   const [consultas,setConsultas]= useState<{id:string;nome_imovel:string}[]>([])
   const [fullscreen,setFullscreen] = useState(false)
   const [showInstrucao,setShowInstrucao] = useState(true)
+  const [instrucaoAberta,setInstrucaoAberta] = useState(true)
   const [bordaModificada,setBordaModificada] = useState(false)
   const [ultimoRecalculo,setUltimoRecalculo] = useState<string|null>(null)
   const fsCvRef = useRef<HTMLCanvasElement>(null)
@@ -318,17 +319,7 @@ function BaguaPlantaContent() {
   // Recalculate pending state
   const [recalculoPendente, setRecalculoPendente] = useState(false)
 
-  // Dismiss instruction card via localStorage
-  useEffect(()=>{
-    if(consultaId){
-      const key = `bagua_instrucao_dismissed_${consultaId}`
-      if(localStorage.getItem(key)==='1') setShowInstrucao(false)
-    }
-  },[consultaId])
-  function dismissInstrucao(){
-    setShowInstrucao(false)
-    if(consultaId) localStorage.setItem(`bagua_instrucao_dismissed_${consultaId}`,'1')
-  }
+  // Instruction accordion (no longer dismissed permanently)
 
   // ESC key to exit fullscreen
   useEffect(()=>{
@@ -1507,8 +1498,19 @@ function BaguaPlantaContent() {
 
               {/* Instrução contextual acima do canvas */}
               {step==='configurar'&&(
-                <div style={{marginBottom:'8px',padding:'7px 10px',background:'#F3E8FF',borderRadius:'6px',color:'#7C3AED',fontSize:'12px'}}>
-                  🔄 Ajuste a rotação para que a <strong>porta fique na base</strong> da imagem (↓), depois clique em Continuar
+                <div style={{marginBottom:'10px',padding:'14px 16px',background:'#FFFBEB',borderLeft:'4px solid #F59E0B',borderRadius:'8px',color:'#92400E',fontSize:'14px',fontWeight:600}}>
+                  <div style={{marginBottom:'10px'}}>
+                    🔄 Ajuste a rotação para que a <strong>porta fique na base</strong> da imagem (↓), depois clique em Continuar
+                  </div>
+                  <div style={{display:'flex',justifyContent:'center'}}>
+                    <div style={{width:'90px',height:'110px',border:'2px solid #D97706',borderRadius:'6px',position:'relative',background:'#FEF3C7',display:'flex',alignItems:'flex-end',justifyContent:'center',paddingBottom:'4px'}}>
+                      <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50)',fontSize:'10px',color:'#92400E',fontWeight:700}}>Planta</div>
+                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0px'}}>
+                        <span style={{fontSize:'18px',lineHeight:1,color:'#D97706'}}>↓</span>
+                        <span style={{fontSize:'9px',fontWeight:700,color:'#B45309'}}>Porta aqui</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
               {step==='entrada'&&(
@@ -1624,41 +1626,51 @@ function BaguaPlantaContent() {
                 </div>
               )}
 
-              {/* Instrução explicativa (resultado) */}
-              {step==='resultado'&&showInstrucao&&(
-                <div style={{marginTop:'10px',padding:'16px 18px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:'10px',position:'relative'}}>
-                  <button onClick={dismissInstrucao} style={{position:'absolute',top:'8px',right:'10px',background:'transparent',border:'none',fontSize:'16px',cursor:'pointer',color:'#6B7280'}}>✕</button>
-                  <div style={{display:'flex',gap:'10px',alignItems:'flex-start',marginBottom:'12px'}}>
-                    <span style={{fontSize:'20px',flexShrink:0}}>ℹ️</span>
-                    <div>
-                      <div style={{fontWeight:'bold',color:'#1E3A5F',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
-                      <p style={{color:'#374151',fontSize:'11px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
-                        A análise automática considera o retângulo envolvente detectado na imagem. Para resultados precisos:
-                      </p>
-                      <ol style={{color:'#374151',fontSize:'11px',lineHeight:'1.7',margin:'0 0 10px 0',paddingLeft:'16px'}}>
-                        <li>Clique em <strong>&quot;Bordas&quot;</strong>.</li>
-                        <li>Arraste as alças nos 4 lados até coincidir com as <strong>paredes externas</strong> da área construída — ignore jardins, pátios e calçadas.</li>
-                        <li>Clique em <strong>&quot;Recalcular&quot;</strong>.</li>
-                      </ol>
-                      <div style={{fontWeight:'bold',color:'#92400E',fontSize:'11px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',color:'#374151',lineHeight:'1.5'}}>
-                        <div style={{padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
-                          <strong style={{color:'#DC2626'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
-                        </div>
-                        <div style={{padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
-                          <strong style={{color:'#EA580C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
-                        </div>
-                        <div style={{padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
-                          <strong style={{color:'#15803D'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
+              {/* Instrução explicativa (resultado) — accordion */}
+              {step==='resultado'&&(
+                <div style={{marginTop:'10px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:'10px',overflow:'hidden'}}>
+                  <button onClick={()=>setInstrucaoAberta(!instrucaoAberta)} style={{
+                    width:'100%',padding:'12px 18px',background:'transparent',border:'none',cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'space-between'
+                  }}>
+                    <span style={{fontWeight:'bold',color:'#1E3A5F',fontSize:'13px'}}>📋 Instrucoes de ajuste</span>
+                    <span style={{fontSize:'14px',color:'#6B7280',transition:'transform 0.2s',transform:instrucaoAberta?'rotate(0deg)':'rotate(180deg)'}}>{instrucaoAberta?'▲':'▼'}</span>
+                  </button>
+                  {instrucaoAberta&&(
+                    <div style={{padding:'0 18px 16px 18px'}}>
+                      <div style={{display:'flex',gap:'10px',alignItems:'flex-start',marginBottom:'12px'}}>
+                        <span style={{fontSize:'20px',flexShrink:0}}>ℹ️</span>
+                        <div>
+                          <div style={{fontWeight:'bold',color:'#1E3A5F',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
+                          <p style={{color:'#374151',fontSize:'11px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
+                            A análise automática considera o retângulo envolvente detectado na imagem. Para resultados precisos:
+                          </p>
+                          <ol style={{color:'#374151',fontSize:'11px',lineHeight:'1.7',margin:'0 0 10px 0',paddingLeft:'16px'}}>
+                            <li>Clique em <strong>&quot;Bordas&quot;</strong>.</li>
+                            <li>Arraste as alças nos 4 lados até coincidir com as <strong>paredes externas</strong> da área construída — ignore jardins, pátios e calçadas.</li>
+                            <li>Clique em <strong>&quot;Recalcular&quot;</strong>.</li>
+                          </ol>
+                          <div style={{fontWeight:'bold',color:'#92400E',fontSize:'11px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
+                          <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',color:'#374151',lineHeight:'1.5'}}>
+                            <div style={{padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
+                              <strong style={{color:'#DC2626'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
+                            </div>
+                            <div style={{padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
+                              <strong style={{color:'#EA580C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
+                            </div>
+                            <div style={{padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
+                              <strong style={{color:'#15803D'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
+                            </div>
+                          </div>
+                          <p style={{color:'#6B7280',fontSize:'10px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
                         </div>
                       </div>
-                      <p style={{color:'#6B7280',fontSize:'10px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
+                      <button onClick={()=>{setInstrucaoAberta(false);setModo('bordas')}} style={{
+                        width:'100%',padding:'10px',background:'#1D4ED8',color:'#fff',border:'none',
+                        borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
+                      }}>Entendido — ajustar bordas</button>
                     </div>
-                  </div>
-                  <button onClick={()=>{dismissInstrucao();setModo('bordas')}} style={{
-                    width:'100%',padding:'10px',background:'#1D4ED8',color:'#fff',border:'none',
-                    borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
-                  }}>Entendido — ajustar bordas</button>
+                  )}
                 </div>
               )}
 
