@@ -9,6 +9,13 @@ import ConfirmModal from '../../components/ConfirmModal'
 import Skeleton from '../../components/Skeleton'
 import type { Cliente, Consulta } from '../../../src/lib/types'
 
+const STATUS_LABELS: Record<string, { icon: string; label: string; bg: string; color: string }> = {
+  sem_analise: { icon: '☯', label: 'Sem análise', bg: '#F3F4F6', color: '#6B7280' },
+  em_andamento: { icon: '🔄', label: 'Em andamento', bg: '#FFF7ED', color: '#D97706' },
+  finalizada: { icon: '✅', label: 'Finalizada', bg: '#F0FDF4', color: '#15803D' },
+  arquivada: { icon: '📦', label: 'Arquivada', bg: '#F5F3FF', color: '#7C3AED' },
+}
+
 export default function ClienteDetalhe() {
   const params = useParams()
   const [cliente, setCliente] = useState<Cliente | null>(null)
@@ -18,6 +25,8 @@ export default function ClienteDetalhe() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteConsultaId, setDeleteConsultaId] = useState<string | null>(null)
+  const [finalizarConsultaId, setFinalizarConsultaId] = useState<string | null>(null)
   const [form, setForm] = useState({
     nome_completo: '',
     email: '',
@@ -36,6 +45,18 @@ export default function ClienteDetalhe() {
   const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [uploadingFoto, setUploadingFoto] = useState(false)
+
+  async function loadConsultas() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('consultas')
+      .select('*, bagua_entrada')
+      .eq('cliente_id', params.id)
+      .eq('consultor_id', user.id)
+      .order('criado_em', { ascending: false })
+    setConsultas(data || [])
+  }
 
   useEffect(() => {
     async function load() {
@@ -220,6 +241,40 @@ export default function ClienteDetalhe() {
     }
     setDeleteTarget(null)
   }
+
+  async function handleDeleteConsulta() {
+    if (!deleteConsultaId) return
+    const { error } = await supabase
+      .from('consultas')
+      .update({ status: 'deletada' })
+      .eq('id', deleteConsultaId)
+    if (error) {
+      setMessage('Erro ao deletar consulta: ' + error.message)
+    } else {
+      setMessage('Consulta removida com sucesso!')
+      setTimeout(() => setMessage(''), 3000)
+      await loadConsultas()
+    }
+    setDeleteConsultaId(null)
+  }
+
+  async function handleFinalizarConsulta() {
+    if (!finalizarConsultaId) return
+    const { error } = await supabase
+      .from('consultas')
+      .update({ status: 'finalizada', finalizada_em: new Date().toISOString() })
+      .eq('id', finalizarConsultaId)
+    if (error) {
+      setMessage('Erro ao finalizar consulta: ' + error.message)
+    } else {
+      setMessage('Consulta finalizada com sucesso!')
+      setTimeout(() => setMessage(''), 3000)
+      await loadConsultas()
+    }
+    setFinalizarConsultaId(null)
+  }
+
+  const consultasVisiveis = consultas.filter(c => c.status !== 'deletada')
 
   if (loading) {
     return (
@@ -492,11 +547,18 @@ export default function ClienteDetalhe() {
           </div>
         )}
 
-        <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-          Consultas ({consultas.length})
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
+            Consultas ({consultasVisiveis.length})
+          </h2>
+          <button onClick={() => window.location.href = `/consultas/nova?clienteId=${cliente.id}`} style={{
+            padding: '8px 20px', background: '#7C3AED', color: '#fff',
+            border: 'none', borderRadius: '8px', fontSize: '13px',
+            fontWeight: 'bold', cursor: 'pointer'
+          }}>+ Nova Consulta</button>
+        </div>
 
-        {consultas.length === 0 ? (
+        {consultasVisiveis.length === 0 ? (
           <div style={{
             background: '#ffffff', borderRadius: '12px', padding: '48px 32px',
             textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
@@ -506,18 +568,21 @@ export default function ClienteDetalhe() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {consultas.map(c => {
+            {consultasVisiveis.map(c => {
               const baguaData = c.bagua_entrada as any
               const baguaFinalizada = !!(baguaData?.finalizada_em)
               const baguaEmAndamento = !!(baguaData?.planta_url) && !baguaFinalizada
-              const temBagua = baguaFinalizada || baguaEmAndamento
+              const statusInfo = STATUS_LABELS[c.status] || STATUS_LABELS.sem_analise
               return (
-                <div key={c.id} onClick={() => window.location.href = `/consultas/${c.id}`} style={{
+                <div key={c.id} style={{
                   background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                  <div>
+                  <div
+                    onClick={() => window.location.href = `/consultas/${c.id}`}
+                    style={{ cursor: 'pointer', flex: 1 }}
+                  >
                     <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', margin: '0 0 4px 0' }}>{c.nome_imovel || 'Imóvel'}</p>
                     <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
                       📅 {new Date(c.criado_em).toLocaleDateString('pt-BR')}
@@ -534,10 +599,30 @@ export default function ClienteDetalhe() {
                         : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem análise'
                     }</span>
                     <span style={{
-                      background: c.status === 'finalizada' ? '#F0FDF4' : c.status === 'em_andamento' ? '#FFF7ED' : '#F3F4F6',
-                      color: c.status === 'finalizada' ? '#15803D' : c.status === 'em_andamento' ? '#D97706' : '#6B7280',
+                      background: statusInfo.bg,
+                      color: statusInfo.color,
                       padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                    }}>{c.status === 'finalizada' ? 'Finalizada' : c.status === 'em_andamento' ? 'Em andamento' : 'Rascunho'}</span>
+                    }}>{statusInfo.icon} {statusInfo.label}</span>
+                    {c.status === 'em_andamento' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setFinalizarConsultaId(c.id) }}
+                        title="Finalizar consulta"
+                        style={{
+                          padding: '4px 10px', background: '#F0FDF4', color: '#15803D',
+                          border: '1px solid #BBF7D0', borderRadius: '6px', fontSize: '12px',
+                          fontWeight: 'bold', cursor: 'pointer'
+                        }}
+                      >✅ Finalizar</button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteConsultaId(c.id) }}
+                      title="Deletar consulta"
+                      style={{
+                        padding: '4px 8px', background: '#FEF2F2', color: '#DC2626',
+                        border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px',
+                        cursor: 'pointer', lineHeight: 1
+                      }}
+                    >🗑️</button>
                   </div>
                 </div>
               )
@@ -556,6 +641,28 @@ export default function ClienteDetalhe() {
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmModal
+        open={deleteConsultaId !== null}
+        title="Apagar consulta"
+        message="A consulta será removida da visualização. Deseja continuar?"
+        confirmLabel="Apagar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleDeleteConsulta}
+        onCancel={() => setDeleteConsultaId(null)}
+      />
+
+      <ConfirmModal
+        open={finalizarConsultaId !== null}
+        title="Finalizar consulta"
+        message="A consulta será marcada como finalizada. Deseja continuar?"
+        confirmLabel="Finalizar"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={handleFinalizarConsulta}
+        onCancel={() => setFinalizarConsultaId(null)}
       />
     </AppShell>
   )

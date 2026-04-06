@@ -40,7 +40,15 @@ export default function Clientes() {
   const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
-  const loadClientes = useCallback(async (pageNum: number, uid?: string) => {
+  // Filter & sort state
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'nome_asc'|'nome_desc'|'recente'|'antigo'|'cidade'>('recente')
+  const [showInactive, setShowInactive] = useState(false)
+
+  // Consultation stats per client
+  const [consultaStats, setConsultaStats] = useState<Record<string, { total: number; lastStatus: string }>>({})
+
+  const loadClientes = useCallback(async (pageNum: number, uid?: string, overrideSortBy?: string, overrideShowInactive?: boolean) => {
     const id = uid || userId
     if (!id) return
 
@@ -48,19 +56,58 @@ export default function Clientes() {
     const from = pageNum * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
-    const { data, count } = await supabase
+    const activeSortBy = overrideSortBy ?? sortBy
+    const activeShowInactive = overrideShowInactive ?? showInactive
+
+    let orderCol = 'criado_em'
+    let ascending = false
+    if (activeSortBy === 'nome_asc') { orderCol = 'nome_completo'; ascending = true }
+    else if (activeSortBy === 'nome_desc') { orderCol = 'nome_completo'; ascending = false }
+    else if (activeSortBy === 'recente') { orderCol = 'criado_em'; ascending = false }
+    else if (activeSortBy === 'antigo') { orderCol = 'criado_em'; ascending = true }
+    else if (activeSortBy === 'cidade') { orderCol = 'cidade'; ascending = true }
+
+    let query = supabase
       .from('clientes')
       .select('*', { count: 'exact' })
       .eq('consultor_id', id)
-      .eq('ativo', true)
-      .order('criado_em', { ascending: false })
-      .range(from, to)
+
+    if (!activeShowInactive) {
+      query = query.eq('ativo', true)
+    }
+
+    query = query.order(orderCol, { ascending }).range(from, to)
+
+    const { data, count } = await query
 
     setClientes(data || [])
     setTotalCount(count || 0)
     setCurrentPage(pageNum)
+
+    // Load consultation stats for loaded clients
+    const clientIds = (data || []).map(c => c.id)
+    if (clientIds.length > 0) {
+      const { data: consultaData } = await supabase
+        .from('consultas')
+        .select('cliente_id, status, criado_em')
+        .in('cliente_id', clientIds)
+        .neq('status', 'deletada')
+        .order('criado_em', { ascending: false })
+
+      const statsMap: Record<string, { total: number; lastStatus: string }> = {}
+      for (const c of consultaData || []) {
+        if (!statsMap[c.cliente_id]) {
+          statsMap[c.cliente_id] = { total: 0, lastStatus: c.status }
+        }
+        statsMap[c.cliente_id].total++
+      }
+      setConsultaStats(statsMap)
+    } else {
+      setConsultaStats({})
+    }
+
     setLoading(false)
-  }, [userId])
+  }, [userId, sortBy, showInactive])
 
   useEffect(() => {
     async function load() {
@@ -166,6 +213,11 @@ export default function Clientes() {
     setFotoPreview(URL.createObjectURL(file))
   }
 
+  // Client-side search filter
+  const filteredClientes = clientes.filter(c =>
+    !search || c.nome_completo.toLowerCase().includes(search.toLowerCase())
+  )
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   if (loading && clientes.length === 0) {
@@ -202,6 +254,80 @@ export default function Clientes() {
         }}>
           {showForm ? 'Cancelar' : '+ Novo cliente'}
         </button>
+      </div>
+
+      {/* Filter / Sort Bar */}
+      <div style={{
+        background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px',
+        display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center'
+      }}>
+        <input
+          type="text"
+          placeholder="Buscar por nome..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: '1 1 200px', padding: '10px 14px', border: '1px solid #D1D5DB',
+            borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+            minWidth: '180px'
+          }}
+        />
+        <select
+          value={sortBy}
+          onChange={e => {
+            const val = e.target.value as typeof sortBy
+            setSortBy(val)
+            loadClientes(0, undefined, val)
+          }}
+          style={{
+            padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px',
+            fontSize: '14px', outline: 'none', background: '#fff', cursor: 'pointer'
+          }}
+        >
+          <option value="recente">Cadastro mais recente</option>
+          <option value="antigo">Cadastro mais antigo</option>
+          <option value="nome_asc">Nome A-Z</option>
+          <option value="nome_desc">Nome Z-A</option>
+          <option value="cidade">Cidade</option>
+        </select>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {(['todos', 'ativos', 'inativos'] as const).map(status => {
+            const isActive =
+              (status === 'todos' && showInactive) ||
+              (status === 'ativos' && !showInactive) ||
+              false
+            return (
+              <button
+                key={status}
+                onClick={() => {
+                  if (status === 'todos' && !showInactive) {
+                    setShowInactive(true)
+                    loadClientes(0, undefined, undefined, true)
+                  } else if (status === 'ativos' && showInactive) {
+                    setShowInactive(false)
+                    loadClientes(0, undefined, undefined, false)
+                  } else if (status === 'inativos') {
+                    // For "Inativos" - toggle to show all (including inactive)
+                    if (!showInactive) {
+                      setShowInactive(true)
+                      loadClientes(0, undefined, undefined, true)
+                    }
+                  }
+                }}
+                style={{
+                  padding: '8px 14px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                  fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                  background: isActive ? '#7C3AED' : '#ffffff',
+                  color: isActive ? '#ffffff' : '#374151',
+                }}
+              >
+                {status === 'todos' ? 'Todos' : status === 'ativos' ? 'Ativos' : 'Inativos'}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {!podeClientes(planoEfetivo(profile?.plano)) && (
@@ -364,50 +490,73 @@ export default function Clientes() {
           <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>Nenhum cliente cadastrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Clique em "Novo cliente" para comecar</p>
         </div>
+      ) : filteredClientes.length === 0 ? (
+        <div style={{
+          background: '#ffffff', borderRadius: '12px', padding: '48px 32px',
+          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔍</div>
+          <h3 style={{ color: '#1E3A5F', fontSize: '16px', marginBottom: '8px' }}>Nenhum cliente encontrado</h3>
+          <p style={{ color: '#6B7280', fontSize: '14px' }}>Tente ajustar o filtro de busca.</p>
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-          {clientes.map(cliente => (
-            <div key={cliente.id} style={{
-              background: '#ffffff', borderRadius: '12px', padding: '20px',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7C3AED'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <div style={{
-                  width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
-                  background: '#7C3AED', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
-                  flexShrink: 0, position: 'relative' as const,
-                }}>
-                  {cliente.foto_url ? (
-                    <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
-                  ) : (
-                    cliente.nome_completo.charAt(0).toUpperCase()
+          {filteredClientes.map(cliente => {
+            const stats = consultaStats[cliente.id]
+            const isActive = (cliente as Cliente & { ativo?: boolean }).ativo !== false
+            return (
+              <div key={cliente.id} style={{
+                background: '#ffffff', borderRadius: '12px', padding: '20px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${isActive ? '#7C3AED' : '#9CA3AF'}`
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
+                    background: isActive ? '#7C3AED' : '#9CA3AF', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
+                    flexShrink: 0, position: 'relative' as const,
+                  }}>
+                    {cliente.foto_url ? (
+                      <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
+                    ) : (
+                      cliente.nome_completo.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <span style={{
+                    background: isActive ? '#F0FDF4' : '#F3F4F6',
+                    color: isActive ? '#15803D' : '#6B7280',
+                    padding: '2px 10px',
+                    borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
+                  }}>{isActive ? 'Ativo' : 'Inativo'}</span>
+                </div>
+                <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                  {cliente.nome_completo}
+                </h3>
+                {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>✉ {cliente.email}</p>}
+                {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📱 {cliente.telefone}</p>}
+                {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
+                  <span>{stats?.total || 0} consulta(s)</span>
+                  {stats?.lastStatus && (
+                    <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280' }}>
+                      {stats.lastStatus === 'finalizada' ? '✅ Finalizada' : stats.lastStatus === 'em_andamento' ? '🔄 Em andamento' : '☯ ' + stats.lastStatus}
+                    </span>
                   )}
                 </div>
-                <span style={{
-                  background: '#F0FDF4', color: '#15803D', padding: '2px 10px',
-                  borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                }}>Ativo</span>
+                <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                  <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
+                    flex: 1, padding: '8px', background: '#7C3AED', color: '#fff',
+                    border: 'none', borderRadius: '6px', fontSize: '13px',
+                    fontWeight: 'bold', cursor: 'pointer'
+                  }}>Nova consulta</button>
+                  <button onClick={() => window.location.href = `/clientes/${cliente.id}`} style={{
+                    padding: '8px 12px', background: '#F3F4F6', color: '#374151',
+                    border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+                  }}>Ver</button>
+                </div>
               </div>
-              <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-                {cliente.nome_completo}
-              </h3>
-              {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>✉ {cliente.email}</p>}
-              {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📱 {cliente.telefone}</p>}
-              {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
-              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
-                  flex: 1, padding: '8px', background: '#7C3AED', color: '#fff',
-                  border: 'none', borderRadius: '6px', fontSize: '13px',
-                  fontWeight: 'bold', cursor: 'pointer'
-                }}>Nova consulta</button>
-                <button onClick={() => window.location.href = `/clientes/${cliente.id}`} style={{
-                  padding: '8px 12px', background: '#F3F4F6', color: '#374151',
-                  border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
-                }}>Ver</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
