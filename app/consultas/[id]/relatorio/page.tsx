@@ -178,6 +178,30 @@ export default function Relatorio() {
       .slice(0, 3)
   }
 
+  function getProximasFasesLunares() {
+    const hoje = new Date()
+    const cycle = 29.53058867
+    const known = new Date(2000, 0, 6, 18, 14)
+    const fases: { data: Date; fase: string; emoji: string; sugestao: string }[] = []
+    for (let d = 0; d < 30 && fases.length < 3; d++) {
+      const date = new Date(hoje.getTime() + d * 86400000)
+      const diff = (date.getTime() - known.getTime()) / 86400000
+      const phase = ((diff % cycle) + cycle) % cycle
+      const nome = phase < 1.85 ? 'Nova' : phase < 7.38 ? 'Crescente' : phase < 9.23 ? 'Quarto Crescente' : phase < 13.69 ? 'Gibosa Crescente' : phase < 16.61 ? 'Cheia' : phase < 20.30 ? 'Gibosa Minguante' : phase < 22.15 ? 'Quarto Minguante' : phase < 27.68 ? 'Minguante' : 'Nova'
+      const emoji = nome.includes('Nova') ? '🌑' : nome.includes('Crescente') ? '🌓' : nome.includes('Cheia') ? '🌕' : '🌗'
+      if (['Nova', 'Quarto Crescente', 'Cheia', 'Quarto Minguante'].includes(nome) && (fases.length === 0 || fases[fases.length-1].fase !== nome)) {
+        const sugestoes: Record<string, string> = {
+          'Nova': 'Ideal para limpeza energética, definição de intenções e novos começos',
+          'Quarto Crescente': 'Momento de expansão — ative setores do Ba Guá com elementos correspondentes',
+          'Cheia': 'Energize cristais sob a lua, pratique gratidão e celebre conquistas',
+          'Quarto Minguante': 'Desapego e liberação — doe objetos, faça banhos de ervas purificadores',
+        }
+        fases.push({ data: date, fase: nome, emoji, sugestao: sugestoes[nome] || '' })
+      }
+    }
+    return fases
+  }
+
   function handlePrint() { window.print() }
 
   async function handleDownloadPDF() {
@@ -213,6 +237,14 @@ export default function Relatorio() {
           pdf.text('Gerado com FengShui Studio — Plano Simples', imgWidth / 2, pageHeight / 2, { align: 'center', angle: 45 })
           pdf.restoreGraphicsState()
         }
+      }
+      // Add page numbers
+      const totalPages = pdf.getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i)
+        pdf.setFontSize(9)
+        pdf.setTextColor(170, 170, 170)
+        pdf.text(`Página ${i} de ${totalPages}`, 105, 290, { align: 'center' })
       }
       const nomeArquivo = `relatorio-${consulta!.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
       pdf.save(nomeArquivo)
@@ -352,6 +384,28 @@ export default function Relatorio() {
       {showSelector && (
         <div className="no-print" style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', marginBottom: '24px', maxWidth: '600px', margin: '24px auto 24px' }}>
           <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Montar Relatório</h2>
+          {/* Completude indicator */}
+          <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1E3A5F', marginBottom: '6px' }}>
+              📋 Completude da consulta
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
+              {[
+                { label: 'Ba Guá', ok: setores.length > 0 },
+                { label: 'Roda da Vida', ok: !!(consulta?.roda_da_vida && (consulta.roda_da_vida as any)?.respostas) },
+                { label: 'Checklist Chi', ok: !!(consulta?.checklist_chi && (consulta.checklist_chi as string[]).length > 0) },
+                { label: 'Foto geral', ok: !!consulta?.foto_geral_url },
+                { label: 'Fotos antes', ok: ((consulta?.fotos_antes as string[] | undefined)?.length ?? 0) > 0 },
+                { label: 'Fotos depois', ok: ((consulta?.fotos_depois as string[] | undefined)?.length ?? 0) > 0 },
+              ].map((item, i) => (
+                <span key={i} style={{
+                  padding: '3px 8px', borderRadius: '10px', fontWeight: 'bold',
+                  background: item.ok ? '#F0FDF4' : '#FEF2F2',
+                  color: item.ok ? '#15803D' : '#DC2626',
+                }}>{item.ok ? '✓' : '✕'} {item.label}</span>
+              ))}
+            </div>
+          </div>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>Selecione as seções que deseja incluir:</p>
           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid #E5E7EB', marginBottom: '8px', paddingBottom: '12px' }}>
             <input type="checkbox" checked={selectedSections.completo}
@@ -1026,6 +1080,48 @@ export default function Relatorio() {
         )}
 
 
+        {/* ══════ FOTOS DO IMÓVEL ══════ */}
+        {!showSelector && (selectedSections.completo || selectedSections.fotos) && (
+          consulta?.foto_geral_url || (consulta?.fotos_antes && (consulta.fotos_antes as string[]).length > 0) || (consulta?.fotos_depois && (consulta.fotos_depois as string[]).length > 0)
+        ) && (
+        <div style={{ padding: '0 1.5rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: '1px solid #EAE5DB', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '20px', color: '#C9A96E' }}>📸</span>
+            Fotos do Imóvel
+          </div>
+
+          {consulta?.foto_geral_url && (
+            <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '6px' }}>Foto Geral</div>
+              <img src={consulta.foto_geral_url} alt="Foto geral" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #E5E7EB' }} />
+            </div>
+          )}
+
+          {/* Before/After comparison */}
+          {((consulta?.fotos_antes as string[] | undefined)?.length ?? 0) > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Antes</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {(consulta?.fotos_antes as string[] || []).slice(0, 6).map((url: string, i: number) => (
+                  <img key={i} src={url} alt={`Antes ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {((consulta?.fotos_depois as string[] | undefined)?.length ?? 0) > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#15803D', marginBottom: '8px' }}>Depois</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {(consulta?.fotos_depois as string[] || []).slice(0, 6).map((url: string, i: number) => (
+                  <img key={i} src={url} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #BBF7D0' }} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        )}
+
         {/* ══════ PRÓXIMOS PASSOS ══════ */}
         {!showSelector && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
@@ -1060,6 +1156,20 @@ export default function Relatorio() {
               )
             })
           })()}
+          {/* Calendário Lunar */}
+          <div style={{ marginTop: '16px', padding: '14px 16px', background: '#1E3A5F', borderRadius: '10px', color: '#fff' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px' }}>🌙 Próximas Fases Lunares</div>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              {getProximasFasesLunares().map((f, i) => (
+                <div key={i} style={{ flex: 1, minWidth: '140px', padding: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{f.emoji}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>{f.fase}</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{f.data.toLocaleDateString('pt-BR')}</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', lineHeight: 1.3 }}>{f.sugestao}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         )}
 
