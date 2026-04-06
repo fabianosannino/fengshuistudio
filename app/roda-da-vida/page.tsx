@@ -8,9 +8,10 @@ import { AREAS, CATEGORIAS, avg, defaultRespostas } from '../../src/lib/roda-da-
 
 type Consulta = { id: string; nome_imovel: string; criado_em: string; cliente_id?: string | null; clientes?: { nome_completo: string } | null; roda_da_vida?: any }
 type Cliente = { id: string; nome_completo: string }
-type Acao = { acao: string; data: string; estrategia: string }
+type Acao = { acao: string; categoria: string; data_inicio: string; data_fim: string; estrategia: string; observacoes: string }
 
-const defaultAcoes = (): Acao[] => [{ acao:'', data:'', estrategia:'' },{ acao:'', data:'', estrategia:'' },{ acao:'', data:'', estrategia:'' }]
+const novaAcao = (): Acao => ({ acao: '', categoria: '', data_inicio: '', data_fim: '', estrategia: '', observacoes: '' })
+const defaultAcoes = (): Acao[] => [novaAcao()]
 
 function classificar(val: number): { nivel: string; cor: string; bg: string } {
   if (val >= 8) return { nivel: 'Ótimo', cor: '#15803D', bg: '#F0FDF4' }
@@ -88,8 +89,19 @@ export default function RodaDaVidaPage() {
   function openExisting(consulta: Consulta) {
     setSelectedConsultaId(consulta.id)
     const rd = consulta.roda_da_vida
-    if (rd?.respostas) { setRespostas(rd.respostas); setAcoes(rd.acoes || defaultAcoes()); setPessoaNome(rd.pessoa_nome || ''); setObservacoes(rd.observacoes || {}); setObservacaoGeral(rd.observacao_geral || '') }
-    else { setRespostas(defaultRespostas()); setAcoes(defaultAcoes()); setPessoaNome(''); setObservacoes({}); setObservacaoGeral('') }
+    if (rd?.respostas) {
+      setRespostas(rd.respostas)
+      // Migrate old actions format to new
+      const rawAcoes = rd.acoes || []
+      const migratedAcoes = rawAcoes.map((a: Record<string, string>) => ({
+        acao: a.acao || '', categoria: a.categoria || '', data_inicio: a.data_inicio || a.data || '',
+        data_fim: a.data_fim || '', estrategia: a.estrategia || '', observacoes: a.observacoes || '',
+      }))
+      setAcoes(migratedAcoes.length > 0 ? migratedAcoes : defaultAcoes())
+      setPessoaNome(rd.pessoa_nome || ''); setObservacoes(rd.observacoes || {}); setObservacaoGeral(rd.observacao_geral || '')
+    } else {
+      setRespostas(defaultRespostas()); setAcoes(defaultAcoes()); setPessoaNome(''); setObservacoes({}); setObservacaoGeral('')
+    }
     setStep('results')
   }
 
@@ -395,29 +407,57 @@ export default function RodaDaVidaPage() {
 
         {/* Action Plan */}
         <div style={cardStyle}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#1E3A5F' }}>Plano de Ação</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>{['#','Ação','Data','Estratégia'].map(h => <th key={h} style={{ textAlign: 'left', padding: '8px 6px', borderBottom: '2px solid #E5E7EB', color: '#6B7280', fontWeight: 'bold' }}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {acoes.map((a, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '6px', color: '#9CA3AF', width: 30 }}>{i + 1}</td>
-                    {(['acao','data','estrategia'] as const).map(field => (
-                      <td key={field} style={{ padding: '4px 6px' }}>
-                        <input value={a[field]} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, [field]: e.target.value } : x))}
-                          type={field === 'data' ? 'date' : 'text'}
-                          placeholder={field === 'acao' ? 'O que fazer?' : field === 'data' ? '' : 'Como fazer?'}
-                          style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 13, boxSizing: 'border-box' }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: '#1E3A5F' }}>Plano de Ação</h3>
+            <button onClick={() => setAcoes(prev => [...prev, novaAcao()])} style={{ padding: '6px 16px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 'bold', cursor: 'pointer' }}>+ Nova Ação</button>
           </div>
+          {acoes.map((a, i) => (
+            <div key={i} style={{ padding: 14, marginBottom: 12, borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 'bold', color: '#1E3A5F' }}>Ação {i + 1}</span>
+                {acoes.length > 1 && (
+                  <button onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16 }}>×</button>
+                )}
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 'bold', color: '#6B7280', marginBottom: 2 }}>Descrição da ação</label>
+                <input value={a.acao} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, acao: e.target.value } : x))}
+                  placeholder="O que fazer?" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 13, boxSizing: 'border-box' as const }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 'bold', color: '#6B7280', marginBottom: 2 }}>Categoria de impacto</label>
+                  <select value={a.categoria} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, categoria: e.target.value } : x))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, boxSizing: 'border-box' as const }}>
+                    <option value="">Selecione...</option>
+                    {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 'bold', color: '#6B7280', marginBottom: 2 }}>Data início</label>
+                  <input type="date" value={a.data_inicio} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, data_inicio: e.target.value } : x))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, boxSizing: 'border-box' as const }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 'bold', color: '#6B7280', marginBottom: 2 }}>Data fim / Reavaliação</label>
+                  <input type="date" value={a.data_fim} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, data_fim: e.target.value } : x))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, boxSizing: 'border-box' as const }} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 'bold', color: '#6B7280', marginBottom: 2 }}>Estratégia de ação</label>
+                <textarea value={a.estrategia} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, estrategia: e.target.value } : x))}
+                  placeholder="Como colocar em prática?" rows={2}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' as const }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 'bold', color: '#6B7280', marginBottom: 2 }}>Observações e recomendações</label>
+                <textarea value={a.observacoes} onChange={e => setAcoes(prev => prev.map((x, j) => j === i ? { ...x, observacoes: e.target.value } : x))}
+                  placeholder="Notas adicionais..." rows={2}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' as const }} />
+              </div>
+            </div>
+          ))}
         </div>
       </>}
     </AppShell>
