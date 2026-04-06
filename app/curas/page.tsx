@@ -993,9 +993,51 @@ function CurasPageContent() {
         <a href="/curas/entenda" style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' }}>
           📚 Entenda mais sobre Curas e Ativações
         </a>
-        {consultaId && setores.length > 0 && (
+      </div>
+
+      {/* ── CONSULTATION SELECTOR ────────────────────────────────────── */}
+      {!selectedConsultaId && (
+        <div>
+          <div style={{ marginBottom: '24px' }}>
+            <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+              Selecione uma consulta
+            </h2>
+            <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>
+              As curas e ativações são vinculadas a uma consulta específica
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+            {consultasList.map(c => (
+              <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); loadConsultaData(c.id) }}
+                style={{
+                  background: '#fff', borderRadius: '10px', padding: '16px', border: '1px solid #E5E7EB',
+                  cursor: 'pointer', textAlign: 'left', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  transition: 'all 0.2s'
+                }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', marginBottom: '4px' }}>
+                  {(c.clientes as any)?.nome_completo || 'Sem cliente'}
+                </div>
+                <div style={{ fontSize: '13px', color: '#6B7280' }}>{c.nome_imovel}</div>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                  {new Date(c.criado_em).toLocaleDateString('pt-BR')}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SELECTED CONSULTATION CONTENT ────────────────────────────── */}
+      {selectedConsultaId && (
+      <>
+        <button onClick={() => { setSelectedConsultaId(null); setSetores([]); setConsulta(null) }} style={{
+          marginBottom: '16px', padding: '8px 16px', background: '#F3F4F6', color: '#6B7280',
+          border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+        }}>← Trocar consulta</button>
+
+        {setores.length > 0 && (
           <div style={{
-            marginTop: '12px', padding: '8px 16px', background: '#F5F0FF',
+            marginBottom: '12px', padding: '8px 16px', background: '#F5F0FF',
             borderRadius: '8px', display: 'inline-block', border: '1px solid #E9D5FF'
           }}>
             <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
@@ -1003,10 +1045,9 @@ function CurasPageContent() {
             </span>
           </div>
         )}
-      </div>
 
       {/* ── CONSULTATION CONTEXT ────────────────────────────────────── */}
-      {consultaId && consulta && (
+      {consulta && (
         <div style={{ background: '#F5F0FF', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#7C3AED' }}>
           <strong>Vinculado à consulta:</strong> Cliente: {consulta.clientes?.nome_completo} | Imóvel: {consulta.nome_imovel} | {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
         </div>
@@ -1263,6 +1304,8 @@ function CurasPageContent() {
             ← Voltar à consulta
           </a>
         </div>
+      )}
+      </>
       )}
     </AppShell>
   )
