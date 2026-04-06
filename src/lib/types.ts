@@ -6,7 +6,7 @@
 
 export type PlanType = 'freemium' | 'free' | 'simples' | 'pro' | 'profissional'
 
-export type ConsultaStatus = 'rascunho' | 'em_andamento' | 'finalizada' | 'arquivada'
+export type ConsultaStatus = 'rascunho' | 'em_andamento' | 'finalizada' | 'arquivada' | 'deletada' | 'sem_analise'
 
 export type PagamentoStatus = 'pendente' | 'pago' | 'atrasado' | 'cancelado'
 
