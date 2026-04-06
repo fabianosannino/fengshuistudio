@@ -93,7 +93,7 @@ export default function Relatorio() {
   const id = params.id as string
   const printRef = useRef<HTMLDivElement>(null)
 
-  const [consulta, setConsulta] = useState<(Consulta & { clientes?: { nome_completo: string; email?: string; telefone?: string; cidade?: string; estado?: string } | null }) | null>(null)
+  const [consulta, setConsulta] = useState<any>(null)
   const [setores, setSetores] = useState<SetorBagua[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
