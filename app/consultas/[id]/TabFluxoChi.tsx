@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // ── Chi Flow checklist (11 items) ───────────────────────────────────────
 const CHECKLIST_CHI = [
@@ -72,9 +72,25 @@ interface Props {
 
 export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi, onChangePosicao, onSave, saving }: Props) {
   const [comodoAtivo, setComodoAtivo] = useState('quarto')
+  const [customItems, setCustomItems] = useState<{id: string; label: string; categoria: string}[]>([])
+  const [newItemLabel, setNewItemLabel] = useState('')
+  const [newItemCategoria, setNewItemCategoria] = useState('elementos')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [hoveredCustomId, setHoveredCustomId] = useState<string | null>(null)
+
+  // Load custom items from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('fengshui-custom-chi-items')
+      if (saved) setCustomItems(JSON.parse(saved))
+    } catch {}
+  }, [])
+
+  // All items = standard + custom
+  const allItems = [...CHECKLIST_CHI, ...customItems]
 
   // Chi flow score
-  const chiScore = Math.round((checklistChi.length / CHECKLIST_CHI.length) * 100)
+  const chiScore = Math.round((checklistChi.length / allItems.length) * 100)
   const chiColor = chiScore >= 70 ? '#15803D' : chiScore >= 40 ? '#D97706' : '#DC2626'
 
   // Command position score per room
@@ -98,6 +114,16 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       onChangePosicao({ ...posicaoComando, [comodoId]: current.filter(c => c !== checkId) })
     } else {
       onChangePosicao({ ...posicaoComando, [comodoId]: [...current, checkId] })
+    }
+  }
+
+  function deleteCustomItem(itemId: string) {
+    const updated = customItems.filter(i => i.id !== itemId)
+    setCustomItems(updated)
+    try { localStorage.setItem('fengshui-custom-chi-items', JSON.stringify(updated)) } catch {}
+    // Also remove from checked list if it was checked
+    if (checklistChi.includes(itemId)) {
+      onChangeChi(checklistChi.filter(c => c !== itemId))
     }
   }
 
@@ -127,14 +153,14 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               <span style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>{chiScore}%</span>
             </div>
             <p style={{ color: '#6B7280', fontSize: '11px', margin: '4px 0 0 0' }}>
-              {checklistChi.length}/{CHECKLIST_CHI.length} OK
+              {checklistChi.length}/{allItems.length} OK
             </p>
           </div>
         </div>
 
         {categorias.map(catKey => {
           const cat = CATEGORIAS_CHI[catKey]
-          const items = CHECKLIST_CHI.filter(i => i.categoria === catKey)
+          const items = allItems.filter(i => i.categoria === catKey)
           const checked = items.filter(i => checklistChi.includes(i.id)).length
           return (
             <div key={catKey} style={{ marginBottom: '16px' }}>
@@ -148,14 +174,20 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '16px' }}>
                 {items.map(item => {
                   const isChecked = checklistChi.includes(item.id)
+                  const isCustom = item.id.startsWith('custom_')
+                  const isHovered = hoveredCustomId === item.id
                   return (
                     <label key={item.id} style={{
                       display: 'flex', alignItems: 'center', gap: '10px',
                       padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
                       background: isChecked ? '#F0FDF4' : '#F9FAFB',
                       border: `1px solid ${isChecked ? '#BBF7D0' : '#E5E7EB'}`,
-                      transition: 'all 0.15s'
-                    }}>
+                      transition: 'all 0.15s',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={() => isCustom ? setHoveredCustomId(item.id) : undefined}
+                    onMouseLeave={() => isCustom ? setHoveredCustomId(null) : undefined}
+                    >
                       <input
                         type="checkbox" checked={isChecked}
                         onChange={() => toggleChi(item.id)}
@@ -168,7 +200,23 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                       }}>
                         {item.label}
                       </span>
-                      {!isChecked && (
+                      {isCustom && isHovered && (
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteCustomItem(item.id) }}
+                          style={{
+                            marginLeft: 'auto', background: '#FEE2E2', border: 'none',
+                            color: '#DC2626', fontSize: '14px', fontWeight: 'bold',
+                            width: '24px', height: '24px', borderRadius: '50%',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', lineHeight: 1, padding: 0,
+                            flexShrink: 0
+                          }}
+                          title="Remover ponto personalizado"
+                        >
+                          ×
+                        </button>
+                      )}
+                      {!isChecked && !(isCustom && isHovered) && (
                         <span style={{
                           marginLeft: 'auto', fontSize: '10px', color: '#DC2626',
                           padding: '2px 8px', background: '#FEF2F2', borderRadius: '10px',
@@ -182,6 +230,45 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
             </div>
           )
         })}
+
+        {/* Add custom checklist point */}
+        <div style={{ marginTop: '12px', padding: '12px', background: '#F9FAFB', borderRadius: '8px', border: '1px dashed #D1D5DB' }}>
+          {!showAddForm ? (
+            <button onClick={() => setShowAddForm(true)} style={{
+              background: 'none', border: 'none', color: '#7C3AED', fontSize: '13px',
+              fontWeight: 'bold', cursor: 'pointer', width: '100%', textAlign: 'center'
+            }}>+ Adicionar ponto personalizado</button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input type="text" value={newItemLabel} onChange={e => setNewItemLabel(e.target.value)}
+                placeholder="Descreva o ponto de verificação..."
+                style={{ padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px' }} />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select value={newItemCategoria} onChange={e => setNewItemCategoria(e.target.value)}
+                  style={{ flex: 1, padding: '8px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '12px' }}>
+                  {Object.entries(CATEGORIAS_CHI).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
+                <button onClick={() => {
+                  if (!newItemLabel.trim()) return
+                  const item = { id: `custom_${Date.now()}`, label: newItemLabel.trim(), categoria: newItemCategoria }
+                  const updated = [...customItems, item]
+                  setCustomItems(updated)
+                  try { localStorage.setItem('fengshui-custom-chi-items', JSON.stringify(updated)) } catch {}
+                  setNewItemLabel('')
+                  setShowAddForm(false)
+                }} style={{ padding: '8px 16px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Adicionar
+                </button>
+                <button onClick={() => { setShowAddForm(false); setNewItemLabel('') }}
+                  style={{ padding: '8px 12px', background: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── POSIÇÃO DE COMANDO ────────────────────────────────────────── */}
@@ -294,6 +381,34 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
         color: '#ffffff', border: 'none', borderRadius: '8px',
         fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
       }}>{saving ? 'Salvando...' : 'Salvar Fluxo de Chi e Posição de Comando'}</button>
+
+      {/* Integrated recommendation */}
+      {(checklistChi.length > 0 || Object.values(posicaoComando).some(v => v.length > 0)) && (
+        <div style={{ padding: '16px', background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF', marginTop: '16px' }}>
+          <h3 style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+            📋 Orientação integrada
+          </h3>
+          {/* Show unchecked items as priority actions */}
+          {allItems.filter(i => !checklistChi.includes(i.id)).length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#DC2626', margin: '0 0 6px 0' }}>
+                Pontos que requerem atenção ({allItems.filter(i => !checklistChi.includes(i.id)).length}):
+              </p>
+              {allItems.filter(i => !checklistChi.includes(i.id)).slice(0, 5).map(item => (
+                <p key={item.id} style={{ fontSize: '12px', color: '#7F1D1D', margin: '0 0 4px 0', paddingLeft: '12px' }}>
+                  • {item.label}
+                </p>
+              ))}
+            </div>
+          )}
+          {/* Command position summary */}
+          {COMODOS_POSICAO.filter(c => posicaoScore(c.id) < 60 && (posicaoComando[c.id]?.length || 0) > 0).map(comodo => (
+            <p key={comodo.id} style={{ fontSize: '12px', color: '#D97706', margin: '0 0 4px 0' }}>
+              ⚠ {comodo.label}: posição de comando precisa de ajustes ({posicaoScore(comodo.id)}%)
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
