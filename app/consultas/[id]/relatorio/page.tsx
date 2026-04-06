@@ -921,10 +921,13 @@ export default function Relatorio() {
         {(selectedSections.completo || selectedSections.curas) && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
           <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', overflowX: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '0.5rem' }}>
               <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>治</span>
               Curas &amp; Ativações Detalhadas por Área
             </div>
+            <textarea className="no-print" value={textoCuras} onChange={e => setTextoCuras(e.target.value)}
+              rows={3} style={{ width: '100%', padding: '8px 10px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
+            <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoCuras}</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
               <thead>
                 <tr>
@@ -1114,6 +1117,19 @@ export default function Relatorio() {
                         {cr.texto}
                       </div>
                     ))}
+
+                    {/* Editable additional recommendation per sector */}
+                    <div style={{ marginTop: '6px' }}>
+                      <textarea className="no-print" value={recsAdicionais[setor.id] || ''} onChange={e => setRecsAdicionais(prev => ({ ...prev, [setor.id]: e.target.value }))}
+                        placeholder={`Recomendações adicionais para ${setor.nome}...`} rows={2}
+                        style={{ width: '100%', padding: '6px 8px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif' }} />
+                      {recsAdicionais[setor.id] && (
+                        <div className="print-only" style={{ padding: '6px 10px', background: '#F5F0FF', borderLeft: '3px solid #7C3AED', borderRadius: '2px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
+                          <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#7C3AED' }}>CONSULTOR</span>
+                          {recsAdicionais[setor.id]}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
