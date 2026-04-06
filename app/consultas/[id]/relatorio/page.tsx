@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import FlowLayout from '../../../components/FlowLayout'
 // jsPDF and html2canvas are lazy-loaded in handleDownloadPDF() to reduce initial bundle size
 import { CRITERIOS, AREA_META, SETOR_DICAS, CRITERIO_DICAS, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
+import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
@@ -686,45 +687,49 @@ export default function Relatorio() {
           )}
 
           {/* Roda da Vida radar */}
-          {(selectedSections.completo || selectedSections.roda_vida) && hasRoda && (
+          {(selectedSections.completo || selectedSections.roda_vida) && hasRoda && (() => {
+            const respostas = (rodaData as Record<string, unknown>)
+            const getVal = (key: string): number => {
+              const v = respostas[key]
+              if (Array.isArray(v)) return rodaAvg(v)
+              if (typeof v === 'number') return v
+              return 0
+            }
+            return (
             <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginLeft: (selectedSections.completo || selectedSections.bagua) ? '0.5rem' : 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
                 <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>輪</span>
-                Roda da Vida
+                Roda da Vida — 12 Áreas
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                {RODA_AREAS.map(area => {
-                  const val = rodaData[area.key]
-                  if (val === undefined) return null
-                  const setorMatch = findSetorByName(area.gua)
-                  const setorPct = setorMatch?.score_percentual ?? null
-                  const lvl = scoreLevelLabel(val * 10)
-                  return (
-                    <div key={area.key} style={{
-                      padding: '8px 10px', borderRadius: '3px',
-                      background: val <= 4 ? '#FEF2F2' : val <= 6 ? '#FFFBEB' : '#F0FDF4',
-                      borderLeft: `3px solid ${lvl.color}`
-                    }}>
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: ink, fontFamily: 'Helvetica Neue, Arial, sans-serif', marginBottom: '2px' }}>
-                        {area.label}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '18px', fontWeight: 700, color: lvl.color }}>{val}</span>
-                        <div style={{ flex: 1, height: '4px', background: '#E5DDD0', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${val * 10}%`, height: '100%', background: lvl.color, borderRadius: '2px' }} />
-                        </div>
-                      </div>
-                      {setorPct !== null && (
-                        <div style={{ fontSize: '9px', color: inkLt, marginTop: '2px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                          Guá: {setorPct}%
-                        </div>
-                      )}
+              {RODA_CATEGORIAS.map(cat => {
+                const catAvg = rodaAvg(cat.areas.map(k => getVal(k)))
+                return (
+                  <div key={cat.key} style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: cat.cor, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{cat.label}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: cat.cor }}>{catAvg.toFixed(1)}</span>
                     </div>
-                  )
-                })}
-              </div>
+                    {cat.areas.map(aKey => {
+                      const area = RODA_12_AREAS.find(a => a.key === aKey)
+                      if (!area) return null
+                      const val = getVal(aKey)
+                      const pct = val * 10
+                      return (
+                        <div key={aKey} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px', paddingLeft: '8px' }}>
+                          <span style={{ fontSize: '10px', color: ink, width: '110px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{area.label}</span>
+                          <div style={{ flex: 1, height: '4px', background: '#E5DDD0', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: area.cor, borderRadius: '2px' }} />
+                          </div>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: area.cor, width: '24px', textAlign: 'right' }}>{val.toFixed(1)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
             </div>
-          )}
+            )
+          })()}
         </div>
         )}
 
@@ -1182,7 +1187,7 @@ export default function Relatorio() {
         )}
 
         {/* ══════ PRÓXIMOS PASSOS ══════ */}
-        {!showSelector && (
+        {!showSelector && (selectedSections.completo || selectedSections.proximos_passos) && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: '1px solid #EAE5DB', marginBottom: '1rem' }}>
             <span style={{ fontSize: '20px', color: '#C9A96E' }}>🎯</span>
