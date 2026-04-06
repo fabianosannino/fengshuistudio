@@ -601,6 +601,10 @@ function CurasPageContent() {
   const [consulta, setConsulta] = useState<{ nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null } | null>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  // Consultation selector state
+  const [consultasList, setConsultasList] = useState<{id: string; nome_imovel: string; criado_em: string; clientes?: {nome_completo: string} | null}[]>([])
+  const [selectedConsultaId, setSelectedConsultaId] = useState<string | null>(consultaId || null)
+
   // Custom references state
   const [customRefs, setCustomRefs] = useState<Record<string, any[]>>({})
   const [showAddRef, setShowAddRef] = useState<string | null>(null)
@@ -611,28 +615,49 @@ function CurasPageContent() {
   const [userId, setUserId] = useState<string | null>(null)
   const [savingRef, setSavingRef] = useState(false)
 
-  // Load consultation sectors and consulta data if consultaId provided
+  // Load consultation data (setores + consulta) for a given id
+  async function loadConsultaData(cId: string) {
+    setLoading(true)
+    const [setoresRes, consultaRes] = await Promise.all([
+      supabase
+        .from('setores_bagua')
+        .select('*')
+        .eq('consulta_id', cId)
+        .order('numero'),
+      supabase
+        .from('consultas')
+        .select('nome_imovel, criado_em, clientes(nome_completo)')
+        .eq('id', cId)
+        .single(),
+    ])
+    if (setoresRes.data) setSetores(setoresRes.data)
+    if (consultaRes.data) setConsulta(consultaRes.data as unknown as { nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null })
+    setLoading(false)
+  }
+
+  // Load all consultations for selector + auto-load if consultaId from URL
   useEffect(() => {
-    if (consultaId) {
-      Promise.all([
-        supabase
-          .from('setores_bagua')
-          .select('*')
-          .eq('consulta_id', consultaId)
-          .order('numero'),
-        supabase
-          .from('consultas')
-          .select('nome_imovel, criado_em, clientes(nome_completo)')
-          .eq('id', consultaId)
-          .single(),
-      ]).then(([setoresRes, consultaRes]) => {
-        if (setoresRes.data) setSetores(setoresRes.data)
-        if (consultaRes.data) setConsulta(consultaRes.data as unknown as { nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null })
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+
+      // Load all consultations for selector
+      const { data: consultasData } = await supabase
+        .from('consultas')
+        .select('id, nome_imovel, criado_em, clientes(nome_completo)')
+        .eq('consultor_id', user.id)
+        .neq('status', 'deletada')
+        .order('criado_em', { ascending: false })
+      setConsultasList((consultasData || []) as unknown as typeof consultasList)
+
+      // If consultaId from URL, auto-load that consultation
+      if (consultaId) {
+        await loadConsultaData(consultaId)
+      } else {
         setLoading(false)
-      })
-    } else {
-      setLoading(false)
+      }
     }
+    init()
   }, [consultaId])
 
   // Load custom references
