@@ -10,15 +10,15 @@ const CURE_TYPES = [
     bgColor: '#F5F0FF',
     borderColor: '#E9D5FF',
     description:
-      'Cristais sao ferramentas milenares de canalizacao e purificacao energetica. Cada pedra possui uma frequencia vibratoria unica que interage com os campos energeticos do ambiente e das pessoas. No Feng Shui, cristais sao posicionados estrategicamente para harmonizar, ativar ou proteger setores especificos do Ba Gua.',
+      'Cristais são ferramentas milenares de canalização e purificação energética. Cada pedra possui uma frequência vibratória única que interage com os campos energéticos do ambiente e das pessoas. No Feng Shui, cristais são posicionados estrategicamente para harmonizar, ativar ou proteger setores específicos do Ba Guá.',
     examples: [
-      { name: 'Quartzo Rosa', detail: 'Para relacionamentos - abre o coracao para dar e receber amor. Posicione no setor Sudoeste.' },
+      { name: 'Quartzo Rosa', detail: 'Para relacionamentos - abre o coração para dar e receber amor. Posicione no setor Sudoeste.' },
       { name: 'Citrino', detail: 'Para prosperidade - atrai riqueza e sucesso financeiro. Ideal no setor Sudeste.' },
-      { name: 'Ametista', detail: 'Para espiritualidade - aprofunda meditacao e conexao espiritual. Coloque no setor Nordeste.' },
-      { name: 'Turmalina Negra', detail: 'Para protecao - absorve energias negativas. Use na entrada ou setor Norte.' },
-      { name: 'Jade', detail: 'Para saude e familia - promove longevidade e harmonia nos lacos familiares.' },
+      { name: 'Ametista', detail: 'Para espiritualidade - aprofunda meditação e conexão espiritual. Coloque no setor Nordeste.' },
+      { name: 'Turmalina Negra', detail: 'Para proteção - absorve energias negativas. Use na entrada ou setor Norte.' },
+      { name: 'Jade', detail: 'Para saúde e família - promove longevidade e harmonia nos laços familiares.' },
     ],
-    tips: 'Limpe seus cristais regularmente com agua corrente, luz solar ou fumaca de salvia. Programe-os com intencoes claras antes de posiciona-los.',
+    tips: 'Limpe seus cristais regularmente com água corrente, luz solar ou fumaça de sálvia. Programe-os com intenções claras antes de posicioná-los.',
   },
   {
     icon: '\u{1F33F}',
@@ -27,32 +27,32 @@ const CURE_TYPES = [
     bgColor: '#F0FDF4',
     borderColor: '#BBF7D0',
     description:
-      'Plantas vivas sao poderosas ativadoras do elemento Madeira no Feng Shui. Elas purificam o ar, movem a energia estagnada (Chi) e trazem vitalidade a qualquer ambiente. Plantas saudaveis e bem cuidadas simbolizam crescimento, abundancia e renovacao.',
+      'Plantas vivas são poderosas ativadoras do elemento Madeira no Feng Shui. Elas purificam o ar, movem a energia estagnada (Chi) e trazem vitalidade a qualquer ambiente. Plantas saudáveis e bem cuidadas simbolizam crescimento, abundância e renovação.',
     examples: [
-      { name: 'Bambu da Sorte', detail: 'Ativa sorte e prosperidade. O numero de hastes tem significados diferentes (3 = felicidade, 5 = saude, 8 = riqueza).' },
-      { name: 'Espada-de-Sao-Jorge', detail: 'Protecao energetica poderosa. Suas folhas em forma de espada cortam energias negativas.' },
-      { name: 'Lirio da Paz', detail: 'Purifica o ar e a energia do ambiente. Excelente para escritorios e areas de trabalho.' },
-      { name: 'Planta Jade (Crassula)', detail: 'Conhecida como arvore do dinheiro - suas folhas arredondadas lembram moedas.' },
-      { name: 'Orquidea', detail: 'Simboliza elegancia, fertilidade e abundancia. Ideal para o setor de relacionamentos.' },
+      { name: 'Bambu da Sorte', detail: 'Ativa sorte e prosperidade. O número de hastes tem significados diferentes (3 = felicidade, 5 = saúde, 8 = riqueza).' },
+      { name: 'Espada-de-São-Jorge', detail: 'Proteção energética poderosa. Suas folhas em forma de espada cortam energias negativas.' },
+      { name: 'Lírio da Paz', detail: 'Purifica o ar e a energia do ambiente. Excelente para escritórios e áreas de trabalho.' },
+      { name: 'Planta Jade (Crassula)', detail: 'Conhecida como árvore do dinheiro - suas folhas arredondadas lembram moedas.' },
+      { name: 'Orquídea', detail: 'Simboliza elegância, fertilidade e abundância. Ideal para o setor de relacionamentos.' },
     ],
-    tips: 'Evite plantas com espinhos no interior da casa (exceto na entrada para protecao). Retire imediatamente plantas mortas ou doentes.',
+    tips: 'Evite plantas com espinhos no interior da casa (exceto na entrada para proteção). Retire imediatamente plantas mortas ou doentes.',
   },
   {
     icon: '\u{1F3EE}',
-    title: 'Objetos e Simbolos',
+    title: 'Objetos e Símbolos',
     color: '#D97706',
     bgColor: '#FFFBEB',
     borderColor: '#FDE68A',
     description:
-      'Objetos decorativos e simbolicos sao ferramentas classicas do Feng Shui para redirecionar, ativar ou acalmar o fluxo de energia (Chi) nos ambientes. Cada objeto carrega um significado e deve ser posicionado com intencao e conhecimento dos setores do Ba Gua.',
+      'Objetos decorativos e simbólicos são ferramentas clássicas do Feng Shui para redirecionar, ativar ou acalmar o fluxo de energia (Chi) nos ambientes. Cada objeto carrega um significado e deve ser posicionado com intenção e conhecimento dos setores do Ba Guá.',
     examples: [
-      { name: 'Fontes de Agua', detail: 'Ativam o elemento Agua e atraem prosperidade. A agua deve fluir para dentro da casa, nao para fora.' },
+      { name: 'Fontes de Água', detail: 'Ativam o elemento Água e atraem prosperidade. A água deve fluir para dentro da casa, não para fora.' },
       { name: 'Sinos de Vento', detail: 'Dispersam energia estagnada e ativam o Chi. Sinos de metal para o Oeste/Noroeste, bambu para Leste/Sudeste.' },
-      { name: 'Espelhos Ba Gua', detail: 'Apenas para uso externo. Refletem energia negativa vinda de fora (Sha Chi). Nunca use dentro de casa.' },
-      { name: 'Sapo da Fortuna (Chan Chu)', detail: 'Simbolo de prosperidade. Posicione olhando para dentro, preferencialmente perto da porta.' },
-      { name: 'Tartaruga', detail: 'Simbolo de protecao e longevidade. Posicione atras da mesa de trabalho para apoio.' },
+      { name: 'Espelhos Ba Guá', detail: 'Apenas para uso externo. Refletem energia negativa vinda de fora (Sha Chi). Nunca use dentro de casa.' },
+      { name: 'Sapo da Fortuna (Chan Chu)', detail: 'Símbolo de prosperidade. Posicione olhando para dentro, preferencialmente perto da porta.' },
+      { name: 'Tartaruga', detail: 'Símbolo de proteção e longevidade. Posicione atrás da mesa de trabalho para apoio.' },
     ],
-    tips: 'Cada objeto deve ser colocado com intencao. Objetos quebrados ou sem significado pessoal devem ser removidos do ambiente.',
+    tips: 'Cada objeto deve ser colocado com intenção. Objetos quebrados ou sem significado pessoal devem ser removidos do ambiente.',
   },
   {
     icon: '\u{1F64F}',
@@ -61,30 +61,30 @@ const CURE_TYPES = [
     bgColor: '#FAF5FF',
     borderColor: '#E9D5FF',
     description:
-      'Mudras sao gestos sagrados realizados com as maos que ativam centros energeticos especificos no corpo. No contexto do Feng Shui, cada mudra corresponde a um elemento e setor do Ba Gua, canalizando energia para areas especificas da vida.',
+      'Mudras são gestos sagrados realizados com as mãos que ativam centros energéticos específicos no corpo. No contexto do Feng Shui, cada mudra corresponde a um elemento e setor do Ba Guá, canalizando energia para áreas específicas da vida.',
     examples: [
-      { name: 'Varun Mudra (Agua)', detail: 'Ponta do mindinho toca o polegar. Ativa fluidez na carreira e intuicao.' },
+      { name: 'Varun Mudra (Água)', detail: 'Ponta do mindinho toca o polegar. Ativa fluidez na carreira e intuição.' },
       { name: 'Agni Mudra (Fogo)', detail: 'Anelar dobrado sob o polegar. Acende o fogo interior para fama e reconhecimento.' },
-      { name: 'Prithvi Mudra (Terra)', detail: 'Anelar toca o polegar. Ancora e estabiliza, ideal para saude e relacionamentos.' },
-      { name: 'Kubera Mudra (Prosperidade)', detail: 'Polegar, indicador e medio unidos. Ativa manifestacao de riqueza.' },
-      { name: 'Gyan Mudra (Sabedoria)', detail: 'Indicador toca o polegar. O mudra mais classico, para meditacao e conhecimento.' },
+      { name: 'Prithvi Mudra (Terra)', detail: 'Anelar toca o polegar. Ancora e estabiliza, ideal para saúde e relacionamentos.' },
+      { name: 'Kubera Mudra (Prosperidade)', detail: 'Polegar, indicador e médio unidos. Ativa manifestação de riqueza.' },
+      { name: 'Gyan Mudra (Sabedoria)', detail: 'Indicador toca o polegar. O mudra mais clássico, para meditação e conhecimento.' },
     ],
-    tips: 'Pratique mudras por 5-15 minutos em ambiente tranquilo. Combine com respiracao consciente para potencializar os efeitos. A consistencia e mais importante que a duracao.',
+    tips: 'Pratique mudras por 5-15 minutos em ambiente tranquilo. Combine com respiração consciente para potencializar os efeitos. A consistência é mais importante que a duração.',
   },
   {
     icon: '\u{1F9D8}',
-    title: 'Meditacao',
+    title: 'Meditação',
     color: '#059669',
     bgColor: '#ECFDF5',
     borderColor: '#A7F3D0',
     description:
-      'A meditacao no Feng Shui vai alem do relaxamento - e uma pratica direcionada para harmonizar setores especificos do Ba Gua. Cada meditacao trabalha com visualizacoes e elementos correspondentes ao setor que precisa de atencao e cura.',
+      'A meditação no Feng Shui vai além do relaxamento - é uma prática direcionada para harmonizar setores específicos do Ba Guá. Cada meditação trabalha com visualizações e elementos correspondentes ao setor que precisa de atenção e cura.',
     examples: [
-      { name: 'Meditacao do Rio Interior (Agua)', detail: 'Visualize um rio calmo para ativar fluidez na carreira. 15 minutos, posicao Norte.' },
-      { name: 'Meditacao da Arvore Ancestral (Madeira)', detail: 'Conecte-se com uma arvore milenar para curar lacos familiares. 20 minutos.' },
-      { name: 'Meditacao da Chama Interior (Fogo)', detail: 'Visualize uma chama crescente no peito para ativar reputacao e brilho pessoal.' },
-      { name: 'Meditacao das Duas Chamas (Terra)', detail: 'Duas chamas rosa se fundem - harmoniza relacionamentos amorosos.' },
-      { name: 'Meditacao do Centro Dourado (Terra)', detail: 'Esfera dourada no centro irradia para todos os setores - equilibrio geral.' },
+      { name: 'Meditação do Rio Interior (Água)', detail: 'Visualize um rio calmo para ativar fluidez na carreira. 15 minutos, posição Norte.' },
+      { name: 'Meditação da Árvore Ancestral (Madeira)', detail: 'Conecte-se com uma árvore milenar para curar laços familiares. 20 minutos.' },
+      { name: 'Meditação da Chama Interior (Fogo)', detail: 'Visualize uma chama crescente no peito para ativar reputação e brilho pessoal.' },
+      { name: 'Meditação das Duas Chamas (Terra)', detail: 'Duas chamas rosa se fundem - harmoniza relacionamentos amorosos.' },
+      { name: 'Meditação do Centro Dourado (Terra)', detail: 'Esfera dourada no centro irradia para todos os setores - equilíbrio geral.' },
     ],
     tips: 'Medite preferencialmente no setor da casa correspondente ao tema trabalhado. Use incenso ou vela do elemento adequado para potencializar.',
   },
@@ -95,7 +95,7 @@ const CURE_TYPES = [
     bgColor: '#FFF7ED',
     borderColor: '#FED7AA',
     description:
-      'Mantras sao sons sagrados que vibram em frequencias especificas, capazes de ativar e transformar a energia dos ambientes e das pessoas. No Feng Shui chines, caracteres especificos carregam significados profundos e sao entoados para atrair qualidades como prosperidade, saude e harmonia.',
+      'Mantras são sons sagrados que vibram em frequências específicas, capazes de ativar e transformar a energia dos ambientes e das pessoas. No Feng Shui chinês, caracteres específicos carregam significados profundos e são entoados para atrair qualidades como prosperidade, saúde e harmonia.',
     examples: [
       { name: '\u8CA1\u6E90\u5EE3\u9032 (Caiyuan guang jin)', detail: 'Que as fontes de riqueza fluam abundantemente. Entoe voltado para o Sudeste.' },
       { name: '\u5BB6\u548C\u842C\u4E8B\u8208 (Jia he wan shi xing)', detail: 'Com harmonia familiar, tudo prospera. Use voltado para o Leste.' },
@@ -103,7 +103,7 @@ const CURE_TYPES = [
       { name: '\u667A\u6167\u5982\u6D77 (Zhihui ru hai)', detail: 'Sabedoria vasta como o oceano. Para o setor Nordeste.' },
       { name: '\u4E2D\u5EB8\u4E4B\u9053 (Zhongyong zhi dao)', detail: 'O Caminho do Equilibrio. Entoe no centro da casa.' },
     ],
-    tips: 'Entoe mantras em voz clara e com intencao. Repita pelo menos 9 vezes (numero auspicioso no Feng Shui). O horario ideal e ao amanhecer ou ao anoitecer.',
+    tips: 'Entoe mantras em voz clara e com intenção. Repita pelo menos 9 vezes (número auspicioso no Feng Shui). O horário ideal é ao amanhecer ou ao anoitecer.',
   },
   {
     icon: '\u{1F56F}\u{FE0F}',
@@ -112,15 +112,15 @@ const CURE_TYPES = [
     bgColor: '#FDF2F8',
     borderColor: '#FBCFE8',
     description:
-      'O uso de oleos essenciais e incensos e uma forma poderosa de purificacao e ativacao energetica dos setores do Ba Gua. Cada aroma corresponde a um elemento e pode transformar a qualidade energetica de um ambiente em minutos.',
+      'O uso de óleos essenciais e incensos é uma forma poderosa de purificação e ativação energética dos setores do Ba Guá. Cada aroma corresponde a um elemento e pode transformar a qualidade energética de um ambiente em minutos.',
     examples: [
-      { name: 'Lavanda (Metal/Noroeste)', detail: 'Purifica e acalma. Ideal para areas de mentores e pessoas uteis.' },
-      { name: 'Canela (Fogo/Sul)', detail: 'Ativa a energia do Fogo, perfeita para o setor de fama e reputacao.' },
-      { name: 'Alecrim (Madeira/Leste)', detail: 'Estimula clareza mental e protecao. Use na area de familia e saude.' },
+      { name: 'Lavanda (Metal/Noroeste)', detail: 'Purifica e acalma. Ideal para áreas de mentores e pessoas úteis.' },
+      { name: 'Canela (Fogo/Sul)', detail: 'Ativa a energia do Fogo, perfeita para o setor de fama e reputação.' },
+      { name: 'Alecrim (Madeira/Leste)', detail: 'Estimula clareza mental e proteção. Use na área de família e saúde.' },
       { name: 'Ylang-Ylang (Terra/Sudoeste)', detail: 'Aroma do romance e sensualidade. Ativa o setor de relacionamentos.' },
-      { name: 'Hortelã-Pimenta (Agua/Norte)', detail: 'Refresca e ativa o fluxo. Ideal para a area de carreira.' },
+      { name: 'Hortelã-Pimenta (Água/Norte)', detail: 'Refresca e ativa o fluxo. Ideal para a área de carreira.' },
     ],
-    tips: 'Use difusores eletricos para ambientes fechados. Incensos naturais sao preferidos - evite sinteticos. Ventile o ambiente antes de aromatizar.',
+    tips: 'Use difusores elétricos para ambientes fechados. Incensos naturais são preferidos - evite sintéticos. Ventile o ambiente antes de aromatizar.',
   },
   {
     icon: '\u{1F3B5}',
@@ -129,15 +129,15 @@ const CURE_TYPES = [
     bgColor: '#EFF6FF',
     borderColor: '#BFDBFE',
     description:
-      'Sons e frequencias tem o poder de harmonizar ambientes, dissolver energias estagnadas e ativar setores especificos. No Feng Shui, a musicoterapia inclui desde instrumentos tradicionais como tigelas tibetanas ate musica ambiente cuidadosamente selecionada.',
+      'Sons e frequências têm o poder de harmonizar ambientes, dissolver energias estagnadas e ativar setores específicos. No Feng Shui, a musicoterapia inclui desde instrumentos tradicionais como tigelas tibetanas até música ambiente cuidadosamente selecionada.',
     examples: [
-      { name: 'Tigelas Tibetanas', detail: 'Vibracao profunda que limpa e harmoniza. Toque em cada comodo para purificacao completa.' },
-      { name: 'Sinos e Carrilhoes', detail: 'Dispersam energia estagnada e atraem Chi positivo. Use especialmente em cantos escuros.' },
-      { name: 'Musica com Agua (432Hz)', detail: 'Sons de chuva, rios e oceano ativam o elemento Agua. Toque na area Norte.' },
-      { name: 'Tambores (Elemento Terra)', detail: 'Batidas ritmicas ancoram e estabilizam. Use no centro da casa ou area Nordeste.' },
-      { name: 'Flautas de Bambu', detail: 'Ativam o elemento Madeira. Toque ou pendure flautas de bambu na area Leste/Sudeste.' },
+      { name: 'Tigelas Tibetanas', detail: 'Vibração profunda que limpa e harmoniza. Toque em cada cômodo para purificação completa.' },
+      { name: 'Sinos e Carrilhões', detail: 'Dispersam energia estagnada e atraem Chi positivo. Use especialmente em cantos escuros.' },
+      { name: 'Música com Água (432Hz)', detail: 'Sons de chuva, rios e oceano ativam o elemento Água. Toque na área Norte.' },
+      { name: 'Tambores (Elemento Terra)', detail: 'Batidas rítmicas ancoram e estabilizam. Use no centro da casa ou área Nordeste.' },
+      { name: 'Flautas de Bambu', detail: 'Ativam o elemento Madeira. Toque ou pendure flautas de bambu na área Leste/Sudeste.' },
     ],
-    tips: 'Toque sons de limpeza ao entrar em casa apos um dia pesado. A frequencia 432Hz e considerada a "afinacao natural" e promove harmonia.',
+    tips: 'Toque sons de limpeza ao entrar em casa após um dia pesado. A frequência 432Hz é considerada a "afinação natural" e promove harmonia.',
   },
 ]
 
@@ -147,18 +147,18 @@ export default function EntendaCurasPage() {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ color: '#1E3A5F', fontSize: '26px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-          Entenda as Curas e Ativacoes
+          Entenda as Curas e Ativações
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 16px 0', lineHeight: '1.6' }}>
-          Guia completo sobre cada tipo de cura e ativacao utilizada no Feng Shui.
+          Guia completo sobre cada tipo de cura e ativação utilizada no Feng Shui.
           Entenda como funcionam, quando aplicar e como potencializar seus resultados.
         </p>
         <div style={{
           padding: '12px 16px', background: '#F5F0FF', borderRadius: '8px',
           border: '1px solid #E9D5FF', fontSize: '13px', color: '#7C3AED', lineHeight: '1.5',
         }}>
-          Cada tipo de cura trabalha com uma dimensao diferente da energia. A combinacao de multiplas abordagens
-          (cristais + meditacao + aromaterapia, por exemplo) potencializa significativamente os resultados.
+          Cada tipo de cura trabalha com uma dimensão diferente da energia. A combinação de múltiplas abordagens
+          (cristais + meditação + aromaterapia, por exemplo) potencializa significativamente os resultados.
         </div>
       </div>
 
@@ -195,7 +195,7 @@ export default function EntendaCurasPage() {
 
               {/* Examples */}
               <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>
-                Exemplos e Aplicacoes
+                Exemplos e Aplicações
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', marginBottom: '20px' }}>
                 {cure.examples.map((ex, i) => (

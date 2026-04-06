@@ -293,55 +293,78 @@ export default function LandingPage() {
       {/* PRECOS */}
       <section id="precos" style={{ background: 'linear-gradient(165deg, #0f172a, #1E3A5F)', padding: '100px 32px', position: 'relative' }}>
         <div style={{ position: 'absolute', top: '10%', right: '5%', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)' }} />
-        <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{ color: '#C4B5FD', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>PREÇOS</span>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Escolha o plano ideal para você</h2>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Comece gratuitamente e faça upgrade quando quiser.</p>
           </div>
-          <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             <div className="pricing-card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '40px 32px' }}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>FREE</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$0</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mes</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>Perfeito para comecar</p>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>Até 3 imóveis</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
-                {['Ate 5 clientes', '3 consultas por mes', 'Diagnostico Ba Gua completo', 'Suporte por email'].map((item, i) => (
+                {['Até 3 imóveis cadastrados', '1 análise Ba Guá por imóvel', 'Roda da Vida completa', 'Curas e ativações'].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✓</div>
                     <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '15px' }}>{item}</span>
                   </div>
                 ))}
-                {['Relatorio PDF', 'Calendario lunar', 'Clientes ilimitados'].map((item, i) => (
+                {['Relatório PDF', 'Calendário lunar', 'Cadastro de clientes'].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✕</div>
                     <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', textDecoration: 'line-through' }}>{item}</span>
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Comecar gratis</button>
+              <button onClick={() => window.location.href = '/login'} style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Começar grátis</button>
+            </div>
+            <div className="pricing-card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '24px', padding: '40px 32px' }}>
+              <p style={{ color: '#93C5FD', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>SIMPLES</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$20</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>1 imóvel ativo, uso pessoal</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
+                {['1 imóvel ativo', 'Análise Ba Guá completa', 'Relatório PDF com marca d\'água', 'Calendário lunar', 'Roda da Vida completa', 'Rede de parceiros'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0, color: '#93C5FD' }}>✓</div>
+                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '15px' }}>{item}</span>
+                  </div>
+                ))}
+                {['Cadastro de clientes', 'Relatório sem marca d\'água'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✕</div>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', textDecoration: 'line-through' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => window.location.href = '/login'} style={{ width: '100%', padding: '14px', background: 'rgba(59,130,246,0.2)', color: '#93C5FD', border: '1px solid rgba(59,130,246,0.4)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Assinar Simples</button>
             </div>
             <div className="pricing-card" style={{ background: 'linear-gradient(145deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05))', border: '2px solid rgba(124,58,237,0.4)', borderRadius: '24px', padding: '40px 32px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: '16px', right: '16px', background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', borderRadius: '100px', padding: '6px 16px' }}>
                 <span style={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}>POPULAR</span>
               </div>
-              <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>PRO</p>
+              <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>PROFISSIONAL</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$49</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mes</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>Para consultores profissionais</p>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>Ilimitado, relatório limpo</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
-                {['Clientes ilimitados', 'Consultas ilimitadas', 'Diagnostico Ba Gua completo', 'Relatorio PDF profissional', 'Calendario lunar chines', 'Suporte prioritario'].map((item, i) => (
+                {['Imóveis ilimitados', 'Clientes ilimitados', 'Relatório PDF sem marca d\'água', 'Análise Ba Guá completa', 'Calendário lunar com rituais', 'Curas e ativações por setor', 'Suporte prioritário'].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#fff', flexShrink: 0 }}>✓</div>
                     <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '15px' }}>{item}</span>
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} className="btn-primary" style={{ width: '100%' }}>Assinar plano Pro</button>
+              <button onClick={() => window.location.href = '/login'} className="btn-primary" style={{ width: '100%' }}>Assinar Profissional</button>
             </div>
           </div>
         </div>
@@ -356,9 +379,9 @@ export default function LandingPage() {
           </div>
           <div className="testimonials-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             {[
-              { name: 'Marina Silva', city: 'Sao Paulo, SP', text: 'Antes eu fazia tudo em planilhas. Com o FengShui Studio, meus relatorios ficaram muito mais profissionais. Meus clientes adoram!', avatar: 'M' },
-              { name: 'Ricardo Tanaka', city: 'Curitiba, PR', text: 'O diagnostico por setor com scores automaticos economiza horas do meu trabalho. Recomendo para todos os consultores de Feng Shui.', avatar: 'R' },
-              { name: 'Ana Beatriz Costa', city: 'Rio de Janeiro, RJ', text: 'A plataforma e intuitiva e o calendario lunar integrado e um diferencial incrivel. Vale cada centavo do plano Pro.', avatar: 'A' },
+              { name: 'Marina Silva', city: 'São Paulo, SP', text: 'Antes eu fazia tudo em planilhas. Com o FengShui Studio, meus relatórios ficaram muito mais profissionais. Meus clientes adoram!', avatar: 'M' },
+              { name: 'Ricardo Tanaka', city: 'Curitiba, PR', text: 'O diagnóstico por setor com scores automáticos economiza horas do meu trabalho. Recomendo para todos os consultores de Feng Shui.', avatar: 'R' },
+              { name: 'Ana Beatriz Costa', city: 'Rio de Janeiro, RJ', text: 'A plataforma é intuitiva e o calendário lunar integrado é um diferencial incrível. Vale cada centavo do plano Pro.', avatar: 'A' },
             ].map((t, i) => (
               <div key={i} className="testimonial-card" style={{ background: '#ffffff', borderRadius: '20px', padding: '32px', border: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', marginBottom: '16px' }}>{[1,2,3,4,5].map(s => (<span key={s} style={{ color: '#C9A84C', fontSize: '18px' }}>★</span>))}</div>
@@ -404,9 +427,9 @@ export default function LandingPage() {
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
         <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 40px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Pronto para transformar suas consultas?</h2>
-          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>Junte-se a centenas de consultores que ja usam o FengShui Studio para elevar a qualidade do seu trabalho.</p>
-          <button onClick={() => window.location.href = '/login'} style={{ background: '#ffffff', color: '#7C3AED', border: 'none', padding: '16px 48px', borderRadius: '12px', fontSize: '17px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Criar minha conta gratis</button>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '16px' }}>Sem cartao de credito. Cancele quando quiser.</p>
+          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>Junte-se a centenas de consultores que já usam o FengShui Studio para elevar a qualidade do seu trabalho.</p>
+          <button onClick={() => window.location.href = '/login'} style={{ background: '#ffffff', color: '#7C3AED', border: 'none', padding: '16px 48px', borderRadius: '12px', fontSize: '17px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Criar minha conta grátis</button>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '16px' }}>Sem cartão de crédito. Cancele quando quiser.</p>
         </div>
       </section>
 
@@ -424,7 +447,7 @@ export default function LandingPage() {
             <div>
               <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px' }}>PRODUTO</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Recursos', 'Precos', 'Depoimentos'].map((item, i) => (
+                {['Recursos', 'Preços', 'Depoimentos'].map((item, i) => (
                   <a key={i} href={`#${item.toLowerCase()}`} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', textDecoration: 'none' }}>{item}</a>
                 ))}
               </div>
