@@ -291,7 +291,6 @@ function BaguaPlantaContent() {
   const [msgTipo,  setMsgTipo]  = useState<'erro'|'sucesso'>('sucesso')
   const [consultas,setConsultas]= useState<{id:string;nome_imovel:string}[]>([])
   const [fullscreen,setFullscreen] = useState(false)
-  const [showInstrucao,setShowInstrucao] = useState(true)
   const [instrucaoAberta,setInstrucaoAberta] = useState(true)
   const [bordaModificada,setBordaModificada] = useState(false)
   const [ultimoRecalculo,setUltimoRecalculo] = useState<string|null>(null)
