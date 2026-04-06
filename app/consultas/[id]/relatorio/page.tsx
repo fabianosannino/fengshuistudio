@@ -779,16 +779,28 @@ export default function Relatorio() {
                     const meta = AREA_META[setor.nome]
                     const criteriosMap = getCriteriosMap(setor)
                     const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, criteriosMap)
-                    const mainAction = meta?.action || rec.urgente[0] || rec.melhoria[0] || '—'
+                    const customRecs = setor.recomendacoes_custom
+                    const hasCustom = Array.isArray(customRecs) && customRecs.length > 0
+                    const mainAction = hasCustom
+                      ? (customRecs as { tipo: string; texto: string }[])[0].texto
+                      : (meta?.action || rec.urgente[0] || rec.melhoria[0] || '—')
                     return (
                       <div key={setor.id} style={{ padding: '9px 12px', borderBottom: '1px dashed #EAE5DB' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px', fontSize: '11px', fontWeight: 600, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: meta?.bg || '#666', flexShrink: 0 }} />
                           {setor.nome} · {meta?.dir || setor.posicao_grid}
+                          {hasCustom && <span style={{ fontSize: '8px', color: '#7C3AED', fontWeight: 400, marginLeft: '4px' }}>★ consultor</span>}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#666', lineHeight: 1.5, marginBottom: '4px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                        <div style={{ fontSize: '11px', color: hasCustom ? '#374151' : '#666', lineHeight: 1.5, marginBottom: '4px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                           {mainAction}
                         </div>
+                        {hasCustom && (customRecs as { tipo: string; texto: string }[]).length > 1 && (
+                          <div style={{ fontSize: '10px', color: '#7C3AED', lineHeight: 1.4, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                            {(customRecs as { tipo: string; texto: string }[]).slice(1, 3).map((cr, ci) => (
+                              <div key={ci}>• {cr.texto}</div>
+                            ))}
+                          </div>
+                        )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                           {[meta?.elem, meta?.crystals?.split(',')[0]?.trim(), meta?.plants?.split(',')[0]?.trim(), meta?.colors?.split(',')[0]?.trim()].filter(Boolean).map((tag, ti) => (
                             <span key={ti} style={{
