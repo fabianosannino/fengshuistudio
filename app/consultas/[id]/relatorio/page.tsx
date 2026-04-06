@@ -1026,6 +1026,68 @@ export default function Relatorio() {
         )}
 
 
+        {/* ══════ PRÓXIMOS PASSOS ══════ */}
+        {!showSelector && (
+        <div style={{ padding: '0 1.5rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: '1px solid #EAE5DB', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '20px', color: '#C9A96E' }}>🎯</span>
+            Seus Próximos Passos
+          </div>
+          {(() => {
+            // Generate priorities from data
+            const sorted = [...setores].filter(s => s.score_percentual != null).sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
+            const priorities = sorted.slice(0, 3)
+            const investLevel = (pct: number) => pct < 40 ? 'Alto' : pct < 70 ? 'Médio' : 'Baixo'
+            const prazo = (pct: number) => pct < 40 ? 'Imediato' : pct < 70 ? 'Próximas 2 semanas' : 'Próximo mês'
+            return priorities.map((setor, i) => {
+              const meta = AREA_META[setor.nome]
+              const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, getCriteriosMap(setor))
+              const customRecs = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom as {texto:string}[] : []
+              const action = customRecs[0]?.texto || rec.urgente[0] || rec.melhoria[0] || meta?.action || 'Avaliar e harmonizar este setor'
+              return (
+                <div key={setor.id} style={{ padding: '14px 16px', marginBottom: '10px', borderRadius: '8px', background: i === 0 ? '#FEF2F2' : i === 1 ? '#FFFBEB' : '#F0FDF4', border: `1px solid ${i === 0 ? '#FECACA' : i === 1 ? '#FDE68A' : '#BBF7D0'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1E3A5F' }}>Prioridade {i + 1} — {setor.nome}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: scoreColor(setor.score_percentual ?? 0), background: '#fff', padding: '2px 8px', borderRadius: '10px' }}>{setor.score_percentual}%</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#374151', marginBottom: '4px' }}><strong>Ação:</strong> {action}</div>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#6B7280' }}>
+                    <span>Prazo: {prazo(setor.score_percentual ?? 0)}</span>
+                    <span>Investimento: {investLevel(setor.score_percentual ?? 0)}</span>
+                    {meta?.elem && <span>Elemento: {meta.elem}</span>}
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+        )}
+
+        {/* ══════ ENCERRAMENTO ══════ */}
+        {!showSelector && (
+        <div style={{ padding: '1rem 1.5rem', margin: '0 1.5rem 1rem', background: '#1E3A5F', borderRadius: '10px', color: '#fff' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>☯</div>
+            <div style={{ fontSize: '11px', lineHeight: 1.6, color: 'rgba(255,255,255,0.7)', maxWidth: '500px', margin: '0 auto' }}>
+              Este relatório foi elaborado com base na Escola Budista da Seita Negra (Black Hat Sect), fundada pelo Mestre Lin Yun Rinpoche. As recomendações são orientações energéticas e não substituem avaliações profissionais de outras áreas.
+            </div>
+          </div>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              {profile?.nome_completo && <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{profile.nome_completo}</div>}
+              {profile?.profissao && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{profile.profissao}</div>}
+              {profile?.registro_profissional && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{profile.registro_profissional}</div>}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              {profile?.telefone && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{profile.telefone}</div>}
+              {profile?.site && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{profile.site}</div>}
+              {profile?.instagram && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>@{profile.instagram.replace('@', '')}</div>}
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Gerado em {new Date().toLocaleDateString('pt-BR')}</div>
+            </div>
+          </div>
+        </div>
+        )}
+
         {/* ══════ FOOTER ══════ */}
         <div style={{
           textAlign: 'center', padding: '0.9rem 1.5rem',
