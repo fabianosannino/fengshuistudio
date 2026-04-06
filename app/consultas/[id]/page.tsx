@@ -346,6 +346,8 @@ export default function ConsultaDetalhe() {
 
   // New data for Roda da Vida & Chi Flow
   const [rodaData, setRodaData] = useState<Record<string, number[] | number>>({})
+  const [rodaObservacoes, setRodaObservacoes] = useState<Record<string, string>>({})
+  const [rodaObservacaoGeral, setRodaObservacaoGeral] = useState('')
   const [checklistChi, setChecklistChi] = useState<string[]>([])
   const [posicaoComando, setPosicaoComando] = useState<Record<string, string[]>>({})
 
@@ -388,6 +390,8 @@ export default function ConsultaDetalhe() {
         // Old format: { area: 5 } or empty
         setRodaData(rawRoda)
       }
+      setRodaObservacoes(rawRoda.observacoes || {})
+      setRodaObservacaoGeral(rawRoda.observacao_geral || '')
       setChecklistChi(consulta.checklist_chi || [])
       setPosicaoComando(consulta.posicao_comando || {})
 
@@ -498,11 +502,18 @@ export default function ConsultaDetalhe() {
     setSaving(true)
     setMessage('')
     // Save in the new unified format compatible with /roda-da-vida
-    const payload = { respostas: rodaData, acoes: [], pessoa_nome: '', created_at: new Date().toISOString() }
+    const payload: Record<string, unknown> = {
+      respostas: rodaData,
+      observacoes: rodaObservacoes,
+      observacao_geral: rodaObservacaoGeral,
+      acoes: [],
+      pessoa_nome: '',
+      created_at: new Date().toISOString(),
+    }
     // Preserve existing acoes and pessoa_nome if they exist
     const existing = consulta?.roda_da_vida as Record<string, unknown> | null
-    if (existing?.acoes) payload.acoes = existing.acoes as never[]
-    if (existing?.pessoa_nome) payload.pessoa_nome = existing.pessoa_nome as string
+    if (existing?.acoes) payload.acoes = existing.acoes
+    if (existing?.pessoa_nome) payload.pessoa_nome = existing.pessoa_nome
     const { error } = await supabase.from('consultas').update({
       roda_da_vida: payload
     }).eq('id', id)
@@ -1290,6 +1301,10 @@ export default function ConsultaDetalhe() {
             onSave={handleSaveRoda}
             saving={saving}
             setores={setores}
+            observacoes={rodaObservacoes}
+            onChangeObservacoes={setRodaObservacoes}
+            observacaoGeral={rodaObservacaoGeral}
+            onChangeObservacaoGeral={setRodaObservacaoGeral}
           />
         )}
 

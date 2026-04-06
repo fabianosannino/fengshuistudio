@@ -13,6 +13,10 @@ interface Props {
   onSave: () => void
   saving: boolean
   setores: SetorBagua[]
+  observacoes?: Record<string, string>
+  onChangeObservacoes?: (obs: Record<string, string>) => void
+  observacaoGeral?: string
+  onChangeObservacaoGeral?: (obs: string) => void
 }
 
 /** Get the display value (0-10) for an area, whether stored as array or single number */
@@ -42,7 +46,7 @@ function polarToXY(cx: number, cy: number, r: number, index: number, total: numb
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
 }
 
-export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, setores }: Props) {
+export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, setores, observacoes = {}, onChangeObservacoes, observacaoGeral = '', onChangeObservacaoGeral }: Props) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [expandedArea, setExpandedArea] = useState<string | null>(null)
   const [areaAtual, setAreaAtual] = useState(0)
@@ -417,9 +421,22 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
           {/* Diagnostic comparison */}
           {setores.length > 0 && AREAS.some(a => areaValue(rodaData, a.key) > 0) && (
             <div style={{ marginTop: '16px', padding: '16px', background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF' }}>
-              <h3 style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+              <h3 style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
                 Diagnóstico comparativo: Roda da Vida x Ba Guá
               </h3>
+
+              {/* Explanatory text */}
+              <div style={{ background: '#fff', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: '1px solid #E9D5FF', fontSize: '12px', color: '#374151', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 6px 0' }}>
+                  Este diagnóstico cruza a <strong>percepção subjetiva</strong> do cliente (Roda da Vida) com a <strong>análise objetiva</strong> do imóvel (Ba Guá):
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ background: '#F0FDF4', color: '#15803D', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação alta = harmonia entre espaço e vida</span>
+                  <span style={{ background: '#FFFBEB', color: '#D97706', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação moderada = monitorar</span>
+                  <span style={{ background: '#FEF2F2', color: '#DC2626', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Divergência = prioridade de intervenção</span>
+                </div>
+              </div>
+
               {AREAS.map(a => {
                 const vidaScore = areaValue(rodaData, a.key)
                 const guaName = AREA_GUA_MAP[a.key]
@@ -427,15 +444,51 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                 if (vidaScore === 0 && setorPct === null) return null
                 const corr = correlacao(a.key)
                 return (
-                  <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '12px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a.cor }} />
-                    <span style={{ width: '160px', fontWeight: 'bold', color: '#374151' }}>{a.label}</span>
-                    <span style={{ color: '#6B7280' }}>Vida: {vidaScore.toFixed(1)}/10</span>
-                    {setorPct !== null && <span style={{ color: '#6B7280' }}>Guá: {setorPct}%</span>}
-                    {corr && <span style={{ fontWeight: 'bold', color: corr.cor }}>{corr.label}</span>}
+                  <div key={a.key} style={{ marginBottom: '10px', padding: '8px 10px', background: '#fff', borderRadius: '8px', border: '1px solid #E9D5FF' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', marginBottom: '4px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a.cor }} />
+                      <span style={{ width: '160px', fontWeight: 'bold', color: '#374151' }}>{a.label}</span>
+                      <span style={{ color: '#6B7280' }}>Vida: {vidaScore.toFixed(1)}/10</span>
+                      {setorPct !== null && <span style={{ color: '#6B7280' }}>Guá: {setorPct}%</span>}
+                      {corr && <span style={{ fontWeight: 'bold', color: corr.cor }}>{corr.label}</span>}
+                    </div>
+                    {/* Consultant observation per area */}
+                    {onChangeObservacoes && (
+                      <textarea
+                        value={observacoes[a.key] || ''}
+                        onChange={e => onChangeObservacoes({ ...observacoes, [a.key]: e.target.value })}
+                        placeholder={`Observação/recomendação do consultor para ${a.label}...`}
+                        rows={1}
+                        style={{
+                          width: '100%', padding: '6px 8px', border: '1px solid #E5E7EB', borderRadius: '6px',
+                          fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box',
+                          background: observacoes[a.key] ? '#FFFBEB' : '#F9FAFB'
+                        }}
+                      />
+                    )}
                   </div>
                 )
               }).filter(Boolean)}
+
+              {/* General consultant observation */}
+              {onChangeObservacaoGeral && (
+                <div style={{ marginTop: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '4px' }}>
+                    Observação geral do consultor
+                  </label>
+                  <textarea
+                    value={observacaoGeral}
+                    onChange={e => onChangeObservacaoGeral(e.target.value)}
+                    placeholder="Análise geral do diagnóstico comparativo, recomendações de intervenção, prioridades..."
+                    rows={3}
+                    style={{
+                      width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: '8px',
+                      fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box',
+                      background: observacaoGeral ? '#FFFBEB' : '#fff'
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </>
