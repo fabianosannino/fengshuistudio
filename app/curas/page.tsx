@@ -1041,7 +1041,7 @@ function CurasPageContent() {
             borderRadius: '8px', display: 'inline-block', border: '1px solid #E9D5FF'
           }}>
             <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
-              Vinculado à consulta — setores prioritários destacados
+              Consulta selecionada
             </span>
           </div>
         )}
@@ -1049,7 +1049,7 @@ function CurasPageContent() {
       {/* ── CONSULTATION CONTEXT ────────────────────────────────────── */}
       {consulta && (
         <div style={{ background: '#F5F0FF', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#7C3AED' }}>
-          <strong>Vinculado à consulta:</strong> Cliente: {consulta.clientes?.nome_completo} | Imóvel: {consulta.nome_imovel} | {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
+          <strong>Cliente:</strong> {consulta.clientes?.nome_completo} | <strong>Imóvel:</strong> {consulta.nome_imovel} | {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
         </div>
       )}
 
