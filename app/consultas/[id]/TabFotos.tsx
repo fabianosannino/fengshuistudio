@@ -468,98 +468,154 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
       </div>
 
       {/* ══════ FOTOS DO ANTES ══════ */}
-      <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px' }}>
-        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
-          📸 Fotos do Antes
+      <div style={{
+        background: '#ffffff', borderRadius: '12px', padding: '24px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px',
+      }}>
+        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          Fotos do Antes
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
-          Registre o estado inicial do imóvel antes das intervenções de Feng Shui
+          Registre o estado inicial do imóvel antes das intervenções de Feng Shui. JPG, PNG ou WEBP. Máx. 10MB.
         </p>
-        <input type="file" accept="image/*" multiple id="upload-antes" style={{ display: 'none' }}
-          onChange={async (e) => {
-            const files = e.target.files
-            if (!files) return
-            for (const file of Array.from(files)) {
-              const formData = new FormData()
-              formData.append('fotos', file)
-              formData.append('consulta_id', consultaId)
-              formData.append('tipo', 'geral')
-              const res = await fetch('/api/consultas/fotos', { method: 'POST', body: formData })
-              const data = await res.json()
-              if (data.urls) {
-                onUpdateAntes([...fotosAntes, ...data.urls])
-              }
-            }
-            e.target.value = ''
-          }}
-        />
-        <label htmlFor="upload-antes" style={{
-          display: 'inline-block', padding: '10px 20px', background: '#7C3AED', color: '#fff',
-          borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px'
-        }}>+ Adicionar fotos</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
-          {fotosAntes.map((url, i) => (
-            <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
-              <img src={url} alt={`Antes ${i + 1}`} onClick={() => setLightbox({ url })} style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer' }} />
-              <button onClick={() => onUpdateAntes(fotosAntes.filter((_, idx) => idx !== i))} style={{
-                position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff',
-                border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px'
-              }}>×</button>
+
+        {fotosAntes.length > 0 ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+              {fotosAntes.map((url, i) => (
+                <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #E5E7EB' }}>
+                  <img src={url} alt={`Antes ${i + 1}`} onClick={() => setLightbox({ url })}
+                    style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
+                  <button onClick={() => onUpdateAntes(fotosAntes.filter((_, idx) => idx !== i))} style={{
+                    position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '14px',
+                  }}>×</button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        {fotosAntes.length === 0 && (
-          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', margin: '12px 0' }}>
-            Nenhuma foto do &quot;Antes&quot; adicionada
-          </p>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
+              background: '#F3F4F6', color: '#374151', borderRadius: '6px', fontSize: '13px',
+              cursor: 'pointer', fontWeight: 'bold',
+            }}>
+              + Adicionar mais fotos
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const files = e.target.files; if (!files) return
+                  const err = validateFiles(files); if (err) { setMessage(err); return }
+                  setUploading(true)
+                  try {
+                    const urls = await uploadFiles(Array.from(files), 'geral')
+                    onUpdateAntes([...fotosAntes, ...urls])
+                  } catch (error) { setMessage(error instanceof Error ? error.message : 'Erro no upload') }
+                  setUploading(false); e.target.value = ''
+                }} />
+            </label>
+          </>
+        ) : (
+          <label style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', padding: '40px', borderRadius: '10px',
+            border: '2px dashed #D1D5DB', background: '#F9FAFB',
+            cursor: uploading ? 'not-allowed' : 'pointer',
+            transition: 'border-color 0.2s',
+          }}>
+            <span style={{ fontSize: '40px', marginBottom: '8px' }}>📸</span>
+            <span style={{ color: '#6B7280', fontSize: '14px', fontWeight: 'bold' }}>
+              {uploading ? 'Enviando...' : 'Clique para adicionar fotos do antes'}
+            </span>
+            <span style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px' }}>
+              JPG, PNG ou WEBP · Máx. 10MB · Múltiplas fotos
+            </span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
+              disabled={uploading}
+              onChange={async (e) => {
+                const files = e.target.files; if (!files) return
+                const err = validateFiles(files); if (err) { setMessage(err); return }
+                setUploading(true)
+                try {
+                  const urls = await uploadFiles(Array.from(files), 'geral')
+                  onUpdateAntes([...fotosAntes, ...urls])
+                } catch (error) { setMessage(error instanceof Error ? error.message : 'Erro no upload') }
+                setUploading(false); e.target.value = ''
+              }} />
+          </label>
         )}
       </div>
 
       {/* ══════ FOTOS DO DEPOIS ══════ */}
-      <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px' }}>
-        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
-          📸 Fotos do Depois
+      <div style={{
+        background: '#ffffff', borderRadius: '12px', padding: '24px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px',
+      }}>
+        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          Fotos do Depois
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
-          Registre o estado do imóvel após as intervenções de Feng Shui
+          Registre o estado do imóvel após as intervenções de Feng Shui. JPG, PNG ou WEBP. Máx. 10MB.
         </p>
-        <input type="file" accept="image/*" multiple id="upload-depois" style={{ display: 'none' }}
-          onChange={async (e) => {
-            const files = e.target.files
-            if (!files) return
-            for (const file of Array.from(files)) {
-              const formData = new FormData()
-              formData.append('fotos', file)
-              formData.append('consulta_id', consultaId)
-              formData.append('tipo', 'geral')
-              const res = await fetch('/api/consultas/fotos', { method: 'POST', body: formData })
-              const data = await res.json()
-              if (data.urls) {
-                onUpdateDepois([...fotosDepois, ...data.urls])
-              }
-            }
-            e.target.value = ''
-          }}
-        />
-        <label htmlFor="upload-depois" style={{
-          display: 'inline-block', padding: '10px 20px', background: '#15803D', color: '#fff',
-          borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px'
-        }}>+ Adicionar fotos</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
-          {fotosDepois.map((url, i) => (
-            <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
-              <img src={url} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })} style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer' }} />
-              <button onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
-                position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff',
-                border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px'
-              }}>×</button>
+
+        {fotosDepois.length > 0 ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+              {fotosDepois.map((url, i) => (
+                <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #BBF7D0' }}>
+                  <img src={url} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })}
+                    style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
+                  <button onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
+                    position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '14px',
+                  }}>×</button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        {fotosDepois.length === 0 && (
-          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', margin: '12px 0' }}>
-            Nenhuma foto do &quot;Depois&quot; adicionada
-          </p>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
+              background: '#F0FDF4', color: '#15803D', borderRadius: '6px', fontSize: '13px',
+              cursor: 'pointer', fontWeight: 'bold',
+            }}>
+              + Adicionar mais fotos
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const files = e.target.files; if (!files) return
+                  const err = validateFiles(files); if (err) { setMessage(err); return }
+                  setUploading(true)
+                  try {
+                    const urls = await uploadFiles(Array.from(files), 'geral')
+                    onUpdateDepois([...fotosDepois, ...urls])
+                  } catch (error) { setMessage(error instanceof Error ? error.message : 'Erro no upload') }
+                  setUploading(false); e.target.value = ''
+                }} />
+            </label>
+          </>
+        ) : (
+          <label style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', padding: '40px', borderRadius: '10px',
+            border: '2px dashed #BBF7D0', background: '#F0FDF4',
+            cursor: uploading ? 'not-allowed' : 'pointer',
+            transition: 'border-color 0.2s',
+          }}>
+            <span style={{ fontSize: '40px', marginBottom: '8px' }}>📸</span>
+            <span style={{ color: '#15803D', fontSize: '14px', fontWeight: 'bold' }}>
+              {uploading ? 'Enviando...' : 'Clique para adicionar fotos do depois'}
+            </span>
+            <span style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>
+              JPG, PNG ou WEBP · Máx. 10MB · Múltiplas fotos
+            </span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
+              disabled={uploading}
+              onChange={async (e) => {
+                const files = e.target.files; if (!files) return
+                const err = validateFiles(files); if (err) { setMessage(err); return }
+                setUploading(true)
+                try {
+                  const urls = await uploadFiles(Array.from(files), 'geral')
+                  onUpdateDepois([...fotosDepois, ...urls])
+                } catch (error) { setMessage(error instanceof Error ? error.message : 'Erro no upload') }
+                setUploading(false); e.target.value = ''
+              }} />
+          </label>
         )}
       </div>
 
