@@ -100,13 +100,25 @@ export default function Relatorio() {
   const [showSelector, setShowSelector] = useState(true)
   const [selectedSections, setSelectedSections] = useState({
     completo: true,
-    roda_vida: true,
+    capa: true,
+    introducao: true,
     bagua: true,
+    curas: true,
     checklist: true,
-    curas: false,
-    produtos: false,
-    fotos: false,
+    roda_vida: true,
+    plano_acao: true,
+    fotos: true,
+    proximos_passos: true,
+    calendario: true,
+    conclusao: true,
   })
+
+  // Editable fields for the consultant
+  const [textoIntroducao, setTextoIntroducao] = useState('Este relatório apresenta o diagnóstico completo de Feng Shui do imóvel, baseado na Escola Budista da Seita Negra (Black Hat Sect). A análise integra o mapa Ba Guá, a Roda da Vida, o fluxo de Chi e recomendações de curas e ativações para harmonização dos ambientes.')
+  const [textoCuras, setTextoCuras] = useState('As curas e ativações abaixo são recomendadas com base no diagnóstico energético de cada setor do Ba Guá. Cada elemento — cristais, plantas, objetos, mudras, meditações e mantras — atua em uma frequência específica para reequilibrar a energia do ambiente.')
+  const [textoChi, setTextoChi] = useState('O Fluxo de Chi (energia vital) foi avaliado em 11 pontos essenciais do imóvel. Os itens marcados indicam pontos onde a circulação energética está adequada. Os itens pendentes requerem atenção para melhorar o fluxo de energia no ambiente.')
+  const [textoConclusao, setTextoConclusao] = useState('As recomendações apresentadas neste relatório visam promover o equilíbrio energético do imóvel e o bem-estar de seus ocupantes. Recomenda-se a implementação gradual das sugestões, começando pelas áreas de maior urgência.')
+  const [recsAdicionais, setRecsAdicionais] = useState<Record<string, string>>({})
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
@@ -338,7 +350,11 @@ export default function Relatorio() {
           .no-print { display: none !important; }
           body { margin: 0; background: #fff; }
           .print-area { padding: 0 !important; box-shadow: none !important; max-width: 100% !important; }
+          .print-only { display: none; }
           @page { size: A4 portrait; margin: 1.5cm; }
+        }
+        @media print {
+          .print-only { display: block !important; }
         }
       `}</style>
 
@@ -412,30 +428,37 @@ export default function Relatorio() {
               onChange={e => {
                 const val = e.target.checked
                 setSelectedSections({
-                  completo: val, roda_vida: val, bagua: val, checklist: val,
-                  curas: val, produtos: val, fotos: val,
+                  completo: val, capa: val, introducao: val, bagua: val, curas: val,
+                  checklist: val, roda_vida: val, plano_acao: val, fotos: val,
+                  proximos_passos: val, calendario: val, conclusao: val,
                 })
               }}
               style={{ width: '20px', height: '20px', accentColor: '#7C3AED' }} />
             <span style={{ fontSize: '15px', color: '#1E3A5F', fontWeight: 'bold' }}>Relatório Completo (selecionar todos)</span>
           </label>
           {[
-            { key: 'roda_vida', label: 'Roda da Vida + Recomendações' },
-            { key: 'bagua', label: 'Diagnóstico do Baguá + Recomendações' },
-            { key: 'checklist', label: 'Checklist de Fluxo de Chi' },
-            { key: 'curas', label: 'Curas e Ativações' },
-            { key: 'produtos', label: 'Produtos Sugeridos' },
-            { key: 'fotos', label: 'Fotos (Antes e Depois)' },
+            { key: 'capa', label: '1. Capa + Dados + KPIs + Planta Baixa' },
+            { key: 'introducao', label: '2. Introdução (editável)' },
+            { key: 'bagua', label: '3. Ba Guá — Diagnóstico + Recomendações + Curas' },
+            { key: 'checklist', label: '4. Checklist de Fluxo de Chi' },
+            { key: 'roda_vida', label: '5. Roda da Vida' },
+            { key: 'plano_acao', label: '6. Plano de Ação' },
+            { key: 'curas', label: '7. Tabela de Curas Detalhada' },
+            { key: 'fotos', label: '8. Fotos do Imóvel' },
+            { key: 'proximos_passos', label: '9. Próximos Passos' },
+            { key: 'calendario', label: '10. Calendário Lunar' },
+            { key: 'conclusao', label: '11. Conclusão + Encerramento' },
           ].map(s => (
-            <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer' }}>
+            <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', cursor: 'pointer' }}>
               <input type="checkbox" checked={selectedSections[s.key as keyof typeof selectedSections]}
                 onChange={e => {
                   const next = { ...selectedSections, [s.key]: e.target.checked }
-                  next.completo = next.roda_vida && next.bagua && next.checklist && next.curas && next.produtos && next.fotos
+                  const allKeys = ['capa','introducao','bagua','curas','checklist','roda_vida','plano_acao','fotos','proximos_passos','calendario','conclusao'] as const
+                  next.completo = allKeys.every(k => next[k])
                   setSelectedSections(next)
                 }}
                 style={{ width: '18px', height: '18px', accentColor: '#7C3AED' }} />
-              <span style={{ fontSize: '14px', color: '#374151' }}>{s.label}</span>
+              <span style={{ fontSize: '13px', color: '#374151' }}>{s.label}</span>
             </label>
           ))}
           <button onClick={() => setShowSelector(false)} style={{
@@ -579,6 +602,19 @@ export default function Relatorio() {
               Planta com grid Ba Gua — análise geométrica automática
             </p>
           </div>
+        )}
+
+        {/* ══════ INTRODUÇÃO (editável) ══════ */}
+        {(selectedSections.completo || selectedSections.introducao) && (
+        <div style={{ padding: '0 1.5rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
+            <span style={{ fontSize: '20px', color: gold }}>📋</span>
+            Introdução
+          </div>
+          <textarea className="no-print" value={textoIntroducao} onChange={e => setTextoIntroducao(e.target.value)}
+            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
+          <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoIntroducao}</div>
+        </div>
         )}
 
         {/* ══════ CHARTS ROW: Baguá Lo Shu + Roda da Vida ══════ */}
@@ -743,6 +779,13 @@ export default function Relatorio() {
         {/* ══════ CHI FLOW + COMMAND POSITION ══════ */}
         {(selectedSections.completo || selectedSections.checklist) && hasChi && (
           <div style={{ padding: '0 1.5rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '20px', color: gold }}>🌊</span>
+              Fluxo de Chi — Análise de Circulação Energética
+            </div>
+            <textarea className="no-print" value={textoChi} onChange={e => setTextoChi(e.target.value)}
+              rows={3} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
+            <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoChi}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
               {/* Chi checklist */}
               <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem' }}>
@@ -1173,8 +1216,21 @@ export default function Relatorio() {
         </div>
         )}
 
+        {/* ══════ CONCLUSÃO (editável) ══════ */}
+        {!showSelector && (selectedSections.completo || selectedSections.conclusao) && (
+        <div style={{ padding: '0 1.5rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
+            <span style={{ fontSize: '20px', color: gold }}>📝</span>
+            Conclusão
+          </div>
+          <textarea className="no-print" value={textoConclusao} onChange={e => setTextoConclusao(e.target.value)}
+            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
+          <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoConclusao}</div>
+        </div>
+        )}
+
         {/* ══════ ENCERRAMENTO ══════ */}
-        {!showSelector && (
+        {!showSelector && (selectedSections.completo || selectedSections.conclusao) && (
         <div style={{ padding: '1rem 1.5rem', margin: '0 1.5rem 1rem', background: '#1E3A5F', borderRadius: '10px', color: '#fff' }}>
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>☯</div>
