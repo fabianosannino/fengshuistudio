@@ -601,6 +601,16 @@ function CurasPageContent() {
   const [consulta, setConsulta] = useState<{ nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null } | null>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  // Custom references state
+  const [customRefs, setCustomRefs] = useState<Record<string, any[]>>({})
+  const [showAddRef, setShowAddRef] = useState<string | null>(null)
+  const [refForm, setRefForm] = useState({ nome: '', descricao: '', como_utilizar: '' })
+  const [expandedRefs, setExpandedRefs] = useState<Record<string, boolean>>({})
+  const [editingRef, setEditingRef] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ nome: '', descricao: '', como_utilizar: '' })
+  const [userId, setUserId] = useState<string | null>(null)
+  const [savingRef, setSavingRef] = useState(false)
+
   // Load consultation sectors and consulta data if consultaId provided
   useEffect(() => {
     if (consultaId) {
@@ -624,6 +634,256 @@ function CurasPageContent() {
       setLoading(false)
     }
   }, [consultaId])
+
+  // Load custom references
+  useEffect(() => {
+    async function loadCustomRefs() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserId(user.id)
+        const { data: refs } = await supabase
+          .from('consultor_curas_custom')
+          .select('*')
+          .eq('consultor_id', user.id)
+
+        const grouped: Record<string, any[]> = {}
+        for (const ref of refs || []) {
+          const key = `${ref.setor_id}_${ref.tipo}`
+          if (!grouped[key]) grouped[key] = []
+          grouped[key].push(ref)
+        }
+        setCustomRefs(grouped)
+      }
+    }
+    loadCustomRefs()
+  }, [])
+
+  async function saveCustomRef(setorId: string, tipo: string) {
+    if (!userId || !refForm.nome.trim()) return
+    setSavingRef(true)
+    const { data, error } = await supabase
+      .from('consultor_curas_custom')
+      .insert({
+        consultor_id: userId,
+        setor_id: setorId,
+        tipo,
+        nome: refForm.nome.trim(),
+        descricao: refForm.descricao.trim(),
+        como_utilizar: refForm.como_utilizar.trim(),
+      })
+      .select()
+      .single()
+    if (!error && data) {
+      const key = `${setorId}_${tipo}`
+      setCustomRefs(prev => ({
+        ...prev,
+        [key]: [...(prev[key] || []), data],
+      }))
+      setRefForm({ nome: '', descricao: '', como_utilizar: '' })
+      setShowAddRef(null)
+    }
+    setSavingRef(false)
+  }
+
+  async function updateCustomRef(refId: string, setorId: string, tipo: string) {
+    if (!editForm.nome.trim()) return
+    setSavingRef(true)
+    const { error } = await supabase
+      .from('consultor_curas_custom')
+      .update({
+        nome: editForm.nome.trim(),
+        descricao: editForm.descricao.trim(),
+        como_utilizar: editForm.como_utilizar.trim(),
+      })
+      .eq('id', refId)
+    if (!error) {
+      const key = `${setorId}_${tipo}`
+      setCustomRefs(prev => ({
+        ...prev,
+        [key]: (prev[key] || []).map(r => r.id === refId ? { ...r, nome: editForm.nome.trim(), descricao: editForm.descricao.trim(), como_utilizar: editForm.como_utilizar.trim() } : r),
+      }))
+      setEditingRef(null)
+    }
+    setSavingRef(false)
+  }
+
+  async function deleteCustomRef(refId: string, setorId: string, tipo: string) {
+    if (!confirm('Excluir esta referencia?')) return
+    const { error } = await supabase
+      .from('consultor_curas_custom')
+      .delete()
+      .eq('id', refId)
+    if (!error) {
+      const key = `${setorId}_${tipo}`
+      setCustomRefs(prev => ({
+        ...prev,
+        [key]: (prev[key] || []).filter(r => r.id !== refId),
+      }))
+    }
+  }
+
+  function renderCustomRefsSection(elId: string, tipo: string) {
+    const key = `${elId}_${tipo}`
+    const refs = customRefs[key] || []
+    const isExpanded = expandedRefs[key] || false
+    const isAdding = showAddRef === key
+
+    return (
+      <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+        <button
+          onClick={() => setExpandedRefs(prev => ({ ...prev, [key]: !isExpanded }))}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0',
+            fontSize: '12px', color: '#7C3AED', fontWeight: 'bold', display: 'flex',
+            alignItems: 'center', gap: '6px',
+          }}
+        >
+          <span style={{ transition: 'transform 0.2s', display: 'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>{'\u25B6'}</span>
+          Minhas referencias ({refs.length})
+        </button>
+
+        {isExpanded && (
+          <div style={{ marginTop: '8px', paddingLeft: '8px' }}>
+            {refs.map(ref => (
+              <div key={ref.id} style={{
+                background: '#FAFAFA', borderRadius: '8px', padding: '10px 14px',
+                border: '1px solid #E5E7EB', marginBottom: '8px',
+              }}>
+                {editingRef === ref.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      value={editForm.nome}
+                      onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))}
+                      placeholder="Nome"
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px' }}
+                    />
+                    <textarea
+                      value={editForm.descricao}
+                      onChange={e => setEditForm(f => ({ ...f, descricao: e.target.value }))}
+                      placeholder="Descricao"
+                      rows={2}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px', resize: 'vertical' }}
+                    />
+                    <textarea
+                      value={editForm.como_utilizar}
+                      onChange={e => setEditForm(f => ({ ...f, como_utilizar: e.target.value }))}
+                      placeholder="Como utilizar"
+                      rows={2}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px', resize: 'vertical' }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => updateCustomRef(ref.id, elId, tipo)}
+                        disabled={savingRef}
+                        style={{
+                          padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                          background: '#7C3AED', color: '#fff', fontSize: '12px', fontWeight: 'bold',
+                        }}
+                      >
+                        {savingRef ? 'Salvando...' : 'Salvar'}
+                      </button>
+                      <button
+                        onClick={() => setEditingRef(null)}
+                        style={{
+                          padding: '6px 14px', borderRadius: '6px', border: '1px solid #D1D5DB',
+                          cursor: 'pointer', background: '#fff', fontSize: '12px', color: '#374151',
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 4px 0' }}>{ref.nome}</p>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                        <button
+                          onClick={() => { setEditingRef(ref.id); setEditForm({ nome: ref.nome, descricao: ref.descricao || '', como_utilizar: ref.como_utilizar || '' }) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#7C3AED', padding: '2px 4px' }}
+                        >
+                          {'\u270F\uFE0F'}
+                        </button>
+                        <button
+                          onClick={() => deleteCustomRef(ref.id, elId, tipo)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#DC2626', padding: '2px 4px' }}
+                        >
+                          {'\u{1F5D1}\uFE0F'}
+                        </button>
+                      </div>
+                    </div>
+                    {ref.descricao && <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px 0' }}>{ref.descricao}</p>}
+                    {ref.como_utilizar && <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0, fontStyle: 'italic' }}>Como utilizar: {ref.como_utilizar}</p>}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {isAdding ? (
+              <div style={{
+                background: '#F5F0FF', borderRadius: '8px', padding: '14px',
+                border: '1px solid #E9D5FF', display: 'flex', flexDirection: 'column', gap: '8px',
+              }}>
+                <input
+                  value={refForm.nome}
+                  onChange={e => setRefForm(f => ({ ...f, nome: e.target.value }))}
+                  placeholder="Nome da referencia"
+                  style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px' }}
+                />
+                <textarea
+                  value={refForm.descricao}
+                  onChange={e => setRefForm(f => ({ ...f, descricao: e.target.value }))}
+                  placeholder="Descricao"
+                  rows={2}
+                  style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px', resize: 'vertical' }}
+                />
+                <textarea
+                  value={refForm.como_utilizar}
+                  onChange={e => setRefForm(f => ({ ...f, como_utilizar: e.target.value }))}
+                  placeholder="Como utilizar"
+                  rows={2}
+                  style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px', resize: 'vertical' }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => saveCustomRef(elId, tipo)}
+                    disabled={savingRef || !refForm.nome.trim()}
+                    style={{
+                      padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                      background: (!refForm.nome.trim() || savingRef) ? '#C4B5FD' : '#7C3AED',
+                      color: '#fff', fontSize: '12px', fontWeight: 'bold',
+                    }}
+                  >
+                    {savingRef ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button
+                    onClick={() => { setShowAddRef(null); setRefForm({ nome: '', descricao: '', como_utilizar: '' }) }}
+                    style={{
+                      padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB',
+                      cursor: 'pointer', background: '#fff', fontSize: '12px', color: '#374151',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setShowAddRef(key); setRefForm({ nome: '', descricao: '', como_utilizar: '' }) }}
+                style={{
+                  background: 'none', border: '1px dashed #C4B5FD', borderRadius: '6px',
+                  cursor: 'pointer', padding: '8px 14px', fontSize: '12px', color: '#7C3AED',
+                  fontWeight: 'bold', width: '100%', textAlign: 'center',
+                }}
+              >
+                + Adicionar referencia
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Scroll spy
   useEffect(() => {
@@ -702,9 +962,12 @@ function CurasPageContent() {
         <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Curas & Ativações
         </h1>
-        <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
+        <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 8px 0' }}>
           Cristais, plantas, objetos, mudras, meditações e mantras organizados por elemento e Guá do Ba Guá
         </p>
+        <a href="/curas/entenda" style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' }}>
+          📚 Entenda mais sobre Curas e Ativações
+        </a>
         {consultaId && setores.length > 0 && (
           <div style={{
             marginTop: '12px', padding: '8px 16px', background: '#F5F0FF',
@@ -837,6 +1100,7 @@ function CurasPageContent() {
                     </div>
                   ))}
                 </div>
+                {renderCustomRefsSection(el.id, 'cristais')}
               </div>
               )}
 
@@ -858,6 +1122,7 @@ function CurasPageContent() {
                     </div>
                   ))}
                 </div>
+                {renderCustomRefsSection(el.id, 'plantas')}
               </div>
               )}
 
@@ -880,6 +1145,7 @@ function CurasPageContent() {
                     </div>
                   ))}
                 </div>
+                {renderCustomRefsSection(el.id, 'objetos')}
               </div>
               )}
 
@@ -930,6 +1196,8 @@ function CurasPageContent() {
                 )}
               </div>
               )}
+              {(filtroTipo === 'todos' || filtroTipo === 'mudra') && renderCustomRefsSection(el.id, 'mudra')}
+              {(filtroTipo === 'todos' || filtroTipo === 'meditacao') && renderCustomRefsSection(el.id, 'meditacao')}
 
               {/* ── MANTRAS ──────────────────────────────────────────── */}
               {(filtroTipo === 'todos' || filtroTipo === 'mantras') && (
@@ -955,6 +1223,7 @@ function CurasPageContent() {
                     </div>
                   ))}
                 </div>
+                {renderCustomRefsSection(el.id, 'mantras')}
               </div>
               )}
             </div>
