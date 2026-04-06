@@ -384,7 +384,7 @@ export default function ConsultaDetalhe() {
     const inserts = CRITERIOS.map(criterio => ({
       setor_id: setorId,
       criterio,
-      score: criterios[setorId]?.[criterio] ?? 0,
+      score: Math.max(0, Math.min(4, criterios[setorId]?.[criterio] ?? 0)),
       notas: notas[setorId]?.[criterio] || null
     }))
 
