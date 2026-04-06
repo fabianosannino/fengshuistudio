@@ -19,9 +19,13 @@ interface TabFotosProps {
   fotosComodos: FotoComodo[]
   onUpdate: (fotoGeral: string | null, fotosComodos: FotoComodo[]) => void
   saving: boolean
+  fotosAntes: string[]
+  fotosDepois: string[]
+  onUpdateAntes: (urls: string[]) => void
+  onUpdateDepois: (urls: string[]) => void
 }
 
-export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate, saving }: TabFotosProps) {
+export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate, saving, fotosAntes, fotosDepois, onUpdateAntes, onUpdateDepois }: TabFotosProps) {
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [novoComodo, setNovoComodo] = useState('')
@@ -460,6 +464,102 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               )
             })}
           </div>
+        )}
+      </div>
+
+      {/* ══════ FOTOS DO ANTES ══════ */}
+      <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px' }}>
+        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+          📸 Fotos do Antes
+        </h3>
+        <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
+          Registre o estado inicial do imóvel antes das intervenções de Feng Shui
+        </p>
+        <input type="file" accept="image/*" multiple id="upload-antes" style={{ display: 'none' }}
+          onChange={async (e) => {
+            const files = e.target.files
+            if (!files) return
+            for (const file of Array.from(files)) {
+              const formData = new FormData()
+              formData.append('fotos', file)
+              formData.append('consulta_id', consultaId)
+              formData.append('tipo', 'geral')
+              const res = await fetch('/api/consultas/fotos', { method: 'POST', body: formData })
+              const data = await res.json()
+              if (data.urls) {
+                onUpdateAntes([...fotosAntes, ...data.urls])
+              }
+            }
+            e.target.value = ''
+          }}
+        />
+        <label htmlFor="upload-antes" style={{
+          display: 'inline-block', padding: '10px 20px', background: '#7C3AED', color: '#fff',
+          borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px'
+        }}>+ Adicionar fotos</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
+          {fotosAntes.map((url, i) => (
+            <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+              <img src={url} alt={`Antes ${i + 1}`} onClick={() => setLightbox({ url })} style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer' }} />
+              <button onClick={() => onUpdateAntes(fotosAntes.filter((_, idx) => idx !== i))} style={{
+                position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff',
+                border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px'
+              }}>×</button>
+            </div>
+          ))}
+        </div>
+        {fotosAntes.length === 0 && (
+          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', margin: '12px 0' }}>
+            Nenhuma foto do &quot;Antes&quot; adicionada
+          </p>
+        )}
+      </div>
+
+      {/* ══════ FOTOS DO DEPOIS ══════ */}
+      <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px' }}>
+        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+          📸 Fotos do Depois
+        </h3>
+        <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
+          Registre o estado do imóvel após as intervenções de Feng Shui
+        </p>
+        <input type="file" accept="image/*" multiple id="upload-depois" style={{ display: 'none' }}
+          onChange={async (e) => {
+            const files = e.target.files
+            if (!files) return
+            for (const file of Array.from(files)) {
+              const formData = new FormData()
+              formData.append('fotos', file)
+              formData.append('consulta_id', consultaId)
+              formData.append('tipo', 'geral')
+              const res = await fetch('/api/consultas/fotos', { method: 'POST', body: formData })
+              const data = await res.json()
+              if (data.urls) {
+                onUpdateDepois([...fotosDepois, ...data.urls])
+              }
+            }
+            e.target.value = ''
+          }}
+        />
+        <label htmlFor="upload-depois" style={{
+          display: 'inline-block', padding: '10px 20px', background: '#15803D', color: '#fff',
+          borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px'
+        }}>+ Adicionar fotos</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
+          {fotosDepois.map((url, i) => (
+            <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+              <img src={url} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })} style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer' }} />
+              <button onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
+                position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff',
+                border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px'
+              }}>×</button>
+            </div>
+          ))}
+        </div>
+        {fotosDepois.length === 0 && (
+          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', margin: '12px 0' }}>
+            Nenhuma foto do &quot;Depois&quot; adicionada
+          </p>
         )}
       </div>
 

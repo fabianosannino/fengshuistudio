@@ -11,24 +11,93 @@ import TabFotos from './TabFotos'
 import { CRITERIOS } from '../../../src/lib/constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 
-// Cômodo types for room mapping per Guá
-const COMODO_TIPOS = [
-  { value: '', label: '— Selecione —' },
-  { value: 'sala', label: 'Sala de Estar' },
-  { value: 'quarto_casal', label: 'Quarto do Casal' },
-  { value: 'quarto_filho', label: 'Quarto de Filho(a)' },
-  { value: 'quarto_hospede', label: 'Quarto de Hóspede' },
-  { value: 'escritorio', label: 'Escritório / Home Office' },
-  { value: 'cozinha', label: 'Cozinha' },
-  { value: 'banheiro', label: 'Banheiro' },
-  { value: 'lavabo', label: 'Lavabo' },
-  { value: 'area_servico', label: 'Área de Serviço' },
-  { value: 'garagem', label: 'Garagem' },
-  { value: 'varanda', label: 'Varanda / Sacada' },
-  { value: 'corredor', label: 'Corredor' },
-  { value: 'despensa', label: 'Despensa' },
-  { value: 'jardim', label: 'Jardim / Área Externa' },
+// Cômodo suggestions for multi-select autocomplete
+const COMODO_SUGGESTIONS = [
+  'sala', 'quarto_casal', 'quarto_filho', 'quarto_hospede', 'escritorio',
+  'cozinha', 'banheiro', 'lavabo', 'area_servico', 'garagem', 'varanda',
+  'corredor', 'despensa', 'jardim', 'piscina', 'biblioteca', 'home_office',
+  'sala_jantar', 'sala_tv', 'closet', 'sacada', 'terraço', 'quintal'
 ]
+
+const COMODO_LABELS: Record<string, string> = {
+  sala: 'Sala de Estar', quarto_casal: 'Quarto do Casal', quarto_filho: 'Quarto de Filho(a)',
+  quarto_hospede: 'Quarto de Hóspede', escritorio: 'Escritório', cozinha: 'Cozinha',
+  banheiro: 'Banheiro', lavabo: 'Lavabo', area_servico: 'Área de Serviço',
+  garagem: 'Garagem', varanda: 'Varanda', corredor: 'Corredor', despensa: 'Despensa',
+  jardim: 'Jardim', piscina: 'Piscina', biblioteca: 'Biblioteca', home_office: 'Home Office',
+  sala_jantar: 'Sala de Jantar', sala_tv: 'Sala de TV', closet: 'Closet',
+  sacada: 'Sacada', 'terraço': 'Terraço', quintal: 'Quintal',
+}
+
+function ComodoAutocomplete({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
+  const [input, setInput] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const filtered = COMODO_SUGGESTIONS
+    .filter(s => !selected.includes(s))
+    .filter(s => !input || (COMODO_LABELS[s] || s).toLowerCase().includes(input.toLowerCase()))
+
+  function addItem(item: string) {
+    onChange([...selected, item])
+    setInput('')
+    setShowSuggestions(false)
+  }
+
+  function addCustom() {
+    if (input.trim() && !selected.includes(input.trim())) {
+      onChange([...selected, input.trim()])
+      setInput('')
+      setShowSuggestions(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={input}
+        onChange={e => { setInput(e.target.value); setShowSuggestions(true) }}
+        onFocus={() => setShowSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
+        placeholder="Digite para buscar ou adicionar cômodo..."
+        style={{
+          width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB',
+          borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box'
+        }}
+      />
+      {showSuggestions && (input || filtered.length > 0) && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+          background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto'
+        }}>
+          {filtered.slice(0, 8).map(s => (
+            <button key={s} onClick={() => addItem(s)} style={{
+              display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
+              border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px',
+              color: '#374151'
+            }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#F3F4F6')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              {COMODO_LABELS[s] || s}
+            </button>
+          ))}
+          {input.trim() && !COMODO_SUGGESTIONS.includes(input.trim()) && (
+            <button onClick={addCustom} style={{
+              display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
+              border: 'none', borderTop: '1px solid #E5E7EB', background: '#F5F0FF',
+              cursor: 'pointer', fontSize: '13px', color: '#7C3AED', fontWeight: 'bold'
+            }}>
+              + Adicionar &quot;{input.trim()}&quot;
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Favorability mapping: which rooms are favorable in each Guá
 const COMODO_FAVORAVEL: Record<string, { favoravel: string[]; problematico: string[] }> = {
@@ -267,7 +336,7 @@ export default function ConsultaDetalhe() {
   const [criterios, setCriterios] = useState<Record<string, Record<string, number>>>({})
   const [notas, setNotas] = useState<Record<string, Record<string, string>>>({})
   const [customRecs, setCustomRecs] = useState<Record<string, CustomRec[]>>({})
-  const [comodoMap, setComodoMap] = useState<Record<string, string>>({})
+  const [comodoMap, setComodoMap] = useState<Record<string, string[]>>({})
   const [setorAtivo, setSetorAtivo] = useState<string | null>(null)
   const [recModal, setRecModal] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('diagnostico')
@@ -283,6 +352,8 @@ export default function ConsultaDetalhe() {
   // Fotos do imóvel
   const [fotoGeral, setFotoGeral] = useState<string | null>(null)
   const [fotosComodos, setFotosComodos] = useState<FotoComodo[]>([])
+  const [fotosAntes, setFotosAntes] = useState<string[]>([])
+  const [fotosDepois, setFotosDepois] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
@@ -315,6 +386,8 @@ export default function ConsultaDetalhe() {
       // Load fotos
       setFotoGeral(consulta.foto_geral_url || null)
       setFotosComodos(Array.isArray(consulta.fotos_comodos) ? consulta.fotos_comodos : [])
+      setFotosAntes(Array.isArray(consulta.fotos_antes) ? consulta.fotos_antes : [])
+      setFotosDepois(Array.isArray(consulta.fotos_depois) ? consulta.fotos_depois : [])
 
       const setoresData = setoresRes.data
 
@@ -323,12 +396,12 @@ export default function ConsultaDetalhe() {
       const cMap: Record<string, Record<string, number>> = {}
       const nMap: Record<string, Record<string, string>> = {}
       const rMap: Record<string, CustomRec[]> = {}
-      const cmMap: Record<string, string> = {}
+      const cmMap: Record<string, string[]> = {}
       setoresData?.forEach(setor => {
         cMap[setor.id] = {}
         nMap[setor.id] = {}
         rMap[setor.id] = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom : []
-        cmMap[setor.id] = setor.comodo_tipo || ''
+        cmMap[setor.id] = Array.isArray(setor.comodos) ? setor.comodos : (setor.comodo_tipo ? [setor.comodo_tipo] : [])
         setor.diagnostico_criterios?.forEach((c: DiagnosticoCriterio) => {
           cMap[setor.id][c.criterio] = c.score
           nMap[setor.id][c.criterio] = c.notas || ''
@@ -395,19 +468,17 @@ export default function ConsultaDetalhe() {
       setMessage('Erro ao salvar: ' + error.message)
     } else {
       const pct = getScore(setorId)
-      const updateData: Record<string, number | null | string | CustomRec[]> = {
+      const updateData: Record<string, number | null | string | string[] | CustomRec[]> = {
         score_percentual: pct,
         recomendacoes_custom: customRecs[setorId] || [],
       }
-      // Save room mapping if column exists
-      if (comodoMap[setorId] !== undefined) {
-        updateData.comodo_tipo = comodoMap[setorId] || null
-      }
+      // Save room mapping (JSONB array)
+      updateData.comodos = comodoMap[setorId] || []
       await supabase.from('setores_bagua').update(updateData).eq('id', setorId)
       setSetores(prev => prev.map(s => s.id === setorId ? {
         ...s, score_percentual: pct,
         recomendacoes_custom: customRecs[setorId] || [],
-        comodo_tipo: comodoMap[setorId] || null
+        comodos: comodoMap[setorId] || []
       } : s))
       setMessage('Setor salvo com sucesso!')
       setTimeout(() => setMessage(''), 3000)
@@ -460,6 +531,30 @@ export default function ConsultaDetalhe() {
       console.error('Error saving fotos:', error.message)
     } else {
       setConsulta(prev => prev ? { ...prev, foto_geral_url: newFotoGeral, fotos_comodos: newFotosComodos } : prev)
+    }
+  }
+
+  async function handleFotosAntesUpdate(newFotosAntes: string[]) {
+    setFotosAntes(newFotosAntes)
+    const { error } = await supabase.from('consultas').update({
+      fotos_antes: newFotosAntes,
+    }).eq('id', id)
+    if (error) {
+      console.error('Error saving fotos_antes:', error.message)
+    } else {
+      setConsulta(prev => prev ? { ...prev, fotos_antes: newFotosAntes } : prev)
+    }
+  }
+
+  async function handleFotosDepoisUpdate(newFotosDepois: string[]) {
+    setFotosDepois(newFotosDepois)
+    const { error } = await supabase.from('consultas').update({
+      fotos_depois: newFotosDepois,
+    }).eq('id', id)
+    if (error) {
+      console.error('Error saving fotos_depois:', error.message)
+    } else {
+      setConsulta(prev => prev ? { ...prev, fotos_depois: newFotosDepois } : prev)
     }
   }
 
@@ -928,9 +1023,9 @@ export default function ConsultaDetalhe() {
               {setores.map(setor => {
                 const pct = setor.score_percentual ?? getScore(setor.id)
                 const ativo = setor.id === setorAtivo
-                const comodo = comodoMap[setor.id]
-                const comodoLabel = COMODO_TIPOS.find(c => c.value === comodo)?.label
-                const fav = comodo ? comodoFavorabilidade(setor.nome, comodo) : null
+                const comodos = comodoMap[setor.id] || []
+                const comodoLabel = comodos.length > 0 ? comodos.map(c => COMODO_LABELS[c] || c).join(', ') : null
+                const fav = comodos.length === 1 ? comodoFavorabilidade(setor.nome, comodos[0]) : null
                 return (
                   <div key={setor.id} style={{
                     padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
@@ -1006,39 +1101,50 @@ export default function ConsultaDetalhe() {
                   </div>
                 </div>
 
-                {/* ── Room Mapping ──────────────────────────────────── */}
+                {/* ── Room Mapping — multi-select with autocomplete ── */}
                 <div style={{
                   marginBottom: '20px', padding: '14px 16px',
                   background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <label htmlFor="select-comodo-setor" style={{ fontSize: '13px', fontWeight: 'bold', color: '#7C3AED' }}>
-                      Cômodo neste setor:
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '4px' }}>
+                      Cômodo(s) deste setor
                     </label>
-                    <select
-                      id="select-comodo-setor"
-                      value={comodoMap[setorAtivoData.id] || ''}
-                      onChange={e => setComodoMap(prev => ({ ...prev, [setorAtivoData.id]: e.target.value }))}
-                      style={{
-                        padding: '8px 12px', borderRadius: '6px', border: '1px solid #D1D5DB',
-                        fontSize: '13px', outline: 'none', minWidth: '200px'
-                      }}>
-                      {COMODO_TIPOS.map(c => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
-                      ))}
-                    </select>
-                    {comodoMap[setorAtivoData.id] && (() => {
-                      const fav = comodoFavorabilidade(setorAtivoData.nome, comodoMap[setorAtivoData.id])
-                      if (!fav) return null
-                      return (
-                        <span style={{
-                          fontSize: '12px', fontWeight: 'bold', padding: '4px 10px',
-                          borderRadius: '10px',
-                          background: fav.cor === '#15803D' ? '#F0FDF4' : fav.cor === '#DC2626' ? '#FEF2F2' : '#FFFBEB',
-                          color: fav.cor
-                        }}>{fav.label} para este Guá</span>
-                      )
-                    })()}
+                    {/* Selected tags */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+                      {(comodoMap[setorAtivoData.id] || []).map((comodo, i) => {
+                        const fav = comodoFavorabilidade(setorAtivoData.nome, comodo)
+                        return (
+                          <span key={i} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            background: '#E9D5FF', color: '#7C3AED', padding: '4px 10px',
+                            borderRadius: '16px', fontSize: '12px', fontWeight: 'bold'
+                          }}>
+                            {COMODO_LABELS[comodo] || comodo}
+                            {fav && (
+                              <span style={{
+                                fontSize: '10px', fontWeight: 'bold', marginLeft: '2px',
+                                color: fav.cor
+                              }}>({fav.label})</span>
+                            )}
+                            <button onClick={() => {
+                              setComodoMap(prev => ({
+                                ...prev,
+                                [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, idx) => idx !== i)
+                              }))
+                            }} style={{
+                              background: 'none', border: 'none', color: '#7C3AED',
+                              cursor: 'pointer', fontSize: '14px', padding: '0 2px'
+                            }}>&times;</button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                    {/* Input with autocomplete suggestions */}
+                    <ComodoAutocomplete
+                      selected={comodoMap[setorAtivoData.id] || []}
+                      onChange={(newList) => setComodoMap(prev => ({ ...prev, [setorAtivoData.id]: newList }))}
+                    />
                   </div>
                 </div>
 
@@ -1193,6 +1299,10 @@ export default function ConsultaDetalhe() {
             fotosComodos={fotosComodos}
             onUpdate={handleFotosUpdate}
             saving={saving}
+            fotosAntes={fotosAntes}
+            fotosDepois={fotosDepois}
+            onUpdateAntes={handleFotosAntesUpdate}
+            onUpdateDepois={handleFotosDepoisUpdate}
           />
         )}
       </main>
