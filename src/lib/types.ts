@@ -99,9 +99,15 @@ export interface Consulta {
   bagua_imagem?: string | null
   foto_geral_url?: string | null
   fotos_comodos?: FotoComodo[] | null
+  fotos_antes?: string[] | null
+  fotos_depois?: string[] | null
   bagua_entrada?: { x: number; y: number; lado: string } | null
+  num_moradores?: number | null
+  historico_imovel?: string | null
+  observacoes_topograficas?: string | null
+  dados_adicionais?: string | null
   status: ConsultaStatus
-  roda_da_vida?: Record<string, number> | null
+  roda_da_vida?: Record<string, unknown> | null
   checklist_chi?: string[] | null
   posicao_comando?: Record<string, string[]> | null
   criado_em: string
