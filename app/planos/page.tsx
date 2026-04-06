@@ -198,10 +198,10 @@ export default function Planos() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
-        <div className="text-center">
-          <div className="text-5xl mb-4">☯</div>
-          <p className="text-purple-600 text-base">Carregando...</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
         </div>
       </div>
     )
@@ -212,49 +212,55 @@ export default function Planos() {
 
   return (
     <AppShell currentPage="planos">
-      <div className="text-center mb-8">
-        <h1 className="text-[#1E3A5F] text-[28px] font-bold m-0 mb-2">Escolha seu plano</h1>
-        <p className="text-gray-500 text-base m-0 mb-2">
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <h1 style={{ color: '#1E3A5F', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Escolha seu plano</h1>
+        <p style={{ color: '#6B7280', fontSize: '16px', margin: '0 0 8px 0' }}>
           Seu plano atual: <strong style={{ color: planoAtualCor }}>{planoAtualLabel}</strong>
         </p>
 
         {/* Subscription status info */}
         {subscription && (
-          <div className="mb-4">
+          <div style={{ marginBottom: '16px' }}>
             {subscription.cancel_at_period_end && (
-              <p className="text-red-600 text-[13px] my-1">
+              <p style={{ color: '#DC2626', fontSize: '13px', margin: '4px 0' }}>
                 Cancelamento agendado — acesso até {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString('pt-BR') : 'fim do período'}
               </p>
             )}
             {subscription.status === 'past_due' && (
-              <p className="text-red-600 text-[13px] my-1">
+              <p style={{ color: '#DC2626', fontSize: '13px', margin: '4px 0' }}>
                 Pagamento pendente — atualize seu meio de pagamento para manter o acesso
               </p>
             )}
             {subscription.status === 'active' && !subscription.cancel_at_period_end && planoAtualEfetivo !== 'free' && (
-              <div className="flex gap-2 justify-center mt-2">
-                <button onClick={handleManageBilling} disabled={upgrading}
-                  className="px-4 py-1.5 bg-gray-100 text-gray-700 border border-gray-300 rounded-md text-xs cursor-pointer">
-                  Gerenciar pagamento
-                </button>
-                <button onClick={handleCancelSubscription} disabled={upgrading}
-                  className="px-4 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-md text-xs cursor-pointer">
-                  Cancelar assinatura
-                </button>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
+                <button onClick={handleManageBilling} disabled={upgrading} style={{
+                  padding: '6px 16px', background: '#F3F4F6', color: '#374151',
+                  border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '12px',
+                  cursor: 'pointer'
+                }}>Gerenciar pagamento</button>
+                <button onClick={handleCancelSubscription} disabled={upgrading} style={{
+                  padding: '6px 16px', background: '#FEF2F2', color: '#DC2626',
+                  border: '1px solid #FECACA', borderRadius: '6px', fontSize: '12px',
+                  cursor: 'pointer'
+                }}>Cancelar assinatura</button>
               </div>
             )}
           </div>
         )}
 
         {/* Toggle Mensal / Anual */}
-        <div className="inline-flex bg-gray-100 rounded-[10px] p-1">
-          <button onClick={() => setCiclo('monthly')}
-            className={`px-6 py-2.5 rounded-lg border-none text-sm font-bold cursor-pointer transition-all duration-200 ${ciclo === 'monthly' ? 'bg-purple-600 text-white' : 'bg-transparent text-gray-500'}`}>
-            Mensal
-          </button>
-          <button onClick={() => setCiclo('yearly')}
-            className={`px-6 py-2.5 rounded-lg border-none text-sm font-bold cursor-pointer transition-all duration-200 ${ciclo === 'yearly' ? 'bg-purple-600 text-white' : 'bg-transparent text-gray-500'}`}>
-            Anual <span className="bg-green-700 text-white px-2 py-0.5 rounded-[10px] text-[11px] ml-1.5">-30%</span>
+        <div style={{ display: 'inline-flex', background: '#F3F4F6', borderRadius: '10px', padding: '4px' }}>
+          <button onClick={() => setCiclo('monthly')} style={{
+            padding: '10px 24px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: 'bold',
+            background: ciclo === 'monthly' ? '#7C3AED' : 'transparent',
+            color: ciclo === 'monthly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
+          }}>Mensal</button>
+          <button onClick={() => setCiclo('yearly')} style={{
+            padding: '10px 24px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: 'bold',
+            background: ciclo === 'yearly' ? '#7C3AED' : 'transparent',
+            color: ciclo === 'yearly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
+          }}>
+            Anual <span style={{ background: '#15803D', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginLeft: '6px' }}>-30%</span>
           </button>
         </div>
       </div>
@@ -262,14 +268,17 @@ export default function Planos() {
       {message && (() => {
         const isError = message.includes('Erro') || message.includes('inválida') || message.includes('Digite')
         return (
-          <div className={`mb-6 px-4 py-3 rounded-lg text-sm text-center ${isError ? 'bg-red-50 border border-red-200 text-red-600' : 'bg-green-50 border border-green-200 text-green-700'}`}>
-            {message}
-          </div>
+          <div style={{
+            marginBottom: '24px', padding: '12px 16px', borderRadius: '8px',
+            background: isError ? '#FEF2F2' : '#F0FDF4',
+            border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
+            color: isError ? '#DC2626' : '#15803D', fontSize: '14px', textAlign: 'center'
+          }}>{message}</div>
         )
       })()}
 
       {/* Plan Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12 max-w-[1100px] mx-auto">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '48px', maxWidth: '1100px', margin: '0 auto 48px' }}>
         {PLANOS.map(plano => {
           const isAtual = planoAtualEfetivo === plano.id
           const precoExibir = ciclo === 'yearly' && plano.precoAnual > 0
@@ -279,72 +288,83 @@ export default function Planos() {
           const economiAnual = (plano.precoMensal * 12) - plano.precoAnual
 
           return (
-            <div key={plano.id}
-              className={`bg-white rounded-2xl p-8 relative overflow-hidden ${plano.destaque ? 'shadow-lg shadow-purple-200 border-2 border-purple-600' : 'shadow-sm border border-gray-200'}`}>
+            <div key={plano.id} style={{
+              background: '#ffffff', borderRadius: '16px', padding: '32px',
+              boxShadow: plano.destaque ? '0 4px 20px rgba(124,58,237,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
+              border: plano.destaque ? '2px solid #7C3AED' : '1px solid #E5E7EB',
+              position: 'relative', overflow: 'hidden'
+            }}>
               {plano.destaque && (
-                <div className="absolute top-3 -right-7 bg-purple-600 text-white px-10 py-1 text-[11px] font-bold rotate-45">
-                  POPULAR
-                </div>
+                <div style={{
+                  position: 'absolute', top: '12px', right: '-28px',
+                  background: '#7C3AED', color: '#fff', padding: '4px 40px',
+                  fontSize: '11px', fontWeight: 'bold', transform: 'rotate(45deg)'
+                }}>POPULAR</div>
               )}
-              <div className="mb-6">
-                <h2 className="text-[22px] font-bold m-0 mb-1" style={{ color: plano.cor }}>{plano.nome}</h2>
-                <p className="text-gray-400 text-sm m-0 mb-4">{plano.descricao}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-gray-900 text-4xl font-bold">
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ color: plano.cor, fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{plano.nome}</h2>
+                <p style={{ color: '#9CA3AF', fontSize: '14px', margin: '0 0 16px 0' }}>{plano.descricao}</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ color: '#111827', fontSize: '36px', fontWeight: 'bold' }}>
                     {precoExibir === 0 ? 'R$ 0' : formatCurrency(precoExibir)}
                   </span>
-                  {plano.precoMensal > 0 && <span className="text-gray-400 text-sm">/mês</span>}
+                  {plano.precoMensal > 0 && <span style={{ color: '#9CA3AF', fontSize: '14px' }}>/mês</span>}
                 </div>
                 {ciclo === 'yearly' && totalAnual > 0 && (
-                  <div className="mt-1">
-                    <span className="text-gray-500 text-[13px]">
+                  <div style={{ marginTop: '4px' }}>
+                    <span style={{ color: '#6B7280', fontSize: '13px' }}>
                       {formatCurrency(totalAnual)}/ano
                     </span>
-                    <span className="text-green-700 text-xs font-bold ml-2">
+                    <span style={{ color: '#15803D', fontSize: '12px', fontWeight: 'bold', marginLeft: '8px' }}>
                       Economia de {formatCurrency(economiAnual)}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="mb-6">
+              <div style={{ marginBottom: '24px' }}>
                 {plano.recursos.map((rec, i) => (
-                  <div key={i}
-                    className={`flex items-center gap-2.5 py-2 ${i < plano.recursos.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${rec.disponivel ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-300'}`}>
-                      {rec.disponivel ? '✓' : '✕'}
-                    </span>
-                    <span className="text-gray-700 text-sm flex-1">{rec.nome}</span>
-                    {rec.valor && <span className={`text-[13px] font-bold ${rec.disponivel ? 'text-gray-900' : 'text-gray-300'}`}>{rec.valor}</span>}
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '8px 0', borderBottom: i < plano.recursos.length - 1 ? '1px solid #F3F4F6' : 'none'
+                  }}>
+                    <span style={{
+                      width: '20px', height: '20px', borderRadius: '50%',
+                      background: rec.disponivel ? '#F0FDF4' : '#F3F4F6',
+                      color: rec.disponivel ? '#15803D' : '#D1D5DB',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '12px', fontWeight: 'bold', flexShrink: 0
+                    }}>{rec.disponivel ? '✓' : '✕'}</span>
+                    <span style={{ color: '#374151', fontSize: '14px', flex: 1 }}>{rec.nome}</span>
+                    {rec.valor && <span style={{ color: rec.disponivel ? '#111827' : '#D1D5DB', fontSize: '13px', fontWeight: 'bold' }}>{rec.valor}</span>}
                   </div>
                 ))}
               </div>
 
               {/* Action buttons */}
               {isAtual ? (
-                <button disabled
-                  className="w-full py-3.5 bg-gray-200 text-gray-400 border-none rounded-[10px] text-[15px] font-bold cursor-default">
-                  Plano atual
-                </button>
+                <button disabled style={{
+                  width: '100%', padding: '14px', background: '#E5E7EB', color: '#9CA3AF',
+                  border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold', cursor: 'default'
+                }}>Plano atual</button>
               ) : plano.id === 'free' ? (
-                <button onClick={() => handleSelectPlan('free')}
-                  className="w-full py-3.5 bg-white text-gray-500 border-2 border-gray-200 rounded-[10px] text-[15px] font-bold cursor-pointer">
-                  Mudar para Free
-                </button>
+                <button onClick={() => handleSelectPlan('free')} style={{
+                  width: '100%', padding: '14px', background: '#ffffff', color: '#6B7280',
+                  border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
+                }}>Mudar para Free</button>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <button onClick={() => handleStripeCheckout(plano.id)} disabled={upgrading}
-                    className={`w-full py-3.5 rounded-[10px] text-[15px] font-bold ${upgrading
-                      ? 'bg-gray-400 text-white cursor-not-allowed'
-                      : plano.destaque
-                        ? 'bg-purple-600 text-white border-none cursor-pointer'
-                        : 'bg-white text-purple-600 border-2 border-purple-600 cursor-pointer'
-                    }`}>
-                    {upgrading ? 'Redirecionando...' : `Assinar ${ciclo === 'yearly' ? 'Anual' : 'Mensal'}`}
-                  </button>
-                  <button onClick={() => handleSelectPlan(plano.id)}
-                    className="w-full py-2 bg-transparent text-gray-400 border-none text-xs cursor-pointer underline">
-                    Tenho uma chave de ativação
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button onClick={() => handleStripeCheckout(plano.id)} disabled={upgrading} style={{
+                    width: '100%', padding: '14px',
+                    background: upgrading ? '#9CA3AF' : plano.destaque ? '#7C3AED' : '#ffffff',
+                    color: upgrading ? '#fff' : plano.destaque ? '#ffffff' : '#7C3AED',
+                    border: plano.destaque ? 'none' : '2px solid #7C3AED',
+                    borderRadius: '10px', fontSize: '15px', fontWeight: 'bold',
+                    cursor: upgrading ? 'not-allowed' : 'pointer'
+                  }}>{upgrading ? 'Redirecionando...' : `Assinar ${ciclo === 'yearly' ? 'Anual' : 'Mensal'}`}</button>
+                  <button onClick={() => handleSelectPlan(plano.id)} style={{
+                    width: '100%', padding: '8px', background: 'transparent', color: '#9CA3AF',
+                    border: 'none', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline'
+                  }}>Tenho uma chave de ativação</button>
                 </div>
               )}
             </div>
@@ -358,27 +378,33 @@ export default function Planos() {
         const targetNome = targetPlan?.nome || 'Profissional'
         const targetCor = targetPlan?.cor || '#7C3AED'
         return (
-          <div className="bg-white rounded-xl px-8 py-7 max-w-[500px] mx-auto mb-10 text-center"
-            style={{ boxShadow: `0 4px 20px ${targetCor}25`, border: `2px solid ${targetCor}` }}>
-            <div className="text-[32px] mb-3">🔑</div>
-            <h3 className="text-[#1E3A5F] text-lg font-bold m-0 mb-2">
+          <div style={{
+            background: '#ffffff', borderRadius: '12px', padding: '28px 32px',
+            boxShadow: `0 4px 20px ${targetCor}25`, border: `2px solid ${targetCor}`,
+            maxWidth: '500px', margin: '0 auto 40px', textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔑</div>
+            <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
               Ativar Plano {targetNome}
             </h3>
-            <p className="text-gray-500 text-sm m-0 mb-5">
+            <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 20px 0' }}>
               Digite sua chave de ativação para liberar o plano {targetNome}
             </p>
-            <div className="flex gap-2.5 mb-4">
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
               <input type="text" value={chaveAtivacao} onChange={e => setChaveAtivacao(e.target.value)}
                 placeholder="XXXX-XXXX-XXXX-XXXX" onKeyDown={e => e.key === 'Enter' && handleActivateKey()}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg text-[15px] outline-none text-center tracking-widest font-bold" />
-              <button onClick={handleActivateKey} disabled={upgrading}
-                className={`px-6 py-3 text-white border-none rounded-lg text-[15px] font-bold whitespace-nowrap ${upgrading ? 'bg-gray-400 cursor-not-allowed' : 'cursor-pointer'}`}
-                style={{ background: upgrading ? undefined : targetCor }}>
-                {upgrading ? 'Ativando...' : 'Ativar'}
-              </button>
+                style={{
+                  flex: 1, padding: '12px 16px', border: '2px solid #E5E7EB', borderRadius: '8px',
+                  fontSize: '15px', outline: 'none', textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold'
+                }} />
+              <button onClick={handleActivateKey} disabled={upgrading} style={{
+                padding: '12px 24px', background: upgrading ? '#9CA3AF' : targetCor, color: '#ffffff',
+                border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold',
+                cursor: upgrading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap'
+              }}>{upgrading ? 'Ativando...' : 'Ativar'}</button>
             </div>
             <button onClick={() => { setShowKeyInput(false); setSelectedPlanId(''); setChaveAtivacao(''); setMessage('') }}
-              className="bg-transparent border-none text-gray-400 text-[13px] cursor-pointer">
+              style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: '13px', cursor: 'pointer' }}>
               Cancelar
             </button>
           </div>
@@ -386,31 +412,31 @@ export default function Planos() {
       })()}
 
       {/* Feature Comparison Table */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm max-w-[900px] mx-auto mb-10">
-        <h3 className="text-[#1E3A5F] text-xl font-bold m-0 mb-5 text-center">
+      <div style={{ background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', maxWidth: '900px', margin: '0 auto 40px' }}>
+        <h3 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>
           Comparação de funcionalidades
         </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
               <tr>
-                <th className="text-left px-2 py-3 border-b-2 border-gray-200 text-gray-500">Funcionalidade</th>
-                <th className="text-center px-2 py-3 border-b-2 border-gray-200 text-gray-500">Free</th>
-                <th className="text-center px-2 py-3 border-b-2 border-gray-200 text-emerald-600">Simples</th>
-                <th className="text-center px-2 py-3 border-b-2 border-gray-200 text-purple-600">Profissional</th>
+                <th style={{ textAlign: 'left', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280' }}>Funcionalidade</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280' }}>Free</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#059669' }}>Simples</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#7C3AED' }}>Profissional</th>
               </tr>
             </thead>
             <tbody>
               {FEATURES_TABLE.map((feat, i) => (
                 <tr key={i}>
-                  <td className="px-2 py-2.5 border-b border-gray-100 text-gray-700">{feat.nome}</td>
+                  <td style={{ padding: '10px 8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{feat.nome}</td>
                   {(['free', 'simples', 'profissional'] as const).map(plan => {
                     const val = feat[plan]
                     return (
-                      <td key={plan} className="text-center px-2 py-2.5 border-b border-gray-100">
-                        {val === true ? <span className="text-green-700 font-bold">✓</span>
-                          : val === false ? <span className="text-gray-300">—</span>
-                          : <span className="text-gray-700 text-[13px]">{val}</span>}
+                      <td key={plan} style={{ textAlign: 'center', padding: '10px 8px', borderBottom: '1px solid #F3F4F6' }}>
+                        {val === true ? <span style={{ color: '#15803D', fontWeight: 'bold' }}>✓</span>
+                          : val === false ? <span style={{ color: '#D1D5DB' }}>—</span>
+                          : <span style={{ color: '#374151', fontSize: '13px' }}>{val}</span>}
                       </td>
                     )
                   })}
@@ -421,11 +447,14 @@ export default function Planos() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl px-8 py-6 shadow-sm text-center max-w-[900px] mx-auto">
-        <p className="text-gray-500 text-sm m-0 mb-1">
+      <div style={{
+        background: '#ffffff', borderRadius: '12px', padding: '24px 32px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '900px', margin: '0 auto'
+      }}>
+        <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
           Dúvidas sobre os planos? Entre em contato pelo e-mail
         </p>
-        <a href="mailto:suporte@fengshuistudio.com" className="text-purple-600 text-sm font-bold no-underline">
+        <a href="mailto:suporte@fengshuistudio.com" style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none' }}>
           suporte@fengshuistudio.com
         </a>
       </div>
