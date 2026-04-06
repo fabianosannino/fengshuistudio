@@ -379,7 +379,15 @@ export default function ConsultaDetalhe() {
       setConsulta(consulta)
 
       // Load advanced diagnostic data (stored as JSONB)
-      setRodaData(consulta.roda_da_vida || {})
+      // Support both old format { area: number } and new format { respostas: { area: number[] } }
+      const rawRoda = consulta.roda_da_vida || {}
+      if (rawRoda.respostas) {
+        // New format from /roda-da-vida: { respostas: { area: [5,5,5,5,5] }, acoes: [...] }
+        setRodaData(rawRoda.respostas)
+      } else {
+        // Old format: { area: 5 } or empty
+        setRodaData(rawRoda)
+      }
       setChecklistChi(consulta.checklist_chi || [])
       setPosicaoComando(consulta.posicao_comando || {})
 
@@ -489,13 +497,19 @@ export default function ConsultaDetalhe() {
   async function handleSaveRoda() {
     setSaving(true)
     setMessage('')
+    // Save in the new unified format compatible with /roda-da-vida
+    const payload = { respostas: rodaData, acoes: [], pessoa_nome: '', created_at: new Date().toISOString() }
+    // Preserve existing acoes and pessoa_nome if they exist
+    const existing = consulta?.roda_da_vida as Record<string, unknown> | null
+    if (existing?.acoes) payload.acoes = existing.acoes as never[]
+    if (existing?.pessoa_nome) payload.pessoa_nome = existing.pessoa_nome as string
     const { error } = await supabase.from('consultas').update({
-      roda_da_vida: rodaData
+      roda_da_vida: payload
     }).eq('id', id)
     if (error) {
       setMessage('Erro ao salvar Roda da Vida: ' + error.message)
     } else {
-      setConsulta(prev => prev ? { ...prev, roda_da_vida: rodaData as Record<string, number> } : prev)
+      setConsulta(prev => prev ? { ...prev, roda_da_vida: payload as unknown as Record<string, number> } : prev)
       setMessage('Roda da Vida salva com sucesso!')
       setTimeout(() => setMessage(''), 3000)
     }
