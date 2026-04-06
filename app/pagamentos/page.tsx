@@ -293,6 +293,21 @@ export default function Pagamentos() {
 
   return (
     <AppShell currentPage="pagamentos">
+      {/* Banner em desenvolvimento */}
+      <div style={{
+        background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px',
+        padding: '16px 20px', marginBottom: '24px', textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🚧</div>
+        <p style={{ color: '#92400E', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          Pagamentos — Em desenvolvimento
+        </p>
+        <p style={{ color: '#92400E', fontSize: '12px', margin: 0 }}>
+          Em breve você poderá gerenciar cobranças e recebimentos diretamente pela plataforma.
+          Por enquanto, utilize a seção abaixo para registro manual.
+        </p>
+      </div>
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>

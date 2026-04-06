@@ -97,6 +97,16 @@ export default function Relatorio() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
+  const [showSelector, setShowSelector] = useState(true)
+  const [selectedSections, setSelectedSections] = useState({
+    completo: true,
+    roda_vida: true,
+    bagua: true,
+    checklist: true,
+    curas: false,
+    produtos: false,
+    fotos: false,
+  })
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
@@ -338,8 +348,46 @@ export default function Relatorio() {
         </div>
       </div>
 
+      {/* ── Section Selector ───────────────────────────────────────────── */}
+      {showSelector && (
+        <div className="no-print" style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', marginBottom: '24px', maxWidth: '600px', margin: '24px auto 24px' }}>
+          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Montar Relatório</h2>
+          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>Selecione as seções que deseja incluir:</p>
+          {[
+            { key: 'completo', label: 'Relatório Completo' },
+            { key: 'roda_vida', label: 'Roda da Vida + Recomendações' },
+            { key: 'bagua', label: 'Diagnóstico do Baguá + Recomendações' },
+            { key: 'checklist', label: 'Checklist de Fluxo de Chi' },
+            { key: 'curas', label: 'Curas e Ativações' },
+            { key: 'produtos', label: 'Produtos Sugeridos' },
+            { key: 'fotos', label: 'Fotos (Antes e Depois)' },
+          ].map(s => (
+            <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer' }}>
+              <input type="checkbox" checked={selectedSections[s.key as keyof typeof selectedSections]}
+                onChange={e => setSelectedSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
+                style={{ width: '18px', height: '18px', accentColor: '#7C3AED' }} />
+              <span style={{ fontSize: '14px', color: '#374151' }}>{s.label}</span>
+            </label>
+          ))}
+          <button onClick={() => setShowSelector(false)} style={{
+            width: '100%', marginTop: '16px', padding: '12px', background: '#7C3AED', color: '#fff',
+            border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
+          }}>Visualizar Relatório</button>
+        </div>
+      )}
+
+      {/* ── Back to Selector Button ──────────────────────────────────────── */}
+      {!showSelector && (
+        <div className="no-print" style={{ maxWidth: '980px', margin: '24px auto 0' }}>
+          <button onClick={() => setShowSelector(true)} style={{
+            marginBottom: '16px', padding: '8px 16px', background: '#F3F4F6', color: '#6B7280',
+            border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+          }}>← Alterar seções</button>
+        </div>
+      )}
+
       {/* ── Report Body ─────────────────────────────────────────────────── */}
-      <div ref={printRef} className="print-area" style={{
+      {!showSelector && <div ref={printRef} className="print-area" style={{
         background: '#ffffff', maxWidth: '980px', margin: '24px auto',
         padding: '0', fontFamily: "Georgia, 'Times New Roman', serif",
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderRadius: '4px',
@@ -356,6 +404,15 @@ export default function Relatorio() {
             userSelect: 'none', letterSpacing: '8px'
           }}>VERSAO GRATUITA</div>
         )}
+
+        {/* ══════ BRAND HEADER ══════ */}
+        <div style={{ textAlign: 'center', marginBottom: '24px', padding: '20px', borderBottom: '2px solid #E5E7EB' }}>
+          <div style={{ fontSize: '32px', marginBottom: '8px' }}>☯</div>
+          <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0' }}>FENG SHUI STUDIO</h1>
+          <p style={{ color: '#6B7280', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
+            Relatório elaborado no Feng Shui Studio, sob análise e responsabilidade do Consultor: {profile?.nome_completo || 'Consultor'}
+          </p>
+        </div>
 
         {/* ══════ HEADER ══════ */}
         <div style={{
@@ -442,10 +499,11 @@ export default function Relatorio() {
         )}
 
         {/* ══════ CHARTS ROW: Roda da Vida + Baguá Lo Shu ══════ */}
-        <div style={{ display: 'grid', gridTemplateColumns: hasRoda ? '1fr 1fr' : '1fr', gap: '0', padding: '1rem 1.5rem' }}>
+        {(selectedSections.completo || selectedSections.roda_vida || selectedSections.bagua) && (
+        <div style={{ display: 'grid', gridTemplateColumns: hasRoda && (selectedSections.completo || selectedSections.roda_vida) ? (selectedSections.completo || selectedSections.bagua ? '1fr 1fr' : '1fr') : '1fr', gap: '0', padding: '1rem 1.5rem' }}>
 
           {/* Roda da Vida radar */}
-          {hasRoda && (
+          {(selectedSections.completo || selectedSections.roda_vida) && hasRoda && (
             <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginRight: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
                 <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>輪</span>
@@ -486,7 +544,8 @@ export default function Relatorio() {
           )}
 
           {/* Baguá Lo Shu Grid */}
-          <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginLeft: hasRoda ? '0.5rem' : 0 }}>
+          {(selectedSections.completo || selectedSections.bagua) && (
+          <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginLeft: hasRoda && (selectedSections.completo || selectedSections.roda_vida) ? '0.5rem' : 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
               <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>八卦</span>
               Baguá · Mapa Energético Lo Shu
@@ -546,10 +605,12 @@ export default function Relatorio() {
               Escola Black Hat — Porta principal na base do mapa
             </div>
           </div>
+          )}
         </div>
+        )}
 
         {/* ══════ KI FLOW — sorted by priority ══════ */}
-        {sortedSetores.length > 0 && (
+        {(selectedSections.completo || selectedSections.bagua) && sortedSetores.length > 0 && (
           <div style={{ padding: '0 1.5rem 1rem' }}>
             <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
@@ -597,7 +658,7 @@ export default function Relatorio() {
         )}
 
         {/* ══════ CHI FLOW + COMMAND POSITION ══════ */}
-        {hasChi && (
+        {(selectedSections.completo || selectedSections.checklist) && hasChi && (
           <div style={{ padding: '0 1.5rem 1rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
               {/* Chi checklist */}
@@ -660,6 +721,7 @@ export default function Relatorio() {
         )}
 
         {/* ══════ 3-COLUMN RECOMMENDATIONS ══════ */}
+        {(selectedSections.completo || selectedSections.bagua) && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
             <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>建</span>
@@ -715,8 +777,10 @@ export default function Relatorio() {
             ))}
           </div>
         </div>
+        )}
 
         {/* ══════ CURES & ACTIVATIONS TABLE ══════ */}
+        {(selectedSections.completo || selectedSections.curas) && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
           <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', overflowX: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
@@ -782,8 +846,10 @@ export default function Relatorio() {
             </table>
           </div>
         </div>
+        )}
 
         {/* ══════ DETAILED SECTOR DIAGNOSTICS ══════ */}
+        {(selectedSections.completo || selectedSections.bagua) && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
             <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>診</span>
@@ -905,9 +971,10 @@ export default function Relatorio() {
             })}
           </div>
         </div>
+        )}
 
         {/* ══════ Ba Gua PLANT IMAGE ══════ */}
-        {consulta.bagua_imagem && (
+        {(selectedSections.completo || selectedSections.fotos) && consulta.bagua_imagem && (
           <div style={{ padding: '0 1.5rem 1rem', textAlign: 'center' }}>
             <img
               src={consulta.bagua_imagem}
@@ -932,7 +999,7 @@ export default function Relatorio() {
           {' '} · Gerado em: {new Date().toLocaleDateString('pt-BR')}
         </div>
 
-      </div>
+      </div>}
     </>
   )
 }
