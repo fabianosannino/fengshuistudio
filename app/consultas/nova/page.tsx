@@ -139,7 +139,7 @@ function NovaConsultaContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cliente_id: clienteId,
-          nome_imovel: form.nome_imovel || 'Meu Imovel',
+          nome_imovel: form.nome_imovel || 'Meu Imóvel',
           tipo_imovel: form.tipo_imovel,
           area_total_m2: form.area_total_m2 ? parseFloat(form.area_total_m2) : null,
           endereco_imovel: form.endereco_imovel,

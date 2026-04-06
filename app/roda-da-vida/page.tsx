@@ -4,37 +4,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import type { User } from '@supabase/supabase-js'
+import { AREAS, CATEGORIAS, avg, defaultRespostas } from '../../src/lib/roda-da-vida-constants'
 
-type Area = { key: string; label: string; categoria: string; cor: string; perguntas: string[] }
 type Consulta = { id: string; nome_imovel: string; criado_em: string; cliente_id?: string | null; clientes?: { nome_completo: string } | null; roda_da_vida?: any }
 type Cliente = { id: string; nome_completo: string }
 type Acao = { acao: string; data: string; estrategia: string }
 
-const AREAS: Area[] = [
-  { key: 'familia', label: 'Família', categoria: 'Relacionamentos', cor: '#15803D', perguntas: ['Tempo dedicado aos familiares','Momentos agradáveis com a família','Diálogo e boa vontade para resolver conflitos','Grau de abertura para falar e ouvir','Confiança e apoio mútuos'] },
-  { key: 'relacao_amorosa', label: 'Relação Amorosa', categoria: 'Relacionamentos', cor: '#BE185D', perguntas: ['Tempo dedicado ao parceiro(a)','Grau de abertura para falar e ouvir','Satisfação com as relações íntimas','Criação de momentos românticos','Dividir sonhos e expectativas de vida'] },
-  { key: 'vida_social', label: 'Vida Social', categoria: 'Relacionamentos', cor: '#D97706', perguntas: ['Festas e reuniões de amigos (periodicidade)','Esforço para manter contato com amigos','Número de amigos que encontra regularmente','Qualidade dos encontros com amigos','Participação em atividades em grupo'] },
-  { key: 'espiritualidade', label: 'Espiritualidade', categoria: 'Qualidade de Vida', cor: '#7C3AED', perguntas: ['Paz interior','Coerência de valores (faz o que prega)','Força e equilíbrio internos','Tempo para si (reflexão meditação oração)','Religiosidade'] },
-  { key: 'hobbies', label: 'Hobbies & Lazer', categoria: 'Qualidade de Vida', cor: '#0EA5E9', perguntas: ['Qualidade do tempo dedicado ao lazer','Variedade de formas para relaxar e se divertir','Prazer que as atividades proporcionam','Periodicidade das atividades de hobbie e lazer','Relaxamento ou revigoramento após as atividades'] },
-  { key: 'plenitude', label: 'Plenitude', categoria: 'Qualidade de Vida', cor: '#F59E0B', perguntas: ['Otimismo em relação ao futuro','Satisfação com a vida atual','Frequência com que sorri','Confiança em você mesmo(a)','Orgulho pelas conquistas do passado'] },
-  { key: 'contribuicao', label: 'Contribuição', categoria: 'Profissional', cor: '#10B981', perguntas: ['Desejo sincero pela prosperidade dos outros','Cordialidade com as pessoas em geral','Colocar-se à disposição para ajudar alguém','Dedicação ao ensinar o que sabe aos outros','Trabalhos voluntários ou doações'] },
-  { key: 'financeiro', label: 'Financeiro', categoria: 'Profissional', cor: '#B8860B', perguntas: ['Satisfação com os rendimentos financeiros','Equilíbrio entre ganhos e gastos','Reservas para possíveis crises','Satisfação sobre investimentos no último ano','Oportunidades para o aumento da renda'] },
-  { key: 'realizacao', label: 'Realização Profissional', categoria: 'Profissional', cor: '#6366F1', perguntas: ['Auto-imagem profissional positiva','Satisfação com a carreira','Oportunidades de crescimento profissional','Ambiente de trabalho proporciona desafios','Atividade profissional congruente com crenças e valores'] },
-  { key: 'saude', label: 'Saúde', categoria: 'Pessoal', cor: '#DC2626', perguntas: ['Alimentação equilibrada','Exercícios físicos regulares','Horas de sono diárias adequadas','Controle do nível de stress','Check-up e exames de rotina'] },
-  { key: 'emocional', label: 'Equilíbrio Emocional', categoria: 'Pessoal', cor: '#8B5CF6', perguntas: ['Reações emocionais proporcionais aos eventos','Controle das emoções sob pressão e stress','Manter o foco em momentos difíceis','Expressar opiniões de forma clara e cordial','Controle da frustração com expectativas não atingidas'] },
-  { key: 'intelectual', label: 'Desenvolvimento Intelectual', categoria: 'Pessoal', cor: '#1D4ED8', perguntas: ['Participação em cursos e treinamentos','Leitura sobre temas diversos','Presença em atividades novas e não habituais','Manter-se informado(a)','Participação em conversas com assuntos diferentes dos habituais'] },
-]
-
-const CATEGORIAS = [
-  { key: 'relacionamentos', label: 'Relacionamentos', areas: ['familia','relacao_amorosa','vida_social'], cor: '#BE185D' },
-  { key: 'qualidade_vida', label: 'Qualidade de Vida', areas: ['espiritualidade','hobbies','plenitude'], cor: '#7C3AED' },
-  { key: 'profissional', label: 'Profissional', areas: ['contribuicao','financeiro','realizacao'], cor: '#B8860B' },
-  { key: 'pessoal', label: 'Pessoal', areas: ['saude','emocional','intelectual'], cor: '#DC2626' },
-]
-
-const defaultRespostas = (): Record<string, number[]> => Object.fromEntries(AREAS.map(a => [a.key, [5,5,5,5,5]]))
 const defaultAcoes = (): Acao[] => [{ acao:'', data:'', estrategia:'' },{ acao:'', data:'', estrategia:'' },{ acao:'', data:'', estrategia:'' }]
-const avg = (arr: number[]) => arr.reduce((s,v) => s+v, 0) / arr.length
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) } catch { return d } }
 
 function polar(cx: number, cy: number, r: number, i: number, total: number) {

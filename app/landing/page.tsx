@@ -146,7 +146,7 @@ export default function LandingPage() {
           .hero-grid { flex-direction: column !important; text-align: center !important; }
           .hero-buttons { justify-content: center !important; }
           .features-grid { grid-template-columns: 1fr !important; }
-          .pricing-grid { grid-template-columns: 1fr !important; max-width: 400px !important; margin: 0 auto !important; }
+          .pricing-grid { grid-template-columns: 1fr !important; max-width: 420px !important; margin: 0 auto !important; }
           .footer-grid { grid-template-columns: 1fr !important; text-align: center !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-grid { grid-template-columns: 1fr !important; }
@@ -175,7 +175,7 @@ export default function LandingPage() {
           <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
             <a href="#recursos" className="nav-link">Recursos</a>
             <a href="#como-funciona" className="nav-link">Como funciona</a>
-            <a href="#precos" className="nav-link">Preços</a>
+            <a href="#precos" className="nav-link">Planos</a>
             <a href="#depoimentos" className="nav-link">Depoimentos</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -253,7 +253,7 @@ export default function LandingPage() {
                 color: 'rgba(255,255,255,0.7)', fontSize: '18px',
                 lineHeight: 1.7, marginBottom: '40px', maxWidth: '520px',
               }}>
-                Gerencie clientes, realize diagnósticos Ba Gua completos e gere relatórios PDF profissionais. Tudo em uma única plataforma feita para consultores como você.
+                Análise Ba Guá com upload de planta, Roda da Vida com 12 áreas, curas e ativações, relatórios PDF e calendário lunar. Tudo em uma única plataforma feita para consultores como você.
               </p>
 
               <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
@@ -297,11 +297,11 @@ export default function LandingPage() {
                     { nome: 'Prosperidade', cor: '#A78BFA', elemento: 'Madeira', trigram: '☴' },
                     { nome: 'Fama', cor: '#FF6B6B', elemento: 'Fogo', trigram: '☲' },
                     { nome: 'Amor', cor: '#F9A8D4', elemento: 'Terra', trigram: '☷' },
-                    { nome: 'Familia', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
+                    { nome: 'Família', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
                     { nome: 'Centro', cor: '#FBBF24', elemento: 'Terra', trigram: '☯' },
                     { nome: 'Filhos', cor: '#F59E0B', elemento: 'Metal', trigram: '☱' },
                     { nome: 'Saber', cor: '#60A5FA', elemento: 'Terra', trigram: '☶' },
-                    { nome: 'Carreira', cor: '#38BDF8', elemento: 'Agua', trigram: '☵' },
+                    { nome: 'Carreira', cor: '#38BDF8', elemento: 'Água', trigram: '☵' },
                     { nome: 'Amigos', cor: '#CBD5E1', elemento: 'Metal', trigram: '☰' },
                   ].map((setor, i) => (
                     <div key={i} style={{
@@ -434,14 +434,16 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+          <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
             {[
-              { icon: '👥', title: 'Gestão de Clientes', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
-              { icon: '🧭', title: 'Diagnóstico Ba Gua', desc: 'Avalie os 9 setores do Ba Gua com critérios padronizados e scores automáticos por setor.', color: '#7C3AED' },
-              { icon: '📊', title: 'Relatório PDF Pro', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
-              { icon: '📅', title: 'Calendário Lunar', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações e datas auspiciosas.', color: '#D97706' },
+              { icon: '🧭', title: 'Análise Ba Guá Interativa', desc: 'Faça upload da planta do imóvel e avalie os 9 setores do Ba Guá com critérios padronizados e scores automáticos.', color: '#7C3AED' },
+              { icon: '◎', title: 'Roda da Vida Completa', desc: 'Questionário com 12 áreas da vida e 60 perguntas. Gráfico radar, médias por categoria e plano de ação integrado.', color: '#BE185D' },
+              { icon: '📊', title: 'Relatórios PDF Personalizados', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
+              { icon: '👥', title: 'Gestão de Clientes e Consultas', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
+              { icon: '📅', title: 'Calendário Lunar com Rituais', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações, rituais e datas auspiciosas.', color: '#D97706' },
+              { icon: '✨', title: 'Curas e Ativações por Setor', desc: 'Cristais, plantas, objetos, mudras, meditações e mantras para cada setor do Ba Guá.', color: '#C9A84C' },
+              { icon: '📱', title: 'PWA — Funciona como App', desc: 'Instale no celular como um app nativo. Funciona em qualquer dispositivo com interface responsiva.', color: '#0891B2' },
               { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#DC2626' },
-              { icon: '📱', title: 'Acesso em Qualquer Lugar', desc: 'Use pelo computador, tablet ou celular. Interface responsiva que se adapta a qualquer tela.', color: '#0891B2' },
             ].map((feat, i) => (
               <div key={i} className="feature-card" style={{
                 background: '#ffffff',
@@ -535,13 +537,13 @@ export default function LandingPage() {
           background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
         }} />
 
-        <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{
               color: '#C4B5FD', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               display: 'block', marginBottom: '12px',
-            }}>PRECOS</span>
+            }}>PREÇOS</span>
             <h2 style={{
               fontFamily: "'Playfair Display', serif",
               fontSize: 'clamp(28px, 4vw, 42px)',
@@ -554,7 +556,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             {/* Free */}
             <div className="pricing-card" style={{
               background: 'rgba(255,255,255,0.05)',
@@ -567,14 +569,14 @@ export default function LandingPage() {
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>
-                Perfeito para começar
+                Até 3 imóveis
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
                 {[
-                  'Até 5 clientes',
-                  '3 consultas por mês',
-                  'Diagnóstico Ba Gua completo',
-                  'Suporte por email',
+                  'Até 3 imóveis cadastrados',
+                  '1 análise Ba Guá por imóvel',
+                  'Roda da Vida completa',
+                  'Curas e ativações',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✓</div>
@@ -584,7 +586,7 @@ export default function LandingPage() {
                 {[
                   'Relatório PDF',
                   'Calendário lunar',
-                  'Clientes ilimitados',
+                  'Cadastro de clientes',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✕</div>
@@ -604,7 +606,57 @@ export default function LandingPage() {
               </button>
             </div>
 
-            {/* Pro */}
+            {/* Simples */}
+            <div className="pricing-card" style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '24px', padding: '40px 32px',
+            }}>
+              <p style={{ color: '#93C5FD', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>SIMPLES</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$20</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>
+                1 imóvel ativo, uso pessoal
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
+                {[
+                  '1 imóvel ativo',
+                  'Análise Ba Guá completa',
+                  'Relatório PDF com marca d\'água',
+                  'Calendário lunar',
+                  'Roda da Vida completa',
+                  'Rede de parceiros',
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0, color: '#93C5FD' }}>✓</div>
+                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '15px' }}>{item}</span>
+                  </div>
+                ))}
+                {[
+                  'Cadastro de clientes',
+                  'Relatório sem marca d\'água',
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✕</div>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', textDecoration: 'line-through' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => window.location.href = '/login'} style={{
+                width: '100%', padding: '14px',
+                background: 'rgba(59,130,246,0.2)', color: '#93C5FD',
+                border: '1px solid rgba(59,130,246,0.4)',
+                borderRadius: '12px', fontSize: '15px', fontWeight: 700,
+                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                transition: 'all 0.3s ease',
+              }}>
+                Assinar Simples
+              </button>
+            </div>
+
+            {/* Profissional */}
             <div className="pricing-card" style={{
               background: 'linear-gradient(145deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05))',
               border: '2px solid rgba(124,58,237,0.4)',
@@ -618,21 +670,22 @@ export default function LandingPage() {
               }}>
                 <span style={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}>POPULAR</span>
               </div>
-              <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>PRO</p>
+              <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>PROFISSIONAL</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$49</span>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>
-                Para consultores profissionais
+                Ilimitado, relatório limpo
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
                 {[
+                  'Imóveis ilimitados',
                   'Clientes ilimitados',
-                  'Consultas ilimitadas',
-                  'Diagnóstico Ba Gua completo',
-                  'Relatório PDF profissional',
-                  'Calendário lunar chinês',
+                  'Relatório PDF sem marca d\'água',
+                  'Análise Ba Guá completa',
+                  'Calendário lunar com rituais',
+                  'Curas e ativações por setor',
                   'Suporte prioritário',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -642,7 +695,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <button onClick={() => window.location.href = '/login'} className="btn-primary" style={{ width: '100%' }}>
-                Assinar plano Pro
+                Assinar Profissional
               </button>
             </div>
           </div>
@@ -825,7 +878,7 @@ export default function LandingPage() {
             <div>
               <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px', letterSpacing: '0.05em' }}>PRODUTO</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Recursos', 'Precos', 'Depoimentos'].map((item, i) => (
+                {['Recursos', 'Preços', 'Depoimentos'].map((item, i) => (
                   <a key={i} href={`#${item.toLowerCase()}`} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', textDecoration: 'none', transition: 'color 0.2s' }}>{item}</a>
                 ))}
               </div>
