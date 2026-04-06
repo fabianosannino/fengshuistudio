@@ -6,7 +6,7 @@ import AppShell from '../components/AppShell'
 import type { User } from '@supabase/supabase-js'
 
 type Area = { key: string; label: string; categoria: string; cor: string; perguntas: string[] }
-type Consulta = { id: string; nome_imovel: string; criado_em: string; clientes?: { nome_completo: string } | null; roda_da_vida?: any }
+type Consulta = { id: string; nome_imovel: string; criado_em: string; cliente_id?: string | null; clientes?: { nome_completo: string } | null; roda_da_vida?: any }
 type Cliente = { id: string; nome_completo: string }
 type Acao = { acao: string; data: string; estrategia: string }
 
@@ -87,7 +87,7 @@ export default function RodaDaVidaPage() {
       if (!user) { window.location.href = '/login'; return }
       setUser(user)
       const [c, cl] = await Promise.all([
-        supabase.from('consultas').select('id, nome_imovel, criado_em, roda_da_vida, clientes(nome_completo)').eq('consultor_id', user.id).neq('status', 'deletada').order('criado_em', { ascending: false }),
+        supabase.from('consultas').select('id, nome_imovel, criado_em, cliente_id, roda_da_vida, clientes(nome_completo)').eq('consultor_id', user.id).neq('status', 'deletada').order('criado_em', { ascending: false }),
         supabase.from('clientes').select('id, nome_completo').eq('consultor_id', user.id).order('nome_completo'),
       ])
       setConsultas((c.data || []) as unknown as Consulta[])
@@ -110,6 +110,14 @@ export default function RodaDaVidaPage() {
 
   function beginQuestionnaire() {
     if (!pessoaNome.trim()) { flash('Informe o nome da pessoa'); return }
+    // If editing existing roda, load its data
+    if (selectedConsultaId) {
+      const c = consultas.find(x => x.id === selectedConsultaId)
+      if (c?.roda_da_vida?.respostas) {
+        setRespostas(c.roda_da_vida.respostas)
+        setAcoes(c.roda_da_vida.acoes || defaultAcoes())
+      }
+    }
     setAreaAtual(0); setStep('questionnaire')
   }
 
@@ -121,9 +129,33 @@ export default function RodaDaVidaPage() {
     if (!user) return
     setSaving(true)
     const payload = { respostas, acoes, pessoa_nome: pessoaNome, created_at: new Date().toISOString() }
+    let cId = clienteId
     let consultaId = selectedConsultaId
+
+    // If no client selected and name provided, create a new client
+    if (!cId && pessoaNome.trim()) {
+      const { data: newClient, error: clientError } = await supabase
+        .from('clientes')
+        .insert({ consultor_id: user.id, nome_completo: pessoaNome.trim(), ativo: true })
+        .select('id')
+        .single()
+      if (clientError) { flash('Erro ao criar cliente: ' + clientError.message); setSaving(false); return }
+      cId = newClient.id
+      setClienteId(cId)
+      // Refresh clients list
+      const { data: cls } = await supabase.from('clientes').select('id, nome_completo').eq('consultor_id', user.id).order('nome_completo')
+      setClientes((cls || []) as Cliente[])
+    }
+
     if (!consultaId) {
-      const { data, error } = await supabase.from('consultas').insert({ consultor_id: user.id, cliente_id: clienteId, nome_imovel: `Roda da Vida - ${pessoaNome}`, status: 'em_andamento', roda_da_vida: payload }).select('id').single()
+      // Create new consultation linked to client
+      const { data, error } = await supabase.from('consultas').insert({
+        consultor_id: user.id,
+        cliente_id: cId,
+        nome_imovel: `Roda da Vida - ${pessoaNome}`,
+        status: 'em_andamento',
+        roda_da_vida: payload,
+      }).select('id').single()
       if (error) { flash('Erro: ' + error.message); setSaving(false); return }
       consultaId = data.id
       setSelectedConsultaId(consultaId)
@@ -132,7 +164,7 @@ export default function RodaDaVidaPage() {
       if (error) { flash('Erro: ' + error.message); setSaving(false); return }
     }
     // Refresh list
-    const { data } = await supabase.from('consultas').select('id, nome_imovel, criado_em, roda_da_vida, clientes(nome_completo)').eq('consultor_id', user.id).neq('status', 'deletada').order('criado_em', { ascending: false })
+    const { data } = await supabase.from('consultas').select('id, nome_imovel, criado_em, cliente_id, roda_da_vida, clientes(nome_completo)').eq('consultor_id', user.id).neq('status', 'deletada').order('criado_em', { ascending: false })
     setConsultas((data || []) as unknown as Consulta[])
     setSaving(false)
     flash('Roda da Vida salva com sucesso!')
@@ -178,28 +210,64 @@ export default function RodaDaVidaPage() {
       </>}
 
       {/* ── SELECT CLIENT ── */}
-      {step === 'select_client' && <>
-        <h2 style={{ color: '#1E3A5F', fontSize: 20, marginBottom: 16 }}>Para quem é esta Roda da Vida?</h2>
-        <div style={cardStyle}>
-          <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Nome da pessoa</label>
-          <input value={pessoaNome} onChange={e => setPessoaNome(e.target.value)} placeholder="Digite o nome..." style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, boxSizing: 'border-box' }} />
-        </div>
-        {clientes.length > 0 && <div style={cardStyle}>
-          <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Ou selecione um cliente existente</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {clientes.map(cl => (
-              <button key={cl.id} onClick={() => { setClienteId(cl.id); setPessoaNome(cl.nome_completo) }}
-                style={{ padding: '6px 14px', borderRadius: 20, border: clienteId === cl.id ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: clienteId === cl.id ? '#F5F0FF' : '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>
-                {cl.nome_completo}
+      {step === 'select_client' && (() => {
+        const consultasDoCliente = clienteId
+          ? consultas.filter(c => c.cliente_id === clienteId)
+          : []
+        return <>
+          <h2 style={{ color: '#1E3A5F', fontSize: 20, marginBottom: 16 }}>Para quem é esta Roda da Vida?</h2>
+
+          {/* Option 1: Select existing client */}
+          {clientes.length > 0 && <div style={cardStyle}>
+            <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Selecione um cliente existente</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {clientes.map(cl => (
+                <button key={cl.id} onClick={() => { setClienteId(cl.id); setPessoaNome(cl.nome_completo); setSelectedConsultaId(null) }}
+                  style={{ padding: '6px 14px', borderRadius: 20, border: clienteId === cl.id ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: clienteId === cl.id ? '#F5F0FF' : '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>
+                  {cl.nome_completo}
+                </button>
+              ))}
+            </div>
+          </div>}
+
+          {/* If client selected, show their consultations */}
+          {clienteId && consultasDoCliente.length > 0 && <div style={cardStyle}>
+            <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Vincular a uma consulta existente?</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {consultasDoCliente.map(c => (
+                <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes(c.roda_da_vida.acoes || defaultAcoes()) } }}
+                  style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === c.id ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: selectedConsultaId === c.id ? '#F5F0FF' : '#fff', cursor: 'pointer' }}>
+                  <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1E3A5F' }}>{c.nome_imovel}</div>
+                  <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? '— ◎ Já tem Roda da Vida' : ''}</div>
+                </button>
+              ))}
+              <button onClick={() => setSelectedConsultaId(null)}
+                style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === null ? '2px solid #7C3AED' : '1px dashed #D1D5DB', background: selectedConsultaId === null ? '#F5F0FF' : '#fff', cursor: 'pointer', fontSize: 13, color: '#7C3AED', fontWeight: 'bold' }}>
+                + Criar nova consulta para este cliente
               </button>
-            ))}
+            </div>
+          </div>}
+
+          {/* Option 2: New person (not a client yet) */}
+          <div style={cardStyle}>
+            <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>
+              {clienteId ? 'Nome confirmado' : 'Ou digite o nome de uma nova pessoa'}
+            </label>
+            <input value={pessoaNome} onChange={e => { setPessoaNome(e.target.value); if (!clientes.find(c => c.nome_completo === e.target.value)) setClienteId(null) }}
+              placeholder="Digite o nome..." style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, boxSizing: 'border-box' }} />
+            {!clienteId && pessoaNome.trim() && (
+              <p style={{ fontSize: 12, color: '#D97706', marginTop: 6 }}>Um novo cliente será criado automaticamente</p>
+            )}
           </div>
-        </div>}
-        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <button onClick={() => setStep('list')} style={{ ...btnPrimary('#6B7280') }}>Voltar</button>
-          <button onClick={beginQuestionnaire} style={btnPrimary()}>Iniciar Questionário</button>
-        </div>
-      </>}
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => setStep('list')} style={{ ...btnPrimary('#6B7280') }}>Voltar</button>
+            <button onClick={beginQuestionnaire} style={btnPrimary()}>
+              {selectedConsultaId && consultas.find(c => c.id === selectedConsultaId)?.roda_da_vida?.respostas ? 'Editar Roda da Vida' : 'Iniciar Questionário'}
+            </button>
+          </div>
+        </>
+      })()}
 
       {/* ── QUESTIONNAIRE ── */}
       {step === 'questionnaire' && area && <>
