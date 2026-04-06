@@ -353,8 +353,19 @@ export default function Relatorio() {
         <div className="no-print" style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', marginBottom: '24px', maxWidth: '600px', margin: '24px auto 24px' }}>
           <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Montar Relatório</h2>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>Selecione as seções que deseja incluir:</p>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid #E5E7EB', marginBottom: '8px', paddingBottom: '12px' }}>
+            <input type="checkbox" checked={selectedSections.completo}
+              onChange={e => {
+                const val = e.target.checked
+                setSelectedSections({
+                  completo: val, roda_vida: val, bagua: val, checklist: val,
+                  curas: val, produtos: val, fotos: val,
+                })
+              }}
+              style={{ width: '20px', height: '20px', accentColor: '#7C3AED' }} />
+            <span style={{ fontSize: '15px', color: '#1E3A5F', fontWeight: 'bold' }}>Relatório Completo (selecionar todos)</span>
+          </label>
           {[
-            { key: 'completo', label: 'Relatório Completo' },
             { key: 'roda_vida', label: 'Roda da Vida + Recomendações' },
             { key: 'bagua', label: 'Diagnóstico do Baguá + Recomendações' },
             { key: 'checklist', label: 'Checklist de Fluxo de Chi' },
@@ -364,7 +375,11 @@ export default function Relatorio() {
           ].map(s => (
             <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer' }}>
               <input type="checkbox" checked={selectedSections[s.key as keyof typeof selectedSections]}
-                onChange={e => setSelectedSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
+                onChange={e => {
+                  const next = { ...selectedSections, [s.key]: e.target.checked }
+                  next.completo = next.roda_vida && next.bagua && next.checklist && next.curas && next.produtos && next.fotos
+                  setSelectedSections(next)
+                }}
                 style={{ width: '18px', height: '18px', accentColor: '#7C3AED' }} />
               <span style={{ fontSize: '14px', color: '#374151' }}>{s.label}</span>
             </label>
@@ -498,54 +513,27 @@ export default function Relatorio() {
           </div>
         )}
 
-        {/* ══════ CHARTS ROW: Roda da Vida + Baguá Lo Shu ══════ */}
-        {(selectedSections.completo || selectedSections.roda_vida || selectedSections.bagua) && (
-        <div style={{ display: 'grid', gridTemplateColumns: hasRoda && (selectedSections.completo || selectedSections.roda_vida) ? (selectedSections.completo || selectedSections.bagua ? '1fr 1fr' : '1fr') : '1fr', gap: '0', padding: '1rem 1.5rem' }}>
+        {/* ══════ Ba Gua PLANT IMAGE ══════ */}
+        {!showSelector && consulta.bagua_imagem && (
+          <div style={{ padding: '0 1.5rem 1rem', textAlign: 'center' }}>
+            <img
+              src={consulta.bagua_imagem}
+              alt="Planta Ba Gua"
+              style={{ maxWidth: '100%', maxHeight: '380px', borderRadius: '4px', border: `1px solid ${border}`, objectFit: 'contain' }}
+            />
+            <p style={{ color: '#aaa', fontSize: '10px', margin: '6px 0 0 0', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+              Planta com grid Ba Gua — análise geométrica automática
+            </p>
+          </div>
+        )}
 
-          {/* Roda da Vida radar */}
-          {(selectedSections.completo || selectedSections.roda_vida) && hasRoda && (
-            <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginRight: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
-                <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>輪</span>
-                Roda da Vida
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                {RODA_AREAS.map(area => {
-                  const val = rodaData[area.key]
-                  if (val === undefined) return null
-                  const setorMatch = findSetorByName(area.gua)
-                  const setorPct = setorMatch?.score_percentual ?? null
-                  const lvl = scoreLevelLabel(val * 10)
-                  return (
-                    <div key={area.key} style={{
-                      padding: '8px 10px', borderRadius: '3px',
-                      background: val <= 4 ? '#FEF2F2' : val <= 6 ? '#FFFBEB' : '#F0FDF4',
-                      borderLeft: `3px solid ${lvl.color}`
-                    }}>
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: ink, fontFamily: 'Helvetica Neue, Arial, sans-serif', marginBottom: '2px' }}>
-                        {area.label}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '18px', fontWeight: 700, color: lvl.color }}>{val}</span>
-                        <div style={{ flex: 1, height: '4px', background: '#E5DDD0', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${val * 10}%`, height: '100%', background: lvl.color, borderRadius: '2px' }} />
-                        </div>
-                      </div>
-                      {setorPct !== null && (
-                        <div style={{ fontSize: '9px', color: inkLt, marginTop: '2px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                          Guá: {setorPct}%
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+        {/* ══════ CHARTS ROW: Baguá Lo Shu + Roda da Vida ══════ */}
+        {(selectedSections.completo || selectedSections.roda_vida || selectedSections.bagua) && (
+        <div style={{ display: 'grid', gridTemplateColumns: (selectedSections.completo || selectedSections.bagua) ? (hasRoda && (selectedSections.completo || selectedSections.roda_vida) ? '1fr 1fr' : '1fr') : '1fr', gap: '0', padding: '1rem 1.5rem' }}>
 
           {/* Baguá Lo Shu Grid */}
           {(selectedSections.completo || selectedSections.bagua) && (
-          <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginLeft: hasRoda && (selectedSections.completo || selectedSections.roda_vida) ? '0.5rem' : 0 }}>
+          <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginRight: hasRoda && (selectedSections.completo || selectedSections.roda_vida) ? '0.5rem' : 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
               <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>八卦</span>
               Baguá · Mapa Energético Lo Shu
@@ -605,6 +593,47 @@ export default function Relatorio() {
               Escola Black Hat — Porta principal na base do mapa
             </div>
           </div>
+          )}
+
+          {/* Roda da Vida radar */}
+          {(selectedSections.completo || selectedSections.roda_vida) && hasRoda && (
+            <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem', marginLeft: (selectedSections.completo || selectedSections.bagua) ? '0.5rem' : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
+                <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>輪</span>
+                Roda da Vida
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                {RODA_AREAS.map(area => {
+                  const val = rodaData[area.key]
+                  if (val === undefined) return null
+                  const setorMatch = findSetorByName(area.gua)
+                  const setorPct = setorMatch?.score_percentual ?? null
+                  const lvl = scoreLevelLabel(val * 10)
+                  return (
+                    <div key={area.key} style={{
+                      padding: '8px 10px', borderRadius: '3px',
+                      background: val <= 4 ? '#FEF2F2' : val <= 6 ? '#FFFBEB' : '#F0FDF4',
+                      borderLeft: `3px solid ${lvl.color}`
+                    }}>
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: ink, fontFamily: 'Helvetica Neue, Arial, sans-serif', marginBottom: '2px' }}>
+                        {area.label}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '18px', fontWeight: 700, color: lvl.color }}>{val}</span>
+                        <div style={{ flex: 1, height: '4px', background: '#E5DDD0', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${val * 10}%`, height: '100%', background: lvl.color, borderRadius: '2px' }} />
+                        </div>
+                      </div>
+                      {setorPct !== null && (
+                        <div style={{ fontSize: '9px', color: inkLt, marginTop: '2px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                          Guá: {setorPct}%
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </div>
         )}
@@ -906,20 +935,31 @@ export default function Relatorio() {
 
                   <div style={{ padding: '12px 14px', background: '#fff' }}>
                     {/* Criteria */}
-                    {(setor.diagnostico_criterios?.length ?? 0) > 0 && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '10px' }}>
-                        {setor.diagnostico_criterios!.map((c: DiagnosticoCriterio) => (
-                          <div key={c.id} style={{
-                            display: 'flex', justifyContent: 'space-between', fontSize: '11px',
-                            padding: '4px 8px', background: '#FAFAF5', borderRadius: '3px',
-                            fontFamily: 'Helvetica Neue, Arial, sans-serif'
-                          }}>
-                            <span style={{ color: '#666' }}>{c.criterio}</span>
-                            <span style={{ color: scoreColor(c.score * 25), fontWeight: 700 }}>{['-2','-1','0','+1','+2'][c.score] ?? c.score}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {(setor.diagnostico_criterios?.length ?? 0) > 0 && (() => {
+                      const allDefault = setor.diagnostico_criterios!.every((c: DiagnosticoCriterio) => c.score === 2)
+                      return allDefault ? (
+                        <div style={{ padding: '8px 10px', background: '#F9FAFB', borderRadius: '3px', marginBottom: '10px', fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                          Avaliação detalhada não realizada para este setor.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '10px' }}>
+                          {setor.diagnostico_criterios!.map((c: DiagnosticoCriterio) => (
+                            <div key={c.id} style={{
+                              display: 'flex', justifyContent: 'space-between', fontSize: '11px',
+                              padding: '4px 8px', background: '#FAFAF5', borderRadius: '3px',
+                              fontFamily: 'Helvetica Neue, Arial, sans-serif'
+                            }}>
+                              <span style={{ color: '#666' }}>{c.criterio}</span>
+                              {c.score === 2 ? (
+                                <span style={{ color: '#9CA3AF', fontWeight: 400, fontStyle: 'italic' }}>Neutro</span>
+                              ) : (
+                                <span style={{ color: scoreColor(c.score * 25), fontWeight: 700 }}>{['-2','-1','0','+1','+2'][c.score] ?? c.score}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
 
                     {/* Notes */}
                     {setor.diagnostico_criterios?.some((c: DiagnosticoCriterio) => c.notas) && (
@@ -973,19 +1013,6 @@ export default function Relatorio() {
         </div>
         )}
 
-        {/* ══════ Ba Gua PLANT IMAGE ══════ */}
-        {(selectedSections.completo || selectedSections.fotos) && consulta.bagua_imagem && (
-          <div style={{ padding: '0 1.5rem 1rem', textAlign: 'center' }}>
-            <img
-              src={consulta.bagua_imagem}
-              alt="Planta Ba Gua"
-              style={{ maxWidth: '100%', maxHeight: '380px', borderRadius: '4px', border: `1px solid ${border}`, objectFit: 'contain' }}
-            />
-            <p style={{ color: '#aaa', fontSize: '10px', margin: '6px 0 0 0', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-              Planta com grid Ba Gua — análise geométrica automática
-            </p>
-          </div>
-        )}
 
         {/* ══════ FOOTER ══════ */}
         <div style={{
