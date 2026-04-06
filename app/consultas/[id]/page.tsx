@@ -345,7 +345,7 @@ export default function ConsultaDetalhe() {
   const [message, setMessage] = useState('')
 
   // New data for Roda da Vida & Chi Flow
-  const [rodaData, setRodaData] = useState<Record<string, number>>({})
+  const [rodaData, setRodaData] = useState<Record<string, number[] | number>>({})
   const [checklistChi, setChecklistChi] = useState<string[]>([])
   const [posicaoComando, setPosicaoComando] = useState<Record<string, string[]>>({})
 

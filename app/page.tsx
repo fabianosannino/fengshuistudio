@@ -18,10 +18,10 @@ export default function LandingPage() {
   const navSolid = scrollY > 60
 
   const faqs = [
-    { q: 'Preciso ter experiencia com tecnologia?', a: 'Nao! O FengShui Studio foi feito para consultores de Feng Shui, nao para programadores. A interface e intuitiva e voce aprende em minutos.' },
-    { q: 'Posso cancelar o plano Pro a qualquer momento?', a: 'Sim. Nao ha fidelidade. Voce pode fazer upgrade ou downgrade quando quiser, sem burocracia.' },
-    { q: 'Meus dados estao seguros?', a: 'Absolutamente. Usamos criptografia de ponta a ponta e servidores seguros. Seus dados e os de seus clientes estao protegidos.' },
-    { q: 'O relatorio PDF e personalizavel?', a: 'O relatorio inclui automaticamente seus dados profissionais, logo e informacoes do imovel analisado, gerando um documento profissional com a sua marca.' },
+    { q: 'Preciso ter experiência com tecnologia?', a: 'Não! O FengShui Studio foi feito para consultores de Feng Shui, não para programadores. A interface é intuitiva e você aprende em minutos.' },
+    { q: 'Posso cancelar o plano Pro a qualquer momento?', a: 'Sim. Não há fidelidade. Você pode fazer upgrade ou downgrade quando quiser, sem burocracia.' },
+    { q: 'Meus dados estão seguros?', a: 'Absolutamente. Usamos criptografia de ponta a ponta e servidores seguros. Seus dados e os de seus clientes estão protegidos.' },
+    { q: 'O relatório PDF é personalizável?', a: 'O relatório inclui automaticamente seus dados profissionais, logo e informações do imóvel analisado, gerando um documento profissional com a sua marca.' },
   ]
 
   if (!mounted) return null
@@ -88,7 +88,7 @@ export default function LandingPage() {
           <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
             <a href="#recursos" className="nav-link">Recursos</a>
             <a href="#como-funciona" className="nav-link">Como funciona</a>
-            <a href="#precos" className="nav-link">Precos</a>
+            <a href="#precos" className="nav-link">Planos</a>
             <a href="#depoimentos" className="nav-link">Depoimentos</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -96,7 +96,7 @@ export default function LandingPage() {
             <button onClick={() => window.location.href = '/login'} style={{
               background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', color: '#fff', border: 'none', padding: '10px 24px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
-            }}>Comecar gratis</button>
+            }}>Começar grátis</button>
           </div>
         </div>
       </nav>
@@ -122,15 +122,15 @@ export default function LandingPage() {
               <h1 className="fade-up fade-up-d1" style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(36px, 5vw, 56px)', color: '#ffffff', lineHeight: 1.1, marginBottom: '24px', fontWeight: 700 }}>
                 Transforme suas consultas de{' '}
                 <span style={{ background: 'linear-gradient(135deg, #C9A84C, #E8D48B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Feng Shui</span>
-                {' '}em uma experiencia profissional
+                {' '}em uma experiência profissional
               </h1>
 
               <p className="fade-up fade-up-d2" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '18px', lineHeight: 1.7, marginBottom: '40px', maxWidth: '520px' }}>
-                Gerencie clientes, realize diagnosticos Ba Gua completos e gere relatorios PDF profissionais. Tudo em uma unica plataforma feita para consultores como voce.
+                Análise Ba Guá com upload de planta, Roda da Vida com 12 áreas, curas e ativações, relatórios PDF e calendário lunar. Tudo em uma única plataforma feita para consultores como você.
               </p>
 
               <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
-                <button className="btn-primary" onClick={() => window.location.href = '/login'}>Comecar gratuitamente</button>
+                <button className="btn-primary" onClick={() => window.location.href = '/login'}>Começar gratuitamente</button>
                 <a href="#como-funciona" className="btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Ver como funciona</a>
               </div>
 
@@ -138,7 +138,7 @@ export default function LandingPage() {
                 {[
                   { num: '500+', label: 'Consultores ativos' },
                   { num: '2.000+', label: 'Consultas realizadas' },
-                  { num: '4.8★', label: 'Avaliacao media' },
+                  { num: '4.8★', label: 'Avaliação média' },
                 ].map((stat, i) => (
                   <div key={i}>
                     <p style={{ color: '#C9A84C', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>{stat.num}</p>
@@ -162,11 +162,11 @@ export default function LandingPage() {
                     { nome: 'Prosperidade', cor: '#A78BFA', elemento: 'Madeira', trigram: '☴' },
                     { nome: 'Fama', cor: '#FF6B6B', elemento: 'Fogo', trigram: '☲' },
                     { nome: 'Amor', cor: '#F9A8D4', elemento: 'Terra', trigram: '☷' },
-                    { nome: 'Familia', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
+                    { nome: 'Família', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
                     { nome: 'Centro', cor: '#FBBF24', elemento: 'Terra', trigram: '☯' },
                     { nome: 'Filhos', cor: '#F59E0B', elemento: 'Metal', trigram: '☱' },
                     { nome: 'Saber', cor: '#60A5FA', elemento: 'Terra', trigram: '☶' },
-                    { nome: 'Carreira', cor: '#38BDF8', elemento: 'Agua', trigram: '☵' },
+                    { nome: 'Carreira', cor: '#38BDF8', elemento: 'Água', trigram: '☵' },
                     { nome: 'Amigos', cor: '#CBD5E1', elemento: 'Metal', trigram: '☰' },
                   ].map((setor, i) => (
                     <div key={i} style={{
@@ -239,17 +239,19 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>RECURSOS</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#0f172a', fontWeight: 700, marginBottom: '16px' }}>Tudo que voce precisa em um so lugar</h2>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#0f172a', fontWeight: 700, marginBottom: '16px' }}>Tudo que você precisa em um só lugar</h2>
             <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '560px', margin: '0 auto', lineHeight: 1.7 }}>Ferramentas projetadas especificamente para consultores de Feng Shui que querem profissionalizar seu trabalho.</p>
           </div>
           <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             {[
-              { icon: '👥', title: 'Gestao de Clientes', desc: 'Cadastre e organize todos os seus clientes com dados de contato, historico de consultas e notas pessoais.', color: '#3B82F6' },
-              { icon: '🧭', title: 'Diagnostico Ba Gua', desc: 'Avalie os 9 setores do Ba Gua com criterios padronizados e scores automaticos por setor.', color: '#7C3AED' },
-              { icon: '📊', title: 'Relatorio PDF Pro', desc: 'Gere relatorios profissionais em PDF com sua marca, scores detalhados e recomendacoes por setor.', color: '#15803D' },
-              { icon: '📅', title: 'Calendario Lunar', desc: 'Consulte o calendario lunar chines integrado para planejar ativacoes e datas auspiciosas.', color: '#D97706' },
-              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estao protegidos com criptografia e autenticacao segura.', color: '#DC2626' },
-              { icon: '📱', title: 'Acesso em Qualquer Lugar', desc: 'Use pelo computador, tablet ou celular. Interface responsiva que se adapta a qualquer tela.', color: '#0891B2' },
+              { icon: '🧭', title: 'Análise Ba Guá Interativa', desc: 'Faça upload da planta do imóvel e avalie os 9 setores do Ba Guá com critérios padronizados e scores automáticos.', color: '#7C3AED' },
+              { icon: '◎', title: 'Roda da Vida Completa', desc: 'Questionário com 12 áreas da vida e 60 perguntas. Gráfico radar, médias por categoria e plano de ação integrado.', color: '#BE185D' },
+              { icon: '📊', title: 'Relatórios PDF Personalizados', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
+              { icon: '👥', title: 'Gestão de Clientes e Consultas', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
+              { icon: '📅', title: 'Calendário Lunar com Rituais', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações, rituais e datas auspiciosas.', color: '#D97706' },
+              { icon: '✨', title: 'Curas e Ativações por Setor', desc: 'Cristais, plantas, objetos, mudras, meditações e mantras para cada setor do Ba Guá.', color: '#C9A84C' },
+              { icon: '📱', title: 'PWA — Funciona como App', desc: 'Instale no celular como um app nativo. Funciona em qualquer dispositivo com interface responsiva.', color: '#0891B2' },
+              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#DC2626' },
             ].map((feat, i) => (
               <div key={i} className="feature-card" style={{ background: '#ffffff', borderRadius: '20px', padding: '32px', border: '1px solid #f1f5f9' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: `${feat.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', marginBottom: '20px' }}>{feat.icon}</div>
@@ -267,14 +269,14 @@ export default function LandingPage() {
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{ color: '#C9A84C', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>COMO FUNCIONA</span>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#0f172a', fontWeight: 700, marginBottom: '16px' }}>Simples como deve ser</h2>
-            <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Em apenas 3 passos voce transforma seu atendimento.</p>
+            <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Em apenas 3 passos você transforma seu atendimento.</p>
           </div>
           <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '48px', position: 'relative' }}>
             <div className="hide-mobile" style={{ position: 'absolute', top: '60px', left: '16%', right: '16%', height: '2px', background: 'linear-gradient(90deg, #7C3AED, #C9A84C, #15803D)', opacity: 0.3 }} />
             {[
-              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imoveis a serem analisados.', color: '#7C3AED' },
-              { step: '02', title: 'Realize o diagnostico', desc: 'Avalie cada setor do Ba Gua com os criterios integrados e gere scores automaticos.', color: '#C9A84C' },
-              { step: '03', title: 'Entregue o relatorio', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
+              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imóveis a serem analisados.', color: '#7C3AED' },
+              { step: '02', title: 'Realize o diagnóstico', desc: 'Avalie cada setor do Ba Guá com os critérios integrados e gere scores automáticos.', color: '#C9A84C' },
+              { step: '03', title: 'Entregue o relatório', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
             ].map((item, i) => (
               <div key={i} style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: `linear-gradient(135deg, ${item.color}15, ${item.color}08)`, border: `3px solid ${item.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
@@ -293,9 +295,9 @@ export default function LandingPage() {
         <div style={{ position: 'absolute', top: '10%', right: '5%', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)' }} />
         <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span style={{ color: '#C4B5FD', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>PRECOS</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Escolha o plano ideal para voce</h2>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Comece gratuitamente e faca upgrade quando quiser.</p>
+            <span style={{ color: '#C4B5FD', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>PREÇOS</span>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Escolha o plano ideal para você</h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Comece gratuitamente e faça upgrade quando quiser.</p>
           </div>
           <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             <div className="pricing-card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '40px 32px' }}>
