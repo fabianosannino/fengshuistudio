@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  const ALLOWED_FIELDS = ['cliente_id', 'nome_imovel', 'tipo_imovel', 'area_total_m2', 'endereco_imovel', 'porta_posicao', 'status'] as const
+  const ALLOWED_FIELDS = ['cliente_id', 'nome_imovel', 'tipo_imovel', 'area_total_m2', 'endereco_imovel', 'status', 'num_moradores', 'historico_imovel', 'observacoes_topograficas', 'dados_adicionais'] as const
   const sanitized: Record<string, unknown> = {}
   for (const key of ALLOWED_FIELDS) {
     if (body[key] !== undefined) {
