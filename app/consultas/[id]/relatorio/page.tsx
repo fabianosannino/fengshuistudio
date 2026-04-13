@@ -891,74 +891,65 @@ export default function Relatorio() {
           </div>
         )}
 
-        {/* ══════ 3-COLUMN RECOMMENDATIONS ══════ */}
-        {(selectedSections.completo || selectedSections.bagua) && (
+        {/* ══════ RECOMMENDATIONS IN ROWS ══════ */}
+        {(selectedSections.completo || selectedSections.bagua) && sortedSetores.length > 0 && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
-            <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>建</span>
+            <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>薦</span>
             Recomendações Prioritárias
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.9rem' }}>
-            {[
-              { list: urgentes, title: 'Urgente', count: urgentes.length, bg: '#EF4444', icon: '⚑' },
-              { list: atencao, title: 'Atenção', count: atencao.length, bg: '#F59E0B', icon: '◉' },
-              { list: manterSetores, title: 'Manter', count: manterSetores.length, bg: '#22C55E', icon: '✓' },
-            ].map(col => (
-              <div key={col.title}>
-                <div style={{
-                  fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em',
-                  padding: '7px 12px', borderRadius: '3px 3px 0 0', background: col.bg, color: '#fff',
-                  display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Helvetica Neue, Arial, sans-serif'
-                }}>
-                  {col.icon} {col.title} ({col.count})
+
+          {[
+            { label: 'URGENTE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', filter: (s: SetorBagua) => (s.score_percentual ?? 100) < 60 },
+            { label: 'ATENÇÃO', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', filter: (s: SetorBagua) => (s.score_percentual ?? 100) >= 60 && (s.score_percentual ?? 100) < 80 },
+            { label: 'MANTER', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', filter: (s: SetorBagua) => (s.score_percentual ?? 100) >= 80 },
+          ].map(group => {
+            const groupSetores = sortedSetores.filter(group.filter)
+            if (groupSetores.length === 0) return null
+            return (
+              <div key={group.label} style={{ marginBottom: '14px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '4px', background: group.bg, border: `1px solid ${group.border}`, marginBottom: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: group.color, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{group.label}</span>
                 </div>
-                <div style={{ background: '#fff', border: `1px solid ${border}`, borderTop: 'none', borderRadius: '0 0 3px 3px', minHeight: '40px' }}>
-                  {col.list.length === 0 ? (
-                    <div style={{ padding: '18px 12px', fontSize: '11px', color: '#aaa', textAlign: 'center', fontStyle: 'italic', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                      Nenhuma área neste nível
-                    </div>
-                  ) : col.list.map(setor => {
-                    const meta = AREA_META[setor.nome]
-                    const criteriosMap = getCriteriosMap(setor)
-                    const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, criteriosMap)
-                    const customRecs = setor.recomendacoes_custom
-                    const hasCustom = Array.isArray(customRecs) && customRecs.length > 0
-                    const mainAction = hasCustom
-                      ? (customRecs as { tipo: string; texto: string }[])[0].texto
-                      : (meta?.action || rec.urgente[0] || rec.melhoria[0] || '—')
-                    return (
-                      <div key={setor.id} style={{ padding: '9px 12px', borderBottom: '1px dashed #EAE5DB' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px', fontSize: '11px', fontWeight: 600, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: meta?.bg || '#666', flexShrink: 0 }} />
-                          {setor.nome} · {meta?.dir || setor.posicao_grid}
-                          {hasCustom && <span style={{ fontSize: '8px', color: '#7C3AED', fontWeight: 400, marginLeft: '4px' }}>★ consultor</span>}
-                        </div>
-                        <div style={{ fontSize: '11px', color: hasCustom ? '#374151' : '#666', lineHeight: 1.5, marginBottom: '4px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                          {mainAction}
-                        </div>
-                        {hasCustom && (customRecs as { tipo: string; texto: string }[]).length > 1 && (
-                          <div style={{ fontSize: '10px', color: '#7C3AED', lineHeight: 1.4, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                            {(customRecs as { tipo: string; texto: string }[]).slice(1, 3).map((cr, ci) => (
-                              <div key={ci}>• {cr.texto}</div>
-                            ))}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
-                          {[meta?.elem, meta?.crystals?.split(',')[0]?.trim(), meta?.plants?.split(',')[0]?.trim(), meta?.colors?.split(',')[0]?.trim()].filter(Boolean).map((tag, ti) => (
-                            <span key={ti} style={{
-                              fontSize: '9px', padding: '1px 6px', borderRadius: '2px',
-                              background: '#F5F0E5', color: '#666', border: '1px solid #E5DDD0',
-                              fontFamily: 'Helvetica Neue, Arial, sans-serif'
-                            }}>{tag}</span>
+                {groupSetores.map(setor => {
+                  const meta = AREA_META[setor.nome]
+                  const criteriosMap = getCriteriosMap(setor)
+                  const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, criteriosMap)
+                  const customRecs = setor.recomendacoes_custom
+                  const hasCustom = Array.isArray(customRecs) && customRecs.length > 0
+                  const mainAction = hasCustom
+                    ? (customRecs as { tipo: string; texto: string }[])[0].texto
+                    : (meta?.action || rec.urgente[0] || rec.melhoria[0] || rec.manutencao[0] || '—')
+                  return (
+                    <div key={setor.id} style={{ padding: '8px 12px', marginBottom: '4px', borderRadius: '4px', background: '#fff', border: `1px solid ${group.border}`, borderLeft: `3px solid ${group.color}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: ink, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                          {setor.nome} · {meta?.dir || ''} · {meta?.elem || setor.elemento}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: group.color }}>{setor.score_percentual}%</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#374151', lineHeight: 1.5, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                        {hasCustom && <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#7C3AED' }}>★ CONSULTOR</span>}
+                        {mainAction}
+                      </div>
+                      {hasCustom && (customRecs as { tipo: string; texto: string }[]).length > 1 && (
+                        <div style={{ fontSize: '10px', color: '#7C3AED', lineHeight: 1.4, marginTop: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                          {(customRecs as { tipo: string; texto: string }[]).slice(1, 3).map((cr, ci) => (
+                            <div key={ci}>• {cr.texto}</div>
                           ))}
                         </div>
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '4px' }}>
+                        {[meta?.crystals?.split(',')[0]?.trim(), meta?.plants?.split(',')[0]?.trim(), meta?.colors?.split(',')[0]?.trim()].filter(Boolean).map((tag, ti) => (
+                          <span key={ti} style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '2px', background: '#F5F0E5', color: '#666', border: '1px solid #E5DDD0', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{tag}</span>
+                        ))}
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
+            )
+          })}
         </div>
         )}
 
