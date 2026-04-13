@@ -701,6 +701,46 @@ export default function Relatorio() {
                 <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>輪</span>
                 Roda da Vida — 12 Áreas
               </div>
+              {/* Radar Chart SVG */}
+              {(() => {
+                const respostas = (consulta?.roda_da_vida as any)?.respostas || consulta?.roda_da_vida || {}
+                const getVal = (key: string): number => {
+                  const v = (respostas as any)[key]
+                  if (Array.isArray(v)) return v.reduce((s: number, n: number) => s + n, 0) / v.length
+                  if (typeof v === 'number') return v
+                  return 0
+                }
+                const cx = 150, cy = 150, R = 120, n = 12
+                const areaKeys = RODA_12_AREAS.map(a => a.key)
+                const values = areaKeys.map(k => getVal(k))
+                const polar = (r: number, i: number) => {
+                  const a = (i * 2 * Math.PI / n) - Math.PI / 2
+                  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+                }
+                const pts = values.map((v, i) => polar(R * v / 10, i))
+                const poly = pts.map(p => `${p.x},${p.y}`).join(' ')
+                return (
+                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <svg viewBox="0 0 300 300" style={{ width: '280px', height: '280px' }}>
+                      {[2,4,6,8,10].map(r => (
+                        <polygon key={r} points={Array.from({length:n},(_,i)=>polar(R*r/10,i)).map(p=>`${p.x},${p.y}`).join(' ')} fill="none" stroke="#E5E7EB" strokeWidth={0.5} />
+                      ))}
+                      {RODA_12_AREAS.map((a, i) => {
+                        const lp = polar(R, i)
+                        const tp = polar(R + 12, i)
+                        return (
+                          <g key={a.key}>
+                            <line x1={cx} y1={cy} x2={lp.x} y2={lp.y} stroke="#E5E7EB" strokeWidth={0.5} />
+                            <text x={tp.x} y={tp.y} textAnchor="middle" dominantBaseline="middle" fontSize={6} fill={a.cor} fontWeight="bold">{a.label.length > 12 ? a.label.split(' ')[0] : a.label}</text>
+                          </g>
+                        )
+                      })}
+                      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#7C3AED" strokeWidth={1.5} />
+                      {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill={RODA_12_AREAS[i].cor} />)}
+                    </svg>
+                  </div>
+                )
+              })()}
               {RODA_CATEGORIAS.map(cat => {
                 const catAvg = rodaAvg(cat.areas.map(k => getVal(k)))
                 return (

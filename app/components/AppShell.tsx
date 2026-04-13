@@ -6,6 +6,7 @@ import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional as isProfissionalFn, planoUsuario } from '../../src/lib/plano-utils'
 import PaymentBanner from './PaymentBanner'
+import NotificationBell from './NotificationBell'
 
 type NavItem = { label: string; icon: string; href: string; bloqueado?: boolean }
 
@@ -292,6 +293,7 @@ export default function AppShell({
                 borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
               }}>{plano === 'profissional' ? 'PRO' : 'SIMPLES'}</span>
             )}
+            <NotificationBell />
             <button onClick={handleLogout} title="Sair da conta" style={{
               background: 'none', border: '1px solid ' + t.border, borderRadius: '8px',
               padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
