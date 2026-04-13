@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
+import NotificationBell from './NotificationBell'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional as isProfissionalFn, planoUsuario } from '../../src/lib/plano-utils'
 import PaymentBanner from './PaymentBanner'
