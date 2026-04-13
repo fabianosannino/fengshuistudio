@@ -1034,6 +1034,67 @@ export default function Relatorio() {
         </div>
         )}
 
+        {/* ══════ CURAS DETALHADAS POR SETOR ══════ */}
+        {(selectedSections.completo || selectedSections.curas) && setores.length > 0 && (
+        <div style={{ padding: '0 1.5rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
+            <span style={{ fontSize: '20px', color: gold }}>💎</span>
+            Curas &amp; Ativações — Detalhamento por Setor
+          </div>
+          {setores.filter(s => s.score_percentual != null && s.score_percentual < 80).sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100)).slice(0, 5).map(setor => {
+            const meta = AREA_META[setor.nome]
+            const lvl = scoreLevelLabel(setor.score_percentual ?? 0)
+            return (
+              <div key={setor.id} style={{ marginBottom: '14px', border: `1px solid ${border}`, borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ background: meta?.bg || '#1E3A5F', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: meta?.fg || '#fff', fontSize: '13px', fontWeight: 600, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                    {meta?.zh || ''} {setor.nome} · {meta?.elem || setor.elemento}
+                  </span>
+                  <span style={{ color: meta?.fg || '#fff', fontSize: '12px', fontWeight: 700 }}>{setor.score_percentual}%</span>
+                </div>
+                <div style={{ padding: '10px 14px', fontSize: '11px', fontFamily: 'Helvetica Neue, Arial, sans-serif', color: ink }}>
+                  {/* Cristais */}
+                  {meta?.crystals && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, color: '#7C3AED', marginBottom: '3px' }}>💎 Cristais recomendados</div>
+                      <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.crystals}</div>
+                    </div>
+                  )}
+                  {/* Plantas */}
+                  {meta?.plants && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, color: '#15803D', marginBottom: '3px' }}>🌿 Plantas recomendadas</div>
+                      <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.plants}</div>
+                    </div>
+                  )}
+                  {/* Cores */}
+                  {meta?.colors && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, color: '#D97706', marginBottom: '3px' }}>🎨 Cores harmônicas</div>
+                      <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.colors}</div>
+                    </div>
+                  )}
+                  {/* Ação principal */}
+                  {meta?.action && (
+                    <div style={{ marginBottom: '4px' }}>
+                      <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: '3px' }}>⚡ Ação prioritária</div>
+                      <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.action}</div>
+                    </div>
+                  )}
+                  {/* Consultant additional recommendation */}
+                  {recsAdicionais[setor.id] && (
+                    <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F0FF', borderLeft: '3px solid #7C3AED', borderRadius: '2px' }}>
+                      <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#7C3AED' }}>CONSULTOR</span>
+                      <span style={{ color: '#374151' }}>{recsAdicionais[setor.id]}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        )}
+
         {/* ══════ DETAILED SECTOR DIAGNOSTICS ══════ */}
         {(selectedSections.completo || selectedSections.bagua) && (
         <div style={{ padding: '0 1.5rem 1rem' }}>
