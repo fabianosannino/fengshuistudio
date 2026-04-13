@@ -20,6 +20,7 @@ export default function Perfil() {
     cidade: '', estado: '', bio: '', site: '',
     profissao: '', area_atuacao: '', registro_profissional: '',
     linkedin: '', instagram: '', parceiro_visivel: false,
+    store_slug: '',
   })
 
   const isProfessional = isProfissionalFn({ plano, tipo_usuario: tipoUsuario, role: tipoUsuario })
@@ -48,6 +49,7 @@ export default function Perfil() {
           linkedin: (p.linkedin || '') as string,
           instagram: (p.instagram || '') as string,
           parceiro_visivel: (p.parceiro_visivel || false) as boolean,
+          store_slug: (p.store_slug || '') as string,
         })
       } else {
         // Fallback to user metadata
@@ -81,6 +83,7 @@ export default function Perfil() {
       estado: form.estado,
       bio: form.bio,
       site: form.site,
+      store_slug: form.store_slug,
     }
 
     const profData: Record<string, string | boolean | null> = {
@@ -263,6 +266,16 @@ export default function Perfil() {
                   <label htmlFor="input-instagram" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Instagram</label>
                   <input id="input-instagram" name="instagram" value={form.instagram} onChange={handleChange} placeholder="@seuperfil ou https://instagram.com/seuperfil" style={inputStyle} />
                 </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>URL da sua loja</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: '#9CA3AF', fontSize: '13px' }}>fengshuistudio.com.br/loja/</span>
+                  <input name="store_slug" value={form.store_slug} onChange={handleChange}
+                    placeholder="seu-nome" style={inputStyle} />
+                </div>
+                <p style={{ color: '#9CA3AF', fontSize: '11px', marginTop: '4px' }}>Use letras minúsculas, números e hífens. Ex: joao-silva</p>
               </div>
 
             </div>

@@ -17,6 +17,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
+import { supabase } from '../../../src/lib/supabase'
 
 interface AccountStatus {
   has_account: boolean
@@ -26,6 +27,7 @@ interface AccountStatus {
   onboarding_complete?: boolean
   requirements_status?: string
   capabilities?: { card_payments?: string }
+  charges_enabled?: boolean
 }
 
 export default function StripeOnboardPage() {
@@ -42,6 +44,9 @@ function StripeOnboard() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [message, setMessage] = useState('')
+  const [profile, setProfile] = useState<any>(null)
+  const [sales, setSales] = useState<any[]>([])
+  const totalRevenue = sales.reduce((s, o) => s + (o.amount || 0), 0)
 
   // ── Check if returning from Stripe onboarding ──────────────────────────
   const returnAccountId = searchParams.get('accountId')
@@ -62,6 +67,25 @@ function StripeOnboard() {
       const data = await res.json()
       setStatus(data)
     }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      setProfile(profileData)
+
+      const { data: salesData } = await supabase
+        .from('store_orders')
+        .select('*')
+        .eq('seller_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      setSales(salesData || [])
+    }
+
     setLoading(false)
   }
 
@@ -192,6 +216,15 @@ function StripeOnboard() {
               <div style={{ fontSize: '13px', color: '#6B7280', padding: '8px 0', borderTop: '1px solid #F3F4F6' }}>
                 Conta: <code style={{ background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px' }}>{status.account_id}</code>
               </div>
+
+              {profile?.store_slug && (
+                <div style={{ marginTop: '12px', padding: '10px 14px', background: '#F5F0FF', borderRadius: '8px', border: '1px solid #E9D5FF' }}>
+                  <div style={{ fontSize: '12px', color: '#7C3AED', fontWeight: 'bold', marginBottom: '4px' }}>Link da sua loja:</div>
+                  <div style={{ fontSize: '13px', color: '#374151' }}>
+                    {typeof window !== 'undefined' ? window.location.origin : ''}/loja/{profile.store_slug}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
