@@ -224,7 +224,25 @@ export default function Relatorio() {
       const html2canvas = (await import('html2canvas')).default
       const { jsPDF } = await import('jspdf')
       const canvas = await html2canvas(printRef.current, {
-        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 15000,
+        onclone: (clonedDoc) => {
+          // Remove editable textareas and show their print-only versions
+          const textareas = clonedDoc.querySelectorAll('textarea')
+          textareas.forEach(ta => {
+            const div = clonedDoc.createElement('div')
+            div.style.cssText = 'font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;font-family:Helvetica Neue,Arial,sans-serif;'
+            div.textContent = ta.value
+            ta.parentNode?.replaceChild(div, ta)
+          })
+          // Remove no-print elements
+          const noPrint = clonedDoc.querySelectorAll('.no-print')
+          noPrint.forEach(el => el.remove())
+        }
       })
       const imgWidth = 210
       const pageHeight = 297
