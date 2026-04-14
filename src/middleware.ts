@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes
-  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/loja')) {
+  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/loja') || pathname === '/consultores') {
     return NextResponse.next()
   }
 
