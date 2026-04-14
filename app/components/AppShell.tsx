@@ -271,16 +271,16 @@ export default function AppShell({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid ' + t.border, position: 'sticky', top: 0, zIndex: 30,
         }}>
-          <button onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" style={{
+          <button onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" className="mobile-menu-btn" style={{
             background: 'none', border: 'none', fontSize: '24px',
-            cursor: 'pointer', padding: '4px',
+            cursor: 'pointer', padding: '8px',
             display: isMobile ? 'block' : 'none'
           }} aria-expanded={mobileOpen}>
             <span aria-hidden="true">☰</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: t.textSoft, fontSize: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1, marginLeft: '8px' }}>
+            <span style={{ color: t.textSoft, fontSize: isMobile ? '12px' : '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Olá, <strong style={{ color: t.text }}>{profile?.nome_completo || user?.email || ''}</strong>
             </span>
           </div>
@@ -312,7 +312,13 @@ export default function AppShell({
       </div>
 
       <style>{`
-        @media (max-width: 768px) { aside { transform: translateX(-100%) !important; } }
+        @media print {
+          .no-print { display: none !important; }
+        }
+        /* Mobile: always show hamburger button on small screens */
+        @media (max-width: 768px) {
+          .mobile-menu-btn { display: block !important; }
+        }
         a:hover { background: rgba(255,255,255,0.1) !important; }
         button:hover { opacity: 0.85; }
         /* Focus indicators for keyboard navigation */
