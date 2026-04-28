@@ -454,8 +454,8 @@ export default function Planos() {
         <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
           Dúvidas sobre os planos? Entre em contato pelo e-mail
         </p>
-        <a href="mailto:suporte@fengshuistudio.com" style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none' }}>
-          suporte@fengshuistudio.com
+        <a href="mailto:suporte@fengshuistudio.com.br" style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none' }}>
+          suporte@fengshuistudio.com.br
         </a>
       </div>
     </AppShell>
