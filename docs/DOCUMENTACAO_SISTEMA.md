@@ -91,7 +91,7 @@ O upgrade de plano e feito por meio de **chaves de ativacao**. Funciona assim:
 5. Clique em **"Ativar"**
 6. Pronto! Seu plano sera atualizado imediatamente 🎉
 
-> 💡 **Onde consigo uma chave?** As chaves sao geradas pelo administrador do sistema. Entre em contato pelo e-mail **suporte@fengshuistudio.com** para adquirir a sua.
+> 💡 **Onde consigo uma chave?** As chaves sao geradas pelo administrador do sistema. Entre em contato pelo e-mail **suporte@fengshuistudio.com.br** para adquirir a sua.
 
 ---
 
@@ -964,7 +964,7 @@ Sim! O sistema usa:
 
 ### Como entro em contato com o suporte?
 
-Envie um e-mail para **suporte@fengshuistudio.com** com:
+Envie um e-mail para **suporte@fengshuistudio.com.br** com:
 - Seu nome e e-mail de cadastro
 - Descricao do problema
 - Captura de tela (se possivel)
@@ -1018,7 +1018,7 @@ Envie um e-mail para **suporte@fengshuistudio.com** com:
 
 ---
 
-> 📝 **Este documento foi criado para facilitar o entendimento do FengShui Studio. Se tiver duvidas, entre em contato pelo e-mail suporte@fengshuistudio.com.**
+> 📝 **Este documento foi criado para facilitar o entendimento do FengShui Studio. Se tiver duvidas, entre em contato pelo e-mail suporte@fengshuistudio.com.br.**
 
 ---
 
