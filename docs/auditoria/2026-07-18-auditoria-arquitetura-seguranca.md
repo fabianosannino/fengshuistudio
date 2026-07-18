@@ -8,10 +8,39 @@
 > C8 parcial (listagem de storage por dono). Adicionados: client `service_role`,
 > `.env.example`, `SECURITY.md`, `CLAUDE.md`, `.nvmrc`, README real, workflow de CI,
 > remoção de arquivo morto, e 17 erros de lint de baixo risco zerados (67→50).
-> **Pendências (P1/P2):** buckets privados + URLs assinadas (C8 completo), 50 erros de
-> lint restantes (36 `any` + 13 `set-state-in-effect` + 1 `immutability`), rate limit
-> distribuído (A4/A5), CSP sem `unsafe-inline`, extração da lógica de domínio dos
-> componentes, ADRs, schema base no repo (A8/A9).
+> **Correção adicional (bug):** `SETOR_DICAS`/`CRITERIO_DICAS` estavam duplicados e
+> **divergiram** — a tela de detalhe da consulta usava a versão rica (5 dicas) e o PDF
+> do relatório a versão truncada (3 dicas), para a mesma consulta. Unificado numa fonte
+> única em `constants.ts` (versão superset, sem perda), com teste de regressão.
+>
+> **Pendências (P1/P2):** buckets privados + URLs assinadas (C8 completo — ver plano de
+> migração abaixo), 50 erros de lint restantes (36 `any` + 13 `set-state-in-effect` +
+> 1 `immutability`), rate limit distribuído (A4/A5), CSP sem `unsafe-inline`, terceira
+> cópia divergente de `CRITERIO_DICAS`/dicas de setor em `app/bagua-planta/page.tsx`
+> (motor de recomendações separado, com conteúdo próprio — requer decisão de domínio),
+> extração da lógica de domínio dos componentes, ADRs, schema base no repo (A8/A9).
+
+---
+
+## Plano de migração — buckets privados + URLs assinadas (C8 completo, LGPD)
+
+**Por que não foi feito neste PR:** mudança *outward-facing* e difícil de reverter que
+exige verificação em staging (não reproduzível sem Supabase real + browser). Estado atual
+mapeado: o banco guarda a **URL pública completa** (não o path) em `consultas.foto_geral_url`,
+`consultas.fotos_comodos[].fotos[]`, `consultas.fotos_antes[]`, `consultas.fotos_depois[]`,
+`consultas.bagua_entrada.planta_url` e `clientes.foto_url`; todos os ~13 pontos de render são
+client components; e a geração de PDF (`relatorio`) usa `html2canvas` com `useCORS` — as
+imagens precisam carregar antes da captura, senão o PDF sai em branco.
+
+**Sequência segura (PR próprio, com staging):**
+1. Nova rota `GET /api/storage/signed?path=...` que verifica ownership (consulta/cliente do
+   `user.id`) e retorna `createSignedUrl` (TTL curto).
+2. Passar as 3 rotas de upload a salvar o **path** (não a URL pública); ajustar os 3 pontos de
+   DELETE que hoje derivam o path por `split('/bucket/')`.
+3. Backfill idempotente das linhas existentes: URL pública → path.
+4. Nos ~13 pontos de render, resolver a signed URL antes de exibir (com `crossOrigin` correto
+   para o `html2canvas`). **Validar a geração de PDF em staging** — ponto de maior risco.
+5. Só então: `UPDATE storage.buckets SET public = false` para `imoveis-fotos` e `clientes-fotos`.
 **Método:** análise estática integral de todas as rotas API (23), todas as páginas/componentes (53 `.tsx`, ~20.660 linhas), todas as 17 migrations SQL, mais execução de `tsc`, `eslint`, `vitest` e `next build`.
 
 ---
