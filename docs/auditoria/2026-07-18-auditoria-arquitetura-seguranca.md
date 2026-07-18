@@ -2,6 +2,16 @@
 
 **Data:** 2026-07-18
 **Escopo:** código completo (`app/`, `src/`, `supabase/migrations/`, configs), verificação funcional (build, typecheck, lint, testes) e conformidade com o playbook CollabZ Craftsmanship (regras R1–R16).
+
+> **Status de remediação (atualizado):** P0 e a maior parte do P1 já implementados no PR #70.
+> Corrigidos: C1–C10, A1, A3 (mensagens genéricas), A6 (extensão de upload por MIME),
+> C8 parcial (listagem de storage por dono). Adicionados: client `service_role`,
+> `.env.example`, `SECURITY.md`, `CLAUDE.md`, `.nvmrc`, README real, workflow de CI,
+> remoção de arquivo morto, e 17 erros de lint de baixo risco zerados (67→50).
+> **Pendências (P1/P2):** buckets privados + URLs assinadas (C8 completo), 50 erros de
+> lint restantes (36 `any` + 13 `set-state-in-effect` + 1 `immutability`), rate limit
+> distribuído (A4/A5), CSP sem `unsafe-inline`, extração da lógica de domínio dos
+> componentes, ADRs, schema base no repo (A8/A9).
 **Método:** análise estática integral de todas as rotas API (23), todas as páginas/componentes (53 `.tsx`, ~20.660 linhas), todas as 17 migrations SQL, mais execução de `tsc`, `eslint`, `vitest` e `next build`.
 
 ---
