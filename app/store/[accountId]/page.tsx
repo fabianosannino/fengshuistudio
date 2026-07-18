@@ -71,7 +71,7 @@ export default function Storefront() {
     const data = await res.json()
     if (res.ok && data.url) {
       // Redirect to Stripe Checkout
-      window.location.href = data.url
+      window.location.assign(data.url)
     } else {
       alert(data.error || 'Erro ao processar compra')
       setPurchasing(null)

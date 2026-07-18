@@ -250,7 +250,7 @@ export default function AdminRelatorios() {
             {loading ? (
               <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF' }}>Carregando...</td></tr>
             ) : reports.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF' }}>Nenhum relatório gerado ainda. Clique em "Gerar Relatório" para criar o primeiro.</td></tr>
+              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF' }}>Nenhum relatório gerado ainda. Clique em &quot;Gerar Relatório&quot; para criar o primeiro.</td></tr>
             ) : reports.map(r => (
               <tr key={r.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                 <td style={{ padding: '12px', fontWeight: 'bold', color: '#374151' }}>Sem. {r.data.periodo?.semana || '—'}</td>

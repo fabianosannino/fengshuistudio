@@ -35,7 +35,7 @@ export default function Parceiros() {
       setUserPlano(prof?.plano || '')
 
       // Fetch profiles that opted to be visible as partners (paginated)
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('parceiro_visivel', true)
@@ -46,11 +46,11 @@ export default function Parceiros() {
       // Fallback: fetch nothing (column needs to be created via migration)
       if (error) {
         console.warn('parceiro_visivel query failed — run the migration in supabase/migrations/20260316_fix_all_missing_columns.sql')
-        data = []
       }
 
-      setParceiros(data || [])
-      setHasMore((data || []).length === PAGE_SIZE)
+      const parceiros = error ? [] : (data || [])
+      setParceiros(parceiros)
+      setHasMore(parceiros.length === PAGE_SIZE)
       setLoading(false)
     }
     load()

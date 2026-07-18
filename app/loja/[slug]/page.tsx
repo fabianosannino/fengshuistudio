@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../src/lib/supabase'
 
@@ -53,7 +54,7 @@ export default function LojaConsultor() {
       }),
     })
     const data = await res.json()
-    if (data.url) window.location.href = data.url
+    if (data.url) window.location.assign(data.url)
   }
 
   if (loading) return (
@@ -66,7 +67,7 @@ export default function LojaConsultor() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', flexDirection: 'column', gap: '12px' }}>
       <div style={{ fontSize: '48px' }}>☯</div>
       <p style={{ color: '#6B7280', fontSize: '16px' }}>{error}</p>
-      <a href="/" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 'bold' }}>Voltar ao início</a>
+      <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 'bold' }}>Voltar ao início</Link>
     </div>
   )
 
@@ -117,7 +118,7 @@ export default function LojaConsultor() {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', padding: '24px', color: '#9CA3AF', fontSize: '12px' }}>
-        Loja hospedada no <a href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</a>
+        Loja hospedada no <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</Link>
       </div>
     </div>
   )

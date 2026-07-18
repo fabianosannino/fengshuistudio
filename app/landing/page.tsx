@@ -740,7 +740,7 @@ export default function LandingPage() {
                   color: '#334155', fontSize: '15px', lineHeight: 1.8,
                   fontStyle: 'italic', margin: '0 0 24px 0',
                 }}>
-                  "{t.text}"
+                  &quot;{t.text}&quot;
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{

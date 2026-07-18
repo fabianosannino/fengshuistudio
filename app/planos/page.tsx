@@ -140,7 +140,7 @@ export default function Planos() {
       const data = await res.json()
       if (!res.ok) { setMessage('Erro: ' + (data.error || 'Erro ao criar checkout')); setUpgrading(false); return }
       if (data.url) {
-        window.location.href = data.url
+        window.location.assign(data.url)
       }
     } catch { setMessage('Erro de conexão.'); setUpgrading(false) }
   }

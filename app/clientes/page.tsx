@@ -488,7 +488,7 @@ export default function Clientes() {
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>👤</div>
           <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>Nenhum cliente cadastrado</h3>
-          <p style={{ color: '#6B7280', fontSize: '14px' }}>Clique em "Novo cliente" para comecar</p>
+          <p style={{ color: '#6B7280', fontSize: '14px' }}>Clique em &quot;Novo cliente&quot; para comecar</p>
         </div>
       ) : filteredClientes.length === 0 ? (
         <div style={{
