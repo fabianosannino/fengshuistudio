@@ -65,8 +65,6 @@ export default function Storefront() {
       body: JSON.stringify({
         account_id: accountId,
         price_id: product.price.id,
-        unit_amount: product.price.unit_amount,
-        product_name: product.name,
         quantity: 1,
       }),
     })

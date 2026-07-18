@@ -40,7 +40,7 @@ export default function LojaConsultor() {
   }, [slug])
 
   async function handleBuy(product: any) {
-    const price = product.default_price
+    const price = product.price
     if (!price) return
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
@@ -48,8 +48,6 @@ export default function LojaConsultor() {
       body: JSON.stringify({
         account_id: profile.stripe_account_id,
         price_id: price.id,
-        product_name: product.name,
-        unit_amount: price.unit_amount,
         success_url: `${window.location.origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: window.location.href,
       }),
@@ -100,10 +98,10 @@ export default function LojaConsultor() {
               <div key={p.id} style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB' }}>
                 <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px' }}>{p.name}</h3>
                 {p.description && <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 12px', lineHeight: 1.5 }}>{p.description}</p>}
-                {p.default_price && (
+                {p.price && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#1E3A5F' }}>
-                      {(p.default_price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {(p.price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                     <button onClick={() => handleBuy(p)} style={{
                       padding: '8px 20px', background: '#7C3AED', color: '#fff', border: 'none',
