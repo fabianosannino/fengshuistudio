@@ -13,9 +13,14 @@
 > do relatório a versão truncada (3 dicas), para a mesma consulta. Unificado numa fonte
 > única em `constants.ts` (versão superset, sem perda), com teste de regressão.
 >
-> **Pendências (P1/P2):** buckets privados + URLs assinadas (C8 completo — ver plano de
-> migração abaixo), 50 erros de lint restantes (36 `any` + 13 `set-state-in-effect` +
-> 1 `immutability`), rate limit distribuído (A4/A5), CSP sem `unsafe-inline`, terceira
+> **`refactor(types)`:** os 36 `any` explícitos foram eliminados com tipos apropriados
+> (novos tipos JSONB em `types.ts`; mudança só de anotação, zero efeito em runtime, tsc
+> como gate). Lint: 50 → **14 erros** (restam apenas 13 `set-state-in-effect` + 1
+> `immutability`, regras estilísticas do React Compiler).
+>
+> **Pendências (P2):** buckets privados + URLs assinadas (C8 completo — ver plano de
+> migração abaixo), 14 erros de lint restantes (`set-state-in-effect`/`immutability` do
+> React Compiler), rate limit distribuído (A4/A5), CSP sem `unsafe-inline`, terceira
 > cópia divergente de `CRITERIO_DICAS`/dicas de setor em `app/bagua-planta/page.tsx`
 > (motor de recomendações separado, com conteúdo próprio — requer decisão de domínio),
 > extração da lógica de domínio dos componentes, ADRs, schema base no repo (A8/A9).
