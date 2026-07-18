@@ -37,6 +37,21 @@ export function validateUUID(id: string): boolean {
   return UUID_V4_REGEX.test(id)
 }
 
+// MIME de imagem aceito → extensão canônica. A extensão é sempre derivada
+// do MIME já validado no servidor, nunca de file.name (controlado pelo
+// cliente e vetor de path/extension injection).
+const IMAGE_MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
+
+export const ALLOWED_IMAGE_TYPES = Object.keys(IMAGE_MIME_TO_EXT)
+
+export function imageExtensionForMime(mimeType: string): string | null {
+  return IMAGE_MIME_TO_EXT[mimeType] ?? null
+}
+
 export function validatePlanSlug(slug: string): slug is 'free' | 'simples' | 'profissional' {
   return (VALID_PLAN_SLUGS as readonly string[]).includes(slug)
 }
