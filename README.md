@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FengShui Studio
 
-## Getting Started
+Plataforma para consultores de Feng Shui gerenciarem clientes, consultas,
+diagnósticos (Ba Guá, Roda da Vida, Fluxo do Chi), relatórios em PDF, agenda,
+pagamentos e uma loja virtual com Stripe Connect.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + **React 19** + TypeScript
+- **Supabase** — Postgres, Auth e Storage (RLS em todas as tabelas)
+- **Stripe** — assinaturas da plataforma + Connect (loja dos consultores)
+- **Tailwind CSS 4**, **Recharts**, **jsPDF/html2canvas**
+- **Vitest** para testes
+
+## Rodando localmente
+
+Requer Node na versão do `.nvmrc` (20+).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+nvm use            # usa a versão do .nvmrc
+npm install
+cp .env.example .env.local   # preencha as variáveis
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Variáveis de ambiente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Veja `.env.example` para a lista completa. As essenciais:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variável | Uso |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Cliente Supabase (browser) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Só no servidor.** Webhooks e escritas privilegiadas. Nunca com `NEXT_PUBLIC_`. |
+| `STRIPE_SECRET_KEY` | API do Stripe |
+| `STRIPE_WEBHOOK_SECRET` / `STRIPE_SUBSCRIPTION_WEBHOOK_SECRET` | Verificação de assinatura dos webhooks |
+| `STRIPE_PRICE_*` | Prices dos planos da plataforma |
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev     # servidor de desenvolvimento
+npm run build   # build de produção
+npm run start   # servir o build
+npm run lint    # ESLint
+npm test        # Vitest
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Banco de dados
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Migrations em `supabase/migrations/` (aplicar via `supabase db push` ou pelo
+SQL Editor, em ordem cronológica). Toda tabela tem RLS habilitado.
 
-## Deploy on Vercel
+## Estrutura
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/            # rotas Next.js (App Router), componentes e páginas
+  api/          # route handlers (auth, Stripe, uploads, admin)
+src/lib/        # clients Supabase, Stripe, validação, logger, constantes
+src/middleware.ts     # auth de rotas + guarda de /admin
+supabase/migrations/  # schema e RLS
+docs/           # documentação e relatórios de auditoria
+tests/          # testes Vitest
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Segurança
+
+Ver [SECURITY.md](./SECURITY.md) para política de reporte e práticas adotadas,
+e `docs/auditoria/` para o histórico de auditorias.
