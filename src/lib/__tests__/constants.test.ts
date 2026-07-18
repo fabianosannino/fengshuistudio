@@ -4,6 +4,8 @@ import {
   CRITERIOS,
   LOSHU_ORDER,
   RODA_AREAS,
+  SETOR_DICAS,
+  CRITERIO_DICAS,
 } from '../constants'
 import type { AreaMetaEntry } from '../constants'
 
@@ -155,6 +157,39 @@ describe('RODA_AREAS', () => {
   it('each gua references a valid AREA_META sector', () => {
     for (const area of RODA_AREAS) {
       expect(AREA_META).toHaveProperty(area.gua)
+    }
+  })
+})
+
+// ─── SETOR_DICAS / CRITERIO_DICAS ────────────────────────────────────────────
+// Fonte única de dicas de Feng Shui. A tela de detalhe da consulta e o PDF do
+// relatório consomem exatamente estes objetos — não devem existir cópias locais
+// divergentes (bug histórico: tela mostrava 5 dicas e PDF mostrava 3).
+
+describe('SETOR_DICAS', () => {
+  const entries = Object.entries(SETOR_DICAS)
+
+  it('cobre os setores do LOSHU_ORDER', () => {
+    for (const setor of LOSHU_ORDER) {
+      expect(SETOR_DICAS).toHaveProperty(setor)
+    }
+  })
+
+  it.each(entries)('setor "%s" tem ao menos 3 dicas não-vazias', (_nome, dicas) => {
+    expect(Array.isArray(dicas)).toBe(true)
+    expect(dicas.length).toBeGreaterThanOrEqual(3)
+    for (const dica of dicas) {
+      expect(typeof dica).toBe('string')
+      expect(dica.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('CRITERIO_DICAS', () => {
+  it('tem uma entrada para cada critério físico (índices 0..7)', () => {
+    for (let i = 0; i <= 7; i++) {
+      expect(CRITERIO_DICAS).toHaveProperty(String(i))
+      expect(CRITERIO_DICAS[i].length).toBeGreaterThanOrEqual(1)
     }
   })
 })
