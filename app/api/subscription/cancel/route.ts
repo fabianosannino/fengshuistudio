@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { logger } from '../../../../src/lib/logger'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 
@@ -63,8 +64,12 @@ export async function POST(request: Request) {
     }
   }
 
+  // Escritas de billing usam service_role (RLS de escrita é admin-only).
+  // O ownership da assinatura já foi verificado acima com o client do usuário.
+  const admin = createSupabaseAdminClient()
+
   // Update local subscription
-  await supabase
+  const { error: updateError } = await admin
     .from('subscriptions')
     .update({
       cancel_at_period_end: true,
@@ -72,8 +77,17 @@ export async function POST(request: Request) {
     })
     .eq('id', subscription.id)
 
+  if (updateError) {
+    logger.error('Failed to flag local subscription cancellation', {
+      route: '/api/subscription/cancel',
+      subscriptionId: subscription.id,
+      error: updateError.message,
+    })
+    return NextResponse.json({ error: 'Erro ao registrar cancelamento. Contate o suporte.' }, { status: 500 })
+  }
+
   // Notification
-  await supabase.from('payment_notifications').insert({
+  await admin.from('payment_notifications').insert({
     user_id: user.id,
     type: 'subscription_cancel_by_user',
     channel: 'in_app',
@@ -82,7 +96,7 @@ export async function POST(request: Request) {
   })
 
   // Audit log
-  await supabase.from('admin_audit_log').insert({
+  await admin.from('admin_audit_log').insert({
     action: 'cancel_subscription_by_user',
     target_type: 'subscription',
     target_id: subscription.id,

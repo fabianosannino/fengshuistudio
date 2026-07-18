@@ -17,6 +17,7 @@
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { logger } from '../../../../src/lib/logger'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 
@@ -87,10 +88,22 @@ export async function POST(request: Request) {
       })
       customerId = customer.id
 
-      await supabase
+      // service_role: stripe_customer_id é coluna privilegiada (trigger).
+      // Se não persistir, o webhook nunca vai casar o customer com o perfil —
+      // então a falha aqui é fatal, não silenciosa.
+      const { error: updateError } = await createSupabaseAdminClient()
         .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id)
+
+      if (updateError) {
+        logger.error('Failed to store Stripe customer ID', {
+          route: '/api/stripe/subscribe',
+          customerId,
+          error: updateError.message,
+        })
+        return NextResponse.json({ error: 'Erro ao preparar assinatura. Tente novamente.' }, { status: 500 })
+      }
     } catch (err) {
       logger.error('Failed to create Stripe customer', { route: '/api/stripe/subscribe', error: String(err) })
       return NextResponse.json({ error: 'Erro ao criar cliente Stripe' }, { status: 500 })
@@ -121,6 +134,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url, session_id: session.id })
   } catch (err) {
     logger.error('Stripe subscription checkout error', { route: '/api/stripe/subscribe', error: String(err) })
-    return NextResponse.json({ error: `Erro ao criar checkout de assinatura: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar checkout de assinatura.' }, { status: 500 })
   }
 }

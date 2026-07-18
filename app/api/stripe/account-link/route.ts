@@ -16,14 +16,10 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-  let body: { account_id?: string }
-  try { body = await request.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
-
-  let accountId = body.account_id
-  if (!accountId) {
-    const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
-    accountId = profile?.stripe_account_id
-  }
+  // account_id sempre derivado do perfil do usuário autenticado — nunca do
+  // body, para impedir onboarding sobre a conta Stripe de outro consultor.
+  const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
+  const accountId = profile?.stripe_account_id
 
   if (!accountId) {
     return NextResponse.json({ error: 'Nenhuma conta Stripe encontrada. Crie uma conta primeiro.' }, { status: 400 })

@@ -23,14 +23,32 @@
 
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import stripeClient from '../../../../../src/lib/stripe'
-import { createRouteHandlerClient } from '../../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { logger } from '../../../../../src/lib/logger'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
+const ROUTE = '/api/stripe/webhooks/subscriptions'
+
 // Grace period: after how many days of past_due we downgrade to free
 const GRACE_PERIOD_DAYS = 7
+
+/**
+ * Executa uma escrita no Supabase e loga falha em vez de engolir o erro.
+ * Webhooks não podem falhar silenciosamente: sem isso, um RLS ou schema
+ * errado deixaria assinaturas dessincronizadas sem nenhum sinal.
+ */
+async function logWrite(
+  operation: string,
+  query: PromiseLike<{ error: { message: string } | null }>
+): Promise<void> {
+  const { error } = await query
+  if (error) {
+    logger.error('Supabase write failed in webhook', { route: ROUTE, operation, error: error.message })
+  }
+}
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -49,7 +67,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createRouteHandlerClient()
+  // service_role: webhooks não têm sessão de usuário; as tabelas de billing
+  // são admin-only no RLS e este handler é o único caminho legítimo de escrita.
+  // A assinatura do evento já foi verificada acima.
+  const supabase = createSupabaseAdminClient()
 
   try {
     switch (event.type) {
@@ -88,23 +109,25 @@ export async function POST(request: Request) {
         }
 
         // Cancel any existing active subscriptions for this user
-        await supabase
+        await logWrite('cancel-previous-subscriptions', supabase
           .from('subscriptions')
           .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
           .eq('user_id', profile.id)
-          .in('status', ['active', 'past_due', 'gratuidade'])
+          .in('status', ['active', 'past_due', 'gratuidade']))
 
         // Find the plan in DB
-        const { data: plan } = await supabase
-          .from('plans')
-          .select('id, slug')
-          .eq('slug', planSlug)
-          .single()
+        const { data: plan } = planSlug
+          ? await supabase
+              .from('plans')
+              .select('id, slug')
+              .eq('slug', planSlug)
+              .single()
+          : { data: null }
 
         const billingCycle = resolveBillingCycle(subscription)
 
         // Create new subscription record
-        await supabase.from('subscriptions').insert({
+        await logWrite('insert-subscription', supabase.from('subscriptions').insert({
           user_id: profile.id,
           plan_id: plan?.id || null,
           billing_cycle: billingCycle,
@@ -117,14 +140,14 @@ export async function POST(request: Request) {
           current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
           next_billing_date: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
           gateway_subscription_id: subscription.id,
-        })
+        }))
 
         // Update profile plan
         if (planSlug && plan) {
-          await supabase
+          await logWrite('update-profile-plan', supabase
             .from('profiles')
             .update({ plano: planSlug })
-            .eq('id', profile.id)
+            .eq('id', profile.id))
         }
 
         break
@@ -167,32 +190,32 @@ export async function POST(request: Request) {
         }
 
         if (existingSub) {
-          await supabase
+          await logWrite('update-subscription', supabase
             .from('subscriptions')
             .update(updateData)
-            .eq('id', existingSub.id)
+            .eq('id', existingSub.id))
         } else {
-          await supabase
+          await logWrite('update-subscription-fallback', supabase
             .from('subscriptions')
             .update(updateData)
             .eq('user_id', profile.id)
-            .in('status', ['active', 'past_due', 'trial', 'gratuidade'])
+            .in('status', ['active', 'past_due', 'trial', 'gratuidade']))
         }
 
         // If canceled, downgrade to free
         if (status === 'canceled') {
-          await supabase
+          await logWrite('downgrade-profile-free', supabase
             .from('profiles')
             .update({ plano: 'free' })
-            .eq('id', profile.id)
+            .eq('id', profile.id))
         } else {
           // Update plan based on subscription items
           const planSlug = await resolvePlanSlug(supabase, subscription)
           if (planSlug) {
-            await supabase
+            await logWrite('update-profile-plan', supabase
               .from('profiles')
               .update({ plano: planSlug })
-              .eq('id', profile.id)
+              .eq('id', profile.id))
           }
         }
 
@@ -222,22 +245,22 @@ export async function POST(request: Request) {
           .single()
 
         if (existingSub) {
-          await supabase
+          await logWrite('cancel-subscription', supabase
             .from('subscriptions')
             .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
-            .eq('id', existingSub.id)
+            .eq('id', existingSub.id))
         } else {
-          await supabase
+          await logWrite('cancel-subscription-fallback', supabase
             .from('subscriptions')
             .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
             .eq('user_id', profile.id)
-            .in('status', ['active', 'past_due'])
+            .in('status', ['active', 'past_due']))
         }
 
-        await supabase
+        await logWrite('downgrade-profile-free', supabase
           .from('profiles')
           .update({ plano: 'free' })
-          .eq('id', profile.id)
+          .eq('id', profile.id))
 
         break
       }
@@ -275,17 +298,17 @@ export async function POST(request: Request) {
 
         if (existingInvoice) {
           // Update to paid if not already
-          await supabase
+          await logWrite('mark-invoice-paid', supabase
             .from('invoices')
             .update({ status: 'paid', paid_at: new Date().toISOString(), amount_paid: (invoice.amount_paid || 0) / 100 })
-            .eq('id', existingInvoice.id)
+            .eq('id', existingInvoice.id))
         } else {
           // Calculate due_date safely
           const dueDate = invoice.due_date
             ? new Date(invoice.due_date * 1000)
             : new Date()
 
-          await supabase.from('invoices').insert({
+          await logWrite('insert-invoice', supabase.from('invoices').insert({
             user_id: profile.id,
             amount: (invoice.amount_paid || 0) / 100,
             amount_paid: (invoice.amount_paid || 0) / 100,
@@ -295,15 +318,15 @@ export async function POST(request: Request) {
             gateway_invoice_id: invoice.id,
             description: `Fatura Stripe ${invoice.number || invoice.id}`,
             billing_cycle: invoice.subscription ? 'recurring' : 'one_time',
-          })
+          }))
         }
 
         // Reactivate subscription if it was past_due
-        await supabase
+        await logWrite('reactivate-subscription', supabase
           .from('subscriptions')
           .update({ status: 'active', updated_at: new Date().toISOString() })
           .eq('user_id', profile.id)
-          .eq('status', 'past_due')
+          .eq('status', 'past_due'))
 
         break
       }
@@ -329,20 +352,20 @@ export async function POST(request: Request) {
         if (!profile) break
 
         // Mark subscription as past_due
-        await supabase
+        await logWrite('mark-subscription-past-due', supabase
           .from('subscriptions')
           .update({ status: 'past_due', updated_at: new Date().toISOString() })
           .eq('user_id', profile.id)
-          .eq('status', 'active')
+          .eq('status', 'active'))
 
         // Create a payment notification for the user
-        await supabase.from('payment_notifications').insert({
+        await logWrite('insert-payment-failed-notification', supabase.from('payment_notifications').insert({
           user_id: profile.id,
           type: 'payment_failed',
           channel: 'in_app',
           sent_at: new Date().toISOString(),
           content: `Falha no pagamento da sua assinatura. Por favor, atualize seu meio de pagamento. Tentativa ${invoice.attempt_count || 1}.`,
-        })
+        }))
 
         // Check if grace period expired — auto-downgrade to free
         const { data: pastDueSub } = await supabase
@@ -362,23 +385,23 @@ export async function POST(request: Request) {
               daysPastDue: Math.round(daysPastDue),
             })
 
-            await supabase
+            await logWrite('cancel-subscription-grace-expired', supabase
               .from('subscriptions')
               .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-              .eq('id', pastDueSub.id)
+              .eq('id', pastDueSub.id))
 
-            await supabase
+            await logWrite('downgrade-profile-free', supabase
               .from('profiles')
               .update({ plano: 'free' })
-              .eq('id', profile.id)
+              .eq('id', profile.id))
 
-            await supabase.from('payment_notifications').insert({
+            await logWrite('insert-cancelled-notification', supabase.from('payment_notifications').insert({
               user_id: profile.id,
               type: 'subscription_cancelled_nonpayment',
               channel: 'in_app',
               sent_at: new Date().toISOString(),
               content: `Sua assinatura foi cancelada por falta de pagamento apos ${GRACE_PERIOD_DAYS} dias. Assine novamente para recuperar o acesso.`,
-            })
+            }))
           }
         }
 
@@ -421,7 +444,7 @@ export async function POST(request: Request) {
             const matchedInvoice = invoicesResponse.data.find(inv => inv.payment_intent === paymentIntentId)
 
             if (matchedInvoice) {
-              await supabase
+              await logWrite('mark-invoice-refunded', supabase
                 .from('invoices')
                 .update({
                   status: charge.refunded ? 'refunded' : 'paid',
@@ -429,7 +452,7 @@ export async function POST(request: Request) {
                   refund_amount: (charge.amount_refunded || 0) / 100,
                   notes: `Reembolso processado via Stripe. Charge: ${charge.id}`,
                 })
-                .eq('gateway_invoice_id', matchedInvoice.id)
+                .eq('gateway_invoice_id', matchedInvoice.id))
             }
           } catch (err) {
             logger.error('Error finding invoice for refund', { error: String(err) })
@@ -437,13 +460,13 @@ export async function POST(request: Request) {
         }
 
         // Create notification
-        await supabase.from('payment_notifications').insert({
+        await logWrite('insert-refund-notification', supabase.from('payment_notifications').insert({
           user_id: profile.id,
           type: 'refund_processed',
           channel: 'in_app',
           sent_at: new Date().toISOString(),
           content: `Reembolso de ${((charge.amount_refunded || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} processado com sucesso.`,
-        })
+        }))
 
         break
       }
@@ -454,8 +477,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true })
   } catch (err) {
-    logger.error('Subscription webhook handler error', { route: '/api/stripe/webhooks/subscriptions', error: String(err) })
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    logger.error('Subscription webhook handler error', { route: ROUTE, error: String(err) })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
 
@@ -466,7 +489,7 @@ function resolveCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCu
 }
 
 async function findProfileByCustomerId(
-  supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>,
+  supabase: SupabaseClient,
   customerId: string
 ) {
   const { data: profile } = await supabase
@@ -502,9 +525,9 @@ function resolveBillingCycle(subscription: Stripe.Subscription): string {
 }
 
 async function resolvePlanSlug(
-  supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>,
+  supabase: SupabaseClient,
   subscription: Stripe.Subscription
-): Promise<string> {
+): Promise<string | null> {
   // Try to get plan slug from subscription metadata
   const metadata = subscription.metadata
   if (metadata?.plan_slug) return metadata.plan_slug
@@ -525,5 +548,12 @@ async function resolvePlanSlug(
     }
   }
 
-  return 'profissional' // default fallback
+  // Preço desconhecido: nunca conceder plano por padrão — logar e não mudar.
+  logger.error('Unable to resolve plan for subscription', {
+    route: ROUTE,
+    subscriptionId: subscription.id,
+    priceAmount,
+    interval,
+  })
+  return null
 }

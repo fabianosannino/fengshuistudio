@@ -3,6 +3,12 @@ import { createSupabaseMiddlewareClient } from './lib/supabase-server'
 
 const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha', '/landing', '/termos', '/privacidade']
 
+// APIs públicas: webhooks do Stripe (chegam sem cookie de sessão e validam
+// assinatura na própria rota) e as APIs da loja pública (compradores
+// anônimos). As demais rotas /api exigem sessão e respondem 401 — nunca
+// redirect, que quebraria fetch() e integrações externas.
+const PUBLIC_API_PREFIXES = ['/api/stripe/webhooks', '/api/stripe/checkout', '/api/stripe/products']
+
 function isSafeRedirect(path: string): boolean {
   // Only allow relative paths starting with / and no protocol://
   return path.startsWith('/') && !path.startsWith('//') && !path.includes('://')
@@ -16,6 +22,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  if (PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next()
+  }
+
   const { supabase, response } = createSupabaseMiddlewareClient(request)
 
   const {
@@ -23,6 +33,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
     const loginUrl = new URL('/login', request.url)
     // Validate redirect param to prevent open redirect attacks
     if (isSafeRedirect(pathname)) {
