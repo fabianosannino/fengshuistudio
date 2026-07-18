@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
+import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
 
@@ -305,7 +306,7 @@ function BaguaPlantaContent() {
   const plantaUrlRef = useRef<string|null>(null)
   const [carregandoPlanta, setCarregandoPlanta] = useState(false)
   const [showRetomar, setShowRetomar] = useState(false)
-  const rascunhoRef = useRef<any>(null) // holds loaded draft for "Continuar"
+  const rascunhoRef = useRef<BaguaEntrada | null>(null) // holds loaded draft for "Continuar"
   const restaurandoRef = useRef(false) // prevents re-save during restoration
   // Falta/Excesso manual rectangles
   const [marcacoes, setMarcacoes] = useState<Marcacao[]>([])
@@ -348,7 +349,7 @@ function BaguaPlantaContent() {
           .then(({data})=>{
             if(data) setConsultaNome(data.nome_imovel)
             if(data?.bagua_entrada){
-              const be=data.bagua_entrada as any
+              const be=data.bagua_entrada as BaguaEntrada
               // Check if there's a saved plant image (in-progress or finalized analysis)
               if(be.planta_url && !be.finalizada_em){
                 // Draft analysis exists — offer to continue
@@ -378,11 +379,11 @@ function BaguaPlantaContent() {
             if(!data||data.length===0) return
             setSetores(prev=>{
               const next=[...prev]
-              data.forEach((s:any)=>{
+              data.forEach((s:{numero?:number; diagnostico_criterios?:{criterio:string; score:number}[]})=>{
                 const idx=(s.numero||1)-1
                 if(idx<0||idx>8) return
                 const cMap:number[]=Array(8).fill(0)
-                s.diagnostico_criterios?.forEach((c:any)=>{
+                s.diagnostico_criterios?.forEach((c:{criterio:string; score:number})=>{
                   const ci=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre'].indexOf(c.criterio)
                   if(ci>=0) cMap[ci]=c.score
                 })
@@ -424,8 +425,8 @@ function BaguaPlantaContent() {
         else setStep(etapa)
         // Recalculate sectors if we have bounds
         // Restore marcacoes
-        const savedMarcacoes:Marcacao[]=Array.isArray(be.marcacoes)?be.marcacoes.map((m:any)=>({
-          id:m.id||Date.now().toString(36),tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h
+        const savedMarcacoes:Marcacao[]=Array.isArray(be.marcacoes)?be.marcacoes.map((m:BaguaMarcacaoJSON):Marcacao=>({
+          id:m.id||Date.now().toString(36),tipo:m.tipo as Marcacao['tipo'],x:m.x??0,y:m.y??0,w:m.w??0,h:m.h??0
         })):[]
         setMarcacoes(savedMarcacoes); marcacoesRef.current=savedMarcacoes
 
@@ -435,14 +436,14 @@ function BaguaPlantaContent() {
           const lvRestored=be.lv||[1/3,2/3]
           const novos=calcularSetores(bRestored,lhRestored,lvRestored,savedMarcacoes)
           // Merge saved sector data (criterios, ajustes) with recalculated geometry
-          const setoresRasc=be.setores_rascunho as any[]|undefined
+          const setoresRasc=be.setores_rascunho
           setSetores(novos.map((n,idx)=>{
             const saved=setoresRasc?.[idx]
             return {
               ...n,
               criterios:saved?.criterios??n.criterios,
               ajusteManual:saved?.ajusteManual??null,
-              ajusteTipo:saved?.ajusteTipo??null,
+              ajusteTipo:(saved?.ajusteTipo??null) as Setor['ajusteTipo'],
               obs:saved?.obs??'',
             }
           }))
@@ -1009,7 +1010,7 @@ function BaguaPlantaContent() {
     const b=overrides?.bordas??boundsRef.current
     const curLh=overrides?.lhV??lhRef.current
     const curLv=overrides?.lvV??lvRef.current
-    const draft:any={
+    const draft:BaguaEntrada={
       planta_url:url,
       etapa:overrides?.etapa??step,
       rotacao:overrides?.rotacao??rot,
@@ -1308,7 +1309,7 @@ function BaguaPlantaContent() {
       const cv=cvRef.current
       const dataUrl=cv?cv.toDataURL('image/png',0.7):null
       const b=boundsRef.current
-      const finalizacao:any={
+      const finalizacao:BaguaEntrada={
         x:entrada?.x??0, y:entrada?.y??0, lado,
         bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         finalizada_em:new Date().toISOString(),
@@ -1341,8 +1342,8 @@ function BaguaPlantaContent() {
       setTimeout(()=>{
         router.push(`/consultas/${consultaId}`)
       },1000)
-    }catch(err:any){
-      setMsg('Erro ao salvar: '+(err?.message||'erro desconhecido')); setMsgTipo('erro')
+    }catch(err){
+      setMsg('Erro ao salvar: '+(err instanceof Error ? err.message : 'erro desconhecido')); setMsgTipo('erro')
     }finally{
       setSalvandoTudo(false)
     }
@@ -1891,7 +1892,7 @@ function BaguaPlantaContent() {
                         style={{width:'60px',padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'11px',textAlign:'center'}}
                       />
                       <select value={scAtivo.ajusteTipo??''}
-                        onChange={e=>setAjusteTipo(ativo!,(e.target.value||null) as any)}
+                        onChange={e=>setAjusteTipo(ativo!,(e.target.value||null) as Setor['ajusteTipo'])}
                         style={{flex:1,padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px'}}>
                         <option value="">Tipo automático</option>
                         <option value="equilibrado">Equilibrado</option>

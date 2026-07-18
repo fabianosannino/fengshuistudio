@@ -569,7 +569,7 @@ export default function ClienteDetalhe() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {consultasVisiveis.map(c => {
-              const baguaData = c.bagua_entrada as any
+              const baguaData = c.bagua_entrada
               const baguaFinalizada = !!(baguaData?.finalizada_em)
               const baguaEmAndamento = !!(baguaData?.planta_url) && !baguaFinalizada
               const statusInfo = STATUS_LABELS[c.status] || STATUS_LABELS.sem_analise
@@ -595,7 +595,7 @@ export default function ClienteDetalhe() {
                       color: baguaFinalizada ? '#15803D' : baguaEmAndamento ? '#D97706' : '#9CA3AF',
                       padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
                     }}>{baguaFinalizada
-                        ? `☯ Concluída em ${new Date(baguaData.finalizada_em).toLocaleDateString('pt-BR')}`
+                        ? `☯ Concluída em ${new Date(baguaData!.finalizada_em!).toLocaleDateString('pt-BR')}`
                         : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem análise'
                     }</span>
                     <span style={{

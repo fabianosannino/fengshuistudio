@@ -110,7 +110,7 @@ export default function Consultas() {
     if (!search.trim()) return true
     const s = search.toLowerCase()
     const nome = c.nome_imovel?.toLowerCase() || ''
-    const cliente = (c.clientes as any)?.nome_completo?.toLowerCase() || ''
+    const cliente = c.clientes?.nome_completo?.toLowerCase() || ''
     return nome.includes(s) || cliente.includes(s)
   })
 
@@ -172,7 +172,7 @@ export default function Consultas() {
         </select>
 
         {/* Sort */}
-        <select value={sortBy} onChange={e => { setSortBy(e.target.value as any); loadData(0) }}
+        <select value={sortBy} onChange={e => { setSortBy(e.target.value as typeof sortBy); loadData(0) }}
           style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
           <option value="recente">Mais recente</option>
           <option value="antigo">Mais antigo</option>
@@ -225,10 +225,10 @@ export default function Consultas() {
                     fontSize: '12px', fontWeight: 'bold'
                   }}>{statusLabel(consulta.status)}</span>
                   {(()=>{
-                    const be=consulta.bagua_entrada as any
+                    const be=consulta.bagua_entrada
                     const finalizada=!!(be?.finalizada_em)
                     const emAndamento=!!(be?.planta_url)&&!finalizada
-                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Concluída ${new Date(be.finalizada_em).toLocaleDateString('pt-BR')}`}</span>
+                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Concluída ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
                     if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>☯ Em andamento</span>
                     return null
                   })()}

@@ -5,6 +5,28 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 
+interface ProdutoAfiliadoRow {
+  id?: string
+  categoria?: string
+  nome?: string
+  desc?: string | null
+  descricao?: string | null
+  tag?: string | null
+  preco?: string | null
+  link_afiliado?: string | null
+}
+
+/** Forma comum entre produto do banco e produto estático do catálogo */
+type ProdutoExibir = {
+  nome?: string
+  desc?: string | null
+  descricao?: string | null
+  tag?: string | null
+  preco?: string | null
+  link_afiliado?: string | null
+  categoria?: string
+}
+
 // Categorias de produtos Feng Shui com produtos de afiliados
 const CATEGORIAS_PRODUTOS = [
   {
@@ -108,7 +130,7 @@ function ProdutosContent() {
   const categoriaParam = searchParams.get('categoria')
   const [loading, setLoading] = useState(true)
   const [categoriaAtiva, setCategoriaAtiva] = useState(categoriaParam || 'espelhos')
-  const [produtosAfiliados, setProdutosAfiliados] = useState<any[]>([])
+  const [produtosAfiliados, setProdutosAfiliados] = useState<ProdutoAfiliadoRow[]>([])
   const [filtroBusca, setFiltroBusca] = useState('')
 
   // New filter states
@@ -154,7 +176,7 @@ function ProdutosContent() {
 
   // Merge DB products with defaults
   const dbProdutosCat = produtosAfiliados.filter(p => p.categoria === categoriaAtiva)
-  const produtosExibir = dbProdutosCat.length > 0
+  const produtosExibir: ProdutoExibir[] = dbProdutosCat.length > 0
     ? dbProdutosCat
     : (categoriaData?.produtos || [])
 

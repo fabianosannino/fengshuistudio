@@ -19,6 +19,18 @@ import { useSearchParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
 import { supabase } from '../../../src/lib/supabase'
 
+interface OnboardProfile {
+  store_slug?: string | null
+}
+
+interface StoreOrder {
+  id: string
+  created_at: string
+  product_name: string
+  amount: number
+  status: string
+}
+
 interface AccountStatus {
   has_account: boolean
   account_id?: string
@@ -44,8 +56,8 @@ function StripeOnboard() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [message, setMessage] = useState('')
-  const [profile, setProfile] = useState<any>(null)
-  const [sales, setSales] = useState<any[]>([])
+  const [profile, setProfile] = useState<OnboardProfile | null>(null)
+  const [sales, setSales] = useState<StoreOrder[]>([])
   const totalRevenue = sales.reduce((s, o) => s + (o.amount || 0), 0)
 
   // ── Check if returning from Stripe onboarding ──────────────────────────
@@ -302,7 +314,7 @@ function StripeOnboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sales.map((sale: any) => (
+                        {sales.map((sale) => (
                           <tr key={sale.id}>
                             <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{new Date(sale.created_at).toLocaleDateString('pt-BR')}</td>
                             <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{sale.product_name}</td>

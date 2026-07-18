@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import { planoEfetivo } from '../../src/lib/plano-utils'
+import type { Profile } from '../../src/lib/types'
 
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 const PAGE_SIZE = 50
@@ -17,7 +18,7 @@ const TIPOS_PROFISSIONAL: Record<string, { label: string; icon: string; cor: str
 
 export default function Parceiros() {
   const [loading, setLoading] = useState(true)
-  const [parceiros, setParceiros] = useState<any[]>([])
+  const [parceiros, setParceiros] = useState<Profile[]>([])
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroBusca, setFiltroBusca] = useState('')

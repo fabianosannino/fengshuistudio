@@ -827,7 +827,7 @@ export default function ConsultaDetalhe() {
 
         {/* ── Ba Gua Planta banner + resumo ───────────────────────────────── */}
         {(() => {
-          const baguaEntrada = consulta.bagua_entrada as any
+          const baguaEntrada = consulta.bagua_entrada
           const finalizada = baguaEntrada?.finalizada_em
           const plantaUrl = baguaEntrada?.planta_url
           const emAndamento = !!plantaUrl && !finalizada

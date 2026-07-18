@@ -7,6 +7,15 @@ import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import type { SetorBagua } from '../../src/lib/types'
 
+interface CuraCustomRef {
+  id: string
+  setor_id: string
+  tipo: string
+  nome: string
+  descricao?: string | null
+  como_utilizar?: string | null
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // CURES & ACTIVATIONS DATA — 9 Elements × 6 Modalities
 // ══════════════════════════════════════════════════════════════════════════════
@@ -606,7 +615,7 @@ function CurasPageContent() {
   const [selectedConsultaId, setSelectedConsultaId] = useState<string | null>(consultaId || null)
 
   // Custom references state
-  const [customRefs, setCustomRefs] = useState<Record<string, any[]>>({})
+  const [customRefs, setCustomRefs] = useState<Record<string, CuraCustomRef[]>>({})
   const [showAddRef, setShowAddRef] = useState<string | null>(null)
   const [refForm, setRefForm] = useState({ nome: '', descricao: '', como_utilizar: '' })
   const [expandedRefs, setExpandedRefs] = useState<Record<string, boolean>>({})
@@ -671,7 +680,7 @@ function CurasPageContent() {
           .select('*')
           .eq('consultor_id', user.id)
 
-        const grouped: Record<string, any[]> = {}
+        const grouped: Record<string, CuraCustomRef[]> = {}
         for (const ref of refs || []) {
           const key = `${ref.setor_id}_${ref.tipo}`
           if (!grouped[key]) grouped[key] = []
@@ -1015,7 +1024,7 @@ function CurasPageContent() {
                   transition: 'all 0.2s'
                 }}>
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', marginBottom: '4px' }}>
-                  {(c.clientes as any)?.nome_completo || 'Sem cliente'}
+                  {c.clientes?.nome_completo || 'Sem cliente'}
                 </div>
                 <div style={{ fontSize: '13px', color: '#6B7280' }}>{c.nome_imovel}</div>
                 <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>

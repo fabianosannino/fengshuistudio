@@ -93,7 +93,7 @@ export default function Relatorio() {
   const id = params.id as string
   const printRef = useRef<HTMLDivElement>(null)
 
-  const [consulta, setConsulta] = useState<any>(null)
+  const [consulta, setConsulta] = useState<Consulta | null>(null)
   const [setores, setSetores] = useState<SetorBagua[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -329,7 +329,7 @@ export default function Relatorio() {
   const geral = scoreGeral()
   const geralLevel = scoreLevelLabel(geral)
   const top3 = getTop3()
-  const rodaData: Record<string, number> = consulta.roda_da_vida || {}
+  const rodaData = (consulta.roda_da_vida || {}) as Record<string, number>
   const checklistChi: string[] = consulta.checklist_chi || []
   const posicaoComando: Record<string, string[]> = consulta.posicao_comando || {}
   const hasRoda = Object.keys(rodaData).length > 0
@@ -427,7 +427,7 @@ export default function Relatorio() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
               {[
                 { label: 'Ba Guá', ok: setores.length > 0 },
-                { label: 'Roda da Vida', ok: !!(consulta?.roda_da_vida && (consulta.roda_da_vida as any)?.respostas) },
+                { label: 'Roda da Vida', ok: !!(consulta?.roda_da_vida && (consulta.roda_da_vida as Record<string, unknown>)?.respostas) },
                 { label: 'Checklist Chi', ok: !!(consulta?.checklist_chi && (consulta.checklist_chi as string[]).length > 0) },
                 { label: 'Foto geral', ok: !!consulta?.foto_geral_url },
                 { label: 'Fotos antes', ok: ((consulta?.fotos_antes as string[] | undefined)?.length ?? 0) > 0 },
@@ -721,9 +721,9 @@ export default function Relatorio() {
               </div>
               {/* Radar Chart SVG */}
               {(() => {
-                const respostas = (consulta?.roda_da_vida as any)?.respostas || consulta?.roda_da_vida || {}
+                const respostas = (consulta?.roda_da_vida as Record<string, unknown> | undefined)?.respostas || consulta?.roda_da_vida || {}
                 const getVal = (key: string): number => {
-                  const v = (respostas as any)[key]
+                  const v = (respostas as Record<string, unknown>)[key]
                   if (Array.isArray(v)) return v.reduce((s: number, n: number) => s + n, 0) / v.length
                   if (typeof v === 'number') return v
                   return 0

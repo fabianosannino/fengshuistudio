@@ -86,6 +86,47 @@ export interface FotoComodo {
   ordem: number
 }
 
+// ─── JSONB shapes (Supabase columns stored as untyped JSON) ──────────────────
+
+/** A marking (falta/excesso) on the Ba Guá plan, persisted inside bagua_entrada */
+export interface BaguaMarcacaoJSON {
+  id?: string
+  tipo?: string
+  x?: number
+  y?: number
+  w?: number
+  h?: number
+}
+
+/** Per-sector draft data persisted inside bagua_entrada.setores_rascunho */
+export interface BaguaSetorRascunho {
+  criterios?: number[]
+  ajusteManual?: number | null
+  ajusteTipo?: string | null
+  obs?: string | null
+}
+
+/** Content of the consultas.bagua_entrada JSONB column (Ba Guá analysis state) */
+export interface BaguaEntrada {
+  x?: number
+  y?: number
+  lado?: string
+  planta_url?: string
+  planta_enviada_em?: string
+  finalizada_em?: string
+  etapa?: string
+  rotacao?: number
+  metragem_real?: number
+  bordas?: { x: number; y: number; w: number; h: number } | null
+  lh?: number[]
+  lv?: number[]
+  marcacoes?: BaguaMarcacaoJSON[]
+  setores_rascunho?: BaguaSetorRascunho[]
+}
+
+/** Content of the consultas.roda_da_vida JSONB column */
+export type RodaDaVida = Record<string, number | number[]>
+
 /** Consultation from the 'consultas' table */
 export interface Consulta {
   id: string
@@ -101,7 +142,7 @@ export interface Consulta {
   fotos_comodos?: FotoComodo[] | null
   fotos_antes?: string[] | null
   fotos_depois?: string[] | null
-  bagua_entrada?: { x: number; y: number; lado: string } | null
+  bagua_entrada?: BaguaEntrada | null
   num_moradores?: number | null
   historico_imovel?: string | null
   observacoes_topograficas?: string | null

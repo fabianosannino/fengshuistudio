@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
-import type { Profile, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
+import type { Profile, BaguaEntrada, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, isProfissional, planoUsuario } from '../../src/lib/plano-utils'
 
@@ -356,15 +356,15 @@ export default function Dashboard() {
 
       // Análises Baguá recentes
       const consultasBagua = consultasBaguaRes.data
-      const recentes = (consultasBagua || [])
-        .filter((c: any) => c.bagua_entrada?.finalizada_em || c.bagua_entrada?.planta_url)
-        .sort((a: any, b: any) => {
+      const recentes = ((consultasBagua || []) as unknown as { id: string; nome_imovel: string | null; bagua_entrada: BaguaEntrada | null; clientes?: { nome_completo: string } | null }[])
+        .filter((c) => c.bagua_entrada?.finalizada_em || c.bagua_entrada?.planta_url)
+        .sort((a, b) => {
           const da = a.bagua_entrada?.finalizada_em || a.bagua_entrada?.etapa || ''
           const db = b.bagua_entrada?.finalizada_em || b.bagua_entrada?.etapa || ''
           return new Date(db).getTime() - new Date(da).getTime()
         })
         .slice(0, 5)
-        .map((c: any) => ({
+        .map((c) => ({
           id: c.id,
           nome_imovel: c.nome_imovel || 'Imóvel',
           finalizada_em: c.bagua_entrada?.finalizada_em || '',
