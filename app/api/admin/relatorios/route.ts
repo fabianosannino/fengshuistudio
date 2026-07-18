@@ -219,6 +219,6 @@ export async function POST(request: Request) {
     return NextResponse.json(data)
   } catch (err) {
     logger.error('Report generation error', { route: '/api/admin/relatorios', error: String(err) })
-    return NextResponse.json({ error: `Erro ao gerar relatório: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao gerar relatório.' }, { status: 500 })
   }
 }

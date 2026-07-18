@@ -453,7 +453,7 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     logger.error('Admin subscription action error', { route: '/api/admin/subscriptions', action, error: String(err) })
-    return NextResponse.json({ error: `Erro ao executar ação: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao executar ação.' }, { status: 500 })
   }
 }
 

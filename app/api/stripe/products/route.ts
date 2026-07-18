@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe product creation error', { route: '/api/stripe/products', error: String(err) })
-    return NextResponse.json({ error: `Erro ao criar produto: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar produto.' }, { status: 500 })
   }
 }
 
@@ -106,6 +106,6 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe products list error', { route: '/api/stripe/products', error: String(err) })
-    return NextResponse.json({ error: `Erro ao listar produtos: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao listar produtos.' }, { status: 500 })
   }
 }

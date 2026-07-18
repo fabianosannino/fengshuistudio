@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe account creation error', { route: '/api/stripe/account', error: String(err) })
-    return NextResponse.json({ error: `Erro ao criar conta Stripe: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar conta Stripe.' }, { status: 500 })
   }
 }
 
@@ -119,6 +119,6 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe account retrieval error', { route: '/api/stripe/account', error: String(err) })
-    return NextResponse.json({ error: `Erro ao consultar conta Stripe: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao consultar conta Stripe.' }, { status: 500 })
   }
 }

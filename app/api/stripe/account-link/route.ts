@@ -39,6 +39,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: accountLink.url })
   } catch (err) {
     logger.error('Stripe account link error', { route: '/api/stripe/account-link', error: String(err) })
-    return NextResponse.json({ error: `Erro ao criar link de onboarding: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar link de onboarding.' }, { status: 500 })
   }
 }
