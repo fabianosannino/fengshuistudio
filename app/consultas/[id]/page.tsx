@@ -8,7 +8,8 @@ import FlowLayout from '../../components/FlowLayout'
 import TabRodaDaVida from './TabRodaDaVida'
 import TabFluxoChi from './TabFluxoChi'
 import TabFotos from './TabFotos'
-import { CRITERIOS, SETOR_DICAS, CRITERIO_DICAS } from '../../../src/lib/constants'
+import { CRITERIOS } from '../../../src/lib/constants'
+import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../src/lib/recomendacoes'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 
 // Cômodo suggestions for multi-select autocomplete
@@ -156,32 +157,6 @@ function getProdutosSugeridos(recomendacoes: string[]): { nome: string; categori
     })
   })
   return Array.from(found.values())
-}
-
-function gerarRecomendacoes(nomeSetor: string, scorePct: number, criteriosSetor: Record<string, number>) {
-  const urgente: string[] = []
-  const melhoria: string[] = []
-  const manutencao: string[] = []
-
-  // Scale: 0=Crítico(-2), 1=Ruim(-1), 2=Neutro(0), 3=Bom(+1), 4=Ótimo(+2)
-  CRITERIOS.forEach((criterio, ci) => {
-    const val = criteriosSetor[criterio] ?? -1
-    const dicas = CRITERIO_DICAS[ci] || []
-    if (val === 0) urgente.push(...dicas.slice(0, 2))
-    else if (val === 1) melhoria.push(...dicas.slice(0, 2))
-    else if (val === 2) melhoria.push(dicas[0] || '')
-  })
-
-  const dicasSetor = SETOR_DICAS[nomeSetor] ?? []
-  if (scorePct < 40) urgente.push(...dicasSetor.slice(0, 3))
-  else if (scorePct < 70) melhoria.push(...dicasSetor.slice(0, 2))
-  else manutencao.push(...dicasSetor.slice(3, 5))
-
-  return {
-    urgente: [...new Set(urgente)].filter(Boolean).slice(0, 4),
-    melhoria: [...new Set(melhoria)].filter(Boolean).slice(0, 4),
-    manutencao: [...new Set(manutencao)].filter(Boolean).slice(0, 3),
-  }
 }
 
 type CustomRec = { tipo: 'urgente' | 'melhoria' | 'manutencao'; texto: string; produtos: string[] }
@@ -581,7 +556,7 @@ export default function ConsultaDetalhe() {
       {/* ── Modal Recomendações ─────────────────────────────────────────────── */}
       {recModal && recSetorData && (() => {
         const pct = recSetorData.score_percentual ?? getScore(recSetorData.id) ?? 50
-        const rec = gerarRecomendacoes(recSetorData.nome, pct, criterios[recSetorData.id] || {})
+        const rec = gerarRecomendacoes({ nomeSetor: recSetorData.nome, scorePct: pct, criterios: criteriosPorNomeParaArray(criterios[recSetorData.id] || {}) })
         const temRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0
         return (
           <div style={{

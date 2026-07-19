@@ -5,7 +5,8 @@ import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import FlowLayout from '../../../components/FlowLayout'
 // jsPDF and html2canvas are lazy-loaded in handleDownloadPDF() to reduce initial bundle size
-import { CRITERIOS, AREA_META, SETOR_DICAS, CRITERIO_DICAS, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
+import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
+import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
@@ -35,32 +36,6 @@ const COMODO_LABELS: Record<string, string> = {
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
-
-function gerarRecomendacoes(nomeSetor: string, scorePct: number, criteriosSetor: Record<string, number>) {
-  const urgente: string[] = []
-  const melhoria: string[] = []
-  const manutencao: string[] = []
-
-  // Scale: 0=Crítico(-2), 1=Ruim(-1), 2=Neutro(0), 3=Bom(+1), 4=Ótimo(+2)
-  CRITERIOS.forEach((criterio, ci) => {
-    const val = criteriosSetor[criterio] ?? -1
-    const dicas = CRITERIO_DICAS[ci] || []
-    if (val === 0) urgente.push(...dicas.slice(0, 2))
-    else if (val === 1) melhoria.push(...dicas.slice(0, 2))
-    else if (val === 2) melhoria.push(dicas[0] || '')
-  })
-
-  const dicasSetor = SETOR_DICAS[nomeSetor] ?? []
-  if (scorePct < 40) urgente.push(...dicasSetor.slice(0, 3))
-  else if (scorePct < 70) melhoria.push(...dicasSetor.slice(0, 2))
-  else manutencao.push(...dicasSetor.slice(3, 5))
-
-  return {
-    urgente: [...new Set(urgente)].filter(Boolean).slice(0, 4),
-    melhoria: [...new Set(melhoria)].filter(Boolean).slice(0, 4),
-    manutencao: [...new Set(manutencao)].filter(Boolean).slice(0, 3),
-  }
-}
 
 function scoreColor(pct: number | null) {
   if (pct === null || pct === undefined) return '#9CA3AF'
@@ -932,7 +907,7 @@ export default function Relatorio() {
                 {groupSetores.map(setor => {
                   const meta = AREA_META[setor.nome]
                   const criteriosMap = getCriteriosMap(setor)
-                  const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, criteriosMap)
+                  const rec = gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: setor.score_percentual ?? 0, criterios: criteriosPorNomeParaArray(criteriosMap) })
                   const customRecs = setor.recomendacoes_custom
                   const hasCustom = Array.isArray(customRecs) && customRecs.length > 0
                   const mainAction = hasCustom
@@ -1115,7 +1090,7 @@ export default function Relatorio() {
             {setores.map(setor => {
               const pct = setor.score_percentual ?? null
               const criteriosMap = getCriteriosMap(setor)
-              const rec = pct != null ? gerarRecomendacoes(setor.nome, pct, criteriosMap) : null
+              const rec = pct != null ? gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: pct, criterios: criteriosPorNomeParaArray(criteriosMap) }) : null
               const temRec = rec ? (rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0) : false
               const meta = AREA_META[setor.nome]
               const lvl = scoreLevelLabel(pct)
@@ -1311,7 +1286,7 @@ export default function Relatorio() {
             const prazo = (pct: number) => pct < 40 ? 'Imediato' : pct < 70 ? 'Próximas 2 semanas' : 'Próximo mês'
             return priorities.map((setor, i) => {
               const meta = AREA_META[setor.nome]
-              const rec = gerarRecomendacoes(setor.nome, setor.score_percentual ?? 0, getCriteriosMap(setor))
+              const rec = gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: setor.score_percentual ?? 0, criterios: criteriosPorNomeParaArray(getCriteriosMap(setor)) })
               const customRecs = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom as {texto:string}[] : []
               const action = customRecs[0]?.texto || rec.urgente[0] || rec.melhoria[0] || meta?.action || 'Avaliar e harmonizar este setor'
               return (
