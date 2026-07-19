@@ -1154,8 +1154,9 @@ function BaguaPlantaContent() {
     // salvar criterios
     const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
     const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
-    await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
-    await supabase.from('diagnostico_criterios').insert(inserts)
+    const {error:eDelC}=await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
+    const {error:eInsC}=await supabase.from('diagnostico_criterios').insert(inserts)
+    if(eDelC||eInsC){setMsg('Erro ao salvar critérios do diagnóstico: '+((eDelC||eInsC)?.message||''));setMsgTipo('erro');return}
     // Save canvas snapshot to consulta (best effort - column may not exist yet)
     try {
       const cv=cvRef.current
@@ -1206,8 +1207,9 @@ function BaguaPlantaContent() {
         },{onConflict:'consulta_id,numero'}).select('id').single()
         if(e1||!setorRow) continue
         const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
-        await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
-        await supabase.from('diagnostico_criterios').insert(inserts)
+        const {error:eDelC}=await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
+        const {error:eInsC}=await supabase.from('diagnostico_criterios').insert(inserts)
+        if(eDelC||eInsC) throw new Error('Falha ao salvar critérios: '+((eDelC||eInsC)?.message||''))
       }
       // Save canvas snapshot + finalization metadata
       const cv=cvRef.current
