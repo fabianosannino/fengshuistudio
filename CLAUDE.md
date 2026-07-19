@@ -55,6 +55,15 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
 - **I/O (Supabase/Stripe)**: rotas `/api` e `src/lib`.
 - **UI**: `app/**` — evite regra de negócio nova dentro de componente.
 
+## Documentação de arquitetura
+
+- `docs/architecture/overview.md` — visão geral e camadas.
+- `docs/architecture/adr/` — decisões (ADR): pagamentos (0002), autorização/RLS
+  (0003), CSP (0004), storage/LGPD (0005). Toda decisão arquitetural nova vira
+  um ADR.
+- `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
+- `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).
+
 ## Débitos e histórico
 
 `docs/auditoria/2026-07-18-auditoria-arquitetura-seguranca.md` lista os achados
