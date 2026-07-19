@@ -5,123 +5,27 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
+import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
 
+// As dicas de cada setor vêm de SETOR_DICAS (src/lib/constants) via o motor
+// canônico de recomendações — não são duplicadas aqui.
 const SETORES = [
-  { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#7C3AED',
-    dicas:['Adicione plantas saudáveis e viçosas','Use tons roxo, verde e dourado','Coloque objetos de madeira ou formas altas','Remova objetos quebrados ou murchos','Mantenha a área iluminada e organizada'] },
-  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626',
-    dicas:['Use tons vermelhos e alaranjados','Instale iluminação forte ou velas','Exponha diplomas, troféus e conquistas','Evite elementos de água neste setor','Adicione símbolos de fênix ou pássaros'] },
-  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D',
-    dicas:['Coloque objetos em pares','Use cores rosa, branco e bege','Adicione cristal de quartzo rosa','Exponha imagens de casais ou parceria','Mantenha o espaço acolhedor e convidativo'] },
-  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D',
-    dicas:['Coloque fotos de família em molduras','Use tons verdes e formas retangulares','Adicione plantas ou flores frescas','Inclua objetos de madeira natural','Organize fotos em ordem cronológica'] },
-  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#D97706',
-    dicas:['Mantenha o centro completamente livre','Use tons amarelos e terrosos','Evite móveis pesados no centro','Adicione cristais amarelos ou cerâmicas','Este setor influencia todos os demais'] },
-  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#B45309',
-    dicas:['Use tons brancos, cinza e metálicos','Adicione objetos redondos ou ovais','Crie um espaço inspirador e lúdico','Exponha arte, músicas ou materiais criativos','Inclua elementos metálicos decorativos'] },
-  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#92400E',
-    dicas:['Crie um cantinho de meditação ou estudo','Use tons azul escuro e preto','Adicione livros, cristais e pedras naturais','Mantenha o espaço silencioso e ordenado','Exponha símbolos espirituais significativos'] },
-  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1D4ED8',
-    dicas:['Use tons pretos e azuis escuros','Adicione elemento água (espelho, fonte ou aquário)','Mantenha os caminhos livres e fluidos','Exponha imagens de água, lagos ou rios','Inclua objetos ondulados ou irregulares'] },
-  { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280',
-    dicas:['Use tons cinza, prata e metálico','Adicione objetos de viagem ou mapas','Crie um espaço acolhedor para receber visitas','Instale sinos de vento metálicos','Exponha imagens de mentores ou referências'] },
+  { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#7C3AED' },
+  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626' },
+  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D' },
+  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D' },
+  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#D97706' },
+  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#B45309' },
+  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#92400E' },
+  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1D4ED8' },
+  { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280' },
 ]
 
-// ─── RECOMENDAÇÕES DINÂMICAS ──────────────────────────────────────────────────
-
-const CRITERIO_DICAS: Record<number, string[]> = {
-  0: [ // Limpeza e organização
-    'Faça uma limpeza profunda e reorganize completamente este setor',
-    'Descarte objetos desnecessários — a desordem bloqueia o fluxo de energia',
-    'Use caixas organizadoras e mantenha superfícies livres',
-  ],
-  1: [ // Iluminação
-    'Aumente a iluminação com luminárias adicionais ou spots direcionados',
-    'Substitua lâmpadas fracas por luz branca quente (3000-4000K)',
-    'Considere luz natural — abra cortinas ou adicione espelhos estratégicos',
-  ],
-  2: [ // Ventilação
-    'Melhore a circulação de ar — abra janelas regularmente',
-    'Adicione plantas purificadoras como espada-de-são-jorge ou lírio-da-paz',
-    'Evite objetos que acumulem poeira e bloqueiem o fluxo de ar',
-  ],
-  3: [ // Cores harmônicas
-    'Repinte as paredes com a cor do elemento associado a este setor',
-    'Adicione almofadas, tapetes ou obras de arte nas cores recomendadas',
-    'Remova objetos com cores que conflitem com o elemento do setor',
-  ],
-  4: [ // Mobiliário
-    'Reposicione os móveis para criar caminhos de circulação livres',
-    'Remova móveis com cantos apontados diretamente para áreas de descanso',
-    'Escolha formas de móveis alinhadas com o elemento do setor',
-  ],
-  5: [ // Plantas e elementos naturais
-    'Adicione plantas vivas e saudáveis — evite plantas artificiais ou murchas',
-    'Inclua elementos naturais como pedras, cristais ou madeira bruta',
-    'Mantenha as plantas adubadas, podadas e sem folhas secas',
-  ],
-  6: [ // Ausência de objetos quebrados
-    'Remova imediatamente todos os objetos quebrados, lascados ou com defeito',
-    'Conserte ou descarte itens danificados — eles simbolizam energia estagnada',
-    'Revise tomadas, lâmpadas queimadas e torneiras com vazamento',
-  ],
-  7: [ // Fluxo de energia
-    'Desobstrua os cantos — use plantas ou luminárias para ativar energia estagnada',
-    'Garanta que as portas abram completamente sem obstáculos',
-    'Reorganize o layout para criar um fluxo natural de circulação',
-  ],
-}
-
-function gerarRecomendacoes(
-  setor: typeof SETORES[0],
-  sc: Setor
-): { urgente: string[]; melhoria: string[]; manutencao: string[] } {
-  const urgente:    string[] = []
-  const melhoria:   string[] = []
-  const manutencao: string[] = []
-
-  // Only generate if criteria have been evaluated
-  if (!criteriosAvaliados(sc.criterios)) return { urgente: [], melhoria: [], manutencao: [] }
-
-  // Problemas geométricos
-  if (sc.faltaPct > 5) {
-    urgente.push(`⚠ Setor com área faltante (${Math.round(sc.faltaPct)}%) — a energia de ${setor.nome} está enfraquecida`)
-    urgente.push('Compense com ativação energética intensa: mais objetos do elemento, cores e intenção')
-  }
-  if (sc.excessoPct > 5) {
-    melhoria.push(`↑ Setor com excesso (${Math.round(sc.excessoPct)}%) — pode gerar desequilíbrio em ${setor.nome}`)
-    melhoria.push('Use divisórias simbólicas ou espelhos para definir limites energéticos claros')
-  }
-
-  // Critérios físicos com score baixo (0=Crítico, 1=Ruim, 2=Neutro)
-  sc.criterios.forEach((val, ci) => {
-    const dicas = CRITERIO_DICAS[ci] || []
-    if (val === 0) urgente.push(...dicas.slice(0,2))
-    else if (val === 1) melhoria.push(...dicas.slice(0,2))
-    else if (val === 2) melhoria.push(dicas[0])
-  })
-
-  // Dicas específicas do setor se score total baixo
-  const ts = scoreTotal(sc)
-  const dicasSetor = setor.dicas ?? []
-  if (ts < 40) {
-    urgente.push(...dicasSetor.slice(0,3))
-  } else if (ts < 70) {
-    melhoria.push(...dicasSetor.slice(0,2))
-  } else {
-    manutencao.push(...dicasSetor.slice(3,5))
-  }
-
-  // Deduplicar
-  return {
-    urgente:    [...new Set(urgente)].slice(0,4),
-    melhoria:   [...new Set(melhoria)].slice(0,4),
-    manutencao: [...new Set(manutencao)].slice(0,3),
-  }
-}
+// As recomendações vêm do motor canônico (src/lib/recomendacoes). A tela de
+// diagnóstico passa também faltaPct/excessoPct para incluir as recs geométricas.
 
 function gridOrder(escola: string, lado: string): number[] {
   if (escola === 'btb' && lado === 'direita') return [2,1,0,5,4,3,8,7,6]
@@ -1919,7 +1823,15 @@ function BaguaPlantaContent() {
 
                 {/* ── Recomendações dinâmicas (colapsável) ── */}
                 {(()=>{
-                  const rec = gerarRecomendacoes(stAtivo, scAtivo)
+                  const rec = criteriosAvaliados(scAtivo.criterios)
+                    ? gerarRecomendacoes({
+                        nomeSetor: stAtivo.nome,
+                        scorePct: scoreTotal(scAtivo),
+                        criterios: scAtivo.criterios,
+                        faltaPct: scAtivo.faltaPct,
+                        excessoPct: scAtivo.excessoPct,
+                      })
+                    : { urgente: [], melhoria: [], manutencao: [] }
                   const hasRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0
                   if (!hasRec) return null
                   return (
