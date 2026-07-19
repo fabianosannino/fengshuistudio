@@ -539,7 +539,7 @@ export default function Clientes() {
                   <span>{stats?.total || 0} consulta(s)</span>
                   {stats?.lastStatus && (
                     <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280' }}>
-                      {stats.lastStatus === 'finalizada' ? '✅ Finalizada' : stats.lastStatus === 'em_andamento' ? '🔄 Em andamento' : '☯ ' + stats.lastStatus}
+                      {stats.lastStatus === 'finalizada' ? '✅ Concluída' : stats.lastStatus === 'em_andamento' ? '🔄 Em andamento' : '☯ ' + stats.lastStatus}
                     </span>
                   )}
                 </div>

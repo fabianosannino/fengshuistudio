@@ -42,7 +42,7 @@ const CORES_STATUS: Record<string, string> = {
 const LABELS_STATUS: Record<string, string> = {
   rascunho: 'Rascunho',
   em_andamento: 'Em andamento',
-  finalizada: 'Finalizada',
+  finalizada: 'Concluída',
   arquivada: 'Arquivada',
 }
 
@@ -651,7 +651,7 @@ export default function Dashboard() {
                   <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0' }}>
                     {a.cliente_nome && `${a.cliente_nome} · `}
                     {a.status_bagua==='concluida'
-                      ? `Concluída em ${new Date(a.finalizada_em).toLocaleDateString('pt-BR')} às ${new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                      ? `Diagnóstico finalizado em ${new Date(a.finalizada_em).toLocaleDateString('pt-BR')} às ${new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
                       : 'Análise em andamento'
                     }
                   </p>

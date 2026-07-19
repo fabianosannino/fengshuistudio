@@ -531,7 +531,7 @@ export default function ConsultaDetalhe() {
   }
 
   async function handleFinalizar() {
-    if (!confirm('Deseja finalizar esta consulta?')) return
+    if (!confirm('Deseja marcar esta consulta como concluída?')) return
     await supabase.from('consultas').update({ status: 'finalizada', finalizada_em: new Date().toISOString() }).eq('id', id)
     router.push('/consultas')
   }
@@ -765,7 +765,7 @@ export default function ConsultaDetalhe() {
               background: '#15803D', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
-            }}>Finalizar consulta ✓</button>
+            }}>Concluir consulta ✓</button>
           </div>
         </div>
         )}
@@ -787,7 +787,7 @@ export default function ConsultaDetalhe() {
               background: '#15803D', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
-            }}>Finalizar consulta ✓</button>
+            }}>Concluir consulta ✓</button>
           </div>
         )}
 
@@ -823,7 +823,7 @@ export default function ConsultaDetalhe() {
           // Confirm before replacing existing plant
           function alterarPlanta() {
             const msg = finalizada
-              ? 'Substituir a planta atual irá apagar:\n• Bordas e configurações definidas\n• Marcações de falta e excesso\n• Ajustes manuais por setor\n• Análise concluída\n\nEsta ação não pode ser desfeita.'
+              ? 'Substituir a planta atual irá apagar:\n• Bordas e configurações definidas\n• Marcações de falta e excesso\n• Ajustes manuais por setor\n• Diagnóstico finalizado\n\nEsta ação não pode ser desfeita.'
               : 'Substituir a planta atual irá apagar:\n• Bordas e configurações definidas\n• Marcações de falta e excesso\n• Ajustes manuais por setor\n\nEsta ação não pode ser desfeita.'
             if (confirm(msg)) {
               // Clear analysis and redirect to upload
@@ -855,7 +855,7 @@ export default function ConsultaDetalhe() {
                     </div>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
                       {finalizada
-                        ? `✓ Análise concluída`
+                        ? `✓ Diagnóstico finalizado`
                         : emAndamento
                           ? `\ud83d\udd50 Análise em andamento`
                           : 'Posicione a planta, defina setores e avalie geometricamente cada área do imóvel'
@@ -863,7 +863,7 @@ export default function ConsultaDetalhe() {
                     </div>
                     {finalizada && (
                       <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginTop: '2px' }}>
-                        Concluída em {new Date(finalizada).toLocaleDateString('pt-BR')} às {new Date(finalizada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        Finalizado em {new Date(finalizada).toLocaleDateString('pt-BR')} às {new Date(finalizada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     )}
                     {emAndamento && (
@@ -895,7 +895,7 @@ export default function ConsultaDetalhe() {
                       </button>
                     </>
                   )}
-                  {/* Estado 3: Concluída */}
+                  {/* Estado 3: Diagnóstico finalizado */}
                   {finalizada && (
                     <>
                       <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}

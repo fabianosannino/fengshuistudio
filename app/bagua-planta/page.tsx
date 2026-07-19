@@ -1315,7 +1315,7 @@ function BaguaPlantaContent() {
           <div style={{background:'#fff',borderRadius:'12px',padding:'36px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
             <div style={{fontSize:'48px',marginBottom:'10px'}}>🏠</div>
             <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>
-              {rascunhoRef.current?.finalizada_em?'Análise concluída anteriormente':'Análise em andamento'}
+              {rascunhoRef.current?.finalizada_em?'Diagnóstico finalizado anteriormente':'Análise em andamento'}
             </h3>
             <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>
               {rascunhoRef.current?.finalizada_em
