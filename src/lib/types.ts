@@ -148,6 +148,9 @@ export interface Consulta {
   observacoes_topograficas?: string | null
   dados_adicionais?: string | null
   status: ConsultaStatus
+  /** Caminho do PDF salvo no bucket privado 'relatorios' (persistência do relatório). */
+  relatorio_pdf_path?: string | null
+  relatorio_gerado_em?: string | null
   roda_da_vida?: Record<string, unknown> | null
   checklist_chi?: string[] | null
   posicao_comando?: Record<string, string[]> | null

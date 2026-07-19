@@ -62,6 +62,21 @@ function desvioLabel(pct: number | null): { nivel: string; cor: string } {
 
 // ─── COMPONENT ──────────────────────────────────────────────────────────────
 
+/** Espera todas as imagens dentro de `el` carregarem antes da captura (evita PDF em branco). */
+async function waitForImages(el: HTMLElement): Promise<void> {
+  const imgs = Array.from(el.querySelectorAll('img'))
+  await Promise.all(
+    imgs.map((img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+      return new Promise<void>((resolve) => {
+        const done = () => resolve()
+        img.addEventListener('load', done, { once: true })
+        img.addEventListener('error', done, { once: true })
+      })
+    })
+  )
+}
+
 export default function Relatorio() {
   const router = useRouter()
   const params = useParams()
@@ -73,6 +88,7 @@ export default function Relatorio() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
+  const [savedRelatorioEm, setSavedRelatorioEm] = useState<string | null>(null)
   const [showSelector, setShowSelector] = useState(true)
   const [selectedSections, setSelectedSections] = useState({
     completo: true,
@@ -122,6 +138,7 @@ export default function Relatorio() {
         .single()
       if (!consulta) { router.push('/consultas'); return }
       setConsulta(consulta)
+      setSavedRelatorioEm(consulta.relatorio_gerado_em ?? null)
 
       const { data: setoresData } = await supabase
         .from('setores_bagua')
@@ -196,6 +213,7 @@ export default function Relatorio() {
     if (!printRef.current) return
     setDownloading(true)
     try {
+      await waitForImages(printRef.current)
       const html2canvas = (await import('html2canvas')).default
       const { jsPDF } = await import('jspdf')
       const canvas = await html2canvas(printRef.current, {
@@ -254,12 +272,33 @@ export default function Relatorio() {
       }
       const nomeArquivo = `relatorio-${consulta!.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
       pdf.save(nomeArquivo)
+
+      // Persiste no servidor (best-effort — o download acima já ocorreu)
+      try {
+        const blob = pdf.output('blob')
+        const fd = new FormData()
+        fd.append('pdf', blob, nomeArquivo)
+        fd.append('consulta_id', id)
+        const res = await fetch('/api/consultas/relatorio', { method: 'POST', body: fd })
+        if (res.ok) {
+          const data = await res.json()
+          setSavedRelatorioEm(data.gerado_em ?? new Date().toISOString())
+        }
+      } catch { /* persistência é best-effort; não atrapalha o download */ }
     } catch (err) {
       console.error('Erro ao gerar PDF:', err)
       alert('Erro ao gerar PDF. Tente usar a opção Imprimir.')
     } finally {
       setDownloading(false)
     }
+  }
+
+  async function baixarVersaoSalva() {
+    const res = await fetch(`/api/consultas/relatorio?consulta_id=${id}`)
+    if (!res.ok) { alert('Não foi possível abrir o relatório salvo.'); return }
+    const data = await res.json()
+    if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
+    else alert('Nenhuma versão salva ainda. Gere o PDF primeiro.')
   }
 
   if (loading || !consulta) {
@@ -387,6 +426,18 @@ export default function Relatorio() {
             color: '#ffffff', padding: '6px 20px', borderRadius: '6px',
             cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
           }}>{downloading ? 'Gerando PDF...' : 'Baixar PDF'}</button>
+          {savedRelatorioEm && (
+            <button
+              onClick={baixarVersaoSalva}
+              className="no-print"
+              title={`Última versão salva em ${new Date(savedRelatorioEm).toLocaleString('pt-BR')}`}
+              style={{
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
+                color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '14px',
+              }}
+            >Baixar versão salva</button>
+          )}
         </div>
       </div>
 
