@@ -12,7 +12,7 @@ import type { Cliente, Consulta } from '../../../src/lib/types'
 const STATUS_LABELS: Record<string, { icon: string; label: string; bg: string; color: string }> = {
   sem_analise: { icon: '☯', label: 'Sem análise', bg: '#F3F4F6', color: '#6B7280' },
   em_andamento: { icon: '🔄', label: 'Em andamento', bg: '#FFF7ED', color: '#D97706' },
-  finalizada: { icon: '✅', label: 'Finalizada', bg: '#F0FDF4', color: '#15803D' },
+  finalizada: { icon: '✅', label: 'Concluída', bg: '#F0FDF4', color: '#15803D' },
   arquivada: { icon: '📦', label: 'Arquivada', bg: '#F5F3FF', color: '#7C3AED' },
 }
 
@@ -265,9 +265,9 @@ export default function ClienteDetalhe() {
       .update({ status: 'finalizada', finalizada_em: new Date().toISOString() })
       .eq('id', finalizarConsultaId)
     if (error) {
-      setMessage('Erro ao finalizar consulta: ' + error.message)
+      setMessage('Erro ao concluir consulta: ' + error.message)
     } else {
-      setMessage('Consulta finalizada com sucesso!')
+      setMessage('Consulta concluída com sucesso!')
       setTimeout(() => setMessage(''), 3000)
       await loadConsultas()
     }
@@ -595,7 +595,7 @@ export default function ClienteDetalhe() {
                       color: baguaFinalizada ? '#15803D' : baguaEmAndamento ? '#D97706' : '#9CA3AF',
                       padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
                     }}>{baguaFinalizada
-                        ? `☯ Concluída em ${new Date(baguaData!.finalizada_em!).toLocaleDateString('pt-BR')}`
+                        ? `☯ Diagnóstico finalizado em ${new Date(baguaData!.finalizada_em!).toLocaleDateString('pt-BR')}`
                         : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem análise'
                     }</span>
                     <span style={{
@@ -606,13 +606,13 @@ export default function ClienteDetalhe() {
                     {c.status === 'em_andamento' && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setFinalizarConsultaId(c.id) }}
-                        title="Finalizar consulta"
+                        title="Concluir consulta"
                         style={{
                           padding: '4px 10px', background: '#F0FDF4', color: '#15803D',
                           border: '1px solid #BBF7D0', borderRadius: '6px', fontSize: '12px',
                           fontWeight: 'bold', cursor: 'pointer'
                         }}
-                      >✅ Finalizar</button>
+                      >✅ Concluir</button>
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteConsultaId(c.id) }}
@@ -656,9 +656,9 @@ export default function ClienteDetalhe() {
 
       <ConfirmModal
         open={finalizarConsultaId !== null}
-        title="Finalizar consulta"
-        message="A consulta será marcada como finalizada. Deseja continuar?"
-        confirmLabel="Finalizar"
+        title="Concluir consulta"
+        message="A consulta será marcada como concluída. Deseja continuar?"
+        confirmLabel="Concluir"
         cancelLabel="Cancelar"
         variant="warning"
         onConfirm={handleFinalizarConsulta}

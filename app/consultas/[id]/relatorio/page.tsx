@@ -89,6 +89,9 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [savedRelatorioEm, setSavedRelatorioEm] = useState<string | null>(null)
+  // Nudge para marcar a consulta (entrega) como concluída após gerar o relatório.
+  const [showConcluirNudge, setShowConcluirNudge] = useState(false)
+  const [concluindo, setConcluindo] = useState(false)
   const [showSelector, setShowSelector] = useState(true)
   const [selectedSections, setSelectedSections] = useState({
     completo: true,
@@ -273,6 +276,9 @@ export default function Relatorio() {
       const nomeArquivo = `relatorio-${consulta!.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
       pdf.save(nomeArquivo)
 
+      // Relat\u00f3rio entregue \u2192 sugere concluir a consulta (s\u00f3 nudge; n\u00e3o trava nada).
+      if (consulta!.status !== 'finalizada') setShowConcluirNudge(true)
+
       // Persiste no servidor (best-effort — o download acima já ocorreu)
       try {
         const blob = pdf.output('blob')
@@ -299,6 +305,19 @@ export default function Relatorio() {
     const data = await res.json()
     if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
     else alert('Nenhuma versão salva ainda. Gere o PDF primeiro.')
+  }
+
+  /** Marca a consulta (a entrega ao cliente) como concluída. Não altera o Ba Guá. */
+  async function marcarConsultaConcluida() {
+    setConcluindo(true)
+    const { error } = await supabase
+      .from('consultas')
+      .update({ status: 'finalizada', finalizada_em: new Date().toISOString() })
+      .eq('id', id)
+    setConcluindo(false)
+    if (error) { alert('Não foi possível marcar a consulta como concluída.'); return }
+    setConsulta(c => (c ? { ...c, status: 'finalizada' } : c))
+    setShowConcluirNudge(false)
   }
 
   if (loading || !consulta) {
@@ -440,6 +459,33 @@ export default function Relatorio() {
           )}
         </div>
       </div>
+
+      {/* ── Nudge: concluir a consulta após gerar o relatório ───────────── */}
+      {showConcluirNudge && (
+        <div className="no-print" style={{
+          maxWidth: '980px', margin: '16px auto 0', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap',
+          background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 20px',
+        }}>
+          <div style={{ fontSize: '14px', color: '#15803D' }}>
+            <strong>Relatório entregue.</strong> Marcar esta consulta como concluída?
+            <span style={{ display: 'block', fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+              Apenas atualiza o status da consulta — o diagnóstico do Ba Guá não é alterado.
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setShowConcluirNudge(false)} style={{
+              background: 'transparent', border: '1px solid #D1D5DB', color: '#6B7280',
+              padding: '8px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
+            }}>Agora não</button>
+            <button onClick={marcarConsultaConcluida} disabled={concluindo} style={{
+              background: concluindo ? '#9CA3AF' : '#16A34A', border: 'none', color: '#fff',
+              padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 600,
+              cursor: concluindo ? 'not-allowed' : 'pointer',
+            }}>{concluindo ? 'Concluindo…' : 'Marcar como concluída'}</button>
+          </div>
+        </div>
+      )}
 
       {/* ── Section Selector ───────────────────────────────────────────── */}
       {showSelector && (

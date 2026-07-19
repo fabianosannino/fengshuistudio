@@ -86,7 +86,7 @@ export default function Consultas() {
   }
 
   function statusLabel(status: string) {
-    const map: Record<string, string> = { rascunho: 'Rascunho', em_andamento: 'Em andamento', finalizada: 'Finalizada', arquivada: 'Arquivada' }
+    const map: Record<string, string> = { rascunho: 'Rascunho', em_andamento: 'Em andamento', finalizada: 'Concluída', arquivada: 'Arquivada' }
     return map[status] || status
   }
 
@@ -166,7 +166,7 @@ export default function Consultas() {
           style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
           <option value="todos">Todos os status</option>
           <option value="em_andamento">Em andamento</option>
-          <option value="finalizada">Finalizada</option>
+          <option value="finalizada">Concluída</option>
           <option value="rascunho">Rascunho</option>
           <option value="arquivada">Arquivada</option>
         </select>
@@ -228,7 +228,7 @@ export default function Consultas() {
                     const be=consulta.bagua_entrada
                     const finalizada=!!(be?.finalizada_em)
                     const emAndamento=!!(be?.planta_url)&&!finalizada
-                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Concluída ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
+                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
                     if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>☯ Em andamento</span>
                     return null
                   })()}
