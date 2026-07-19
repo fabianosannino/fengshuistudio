@@ -33,7 +33,7 @@ CREATE OR REPLACE FUNCTION public.cleanup_old_audit_logs()
 RETURNS void AS $$
 BEGIN
   DELETE FROM public.admin_audit_log
-  WHERE created_at < NOW() - INTERVAL '2 years';
+  WHERE performed_at < NOW() - INTERVAL '2 years';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
    SET search_path = public, pg_catalog;
