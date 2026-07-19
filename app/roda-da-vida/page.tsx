@@ -6,7 +6,14 @@ import AppShell from '../components/AppShell'
 import type { User } from '@supabase/supabase-js'
 import { AREAS, CATEGORIAS, avg, defaultRespostas } from '../../src/lib/roda-da-vida-constants'
 
-type Consulta = { id: string; nome_imovel: string; criado_em: string; cliente_id?: string | null; clientes?: { nome_completo: string } | null; roda_da_vida?: any }
+type RodaDaVidaData = {
+  respostas?: Record<string, number[]>
+  acoes?: Record<string, string>[]
+  pessoa_nome?: string
+  observacoes?: Record<string, string>
+  observacao_geral?: string
+}
+type Consulta = { id: string; nome_imovel: string; criado_em: string; cliente_id?: string | null; clientes?: { nome_completo: string } | null; roda_da_vida?: RodaDaVidaData | null }
 type Cliente = { id: string; nome_completo: string }
 type Acao = { acao: string; categoria: string; data_inicio: string; data_fim: string; estrategia: string; observacoes: string }
 
@@ -114,7 +121,7 @@ export default function RodaDaVidaPage() {
       const c = consultas.find(x => x.id === selectedConsultaId)
       if (c?.roda_da_vida?.respostas) {
         setRespostas(c.roda_da_vida.respostas)
-        setAcoes(c.roda_da_vida.acoes || defaultAcoes())
+        setAcoes((c.roda_da_vida.acoes as unknown as Acao[]) || defaultAcoes())
       }
     }
     setAreaAtual(0); setStep('questionnaire')
@@ -234,7 +241,7 @@ export default function RodaDaVidaPage() {
             <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Vincular a uma consulta existente?</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {consultasDoCliente.map(c => (
-                <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes(c.roda_da_vida.acoes || defaultAcoes()) } }}
+                <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes((c.roda_da_vida.acoes as unknown as Acao[]) || defaultAcoes()) } }}
                   style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === c.id ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: selectedConsultaId === c.id ? '#F5F0FF' : '#fff', cursor: 'pointer' }}>
                   <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1E3A5F' }}>{c.nome_imovel}</div>
                   <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? '— ◎ Já tem Roda da Vida' : ''}</div>

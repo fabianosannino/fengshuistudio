@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const BUCKET = 'imoveis-fotos'
 
 export async function POST(request: Request) {
@@ -32,7 +32,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'consulta_id e planta são obrigatórios' }, { status: 400 })
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const ext = imageExtensionForMime(file.type)
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type) || !ext) {
       return NextResponse.json({ error: 'Formato inválido. Use JPG, PNG ou WEBP.' }, { status: 400 })
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -72,8 +73,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Upload new plant image
-    const ext = file.name.split('.').pop() || 'png'
+    // Upload new plant image — extensão derivada do MIME validado
     const filePath = `${consultaId}/bagua-planta/planta.${ext}`
     const buffer = await file.arrayBuffer()
     const { error: uploadError } = await supabase.storage
@@ -81,11 +81,8 @@ export async function POST(request: Request) {
       .upload(filePath, buffer, { contentType: file.type, upsert: true })
 
     if (uploadError) {
-      logger.error('Storage upload error', { route: '/api/consultas/bagua-planta', error: uploadError.message })
-      return NextResponse.json(
-        { error: `Erro ao enviar imagem. Verifique se o bucket "${BUCKET}" existe no Supabase Storage. Detalhe: ${uploadError.message}` },
-        { status: 500 }
-      )
+      logger.error('Storage upload error', { route: '/api/consultas/bagua-planta', bucket: BUCKET, error: uploadError.message })
+      return NextResponse.json({ error: 'Erro ao enviar imagem. Tente novamente.' }, { status: 500 })
     }
 
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
@@ -94,6 +91,6 @@ export async function POST(request: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
     logger.error('bagua-planta route error', { route: '/api/consultas/bagua-planta', error: message })
-    return NextResponse.json({ error: `Erro interno: ${message}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro interno. Tente novamente.' }, { status: 500 })
   }
 }

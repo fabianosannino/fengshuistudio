@@ -29,11 +29,10 @@ export async function POST(request: Request) {
   }
 
   // ── Get the connected account ID ───────────────────────────────────────
-  let accountId = body.account_id
-  if (!accountId) {
-    const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
-    accountId = profile?.stripe_account_id
-  }
+  // Sempre derivado do perfil do usuário autenticado — nunca do body,
+  // para impedir criação de produtos na conta de outro consultor.
+  const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
+  const accountId = profile?.stripe_account_id
 
   if (!accountId) {
     return NextResponse.json({ error: 'Nenhuma conta Stripe vinculada' }, { status: 400 })
@@ -67,7 +66,7 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe product creation error', { route: '/api/stripe/products', error: String(err) })
-    return NextResponse.json({ error: `Erro ao criar produto: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar produto.' }, { status: 500 })
   }
 }
 
@@ -107,6 +106,6 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe products list error', { route: '/api/stripe/products', error: String(err) })
-    return NextResponse.json({ error: `Erro ao listar produtos: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao listar produtos.' }, { status: 500 })
   }
 }

@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const BUCKET = 'imoveis-fotos'
 
 export async function POST(request: Request) {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
   // Validate files
   for (const file of files) {
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       return NextResponse.json({ error: `Formato inválido: ${file.name}. Use JPG, PNG ou WEBP.` }, { status: 400 })
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -66,9 +66,8 @@ export async function POST(request: Request) {
   const uploadedUrls: string[] = []
 
   for (const file of files) {
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const allowedExt = ['jpg', 'jpeg', 'png', 'webp']
-    const safeExt = allowedExt.includes(ext) ? ext : 'jpg'
+    // Extensão derivada do MIME já validado acima, nunca de file.name.
+    const safeExt = imageExtensionForMime(file.type) ?? 'jpg'
     const folder = tipo === 'geral' ? 'geral' : comodo!.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
     const filePath = `${consultaId}/${folder}/${crypto.randomUUID()}.${safeExt}`
 
@@ -79,7 +78,7 @@ export async function POST(request: Request) {
 
     if (uploadError) {
       logger.error('Upload error', { route: '/api/consultas/fotos', error: uploadError.message })
-      return NextResponse.json({ error: `Erro ao enviar ${file.name}: ${uploadError.message}` }, { status: 500 })
+      return NextResponse.json({ error: `Erro ao enviar ${file.name}.` }, { status: 500 })
     }
 
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath)

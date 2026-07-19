@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../src/lib/supabase-admin'
 import { rateLimit } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
+import { planoEfetivo } from '../../../src/lib/plano-utils'
+
+const VALID_PLANOS = ['freemium', 'free', 'simples', 'pro', 'profissional'] as const
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a.trim())
@@ -38,20 +42,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  if (!plano || !['freemium', 'free', 'simples', 'pro', 'profissional'].includes(plano)) {
+  if (!plano || !(VALID_PLANOS as readonly string[]).includes(plano)) {
     return NextResponse.json({ error: 'Plano inválido' }, { status: 400 })
   }
 
-  // Get current plan
   const { data: profile } = await supabase
     .from('profiles')
     .select('plano')
     .eq('id', user.id)
     .single()
 
-  const isPaidPlan = ['pro', 'profissional', 'simples'].includes(plano)
-  const currentIsPaid = ['pro', 'profissional', 'simples'].includes(profile?.plano || '')
-  if (isPaidPlan && !currentIsPaid) {
+  const planoAtual = planoEfetivo(profile?.plano)
+  const planoAlvo = planoEfetivo(plano)
+
+  // Escritas privilegiadas (chave, audit log, plano) usam service_role:
+  // o RLS de activation_keys/admin_audit_log é admin-only e a coluna
+  // profiles.plano é protegida por trigger contra escrita do usuário.
+  const admin = createSupabaseAdminClient()
+
+  // Qualquer mudança PARA plano pago diferente do atual exige chave —
+  // inclusive upgrade/downgrade entre planos pagos.
+  const precisaChave = planoAlvo !== 'free' && planoAlvo !== planoAtual
+
+  if (precisaChave) {
     if (!chave_ativacao) {
       return NextResponse.json(
         { error: 'Informe uma chave de ativação válida para ativar este plano.', requiresPayment: true },
@@ -59,55 +72,79 @@ export async function POST(request: Request) {
       )
     }
 
-    // Look up activation key in database
-    const { data: dbKey } = await supabase
+    const chaveNormalizada = chave_ativacao.trim().toUpperCase()
+
+    const { data: dbKey } = await admin
       .from('activation_keys')
-      .select('id, key, status, expires_at')
-      .eq('key', chave_ativacao.trim().toUpperCase())
+      .select('id, key, status, expires_at, plan_type')
+      .eq('key', chaveNormalizada)
       .eq('status', 'available')
       .single()
 
-    if (!dbKey || !safeCompare(chave_ativacao.trim().toUpperCase(), dbKey.key)) {
+    if (!dbKey || !safeCompare(chaveNormalizada, dbKey.key)) {
       return NextResponse.json(
         { error: 'Chave de ativação inválida. Verifique e tente novamente.', requiresPayment: true },
         { status: 403 }
       )
     }
 
-    // Check expiration
     if (dbKey.expires_at && new Date(dbKey.expires_at) < new Date()) {
-      await supabase.from('activation_keys').update({ status: 'expired' }).eq('id', dbKey.id)
+      await admin.from('activation_keys').update({ status: 'expired' }).eq('id', dbKey.id)
       return NextResponse.json(
         { error: 'Chave de ativação expirada.', requiresPayment: true },
         { status: 403 }
       )
     }
 
-    // Mark key as used
-    await supabase.from('activation_keys').update({
-      status: 'used',
-      used_at: new Date().toISOString(),
-      used_by: user.id,
-    }).eq('id', dbKey.id)
+    // A chave só ativa o plano para o qual foi emitida.
+    if (planoEfetivo(dbKey.plan_type) !== planoAlvo) {
+      return NextResponse.json(
+        { error: 'Esta chave de ativação não é válida para o plano selecionado.', requiresPayment: true },
+        { status: 403 }
+      )
+    }
 
-    // Audit log
-    await supabase.from('admin_audit_log').insert({
+    // Queima a chave condicionada ao status para evitar uso duplo concorrente.
+    const { data: burnedKey, error: burnError } = await admin
+      .from('activation_keys')
+      .update({
+        status: 'used',
+        used_at: new Date().toISOString(),
+        used_by: user.id,
+      })
+      .eq('id', dbKey.id)
+      .eq('status', 'available')
+      .select('id')
+      .single()
+
+    if (burnError || !burnedKey) {
+      logger.error('Activation key burn failed', { route: '/api/planos', error: burnError?.message })
+      return NextResponse.json(
+        { error: 'Chave de ativação inválida. Verifique e tente novamente.', requiresPayment: true },
+        { status: 403 }
+      )
+    }
+
+    const { error: auditError } = await admin.from('admin_audit_log').insert({
       action: 'use_key',
       target_type: 'activation_key',
       target_id: dbKey.id,
-      details: { user_id: user.id, key_partial: chave_ativacao.trim().toUpperCase().slice(0, 8) + '...' },
+      details: { user_id: user.id, key_partial: chaveNormalizada.slice(0, 8) + '...' },
       performed_by: user.id,
     })
+    if (auditError) {
+      logger.error('Audit log insert failed', { route: '/api/planos', error: auditError.message })
+    }
   }
 
-  const { error } = await supabase
+  const { error } = await admin
     .from('profiles')
     .update({ plano })
     .eq('id', user.id)
 
   if (error) {
     logger.error('Planos update error', { route: '/api/planos', error: error.message })
-    return NextResponse.json({ error: 'Erro ao atualizar plano. Tente novamente.' }, { status: 400 })
+    return NextResponse.json({ error: 'Erro ao atualizar plano. Tente novamente.' }, { status: 500 })
   }
 
   return NextResponse.json({ plano })

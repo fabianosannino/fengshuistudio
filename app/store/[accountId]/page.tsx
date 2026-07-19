@@ -65,15 +65,13 @@ export default function Storefront() {
       body: JSON.stringify({
         account_id: accountId,
         price_id: product.price.id,
-        unit_amount: product.price.unit_amount,
-        product_name: product.name,
         quantity: 1,
       }),
     })
     const data = await res.json()
     if (res.ok && data.url) {
       // Redirect to Stripe Checkout
-      window.location.href = data.url
+      window.location.assign(data.url)
     } else {
       alert(data.error || 'Erro ao processar compra')
       setPurchasing(null)

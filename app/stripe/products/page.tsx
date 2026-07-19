@@ -35,6 +35,14 @@ export default function StripeProducts() {
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({ name: '', description: '', price: '' })
 
+  async function loadProducts(acctId: string) {
+    const res = await fetch(`/api/stripe/products?account_id=${acctId}`)
+    if (res.ok) {
+      const data = await res.json()
+      setProducts(data.products || [])
+    }
+  }
+
   useEffect(() => {
     async function load() {
       // Get the user's Stripe account ID
@@ -48,14 +56,6 @@ export default function StripeProducts() {
     }
     load()
   }, [])
-
-  async function loadProducts(acctId: string) {
-    const res = await fetch(`/api/stripe/products?account_id=${acctId}`)
-    if (res.ok) {
-      const data = await res.json()
-      setProducts(data.products || [])
-    }
-  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()

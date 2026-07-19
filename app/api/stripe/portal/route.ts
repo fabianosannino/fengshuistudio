@@ -41,6 +41,6 @@ export async function POST() {
     return NextResponse.json({ url: session.url })
   } catch (err) {
     logger.error('Stripe portal error', { route: '/api/stripe/portal', error: String(err) })
-    return NextResponse.json({ error: `Erro ao abrir portal de cobrança: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao abrir portal de cobrança.' }, { status: 500 })
   }
 }

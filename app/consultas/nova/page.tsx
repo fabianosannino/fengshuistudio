@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../../src/lib/supabase'
 import FlowLayout from '../../components/FlowLayout'
@@ -233,16 +234,16 @@ function NovaConsultaContent() {
               Arquive o imóvel atual para cadastrar um novo, ou faça upgrade para o plano Profissional.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <a href="/consultas" style={{
+              <Link href="/consultas" style={{
                 display: 'inline-block', padding: '8px 20px', background: '#D97706',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 textDecoration: 'none'
-              }}>Arquivar imóvel atual</a>
-              <a href="/planos" style={{
+              }}>Arquivar imóvel atual</Link>
+              <Link href="/planos" style={{
                 display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 textDecoration: 'none'
-              }}>Ver planos</a>
+              }}>Ver planos</Link>
             </div>
           </div>
         )}

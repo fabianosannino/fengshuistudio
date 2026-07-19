@@ -1,14 +1,35 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../src/lib/supabase'
+
+interface StoreProfile {
+  id: string
+  nome_completo: string
+  bio?: string | null
+  profissao?: string | null
+  cidade?: string | null
+  estado?: string | null
+  instagram?: string | null
+  site?: string | null
+  stripe_account_id?: string | null
+  parceiro_visivel?: boolean
+}
+
+interface StoreProduct {
+  id: string
+  name: string
+  description?: string | null
+  price?: { id: string; unit_amount: number; currency: string } | null
+}
 
 export default function LojaConsultor() {
   const params = useParams()
   const slug = params.slug as string
-  const [profile, setProfile] = useState<any>(null)
-  const [products, setProducts] = useState<any[]>([])
+  const [profile, setProfile] = useState<StoreProfile | null>(null)
+  const [products, setProducts] = useState<StoreProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -39,23 +60,21 @@ export default function LojaConsultor() {
     load()
   }, [slug])
 
-  async function handleBuy(product: any) {
-    const price = product.default_price
-    if (!price) return
+  async function handleBuy(product: StoreProduct) {
+    const price = product.price
+    if (!price || !profile) return
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         account_id: profile.stripe_account_id,
         price_id: price.id,
-        product_name: product.name,
-        unit_amount: price.unit_amount,
         success_url: `${window.location.origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: window.location.href,
       }),
     })
     const data = await res.json()
-    if (data.url) window.location.href = data.url
+    if (data.url) window.location.assign(data.url)
   }
 
   if (loading) return (
@@ -68,9 +87,11 @@ export default function LojaConsultor() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', flexDirection: 'column', gap: '12px' }}>
       <div style={{ fontSize: '48px' }}>☯</div>
       <p style={{ color: '#6B7280', fontSize: '16px' }}>{error}</p>
-      <a href="/" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 'bold' }}>Voltar ao início</a>
+      <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 'bold' }}>Voltar ao início</Link>
     </div>
   )
+
+  if (!profile) return null
 
   return (
     <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
@@ -96,14 +117,14 @@ export default function LojaConsultor() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
-            {products.map((p: any) => (
+            {products.map((p) => (
               <div key={p.id} style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB' }}>
                 <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px' }}>{p.name}</h3>
                 {p.description && <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 12px', lineHeight: 1.5 }}>{p.description}</p>}
-                {p.default_price && (
+                {p.price && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#1E3A5F' }}>
-                      {(p.default_price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {(p.price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                     <button onClick={() => handleBuy(p)} style={{
                       padding: '8px 20px', background: '#7C3AED', color: '#fff', border: 'none',
@@ -119,7 +140,7 @@ export default function LojaConsultor() {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', padding: '24px', color: '#9CA3AF', fontSize: '12px' }}>
-        Loja hospedada no <a href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</a>
+        Loja hospedada no <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</Link>
       </div>
     </div>
   )

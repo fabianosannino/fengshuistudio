@@ -385,7 +385,7 @@ export default function LandingPage() {
             ].map((t, i) => (
               <div key={i} className="testimonial-card" style={{ background: '#ffffff', borderRadius: '20px', padding: '32px', border: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', marginBottom: '16px' }}>{[1,2,3,4,5].map(s => (<span key={s} style={{ color: '#C9A84C', fontSize: '18px' }}>★</span>))}</div>
-                <p style={{ color: '#334155', fontSize: '15px', lineHeight: 1.8, fontStyle: 'italic', margin: '0 0 24px 0' }}>"{t.text}"</p>
+                <p style={{ color: '#334155', fontSize: '15px', lineHeight: 1.8, fontStyle: 'italic', margin: '0 0 24px 0' }}>&quot;{t.text}&quot;</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '18px' }}>{t.avatar}</div>
                   <div>

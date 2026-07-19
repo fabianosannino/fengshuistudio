@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '../../src/lib/supabase'
 
 type Consultor = {
@@ -85,7 +86,7 @@ export default function Consultores() {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', padding: '24px', color: '#9CA3AF', fontSize: '12px' }}>
-        <a href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</a> — Plataforma para consultores de Feng Shui
+        <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</Link> — Plataforma para consultores de Feng Shui
       </div>
     </div>
   )

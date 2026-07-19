@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import { planoEfetivo } from '../../src/lib/plano-utils'
+import type { Profile } from '../../src/lib/types'
 
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 const PAGE_SIZE = 50
@@ -17,7 +18,7 @@ const TIPOS_PROFISSIONAL: Record<string, { label: string; icon: string; cor: str
 
 export default function Parceiros() {
   const [loading, setLoading] = useState(true)
-  const [parceiros, setParceiros] = useState<any[]>([])
+  const [parceiros, setParceiros] = useState<Profile[]>([])
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroBusca, setFiltroBusca] = useState('')
@@ -35,7 +36,7 @@ export default function Parceiros() {
       setUserPlano(prof?.plano || '')
 
       // Fetch profiles that opted to be visible as partners (paginated)
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('parceiro_visivel', true)
@@ -46,11 +47,11 @@ export default function Parceiros() {
       // Fallback: fetch nothing (column needs to be created via migration)
       if (error) {
         console.warn('parceiro_visivel query failed — run the migration in supabase/migrations/20260316_fix_all_missing_columns.sql')
-        data = []
       }
 
-      setParceiros(data || [])
-      setHasMore((data || []).length === PAGE_SIZE)
+      const parceiros = error ? [] : (data || [])
+      setParceiros(parceiros)
+      setHasMore(parceiros.length === PAGE_SIZE)
       setLoading(false)
     }
     load()

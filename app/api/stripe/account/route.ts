@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { logger } from '../../../../src/lib/logger'
 
 export async function POST(request: Request) {
@@ -39,14 +40,25 @@ export async function POST(request: Request) {
       },
     })
 
-    // Store the Stripe account ID in the user's profile
-    const { error: updateError } = await supabase
+    // Store the Stripe account ID in the user's profile.
+    // Usa service_role: stripe_account_id é coluna privilegiada protegida
+    // por trigger contra escrita direta do usuário.
+    const admin = createSupabaseAdminClient()
+    const { error: updateError } = await admin
       .from('profiles')
       .update({ stripe_account_id: account.id })
       .eq('id', user.id)
 
     if (updateError) {
-      logger.error('Failed to store Stripe account ID', { route: '/api/stripe/account', error: updateError.message })
+      logger.error('Failed to store Stripe account ID', {
+        route: '/api/stripe/account',
+        accountId: account.id,
+        error: updateError.message,
+      })
+      return NextResponse.json(
+        { error: 'Erro ao vincular a conta Stripe ao seu perfil. Tente novamente.' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
@@ -56,7 +68,7 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe account creation error', { route: '/api/stripe/account', error: String(err) })
-    return NextResponse.json({ error: `Erro ao criar conta Stripe: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar conta Stripe.' }, { status: 500 })
   }
 }
 
@@ -107,6 +119,6 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     logger.error('Stripe account retrieval error', { route: '/api/stripe/account', error: String(err) })
-    return NextResponse.json({ error: `Erro ao consultar conta Stripe: ${String(err)}` }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao consultar conta Stripe.' }, { status: 500 })
   }
 }

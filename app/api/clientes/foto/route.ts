@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
@@ -31,7 +31,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Foto e cliente_id são obrigatórios' }, { status: 400 })
   }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  const ext = imageExtensionForMime(file.type)
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type) || !ext) {
     return NextResponse.json({ error: 'Formato inválido. Use JPG, PNG ou WEBP.' }, { status: 400 })
   }
 
@@ -59,8 +60,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // Upload new photo
-  const ext = file.name.split('.').pop() || 'jpg'
+  // Upload new photo — extensão derivada do MIME validado, não de file.name
   const filePath = `${user.id}/${clienteId}.${ext}`
   const buffer = await file.arrayBuffer()
 
