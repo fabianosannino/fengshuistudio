@@ -71,11 +71,14 @@ e `criado_em` automáticos (e limpeza do registro de teste).
    `20260720_perfis_publicos_view.sql` (ADR 0006): view `perfis_publicos` com
    colunas não-PII, e as telas públicas (`/parceiros`, `/consultores`,
    `/loja/[slug]`) repontadas para ela. `profiles` segue deny-all para anon.
-2. **Tabelas de admin/sistema** ainda em deny-all: `activation_keys`,
-   `admin_audit_log`, `audit_log`, `conteudo_admin`, `weekly_reports`.
-   Aceitável no curto prazo (acesso via `service_role`/rotas admin), mas
-   `conteudo_admin` (biblioteca de conteúdo por plano) pode precisar de
-   leitura para consultores.
+2. ~~**Tabelas de admin/sistema** em deny-all~~ — **RESOLVIDO** em
+   `20260720_rls_admin_sistema.sql`: policies escopadas a `is_admin()` em
+   `activation_keys`, `admin_audit_log`, `audit_log`, `conteudo_admin`,
+   `weekly_reports`. Descoberto que o painel admin lê essas tabelas com o
+   client autenticado (não service_role) — o deny-all quebrava o painel.
+   **Agora nenhuma tabela do schema fica em deny-all.** (Leitura de
+   `conteudo_admin` por consultor conforme plano fica para quando a
+   biblioteca for ligada na UI.)
 3. **Causa raiz do restore** — investigar o que resetou o schema (para não
    repetir) e avaliar se um **PITR** para antes da regressão recupera algo
    que ficou pelo caminho. As correções acima são aditivas e não dependem do
