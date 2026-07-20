@@ -37,7 +37,7 @@ export default function LojaConsultor() {
     async function load() {
       // Find profile by slug
       const { data: prof } = await supabase
-        .from('profiles')
+        .from('perfis_publicos')
         .select('id, nome_completo, bio, profissao, cidade, estado, instagram, site, stripe_account_id, parceiro_visivel')
         .eq('store_slug', slug)
         .single()
