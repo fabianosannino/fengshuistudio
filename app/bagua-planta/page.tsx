@@ -1138,7 +1138,6 @@ function BaguaPlantaContent() {
   // ── salvar setor no banco ──────────────────────────────────────────────────
   async function salvarSetorDB(orderIdx:number){
     if(!consultaId) return
-    console.log('ativo:', ativo, 'setores[ativo]:', ativo !== null ? setores[ativo] : null)
     const stDef=SETORES[order[orderIdx]]
     const sc=setores[orderIdx]
     // upsert setor_bagua
