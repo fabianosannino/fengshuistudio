@@ -83,6 +83,17 @@ e `criado_em` automáticos (e limpeza do registro de teste).
    repetir) e avaliar se um **PITR** para antes da regressão recupera algo
    que ficou pelo caminho. As correções acima são aditivas e não dependem do
    PITR.
-4. **Advisor**: `SECURITY DEFINER` views e funções (`is_admin`,
-   `protect_profile_privileged_columns`) executáveis por anon/authenticated —
-   revisar em item separado.
+4. **Advisor** — **PARCIALMENTE RESOLVIDO** em `20260720_hardening_advisor.sql`:
+   - Removidas as views `SECURITY DEFINER` mortas `vw_dashboard_consultor` e
+     `vw_rituais_pendentes` (não usadas por nenhuma tela, com SELECT para
+     anon/authenticated e **sem filtro por `auth.uid()`** → vazavam dados de
+     todos os consultores via PostgREST). Eram o que mascarava este incidente.
+   - `revoke execute` na função de trigger `protect_profile_privileged_columns()`
+     (não deve ser chamável via RPC).
+   - **Mantido:** `is_admin()` executável por anon (as policies de billing de
+     `20260718` miram PUBLIC e a referenciam; revogar quebraria a leitura de
+     `plans`). A view `perfis_publicos` segue `SECURITY DEFINER` de propósito
+     (ADR 0006).
+   - **Follow-up menor:** re-escopar as policies de billing de PUBLIC →
+     `authenticated` e então revogar `is_admin()` de anon; ativar "leaked
+     password protection" no Auth.
