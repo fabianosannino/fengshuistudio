@@ -79,10 +79,26 @@ e `criado_em` automáticos (e limpeza do registro de teste).
    **Agora nenhuma tabela do schema fica em deny-all.** (Leitura de
    `conteudo_admin` por consultor conforme plano fica para quando a
    biblioteca for ligada na UI.)
-3. **Causa raiz do restore** — investigar o que resetou o schema (para não
-   repetir) e avaliar se um **PITR** para antes da regressão recupera algo
-   que ficou pelo caminho. As correções acima são aditivas e não dependem do
-   PITR.
+3. **Causa raiz do restore** — **INVESTIGADO.** A tabela de histórico
+   `supabase_migrations.schema_migrations` contém **apenas as migrations
+   recentes** (a partir de `security_hardening_20260718`) — **não há nenhuma
+   migration da criação do schema original** (tabelas, defaults, policies).
+   Ou seja: o schema base foi criado **fora de migrations** (provavelmente
+   pelo SQL editor / dashboard ao longo do tempo), então defaults e policies
+   viviam **só no banco vivo**, sem estar versionados. Qualquer
+   restore/rebuild que reconstruiu a estrutura a partir de uma fonte
+   incompleta **perdeu** o que não estava em migration — exatamente o que
+   observamos (ids/timestamps sem default, RLS sem policy).
+   - **Não há "migration ruim"** que tenha derrubado algo; o problema é
+     estrutural (schema não versionado).
+   - **Mitigação aplicada:** defaults e policies agora estão **capturados em
+     migrations** neste repositório (fonte de verdade). Um futuro rebuild os
+     reaplica.
+   - **Recomendações:** (a) daqui em diante, toda mudança de schema via
+     migration (não pelo dashboard); (b) confirmar **PITR** ligado no plano do
+     Supabase; (c) rodar `supabase db pull` uma vez para versionar o restante
+     do schema legado (constraints, índices, enums) que ainda só existe no
+     banco vivo.
 4. **Advisor** — **PARCIALMENTE RESOLVIDO** em `20260720_hardening_advisor.sql`:
    - Removidas as views `SECURITY DEFINER` mortas `vw_dashboard_consultor` e
      `vw_rituais_pendentes` (não usadas por nenhuma tela, com SELECT para
