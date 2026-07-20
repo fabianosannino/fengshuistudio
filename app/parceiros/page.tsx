@@ -37,7 +37,7 @@ export default function Parceiros() {
 
       // Fetch profiles that opted to be visible as partners (paginated)
       const { data, error } = await supabase
-        .from('profiles')
+        .from('perfis_publicos')
         .select('*')
         .eq('parceiro_visivel', true)
         .order('nome_completo')
@@ -61,7 +61,7 @@ export default function Parceiros() {
     const nextPage = page + 1
     const from = nextPage * PAGE_SIZE
     const { data } = await supabase
-      .from('profiles')
+      .from('perfis_publicos')
       .select('*')
       .eq('parceiro_visivel', true)
       .order('nome_completo')

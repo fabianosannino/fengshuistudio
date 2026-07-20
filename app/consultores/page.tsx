@@ -23,7 +23,7 @@ export default function Consultores() {
   useEffect(() => {
     async function load() {
       const { data } = await supabase
-        .from('profiles')
+        .from('perfis_publicos')
         .select('id, nome_completo, profissao, bio, cidade, estado, instagram, store_slug')
         .eq('parceiro_visivel', true)
         .not('store_slug', 'is', null)

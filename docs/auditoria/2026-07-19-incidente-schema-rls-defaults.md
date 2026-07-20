@@ -67,11 +67,10 @@ e `criado_em` automáticos (e limpeza do registro de teste).
 
 ## Pendências (PR próprio — precisam de decisão de produto)
 
-1. **Leitura pública de `profiles`** — o diretório de parceiros, a loja por
-   slug e a lista de consultores leem `profiles` direto pelo cliente anon.
-   Precisa de policy restrita a colunas **não-PII** (nome, empresa, cidade,
-   `store_slug`…) ou de uma **view pública**, para não expor `cpf`,
-   `telefone`, `stripe_*`. Enquanto isso, essas telas públicas ficam vazias.
+1. ~~**Leitura pública de `profiles`**~~ — **RESOLVIDO** em
+   `20260720_perfis_publicos_view.sql` (ADR 0006): view `perfis_publicos` com
+   colunas não-PII, e as telas públicas (`/parceiros`, `/consultores`,
+   `/loja/[slug]`) repontadas para ela. `profiles` segue deny-all para anon.
 2. **Tabelas de admin/sistema** ainda em deny-all: `activation_keys`,
    `admin_audit_log`, `audit_log`, `conteudo_admin`, `weekly_reports`.
    Aceitável no curto prazo (acesso via `service_role`/rotas admin), mas
