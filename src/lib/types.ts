@@ -172,6 +172,8 @@ export interface SetorBagua {
   score_percentual?: number | null
   recomendacoes_custom?: RecomendacaoCustom[] | null
   comodo_tipo?: string | null
+  /** Coluna nova: vários cômodos por setor (substitui comodo_tipo). */
+  comodos?: string[] | null
   criado_em?: string
   /** Joined relation */
   diagnostico_criterios?: DiagnosticoCriterio[]

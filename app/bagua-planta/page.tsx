@@ -1831,6 +1831,7 @@ function BaguaPlantaContent() {
                         criterios: scAtivo.criterios,
                         faltaPct: scAtivo.faltaPct,
                         excessoPct: scAtivo.excessoPct,
+                        elemento: stAtivo.elem,
                       })
                     : { urgente: [], melhoria: [], manutencao: [] }
                   const hasRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0

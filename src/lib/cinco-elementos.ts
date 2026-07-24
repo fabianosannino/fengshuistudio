@@ -18,7 +18,7 @@
  * Função pura, sem I/O — mesma filosofia de src/lib/recomendacoes.ts.
  */
 
-import { LIMIAR_SCORE_CRITICO, LIMIAR_SCORE_BOM } from './recomendacoes'
+import { LIMIAR_SCORE_CRITICO, LIMIAR_SCORE_BOM } from './constants'
 
 export type Elemento = 'agua' | 'madeira' | 'fogo' | 'terra' | 'metal'
 

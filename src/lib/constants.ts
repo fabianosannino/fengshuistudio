@@ -184,6 +184,13 @@ export const CRITERIO_DICAS: Record<number, string[]> = {
   7: ['Reorganize a disposição dos móveis para criar fluxo em curvas suaves','Elimine corredores longos e estreitos usando plantas ou biombos','Certifique-se que a porta principal abre completamente sem obstruções'],
 }
 
+/**
+ * Limiares de score (%) do diagnóstico — fonte única.
+ * Usados pelo motor de recomendações e pelo motor dos Cinco Elementos.
+ */
+export const LIMIAR_SCORE_CRITICO = 40
+export const LIMIAR_SCORE_BOM = 70
+
 export const LOSHU_ORDER = [
   'Prosperidade', 'Fama', 'Relacionamentos',
   'Família', 'Centro', 'Criatividade',
