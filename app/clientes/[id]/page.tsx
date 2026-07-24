@@ -8,6 +8,7 @@ import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
 import Skeleton from '../../components/Skeleton'
 import type { Cliente, Consulta } from '../../../src/lib/types'
+import { calcularMingGua } from '../../../src/lib/ming-gua'
 
 const STATUS_LABELS: Record<string, { icon: string; label: string; bg: string; color: string }> = {
   sem_analise: { icon: '☯', label: 'Sem análise', bg: '#F3F4F6', color: '#6B7280' },
@@ -31,6 +32,8 @@ export default function ClienteDetalhe() {
     nome_completo: '',
     email: '',
     telefone: '',
+    data_nascimento: '',
+    genero: '',
     cep: '',
     rua: '',
     numero: '',
@@ -86,6 +89,8 @@ export default function ClienteDetalhe() {
         nome_completo: cli.nome_completo || '',
         email: cli.email || '',
         telefone: cli.telefone || '',
+        data_nascimento: cli.data_nascimento || '',
+        genero: cli.genero || '',
         cep: cli.cep || '',
         rua: cli.rua || '',
         numero: cli.numero || '',
@@ -212,9 +217,11 @@ export default function ClienteDetalhe() {
       }
     }
 
+    // Campos de data/enum vazios viram null (string vazia é inválida no Postgres).
+    const payload = { ...form, data_nascimento: form.data_nascimento || null, genero: form.genero || null }
     const { error } = await supabase
       .from('clientes')
-      .update(form)
+      .update(payload)
       .eq('id', params.id)
     if (error) {
       setMessage('Erro ao salvar: ' + error.message)
@@ -365,6 +372,18 @@ export default function ClienteDetalhe() {
               {cliente.telefone && (
                 <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Telefone</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>📱 {cliente.telefone}</p></div>
               )}
+              {(() => {
+                const mg = calcularMingGua(cliente.data_nascimento, cliente.genero)
+                if (!mg) return null
+                return (
+                  <div style={{ gridColumn: '1 / -1', background: '#F5F0FF', border: '1px solid #DDD6FE', borderRadius: '8px', padding: '10px 14px' }}>
+                    <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>☯ Ming Gua {mg.kua} · Grupo {mg.grupo === 'leste' ? 'Leste' : 'Oeste'}</span>
+                    <p style={{ color: '#374151', fontSize: '13px', margin: '4px 0 0 0' }}>
+                      Direções favoráveis — Prosperidade: <strong>{mg.direcoes.shengChi}</strong> · Saúde: <strong>{mg.direcoes.tienYi}</strong> · Relacionamentos: <strong>{mg.direcoes.yenNien}</strong> · Estabilidade: <strong>{mg.direcoes.fuWei}</strong>
+                    </p>
+                  </div>
+                )
+              })()}
               {(cliente.rua || cliente.cidade) && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <span style={{ color: '#9CA3AF', fontSize: '13px' }}>Endereço</span>
@@ -452,6 +471,21 @@ export default function ClienteDetalhe() {
                   <input id="input-telefone" name="telefone" value={form.telefone} onChange={handleChange}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
+                <div>
+                  <label htmlFor="input-data-nascimento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data de nascimento</label>
+                  <input id="input-data-nascimento" name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                  <p style={{ color: '#9CA3AF', fontSize: '11px', margin: '4px 0 0 0' }}>Opcional — usada só para o Ming Gua (número Kua)</p>
+                </div>
+                <div>
+                  <label htmlFor="input-genero" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Gênero (p/ Ming Gua)</label>
+                  <select id="input-genero" name="genero" value={form.genero} onChange={handleChange}
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
+                    <option value="">Não informar</option>
+                    <option value="feminino">Feminino</option>
+                    <option value="masculino">Masculino</option>
+                  </select>
+                </div>
               </div>
 
               {/* Endereço */}
@@ -524,6 +558,8 @@ export default function ClienteDetalhe() {
                   nome_completo: cliente.nome_completo || '',
                   email: cliente.email || '',
                   telefone: cliente.telefone || '',
+                  data_nascimento: cliente.data_nascimento || '',
+                  genero: cliente.genero || '',
                   cep: cliente.cep || '',
                   rua: cliente.rua || '',
                   numero: cliente.numero || '',

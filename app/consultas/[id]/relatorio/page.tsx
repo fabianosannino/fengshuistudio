@@ -8,6 +8,7 @@ import FlowLayout from '../../../components/FlowLayout'
 import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
+import { calcularMingGua } from '../../../../src/lib/ming-gua'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
@@ -137,7 +138,7 @@ export default function Relatorio() {
 
       const { data: consulta } = await supabase
         .from('consultas')
-        .select('*, clientes(nome_completo, email, telefone, cidade, estado)')
+        .select('*, clientes(nome_completo, email, telefone, cidade, estado, data_nascimento, genero)')
         .eq('id', id)
         .single()
       if (!consulta) { router.push('/consultas'); return }
@@ -647,6 +648,33 @@ export default function Relatorio() {
             </div>
           ))}
         </div>
+
+        {/* ══════ MING GUA DO CLIENTE ══════ */}
+        {(() => {
+          const cli = consulta.clientes as { nome_completo: string; data_nascimento?: string | null; genero?: string | null } | null
+          const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
+          if (!mg) return null
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
+              background: paperWarm, border: `1px solid ${border}`, borderTop: 'none',
+              padding: '0.7rem 1.5rem'
+            }}>
+              <div style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>命卦</div>
+              <div style={{ fontSize: '12px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <span style={{ fontWeight: 700, color: ink }}>Ming Gua {mg.kua}</span>
+                <span style={{ color: inkLt }}> · Grupo {mg.grupo === 'leste' ? 'Leste' : 'Oeste'} — direções favoráveis: </span>
+                <span style={{ color: ink }}>Prosperidade <strong>{mg.direcoes.shengChi}</strong></span>
+                <span style={{ color: inkLt }}> · </span>
+                <span style={{ color: ink }}>Saúde <strong>{mg.direcoes.tienYi}</strong></span>
+                <span style={{ color: inkLt }}> · </span>
+                <span style={{ color: ink }}>Relacionamentos <strong>{mg.direcoes.yenNien}</strong></span>
+                <span style={{ color: inkLt }}> · </span>
+                <span style={{ color: ink }}>Estabilidade <strong>{mg.direcoes.fuWei}</strong></span>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ══════ SUMMARY BAR ══════ */}
         {geral !== null && (
