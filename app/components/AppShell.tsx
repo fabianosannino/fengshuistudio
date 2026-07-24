@@ -199,7 +199,7 @@ export default function AppShell({
           </div>
         )}
 
-        <nav aria-label="Navegação principal" style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <nav aria-label="Navegação principal" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map((item) => {
             const active = currentPage === item.href.replace('/', '')
             return (
