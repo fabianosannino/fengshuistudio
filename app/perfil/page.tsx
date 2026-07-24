@@ -7,6 +7,7 @@ import Skeleton from '../components/Skeleton'
 import { planoEfetivo, planoLabel, isProfissional as isProfissionalFn, PROF_TYPES } from '../../src/lib/plano-utils'
 import type { User } from '@supabase/supabase-js'
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
+const SENHA_MIN_CARACTERES = 8
 
 export default function Perfil() {
   const [user, setUser] = useState<User | null>(null)
@@ -24,6 +25,48 @@ export default function Perfil() {
   })
 
   const isProfessional = isProfissionalFn({ plano, tipo_usuario: tipoUsuario, role: tipoUsuario })
+
+  // ── Alterar senha ──
+  const [senhaForm, setSenhaForm] = useState({ atual: '', nova: '', confirmar: '' })
+  const [senhaSaving, setSenhaSaving] = useState(false)
+  const [senhaMsg, setSenhaMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+
+  async function handleAlterarSenha(e: React.FormEvent) {
+    e.preventDefault()
+    setSenhaMsg(null)
+    if (senhaForm.nova.length < SENHA_MIN_CARACTERES) {
+      setSenhaMsg({ tipo: 'erro', texto: `A nova senha precisa de pelo menos ${SENHA_MIN_CARACTERES} caracteres.` })
+      return
+    }
+    if (senhaForm.nova !== senhaForm.confirmar) {
+      setSenhaMsg({ tipo: 'erro', texto: 'A confirmação não confere com a nova senha.' })
+      return
+    }
+    if (senhaForm.nova === senhaForm.atual) {
+      setSenhaMsg({ tipo: 'erro', texto: 'A nova senha deve ser diferente da atual.' })
+      return
+    }
+    if (!user?.email) return
+    setSenhaSaving(true)
+    // Reautentica antes de trocar: confirma que quem está na sessão conhece a senha atual.
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: senhaForm.atual,
+    })
+    if (authError) {
+      setSenhaMsg({ tipo: 'erro', texto: 'Senha atual incorreta.' })
+      setSenhaSaving(false)
+      return
+    }
+    const { error } = await supabase.auth.updateUser({ password: senhaForm.nova })
+    if (error) {
+      setSenhaMsg({ tipo: 'erro', texto: 'Não foi possível alterar a senha. Tente novamente.' })
+    } else {
+      setSenhaMsg({ tipo: 'ok', texto: 'Senha alterada com sucesso!' })
+      setSenhaForm({ atual: '', nova: '', confirmar: '' })
+    }
+    setSenhaSaving(false)
+  }
 
   useEffect(() => {
     async function load() {
@@ -337,6 +380,52 @@ export default function Perfil() {
           }}>
             {saving ? 'Salvando...' : 'Salvar perfil'}
           </button>
+        </form>
+
+        {/* ── Alterar senha ─────────────────────────────────────────────── */}
+        <form onSubmit={handleAlterarSenha} style={{ marginTop: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>🔒 Alterar senha</h3>
+            <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
+              Mínimo de {SENHA_MIN_CARACTERES} caracteres. Você continuará conectado após a troca.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div>
+                <label htmlFor="input-senha-atual" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Senha atual</label>
+                <input id="input-senha-atual" type="password" autoComplete="current-password" required
+                  value={senhaForm.atual} onChange={e => setSenhaForm({ ...senhaForm, atual: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label htmlFor="input-senha-nova" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nova senha</label>
+                <input id="input-senha-nova" type="password" autoComplete="new-password" required minLength={SENHA_MIN_CARACTERES}
+                  value={senhaForm.nova} onChange={e => setSenhaForm({ ...senhaForm, nova: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label htmlFor="input-senha-confirmar" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Confirmar nova senha</label>
+                <input id="input-senha-confirmar" type="password" autoComplete="new-password" required minLength={SENHA_MIN_CARACTERES}
+                  value={senhaForm.confirmar} onChange={e => setSenhaForm({ ...senhaForm, confirmar: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            {senhaMsg && (
+              <p style={{
+                margin: '0 0 14px 0', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
+                background: senhaMsg.tipo === 'ok' ? '#F0FDF4' : '#FEF2F2',
+                color: senhaMsg.tipo === 'ok' ? '#15803D' : '#DC2626',
+              }}>{senhaMsg.texto}</p>
+            )}
+            <button type="submit" disabled={senhaSaving} style={{
+              padding: '12px 28px',
+              background: senhaSaving ? '#9CA3AF' : '#1E3A5F',
+              color: '#ffffff', border: 'none', borderRadius: '8px',
+              fontSize: '14px', fontWeight: 'bold',
+              cursor: senhaSaving ? 'not-allowed' : 'pointer'
+            }}>
+              {senhaSaving ? 'Alterando...' : 'Alterar senha'}
+            </button>
+          </div>
         </form>
       </div>
 
