@@ -65,6 +65,26 @@ visíveis (era 0/0/0). Um **outro** usuário vê **0** em tudo (isolamento
 multi-tenant confirmado). O dono conseguiu **criar setor + critério** com `id`
 e `criado_em` automáticos (e limpeza do registro de teste).
 
+## Atualização 2026-07-20 — terceira perda descoberta: constraints
+
+Ao versionar o schema legado (item 1 do plano de melhorias), descobriu-se que
+a mesma regressão também levou **todas as constraints exceto as primary
+keys**: zero FKs, zero uniques, zero checks e zero índices secundários em
+todo o schema `public`.
+
+Efeitos: o `upsert(onConflict:'consulta_id,numero')` do Ba Guá falhava com
+42P10 (sem unique não há ON CONFLICT) — salvar setores continuava quebrado
+mesmo após RLS/defaults; sem integridade referencial, deletes deixavam
+órfãos; idempotência de webhooks sem unicidade.
+
+**Corrigido em `20260720_restore_constraints.sql`** (aplicada em produção):
+3 uniques app-críticos + 3 índices únicos parciais de idempotência
+(gateway_*), **35 FKs** (NOT VALID → validadas; todas validaram — zero
+órfãos) com CASCADE na cadeia de posse e SET NULL nos opcionais, e 21
+índices de FK. Validado como o dono autenticado: upsert onConflict funciona
+sem duplicar, cascade limpa `diagnostico_criterios`, e a FK bloqueia órfãos
+mesmo via `service_role` (defesa em profundidade abaixo do RLS).
+
 ## Pendências (PR próprio — precisam de decisão de produto)
 
 1. ~~**Leitura pública de `profiles`**~~ — **RESOLVIDO** em
