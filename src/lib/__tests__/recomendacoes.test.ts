@@ -57,8 +57,8 @@ describe('gerarRecomendacoes', () => {
   it('respeita os limites máximos por bloco e não repete itens', () => {
     const criterios = Array(CRITERIOS.length).fill(0) // tudo crítico
     const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 10, criterios, faltaPct: 50 })
-    expect(rec.urgente.length).toBeLessThanOrEqual(4)
-    expect(rec.melhoria.length).toBeLessThanOrEqual(4)
+    expect(rec.urgente.length).toBeLessThanOrEqual(5)
+    expect(rec.melhoria.length).toBeLessThanOrEqual(5)
     expect(rec.manutencao.length).toBeLessThanOrEqual(3)
     expect(new Set(rec.urgente).size).toBe(rec.urgente.length)
   })
@@ -67,6 +67,51 @@ describe('gerarRecomendacoes', () => {
     const rec = gerarRecomendacoes({ nomeSetor: 'Inexistente', scorePct: 10, criterios: NEUTROS })
     expect(rec).toBeDefined()
     expect(Array.isArray(rec.urgente)).toBe(true)
+  })
+})
+
+describe('integração dos Cinco Elementos', () => {
+  it('setor crítico recebe estratégia elemental (ativar o elemento + a mãe)', () => {
+    // Prosperidade = Madeira; mãe = Água; controlador = Metal
+    const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 20, criterios: NEUTROS })
+    expect(rec.urgente.some(r => r.includes('elemento Madeira'))).toBe(true)
+    expect(rec.urgente.some(r => r.includes('Água'))).toBe(true)
+    expect(rec.melhoria.some(r => r.includes('Metal'))).toBe(true)
+  })
+
+  it('usa o elemento do banco quando informado (sobrepõe o clássico do setor)', () => {
+    const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 20, criterios: NEUTROS, elemento: 'Fogo' })
+    expect(rec.urgente.some(r => r.includes('elemento Fogo'))).toBe(true)
+  })
+
+  it('setor bom não recebe intervenção elemental', () => {
+    const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 90, criterios: NEUTROS })
+    expect([...rec.urgente, ...rec.melhoria].some(r => r.includes('ciclo'))).toBe(false)
+  })
+})
+
+describe('integração cômodo×setor', () => {
+  it('banheiro na Prosperidade gera conflito urgente com cura', () => {
+    const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 80, criterios: NEUTROS, comodos: ['banheiro'] })
+    expect(rec.urgente.some(r => r.includes('Banheiro no setor da Prosperidade'))).toBe(true)
+    expect(rec.urgente.some(r => r.includes('tampa'))).toBe(true)
+  })
+
+  it('o conflito vem ANTES das demais urgências (sinal mais específico)', () => {
+    const criterios = Array(CRITERIOS.length).fill(0)
+    const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 10, criterios, comodos: ['banheiro'] })
+    expect(rec.urgente[0]).toContain('Banheiro no setor da Prosperidade')
+  })
+
+  it('cômodo sem conflito no setor não gera nada', () => {
+    const rec = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 80, criterios: NEUTROS, comodos: ['sala', 'quarto_casal'] })
+    expect(rec.urgente).toHaveLength(0)
+  })
+
+  it('sem comodos informados, saída idêntica à de antes (retrocompatível)', () => {
+    const a = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 80, criterios: NEUTROS })
+    const b = gerarRecomendacoes({ nomeSetor: SETOR, scorePct: 80, criterios: NEUTROS, comodos: [] })
+    expect(a).toEqual(b)
   })
 })
 

@@ -10,6 +10,7 @@ import TabFluxoChi from './TabFluxoChi'
 import TabFotos from './TabFotos'
 import { CRITERIOS } from '../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../src/lib/recomendacoes'
+import { comodosDeSetorRow } from '../../../src/lib/comodo-setor'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 
 // Cômodo suggestions for multi-select autocomplete
@@ -556,7 +557,7 @@ export default function ConsultaDetalhe() {
       {/* ── Modal Recomendações ─────────────────────────────────────────────── */}
       {recModal && recSetorData && (() => {
         const pct = recSetorData.score_percentual ?? getScore(recSetorData.id) ?? 50
-        const rec = gerarRecomendacoes({ nomeSetor: recSetorData.nome, scorePct: pct, criterios: criteriosPorNomeParaArray(criterios[recSetorData.id] || {}) })
+        const rec = gerarRecomendacoes({ nomeSetor: recSetorData.nome, scorePct: pct, criterios: criteriosPorNomeParaArray(criterios[recSetorData.id] || {}), elemento: recSetorData.elemento, comodos: comodosDeSetorRow(recSetorData) })
         const temRec = rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0
         return (
           <div style={{

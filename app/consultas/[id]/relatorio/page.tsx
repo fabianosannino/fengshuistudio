@@ -7,6 +7,7 @@ import FlowLayout from '../../../components/FlowLayout'
 // jsPDF and html2canvas are lazy-loaded in handleDownloadPDF() to reduce initial bundle size
 import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
+import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
@@ -1004,7 +1005,7 @@ export default function Relatorio() {
                 {groupSetores.map(setor => {
                   const meta = AREA_META[setor.nome]
                   const criteriosMap = getCriteriosMap(setor)
-                  const rec = gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: setor.score_percentual ?? 0, criterios: criteriosPorNomeParaArray(criteriosMap) })
+                  const rec = gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: setor.score_percentual ?? 0, criterios: criteriosPorNomeParaArray(criteriosMap), elemento: setor.elemento, comodos: comodosDeSetorRow(setor) })
                   const customRecs = setor.recomendacoes_custom
                   const hasCustom = Array.isArray(customRecs) && customRecs.length > 0
                   const mainAction = hasCustom
@@ -1187,7 +1188,7 @@ export default function Relatorio() {
             {setores.map(setor => {
               const pct = setor.score_percentual ?? null
               const criteriosMap = getCriteriosMap(setor)
-              const rec = pct != null ? gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: pct, criterios: criteriosPorNomeParaArray(criteriosMap) }) : null
+              const rec = pct != null ? gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: pct, criterios: criteriosPorNomeParaArray(criteriosMap), elemento: setor.elemento, comodos: comodosDeSetorRow(setor) }) : null
               const temRec = rec ? (rec.urgente.length + rec.melhoria.length + rec.manutencao.length > 0) : false
               const meta = AREA_META[setor.nome]
               const lvl = scoreLevelLabel(pct)
@@ -1383,7 +1384,7 @@ export default function Relatorio() {
             const prazo = (pct: number) => pct < 40 ? 'Imediato' : pct < 70 ? 'Próximas 2 semanas' : 'Próximo mês'
             return priorities.map((setor, i) => {
               const meta = AREA_META[setor.nome]
-              const rec = gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: setor.score_percentual ?? 0, criterios: criteriosPorNomeParaArray(getCriteriosMap(setor)) })
+              const rec = gerarRecomendacoes({ nomeSetor: setor.nome, scorePct: setor.score_percentual ?? 0, criterios: criteriosPorNomeParaArray(getCriteriosMap(setor)), elemento: setor.elemento, comodos: comodosDeSetorRow(setor) })
               const customRecs = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom as {texto:string}[] : []
               const action = customRecs[0]?.texto || rec.urgente[0] || rec.melhoria[0] || meta?.action || 'Avaliar e harmonizar este setor'
               return (
