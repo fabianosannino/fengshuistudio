@@ -64,6 +64,9 @@ export interface Cliente {
   nome_completo: string
   email?: string | null
   telefone?: string | null
+  /** Opcionais — usados para o cálculo do Ming Gua (número Kua). */
+  data_nascimento?: string | null
+  genero?: string | null
   cep?: string | null
   rua?: string | null
   numero?: string | null
