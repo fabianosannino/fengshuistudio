@@ -9,6 +9,7 @@ import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constant
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
 import { calcularMingGua } from '../../../../src/lib/ming-gua'
+import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
 
@@ -91,6 +92,7 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [savedRelatorioEm, setSavedRelatorioEm] = useState<string | null>(null)
+  const [snapshots, setSnapshots] = useState<Array<{ tipo: string; scores: SnapshotScore[]; criado_em: string }>>([])
   // Nudge para marcar a consulta (entrega) como concluída após gerar o relatório.
   const [showConcluirNudge, setShowConcluirNudge] = useState(false)
   const [concluindo, setConcluindo] = useState(false)
@@ -104,6 +106,7 @@ export default function Relatorio() {
     checklist: true,
     roda_vida: true,
     plano_acao: true,
+    evolucao: true,
     fotos: true,
     proximos_passos: true,
     calendario: true,
@@ -151,6 +154,14 @@ export default function Relatorio() {
         .eq('consulta_id', id)
         .order('numero')
       setSetores(setoresData || [])
+
+      // Snapshots do diagnóstico (evolução antes/depois)
+      const { data: snapsData } = await supabase
+        .from('diagnostico_snapshots')
+        .select('tipo, scores, criado_em')
+        .eq('consulta_id', id)
+        .order('criado_em', { ascending: true })
+      setSnapshots(snapsData || [])
       setLoading(false)
     }
     load()
@@ -522,7 +533,7 @@ export default function Relatorio() {
                 const val = e.target.checked
                 setSelectedSections({
                   completo: val, capa: val, introducao: val, bagua: val, curas: val,
-                  checklist: val, roda_vida: val, plano_acao: val, fotos: val,
+                  checklist: val, roda_vida: val, plano_acao: val, evolucao: val, fotos: val,
                   proximos_passos: val, calendario: val, conclusao: val,
                 })
               }}
@@ -536,6 +547,7 @@ export default function Relatorio() {
             { key: 'checklist', label: '4. Checklist de Fluxo de Chi' },
             { key: 'roda_vida', label: '5. Roda da Vida' },
             { key: 'plano_acao', label: '6. Plano de Ação' },
+            { key: 'evolucao', label: '6b. Evolução do Tratamento (antes → depois)' },
             { key: 'curas', label: '7. Tabela de Curas Detalhada' },
             { key: 'fotos', label: '8. Fotos do Imóvel' },
             { key: 'proximos_passos', label: '9. Próximos Passos' },
@@ -546,7 +558,7 @@ export default function Relatorio() {
               <input type="checkbox" checked={selectedSections[s.key as keyof typeof selectedSections]}
                 onChange={e => {
                   const next = { ...selectedSections, [s.key]: e.target.checked }
-                  const allKeys = ['capa','introducao','bagua','curas','checklist','roda_vida','plano_acao','fotos','proximos_passos','calendario','conclusao'] as const
+                  const allKeys = ['capa','introducao','bagua','curas','checklist','roda_vida','plano_acao','evolucao','fotos','proximos_passos','calendario','conclusao'] as const
                   next.completo = allKeys.every(k => next[k])
                   setSelectedSections(next)
                 }}
@@ -1071,6 +1083,54 @@ export default function Relatorio() {
           })}
         </div>
         )}
+
+        {/* ══════ EVOLUÇÃO DO TRATAMENTO (antes → depois) ══════ */}
+        {(selectedSections.completo || selectedSections.evolucao) && snapshots.length >= 2 && (() => {
+          const inicial = snapshots[0]
+          const atual = snapshots[snapshots.length - 1]
+          const ev = compararSnapshots(inicial.scores, atual.scores)
+          const dataFmt = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
+          const deltaCor = (d: number | null) => d == null ? '#9CA3AF' : d > 0 ? '#16A34A' : d < 0 ? '#DC2626' : '#6B7280'
+          const deltaTxt = (d: number | null) => d == null ? '—' : d > 0 ? `▲ +${d}` : d < 0 ? `▼ ${d}` : '= 0'
+          return (
+            <div style={{ padding: '0 1.5rem 1rem' }}>
+              <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '0.7rem' }}>
+                  <span style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>進</span>
+                  Evolução do Tratamento — {dataFmt(inicial.criado_em)} → {dataFmt(atual.criado_em)}
+                </div>
+                {ev.mediaAntes != null && ev.mediaDepois != null && (
+                  <div style={{ display: 'flex', gap: '18px', alignItems: 'baseline', marginBottom: '0.7rem', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                    <div style={{ fontSize: '12px', color: inkLt }}>
+                      Média geral: <span style={{ fontSize: '18px', color: ink }}>{ev.mediaAntes}%</span>
+                      <span style={{ margin: '0 6px' }}>→</span>
+                      <span style={{ fontSize: '18px', color: deltaCor(ev.mediaDepois - ev.mediaAntes), fontWeight: 700 }}>{ev.mediaDepois}%</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: inkLt }}>
+                      <span style={{ color: '#16A34A', fontWeight: 700 }}>{ev.melhoraram}</span> melhoraram ·{' '}
+                      <span style={{ color: '#6B7280', fontWeight: 700 }}>{ev.estaveis}</span> estáveis ·{' '}
+                      <span style={{ color: '#DC2626', fontWeight: 700 }}>{ev.pioraram}</span> pioraram
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {ev.setores.map(s => (
+                    <div key={s.numero} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: `1px solid ${border}`, borderRadius: '4px', padding: '6px 10px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                      <span style={{ flex: 1, fontSize: '11px', color: ink, fontWeight: 600 }}>{s.nome}</span>
+                      <span style={{ fontSize: '11px', color: inkLt }}>{s.antes ?? '—'}%</span>
+                      <span style={{ fontSize: '10px', color: inkLt }}>→</span>
+                      <span style={{ fontSize: '12px', color: ink, fontWeight: 700 }}>{s.depois ?? '—'}%</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, minWidth: '44px', textAlign: 'right', color: deltaCor(s.delta) }}>{deltaTxt(s.delta)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: '9px', color: inkLt, margin: '8px 0 0 0', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  Comparativo entre o diagnóstico inicial e a reavaliação mais recente ({snapshots.length - 1} {snapshots.length > 2 ? 'reavaliações registradas' : 'reavaliação registrada'}).
+                </p>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ══════ CURES & ACTIVATIONS TABLE ══════ */}
         {(selectedSections.completo || selectedSections.curas) && (
