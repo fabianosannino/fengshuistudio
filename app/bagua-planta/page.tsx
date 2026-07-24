@@ -6,6 +6,7 @@ import { supabase } from '../../src/lib/supabase'
 import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
+import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/lib/reavaliacao'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -1209,6 +1210,21 @@ function BaguaPlantaContent() {
         const {error:eDelC}=await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
         const {error:eInsC}=await supabase.from('diagnostico_criterios').insert(inserts)
         if(eDelC||eInsC) throw new Error('Falha ao salvar critérios: '+((eDelC||eInsC)?.message||''))
+      }
+      // Snapshot para o comparativo antes/depois (1º = inicial; demais = reavaliação).
+      // Dedupe: re-finalizar sem mudança de score não gera histórico repetido.
+      const snapshot = montarSnapshot(setores.map((sc,i)=>({numero:i+1,nome:SETORES[order[i]].nome,score:scoreTotal(sc)})))
+      const {data:snapsExistentes,error:eSnaps}=await supabase
+        .from('diagnostico_snapshots').select('scores')
+        .eq('consulta_id',consultaId).order('criado_em',{ascending:false}).limit(1)
+      if(eSnaps) throw new Error('Falha ao consultar a evolução do diagnóstico: '+eSnaps.message)
+      const ultimo = snapsExistentes?.[0]?.scores as SnapshotScore[] | undefined
+      if(!ultimo || !snapshotsIguais(ultimo, snapshot)){
+        const {count}=await supabase.from('diagnostico_snapshots')
+          .select('id',{count:'exact',head:true}).eq('consulta_id',consultaId)
+        const {error:eSnapIns}=await supabase.from('diagnostico_snapshots')
+          .insert({consulta_id:consultaId,tipo:(count??0)>0?'reavaliacao':'inicial',scores:snapshot})
+        if(eSnapIns) throw new Error('Falha ao registrar a evolução do diagnóstico: '+eSnapIns.message)
       }
       // Save canvas snapshot + finalization metadata
       const cv=cvRef.current
