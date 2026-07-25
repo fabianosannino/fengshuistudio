@@ -881,7 +881,7 @@ Esse último bloco é o que transforma um relatório genérico em consultoria. O
 | Método 3 — Estrelas Voadoras | ✅ Carta natal base implementada e testada, com simplificação documentada (par/ímpar em vez de Yuan Long completo); Ti Gua, estruturas da carta, combinações além da Estrela 5, e camada anual/mensal não implementados |
 | Método 4 — San He | ⚪ Não implementado; tabelas não verificadas de forma independente |
 | Método 5 — Xuan Kong Da Gua | ⚪ Não implementado; recomendação explícita de não codificar de memória, buscar fonte publicada |
-| Método 6 — Liu Fa | ⚪ Não implementado; Zheng Shen/Ling Shen do Período 9 conferido e é de baixo custo para implementar primeiro |
+| Método 6 — Liu Fa | 🟡 Zheng Shen/Ling Shen implementados e testados (`src/lib/liu-fa.ts`) para todos os períodos exceto o 5 (ambiguidade real, sinalizada). Cheng Men, Ci Xiong, Jin Long e Ai Xing seguem fora de escopo — Cheng Men bloqueado até a carta natal ganhar resolução de 24 montanhas (ver ADR 0008) |
 | Método 7 — BaZi | ⚪ Não implementado; recomendo tratar como projeto próprio, não item de lista |
 | Método 8 — Ze Ri | ⚪ Não implementado; depende de motor de calendário chinês não especificado aqui |
 | Método 9 — BTB | ✅ Implementado — é o método original do produto |

@@ -15,6 +15,7 @@ import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/gr
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
 import { dataSolar } from '../../src/lib/data-solar'
+import { zhengShenLingShen } from '../../src/lib/liu-fa'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ const SETORES = [
 // acima deste desvio entre as 3 leituras, a medição não é confiável.
 const DESVIO_ALERTA_GRAUS = 3
 const NOME_YUAN_LONG = { terra: 'Terra', ceu: 'Céu', humano: 'Humano' } as const
+const NOME_SETOR = { N: 'Norte', NE: 'Nordeste', E: 'Leste', SE: 'Sudeste', S: 'Sul', SW: 'Sudoeste', W: 'Oeste', NW: 'Noroeste' } as const
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -1750,11 +1752,17 @@ function BaguaPlantaContent() {
                     const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
                     const anoSolarAtual=dataSolar(new Date())?.anoSolar
                     const gradeAnual=anoSolarAtual!=null?calcularGradeAnual(anoSolarAtual):null
+                    const liuFa=zhengShenLingShen(mapa.periodo)
                     return (
                       <div style={{marginTop:'10px',padding:'9px',background:'#FFFBEB',borderRadius:'7px',border:'1px solid #FDE68A'}}>
                         <div style={{fontSize:'11px',fontWeight:'bold',color:'#92400E',marginBottom:'6px'}}>
                           ⭐ Estrelas Voadoras — Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
                         </div>
+                        {liuFa&&(
+                          <div style={{fontSize:'10px',color:'#92400E',marginBottom:'6px'}}>
+                            Zheng Shen (busque solidez): <strong>{NOME_SETOR[liuFa.zhengShen]}</strong> · Ling Shen (busque água/vazio): <strong>{NOME_SETOR[liuFa.lingShen]}</strong>
+                          </div>
+                        )}
                         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'3px',maxWidth:'220px'}}>
                           {linhas.flat().map(p=>{
                             const est=porPalacio[p]
