@@ -9,6 +9,8 @@ import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constant
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
 import { calcularMingGua } from '../../../../src/lib/ming-gua'
+import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
+import { periodoDaConstrucao, calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
@@ -684,6 +686,80 @@ export default function Relatorio() {
                 <span style={{ color: inkLt }}> · </span>
                 <span style={{ color: ink }}>Estabilidade <strong>{mg.direcoes.fuWei}</strong></span>
               </div>
+            </div>
+          )
+        })()}
+
+        {/* ══════ KUA DA CASA (Oito Mansões) — só quando a Bússola foi usada ══════ */}
+        {(() => {
+          const be = consulta.bagua_entrada
+          if (be?.escola !== 'bussola' || typeof be.orientacao_graus !== 'number') return null
+          const casa = calcularKuaDaCasa(be.orientacao_graus)
+          const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
+          const mgCliente = calcularMingGua(cli?.data_nascimento, cli?.genero)
+          const compat = mgCliente ? compatibilidadeMoradorCasa(mgCliente.kua, casa.kua) : null
+          return (
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '4px',
+              background: '#fff', border: `1px solid ${border}`, borderTop: 'none',
+              padding: '0.7rem 1.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '20px', color: gold, lineHeight: 1, fontFamily: "'Noto Serif SC', serif" }}>宅卦</div>
+                <div style={{ fontSize: '12px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  <span style={{ fontWeight: 700, color: ink }}>Kua da Casa {casa.kua}</span>
+                  <span style={{ color: inkLt }}> · Grupo {casa.grupo === 'leste' ? 'Leste' : 'Oeste'} (fachada a {be.orientacao_graus}°) — </span>
+                  <span style={{ color: ink }}>Prosperidade <strong>{casa.direcoes.shengChi}</strong></span>
+                  <span style={{ color: inkLt }}> · </span>
+                  <span style={{ color: ink }}>Saúde <strong>{casa.direcoes.tienYi}</strong></span>
+                  <span style={{ color: inkLt }}> · </span>
+                  <span style={{ color: ink }}>Relacionamentos <strong>{casa.direcoes.yenNien}</strong></span>
+                  <span style={{ color: inkLt }}> · </span>
+                  <span style={{ color: ink }}>Estabilidade <strong>{casa.direcoes.fuWei}</strong></span>
+                </div>
+              </div>
+              {compat && (
+                <div style={{ fontSize: '11px', color: compat.compativel ? '#16A34A' : '#D97706', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  {compat.compativel ? '✓' : '⚠'} {compat.mensagem}
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* ══════ ESTRELAS VOADORAS — só com Bússola + data de construção ══════ */}
+        {(() => {
+          const be = consulta.bagua_entrada
+          if (be?.escola !== 'bussola' || !be.data_construcao) return null
+          const periodo = periodoDaConstrucao(be.data_construcao)
+          const mapa = periodo != null ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus ?? 0, periodo }) : null
+          if (!mapa) return null
+          const porPalacio = Object.fromEntries(mapa.palacios.map(p => [p.palacio, p]))
+          const linhas: Palacio[][] = [['SE', 'S', 'SW'], ['E', 'C', 'W'], ['NE', 'N', 'NW']]
+          return (
+            <div style={{ padding: '0.9rem 1.5rem', background: paperWarm, border: `1px solid ${border}`, borderTop: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: 700, color: ink, marginBottom: '0.6rem', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <span style={{ fontSize: '18px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>飛星</span>
+                Estrelas Voadoras — Período {mapa.periodo}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: '4px' }}>
+                {linhas.flat().map(p => {
+                  const est = porPalacio[p]
+                  return (
+                    <div key={p} style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '5px', textAlign: 'center', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                      <div style={{ fontSize: '9px', color: inkLt }}>{est.montanha}</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: ink }}>{est.periodo}</div>
+                      <div style={{ fontSize: '9px', color: inkLt }}>{est.fachada}</div>
+                      {est.temEstrela5 && <div style={{ fontSize: '8px', color: '#DC2626' }}>⚠ Estrela 5</div>}
+                    </div>
+                  )
+                })}
+              </div>
+              <p style={{ margin: '0.6rem 0 0', fontSize: '10px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Montanha / Período / Fachada. Base do método San Yuan Xuan Kong — não inclui estrela de substituição
+                para fachadas de borda, sobreposição anual/mensal nem teoria de combinações. Recomendado validar com
+                um consultor formado em Xuan Kong antes de decisões importantes.
+              </p>
             </div>
           )
         })()}

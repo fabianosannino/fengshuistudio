@@ -36,8 +36,12 @@ export interface MingGua {
   direcoes: DirecoesFavoraveis
 }
 
-/** Tabela clássica das quatro direções favoráveis por número Kua. */
-const DIRECOES_POR_KUA: Record<number, DirecoesFavoraveis> = {
+/**
+ * Tabela clássica das quatro direções favoráveis por número Kua.
+ * Exportada: reaproveitada por src/lib/oito-mansoes.ts para o Kua da CASA
+ * (mesma tabela, o Kua é que muda de fonte — pessoa vs. fachada do imóvel).
+ */
+export const DIRECOES_POR_KUA: Record<number, DirecoesFavoraveis> = {
   1: { shengChi: 'Sudeste', tienYi: 'Leste', yenNien: 'Sul', fuWei: 'Norte' },
   2: { shengChi: 'Nordeste', tienYi: 'Oeste', yenNien: 'Noroeste', fuWei: 'Sudoeste' },
   3: { shengChi: 'Sul', tienYi: 'Norte', yenNien: 'Sudeste', fuWei: 'Leste' },
@@ -48,7 +52,8 @@ const DIRECOES_POR_KUA: Record<number, DirecoesFavoraveis> = {
   9: { shengChi: 'Leste', tienYi: 'Sudeste', yenNien: 'Norte', fuWei: 'Sul' },
 }
 
-const GRUPO_LESTE = new Set([1, 3, 4, 9])
+/** Grupo Leste do Ba Zhai (Oito Mansões) — exportado pelo mesmo motivo acima. */
+export const GRUPO_LESTE = new Set([1, 3, 4, 9])
 
 function reduzirA1Digito(n: number): number {
   while (n > 9) n = String(n).split('').reduce((s, d) => s + Number(d), 0)
