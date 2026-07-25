@@ -45,6 +45,18 @@ export function elementoQueNutre(e: Elemento): Elemento {
   return (Object.keys(CICLO_GERACAO) as Elemento[]).find(k => CICLO_GERACAO[k] === e)!
 }
 
+/**
+ * Elemento que EXAURE o dado (ciclo Xie 洩, o inverso do ciclo de Geração:
+ * o "filho" que a energia gera, drenando a "mãe"). É o mesmo mapa de
+ * CICLO_GERACAO lido no sentido direto — ativar o filho de um elemento em
+ * excesso dissolve sua energia sem gerar o conflito do ciclo de Controle.
+ * Regra de ouro da remediação clássica: para energias negativas, prefira
+ * exaustão a controle (ver fengshui-metodos-referencia.md §1.1).
+ */
+export function elementoQueExaure(e: Elemento): Elemento {
+  return CICLO_GERACAO[e]
+}
+
 /** Elemento que CONTROLA o dado (a evitar quando o setor está fraco). */
 export function elementoQueControla(e: Elemento): Elemento {
   return (Object.keys(CICLO_CONTROLE) as Elemento[]).find(k => CICLO_CONTROLE[k] === e)!

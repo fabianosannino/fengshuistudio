@@ -16,6 +16,8 @@
  * Função pura e fail-closed: dados ausentes/ inválidos → null (nunca chuta).
  */
 
+import { dataSolar } from './data-solar'
+
 export type Genero = 'masculino' | 'feminino'
 export type GrupoKua = 'leste' | 'oeste'
 
@@ -77,23 +79,11 @@ export function calcularMingGua(
   genero: string | null | undefined
 ): MingGua | null {
   const g = normalizarGenero(genero)
-  if (!g || !dataNascimento) return null
+  const info = dataSolar(dataNascimento)
+  if (!g || !info) return null
+  if (info.anoCivil < 1900 || info.anoCivil > 2099) return null
 
-  // Evita fuso: para strings ISO, extrai os campos direto do texto.
-  let ano: number, mes: number, dia: number
-  if (typeof dataNascimento === 'string') {
-    const m = dataNascimento.match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (!m) return null
-    ano = Number(m[1]); mes = Number(m[2]); dia = Number(m[3])
-  } else {
-    if (isNaN(dataNascimento.getTime())) return null
-    ano = dataNascimento.getFullYear(); mes = dataNascimento.getMonth() + 1; dia = dataNascimento.getDate()
-  }
-  if (ano < 1900 || ano > 2099) return null
-
-  // Ano solar chinês: antes do Li Chun (~4 de fevereiro) conta o ano anterior.
-  const anoSolar = mes < 2 || (mes === 2 && dia < 4) ? ano - 1 : ano
-
+  const anoSolar = info.anoSolar
   // X = soma dos dois últimos dígitos do ano solar, reduzida a 1 dígito.
   const x = reduzirA1Digito(Math.floor((anoSolar % 100) / 10) + (anoSolar % 10))
 
