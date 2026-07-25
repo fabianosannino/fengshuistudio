@@ -18,8 +18,21 @@
     cardinal real** (Carreira é sempre Norte, Fama é sempre Sul…), lidos pela
     orientação magnética da fachada (`bagua_entrada.orientacao_graus`,
     0–359°). Cálculo em `src/lib/bagua-grid.ts`.
-  Registro extensível — novas escolas (Estrelas Voadoras, Oito Mansões da
-  casa) entram como itens novos em `METODOLOGIAS`, sem redesenhar a UI.
+  Registro extensível — novas escolas de ORIENTAÇÃO do grid (que setor cai em
+  qual célula) entram como itens novos em `METODOLOGIAS`, sem redesenhar a UI.
+- **Kua da Casa (Oito Mansões / Ba Zhai):** trigrama pessoal aplicado ao
+  imóvel, derivado da orientação da fachada (`src/lib/oito-mansoes.ts`). Não é
+  uma metodologia de grid — é uma camada adicional, disponível só quando a
+  Bússola é usada (precisa de orientação real). Reaproveita a mesma tabela de
+  direções favoráveis do Ming Gua pessoal; `compatibilidadeMoradorCasa`
+  compara o grupo do morador com o da casa.
+- **Estrelas Voadoras (Xuan Kong Fei Xing):** mapa natal de 3 números por
+  palácio (Montanha/Período/Fachada), derivado do período de construção +
+  orientação da fachada (`src/lib/estrelas-voadoras.ts`). Também camada
+  adicional só na Bússola. **Escopo deliberadamente limitado** ao núcleo
+  consensual do método (ver comentário no topo do arquivo) — não inclui
+  estrela de substituição, sobreposição anual/mensal nem teoria de
+  combinações; a UI já avisa isso ao consultor.
 - **Setor:** cada uma das áreas do Ba Guá (ex.: `Carreira`, `Prosperidade`,
   `Relacionamentos`, `Fama`, `Família`, `Filhos`/`Criatividade`, `Conhecimento`,
   `Pessoas Úteis`, `Centro`/`Saúde`). Persistidos em `setores_bagua`.

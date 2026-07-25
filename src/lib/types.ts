@@ -118,6 +118,8 @@ export interface BaguaEntrada {
   escola?: string
   /** Orientação magnética da fachada (0–359°, 0=Norte) — só a Escola da Bússola usa. */
   orientacao_graus?: number
+  /** Data de construção/reforma do imóvel (ISO) — usada por Estrelas Voadoras para o Período. */
+  data_construcao?: string
   planta_url?: string
   planta_enviada_em?: string
   finalizada_em?: string

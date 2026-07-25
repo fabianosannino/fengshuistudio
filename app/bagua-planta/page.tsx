@@ -9,6 +9,8 @@ import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
 import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/lib/reavaliacao'
 import { calcularGridOrder } from '../../src/lib/bagua-grid'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
+import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
+import { periodoDaConstrucao, calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -185,6 +187,7 @@ function BaguaPlantaContent() {
   const [rot,      setRot]      = useState(0)
   const [escola,   setEscola]   = useState<MetodologiaId>(METODOLOGIA_PADRAO)
   const [orientacaoGraus, setOrientacaoGraus] = useState<number>(0)
+  const [dataConstrucao, setDataConstrucao] = useState<string>('')
   const [lado,     setLado]     = useState<Lado>('centro')
   const [entrada,  setEntrada]  = useState<{x:number;y:number}|null>(null)
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
@@ -277,6 +280,7 @@ function BaguaPlantaContent() {
               }
               if(be.escola) setEscola(be.escola as MetodologiaId)
               if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
+              if(be.data_construcao) setDataConstrucao(be.data_construcao)
             }
           }).then(null,(e: Error)=>console.error('Erro ao carregar consulta:',e))
         supabase.from('setores_bagua')
@@ -317,6 +321,7 @@ function BaguaPlantaContent() {
       setLado((be.lado||'centro') as Lado)
       setEscola((be.escola as MetodologiaId)||METODOLOGIA_PADRAO)
       setOrientacaoGraus(typeof be.orientacao_graus==='number'?be.orientacao_graus:0)
+      setDataConstrucao(be.data_construcao||'')
       if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
       // Defer bounds/setores restoration after image+rotation effect runs
       setTimeout(()=>{
@@ -926,6 +931,7 @@ function BaguaPlantaContent() {
       lado:overrides?.ladoV??lado,
       escola,
       orientacao_graus:orientacaoGraus,
+      data_construcao:dataConstrucao||undefined,
       metragem_real:metragemRef.current||undefined,
     }
     if(overrides?.entradaV??entrada){
@@ -1238,7 +1244,7 @@ function BaguaPlantaContent() {
       const b=boundsRef.current
       const finalizacao:BaguaEntrada={
         x:entrada?.x??0, y:entrada?.y??0, lado,
-        escola, orientacao_graus:orientacaoGraus,
+        escola, orientacao_graus:orientacaoGraus, data_construcao:dataConstrucao||undefined,
         bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
@@ -1523,6 +1529,12 @@ function BaguaPlantaContent() {
                             onChange={e=>setOrientacaoGraus(((Number(e.target.value)%360)+360)%360)}
                             style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
                           <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>Direção magnética que a porta/fachada principal encara.</p>
+                          <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
+                            📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
+                          </label>
+                          <input id="input-data-construcao" type="date" value={dataConstrucao}
+                            onChange={e=>setDataConstrucao(e.target.value)}
+                            style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
                         </div>
                       )}
                     </div>
@@ -1660,6 +1672,55 @@ function BaguaPlantaContent() {
                   })()}
                   {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
                   {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
+
+                  {/* Kua da Casa (Oito Mansões) — só na Escola da Bússola, que tem orientação real */}
+                  {escola==='bussola'&&(()=>{
+                    const casa=calcularKuaDaCasa(orientacaoGraus)
+                    return (
+                      <div style={{marginTop:'12px',padding:'9px',background:'#F5F3FF',borderRadius:'7px',border:'1px solid #DDD6FE'}}>
+                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#6D28D9',marginBottom:'4px'}}>
+                          🏠 Kua da Casa: {casa.kua} · Grupo {casa.grupo==='leste'?'Leste':'Oeste'}
+                        </div>
+                        <div style={{fontSize:'10px',color:'#4C1D95'}}>
+                          Prosperidade <strong>{casa.direcoes.shengChi}</strong> · Saúde <strong>{casa.direcoes.tienYi}</strong> · Relacionamentos <strong>{casa.direcoes.yenNien}</strong> · Estabilidade <strong>{casa.direcoes.fuWei}</strong>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Estrelas Voadoras — só na Bússola com data de construção informada */}
+                  {escola==='bussola'&&dataConstrucao&&(()=>{
+                    const periodo=periodoDaConstrucao(dataConstrucao)
+                    const mapa=periodo?calcularEstrelasVoadoras({facingGraus:orientacaoGraus,periodo}):null
+                    if(!mapa) return null
+                    const porPalacio=Object.fromEntries(mapa.palacios.map(p=>[p.palacio,p]))
+                    const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
+                    return (
+                      <div style={{marginTop:'10px',padding:'9px',background:'#FFFBEB',borderRadius:'7px',border:'1px solid #FDE68A'}}>
+                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#92400E',marginBottom:'6px'}}>
+                          ⭐ Estrelas Voadoras — Período {mapa.periodo}
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'3px',maxWidth:'220px'}}>
+                          {linhas.flat().map(p=>{
+                            const est=porPalacio[p]
+                            return (
+                              <div key={p} title={`Período: ${nomeElementoDoNumero(est.periodo)}`} style={{background:'#fff',border:'1px solid #FDE68A',borderRadius:'4px',padding:'4px',textAlign:'center'}}>
+                                <div style={{fontSize:'8px',color:'#B45309'}}>{est.montanha}</div>
+                                <div style={{fontSize:'12px',fontWeight:'bold',color:'#78350F'}}>{est.periodo}</div>
+                                <div style={{fontSize:'8px',color:'#B45309'}}>{est.fachada}</div>
+                                {est.temEstrela5&&<div style={{fontSize:'7px',color:'#DC2626'}}>⚠5</div>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <p style={{margin:'6px 0 0',fontSize:'9px',color:'#92400E'}}>
+                          Montanha / Período / Fachada. Base do método (San Yuan Xuan Kong) — não inclui estrela de
+                          substituição para fachadas de borda, sobreposição anual/mensal nem teoria de combinações.
+                          Recomendado validar com um consultor formado em Xuan Kong antes de uso com clientes.
+                        </p>
+                      </div>
+                    )
+                  })()}
 
                   {/* Mini-cards 3x3 */}
                   {setores.length>0&&(
