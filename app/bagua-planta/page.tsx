@@ -13,6 +13,8 @@ import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
 import { periodoDaConstrucao, calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
 import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/graus'
 import { montanhaDoGrau } from '../../src/lib/montanhas'
+import { calcularGradeAnual } from '../../src/lib/estrela-anual'
+import { dataSolar } from '../../src/lib/data-solar'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -1746,10 +1748,12 @@ function BaguaPlantaContent() {
                     if(!mapa) return null
                     const porPalacio=Object.fromEntries(mapa.palacios.map(p=>[p.palacio,p]))
                     const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
+                    const anoSolarAtual=dataSolar(new Date())?.anoSolar
+                    const gradeAnual=anoSolarAtual!=null?calcularGradeAnual(anoSolarAtual):null
                     return (
                       <div style={{marginTop:'10px',padding:'9px',background:'#FFFBEB',borderRadius:'7px',border:'1px solid #FDE68A'}}>
                         <div style={{fontSize:'11px',fontWeight:'bold',color:'#92400E',marginBottom:'6px'}}>
-                          ⭐ Estrelas Voadoras — Período {mapa.periodo}
+                          ⭐ Estrelas Voadoras — Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
                         </div>
                         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'3px',maxWidth:'220px'}}>
                           {linhas.flat().map(p=>{
@@ -1759,14 +1763,16 @@ function BaguaPlantaContent() {
                                 <div style={{fontSize:'8px',color:'#B45309'}}>{est.montanha}</div>
                                 <div style={{fontSize:'12px',fontWeight:'bold',color:'#78350F'}}>{est.periodo}</div>
                                 <div style={{fontSize:'8px',color:'#B45309'}}>{est.fachada}</div>
+                                {gradeAnual&&<div style={{fontSize:'8px',color:'#0369A1',marginTop:'1px'}}>Ano {gradeAnual[p]}</div>}
                                 {est.temEstrela5&&<div style={{fontSize:'7px',color:'#DC2626'}}>⚠5</div>}
                               </div>
                             )
                           })}
                         </div>
                         <p style={{margin:'6px 0 0',fontSize:'9px',color:'#92400E'}}>
-                          Montanha / Período / Fachada. Base do método (San Yuan Xuan Kong) — não inclui estrela de
-                          substituição para fachadas de borda, sobreposição anual/mensal nem teoria de combinações.
+                          Montanha / Período / Fachada, e (em azul) a Estrela Anual do ano corrente. Base do método
+                          (San Yuan Xuan Kong) — não inclui estrela de substituição para fachadas de borda, sobreposição
+                          mensal, timeline de anos passados/futuros nem teoria de combinações.
                           Recomendado validar com um consultor formado em Xuan Kong antes de uso com clientes.
                         </p>
                       </div>

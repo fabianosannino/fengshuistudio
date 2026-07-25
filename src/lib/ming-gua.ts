@@ -17,6 +17,7 @@
  */
 
 import { dataSolar } from './data-solar'
+import { reduzirA1Digito } from './numerologia'
 
 export type Genero = 'masculino' | 'feminino'
 export type GrupoKua = 'leste' | 'oeste'
@@ -56,11 +57,6 @@ export const DIRECOES_POR_KUA: Record<number, DirecoesFavoraveis> = {
 
 /** Grupo Leste do Ba Zhai (Oito Mansões) — exportado pelo mesmo motivo acima. */
 export const GRUPO_LESTE = new Set([1, 3, 4, 9])
-
-function reduzirA1Digito(n: number): number {
-  while (n > 9) n = String(n).split('').reduce((s, d) => s + Number(d), 0)
-  return n
-}
 
 /** Normaliza o gênero como pode vir do banco. Desconhecido → null. */
 export function normalizarGenero(valor: string | null | undefined): Genero | null {
