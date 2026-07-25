@@ -9,6 +9,17 @@
 
 - **Ba Guá:** mapa energético de 9 setores sobreposto à planta do imóvel. No app,
   o consultor marca a planta e o sistema calcula os setores.
+- **Metodologia:** a escola de Feng Shui usada para orientar o Ba Guá na planta
+  (`src/lib/metodologias.ts`, `bagua_entrada.escola`). Duas hoje:
+  - **BTB (Chapéu Preto):** o grid gira com a **porta** de entrada — Carreira
+    fica sempre na parede da entrada, não importa a orientação real da casa.
+    Não precisa de bússola. Padrão do app.
+  - **Escola da Bússola (Clássica):** os setores são fixos à **direção
+    cardinal real** (Carreira é sempre Norte, Fama é sempre Sul…), lidos pela
+    orientação magnética da fachada (`bagua_entrada.orientacao_graus`,
+    0–359°). Cálculo em `src/lib/bagua-grid.ts`.
+  Registro extensível — novas escolas (Estrelas Voadoras, Oito Mansões da
+  casa) entram como itens novos em `METODOLOGIAS`, sem redesenhar a UI.
 - **Setor:** cada uma das áreas do Ba Guá (ex.: `Carreira`, `Prosperidade`,
   `Relacionamentos`, `Fama`, `Família`, `Filhos`/`Criatividade`, `Conhecimento`,
   `Pessoas Úteis`, `Centro`/`Saúde`). Persistidos em `setores_bagua`.
@@ -19,9 +30,10 @@
   (`score_percentual`). Thresholds de leitura: `>= 70` bom, `>= 40` médio.
 - **Dicas / recomendações:** listas de ações por setor (`SETOR_DICAS`) e por
   critério (`CRITERIO_DICAS`), classificadas em urgente / melhoria / manutenção.
-  **Fonte única** em `constants.ts` (ver histórico: houve divergência tela × PDF,
-  corrigida). *Débito:* `app/bagua-planta` ainda tem um motor de recomendações
-  próprio com conteúdo distinto.
+  **Fonte única** em `src/lib/recomendacoes.ts` (`gerarRecomendacoes`) — tela de
+  diagnóstico, detalhe da consulta e PDF chamam a mesma função; inclui também a
+  estratégia dos Cinco Elementos (`cinco-elementos.ts`) e conflitos
+  cômodo×setor (`comodo-setor.ts`).
 - **Marcação (falta/excesso):** retângulo desenhado na planta indicando área
   faltante ou em excesso de um setor (`bagua_entrada.marcacoes`).
 - **Roda da Vida:** avaliação de 12 áreas da vida do cliente

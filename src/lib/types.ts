@@ -114,6 +114,10 @@ export interface BaguaEntrada {
   x?: number
   y?: number
   lado?: string
+  /** Metodologia usada no diagnóstico ('btb' | 'bussola') — ver src/lib/metodologias.ts. */
+  escola?: string
+  /** Orientação magnética da fachada (0–359°, 0=Norte) — só a Escola da Bússola usa. */
+  orientacao_graus?: number
   planta_url?: string
   planta_enviada_em?: string
   finalizada_em?: string
