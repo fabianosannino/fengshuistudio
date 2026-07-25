@@ -7,6 +7,8 @@ import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
 import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/lib/reavaliacao'
+import { calcularGridOrder } from '../../src/lib/bagua-grid'
+import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -28,10 +30,7 @@ const SETORES = [
 // As recomendações vêm do motor canônico (src/lib/recomendacoes). A tela de
 // diagnóstico passa também faltaPct/excessoPct para incluir as recs geométricas.
 
-function gridOrder(escola: string, lado: string): number[] {
-  if (escola === 'btb' && lado === 'direita') return [2,1,0,5,4,3,8,7,6]
-  return [0,1,2,3,4,5,6,7,8]
-}
+// Cálculo de qual setor cai em qual célula: src/lib/bagua-grid.ts (calcularGridOrder).
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -184,7 +183,8 @@ function BaguaPlantaContent() {
   const [img,      setImg]      = useState<HTMLImageElement|null>(null)
   const [step,     setStep]     = useState<Step>('upload')
   const [rot,      setRot]      = useState(0)
-  const [escola,   setEscola]   = useState<'btb'|'bussola'>('btb')
+  const [escola,   setEscola]   = useState<MetodologiaId>(METODOLOGIA_PADRAO)
+  const [orientacaoGraus, setOrientacaoGraus] = useState<number>(0)
   const [lado,     setLado]     = useState<Lado>('centro')
   const [entrada,  setEntrada]  = useState<{x:number;y:number}|null>(null)
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
@@ -275,6 +275,8 @@ function BaguaPlantaContent() {
                 setEntrada({x:be.x,y:be.y})
                 setLado((be.lado||'centro') as Lado)
               }
+              if(be.escola) setEscola(be.escola as MetodologiaId)
+              if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
             }
           }).then(null,(e: Error)=>console.error('Erro ao carregar consulta:',e))
         supabase.from('setores_bagua')
@@ -313,6 +315,8 @@ function BaguaPlantaContent() {
       setImg(i)
       setRot(be.rotacao||0)
       setLado((be.lado||'centro') as Lado)
+      setEscola((be.escola as MetodologiaId)||METODOLOGIA_PADRAO)
+      setOrientacaoGraus(typeof be.orientacao_graus==='number'?be.orientacao_graus:0)
       if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
       // Defer bounds/setores restoration after image+rotation effect runs
       setTimeout(()=>{
@@ -430,7 +434,7 @@ function BaguaPlantaContent() {
 
     if(!bounds) return
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
-    const order=gridOrder(escola,lado)
+    const order=calcularGridOrder(escola,{lado,orientacaoGraus})
 
     // ── setores ──
     for(let row=0;row<3;row++) for(let col=0;col<3;col++){
@@ -564,7 +568,7 @@ function BaguaPlantaContent() {
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[bounds,entrada,lado,escola,lh,lv,modo,setores,ativo,marcacoes,desenhandoPreview])
+  },[bounds,entrada,lado,escola,orientacaoGraus,lh,lv,modo,setores,ativo,marcacoes,desenhandoPreview])
 
   // redesenha sempre que draw muda (state changes)
   useEffect(()=>{ draw() },[draw])
@@ -610,7 +614,7 @@ function BaguaPlantaContent() {
 
     if(!bounds) return
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
-    const order2=gridOrder(escola,lado)
+    const order2=calcularGridOrder(escola,{lado,orientacaoGraus})
 
     // Draw sectors
     for(let row=0;row<3;row++) for(let col=0;col<3;col++){
@@ -736,7 +740,7 @@ function BaguaPlantaContent() {
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fullscreen,bounds,entrada,lado,escola,lh,lv,modo,setores,marcacoes,desenhandoPreview])
+  },[fullscreen,bounds,entrada,lado,escola,orientacaoGraus,lh,lv,modo,setores,marcacoes,desenhandoPreview])
 
   useEffect(()=>{ drawFS() },[drawFS])
 
@@ -920,6 +924,8 @@ function BaguaPlantaContent() {
       etapa:overrides?.etapa??step,
       rotacao:overrides?.rotacao??rot,
       lado:overrides?.ladoV??lado,
+      escola,
+      orientacao_graus:orientacaoGraus,
       metragem_real:metragemRef.current||undefined,
     }
     if(overrides?.entradaV??entrada){
@@ -1232,6 +1238,7 @@ function BaguaPlantaContent() {
       const b=boundsRef.current
       const finalizacao:BaguaEntrada={
         x:entrada?.x??0, y:entrada?.y??0, lado,
+        escola, orientacao_graus:orientacaoGraus,
         bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
@@ -1270,7 +1277,7 @@ function BaguaPlantaContent() {
     }
   }
 
-  const order  = gridOrder(escola,lado)
+  const order  = calcularGridOrder(escola,{lado,orientacaoGraus})
   const stepN  = {upload:0,metragem:1,configurar:2,entrada:3,resultado:4}[step]
   const stAtivo= ativo!==null?SETORES[order[ativo]]:null
   const scAtivo= ativo!==null?setores[ativo]:null
@@ -1441,7 +1448,7 @@ function BaguaPlantaContent() {
               )}
               {step==='resultado'&&(
                 <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#0369A1',fontSize:'11px'}}>
-                  💡 Escola: <strong>{escola==='btb'?'BTB':'Bússola'}</strong> · Entrada: <strong>{lado}</strong> · Clique num setor para avaliar
+                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus}°</strong></>:<>Entrada: <strong>{lado}</strong></>} · Clique num setor para avaliar
                 </div>
               )}
 
@@ -1487,18 +1494,37 @@ function BaguaPlantaContent() {
                     <div>
                       <label style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>1️⃣ Método</label>
                       <div style={{display:'flex',gap:'7px'}}>
-                        <button onClick={()=>setEscola('btb')} style={{
-                          flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
-                          borderColor:escola==='btb'?'#7C3AED':'#D1D5DB',background:escola==='btb'?'#EDE9FE':'#fff',color:escola==='btb'?'#7C3AED':'#6B7280',
-                        }}>🚪 BTB<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>Porta como ref.</span></button>
-                        <button
-                          title="Método Bússola — em desenvolvimento. Em breve disponível."
-                          style={{
-                            flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',
-                            cursor:'not-allowed',opacity:0.4,
-                            borderColor:'#D1D5DB',background:'#fff',color:'#6B7280',
-                          }}>🧭 Bússola<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>Cardinais</span></button>
+                        {METODOLOGIAS.map(m=>(
+                          <button key={m.id}
+                            onClick={()=>m.disponivel&&setEscola(m.id)}
+                            title={m.disponivel?m.nome:`${m.nome} — em breve disponível`}
+                            disabled={!m.disponivel}
+                            style={{
+                              flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',
+                              cursor:m.disponivel?'pointer':'not-allowed',opacity:m.disponivel?1:0.4,
+                              borderColor:escola===m.id?'#7C3AED':'#D1D5DB',background:escola===m.id?'#EDE9FE':'#fff',color:escola===m.id?'#7C3AED':'#6B7280',
+                            }}>{m.icone} {m.nomeCurto}<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>{m.descricaoCurta}</span></button>
+                        ))}
                       </div>
+                      {escola==='bussola'&&(
+                        <div style={{marginTop:'8px',padding:'8px',background:'#F5F3FF',borderRadius:'6px',border:'1px solid #DDD6FE'}}>
+                          <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'5px'}}>
+                            🧭 Fachada voltada para <span style={{color:'#7C3AED'}}>{orientacaoGraus}°</span>
+                          </label>
+                          <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
+                            {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
+                              <button key={lbl} onClick={()=>setOrientacaoGraus(g as number)} style={{
+                                padding:'3px 7px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                                borderColor:orientacaoGraus===g?'#7C3AED':'#D1D5DB',background:orientacaoGraus===g?'#7C3AED':'#fff',color:orientacaoGraus===g?'#fff':'#6B7280',
+                              }}>{lbl}</button>
+                            ))}
+                          </div>
+                          <input id="input-orientacao" type="number" min={0} max={359} value={orientacaoGraus}
+                            onChange={e=>setOrientacaoGraus(((Number(e.target.value)%360)+360)%360)}
+                            style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                          <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>Direção magnética que a porta/fachada principal encara.</p>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label htmlFor="input-rotacao" style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>
@@ -1995,7 +2021,7 @@ function BaguaPlantaContent() {
               display:'flex', gap:'16px', alignItems:'center'
             }}>
               <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
-                Escola: <strong style={{color:'#fff'}}>{escola==='btb'?'BTB':'Bussola'}</strong>
+                Método: <strong style={{color:'#fff'}}>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong>
               </span>
               <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
                 Entrada: <strong style={{color:'#fff'}}>{lado}</strong>
