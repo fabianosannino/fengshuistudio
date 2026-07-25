@@ -29,11 +29,10 @@
  */
 
 import { NOME_ELEMENTO, type Elemento } from './cinco-elementos'
+import { CAMINHO_VOO, construirGridVoo, type Palacio } from './lo-shu'
+import { periodoDaData } from './periodo-sanyuan'
 
-export type Palacio = 'C' | 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW'
-
-/** Caminho físico fixo por onde os números voam (sempre nesta ordem, cíclica). */
-const CAMINHO_VOO: Palacio[] = ['C', 'NW', 'W', 'NE', 'S', 'N', 'SW', 'E', 'SE']
+export type { Palacio }
 
 /** Octante (0=N,1=NE,...,7=NW, mesma convenção de bagua-grid.ts/oito-mansoes.ts) → palácio. */
 const PALACIO_POR_OCTANTE: Palacio[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -48,53 +47,17 @@ const ELEMENTO_DO_NUMERO: Record<number, Elemento> = {
   6: 'metal', 7: 'metal', 8: 'terra', 9: 'fogo',
 }
 
-function normalizar1a9(v: number): number {
-  return (((v - 1) % 9 + 9) % 9) + 1
-}
-
 function octanteDaOrientacao(graus: number): number {
   const normalizado = ((graus % 360) + 360) % 360
   return Math.round(normalizado / 45) % 8
 }
 
 /**
- * Constrói uma grade de 9 palácios "voando" a partir de um valor semente num
- * palácio inicial, no sentido informado, seguindo o caminho de voo fixo.
- */
-function construirGrid(palacioSemente: Palacio, valorSemente: number, sentido: 'frente' | 'verso'): Record<Palacio, number> {
-  const idxSemente = CAMINHO_VOO.indexOf(palacioSemente)
-  const delta = sentido === 'frente' ? 1 : -1
-  const grid = {} as Record<Palacio, number>
-  for (let passo = 0; passo < 9; passo++) {
-    const palacio = CAMINHO_VOO[(idxSemente + passo) % 9]
-    grid[palacio] = normalizar1a9(valorSemente + passo * delta)
-  }
-  return grid
-}
-
-/**
  * Período de construção (1-9) a partir da data (ISO 'yyyy-mm-dd' ou Date).
- * Ano SOLAR chinês: antes do Li Chun (~4 de fevereiro) conta o ano anterior
- * (mesma regra do Ming Gua). Fórmula cíclica (não tabela hardcoded) — âncora
- * verificável: Período 8 começou em 2004, Período 9 em 2024.
+ * Alias de `periodoDaData` (src/lib/periodo-sanyuan.ts), mantido aqui para
+ * não quebrar os call sites existentes (app/bagua-planta, relatório).
  */
-export function periodoDaConstrucao(data: string | Date | null | undefined): number | null {
-  if (!data) return null
-  let ano: number, mes: number, dia: number
-  if (typeof data === 'string') {
-    const m = data.match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (!m) return null
-    ano = Number(m[1]); mes = Number(m[2]); dia = Number(m[3])
-  } else {
-    if (isNaN(data.getTime())) return null
-    ano = data.getFullYear(); mes = data.getMonth() + 1; dia = data.getDate()
-  }
-  if (ano < 1864) return null // início do ciclo de referência usado pelo método
-
-  const anoSolar = mes < 2 || (mes === 2 && dia < 4) ? ano - 1 : ano
-  const anosDesde1864 = anoSolar - 1864
-  return (Math.floor(anosDesde1864 / 20) % 9) + 1
-}
+export const periodoDaConstrucao = periodoDaData
 
 export interface Palacio3Estrelas {
   palacio: Palacio
@@ -127,12 +90,12 @@ export function calcularEstrelasVoadoras(opcoes: { facingGraus: number; periodo:
   const palacioFachada = PALACIO_POR_OCTANTE[facingOctante]
   const palacioMontanha = PALACIO_OPOSTO[palacioFachada]
 
-  const gridPeriodo = construirGrid('C', periodo, 'frente')
+  const gridPeriodo = construirGridVoo('C', periodo, 'frente')
 
   const seedFachada = gridPeriodo[palacioFachada]
   const seedMontanha = gridPeriodo[palacioMontanha]
-  const gridFachada = construirGrid(palacioFachada, seedFachada, seedFachada % 2 === 1 ? 'frente' : 'verso')
-  const gridMontanha = construirGrid(palacioMontanha, seedMontanha, seedMontanha % 2 === 1 ? 'frente' : 'verso')
+  const gridFachada = construirGridVoo(palacioFachada, seedFachada, seedFachada % 2 === 1 ? 'frente' : 'verso')
+  const gridMontanha = construirGridVoo(palacioMontanha, seedMontanha, seedMontanha % 2 === 1 ? 'frente' : 'verso')
 
   const palacios: Palacio3Estrelas[] = CAMINHO_VOO.map(palacio => {
     const montanha = gridMontanha[palacio]

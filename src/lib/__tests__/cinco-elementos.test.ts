@@ -4,6 +4,7 @@ import {
   CICLO_CONTROLE,
   elementoQueNutre,
   elementoQueControla,
+  elementoQueExaure,
   normalizarElemento,
   estrategiaElemental,
   NOME_ELEMENTO,
@@ -44,6 +45,19 @@ describe('ciclos Wu Xing', () => {
   it('elementoQueControla é o inverso do ciclo de controle', () => {
     for (const e of ELEMENTOS) {
       expect(CICLO_CONTROLE[elementoQueControla(e)]).toBe(e)
+    }
+  })
+
+  it('elementoQueExaure é o ciclo de Geração no sentido direto (o "filho" drena a "mãe")', () => {
+    expect(elementoQueExaure('terra')).toBe('metal') // regra de ouro: 5 Amarelo/2 Negro (Terra) → Metal
+    for (const e of ELEMENTOS) {
+      expect(elementoQueExaure(e)).toBe(CICLO_GERACAO[e])
+    }
+  })
+
+  it('elementoQueExaure e elementoQueNutre são inversos entre si', () => {
+    for (const e of ELEMENTOS) {
+      expect(elementoQueNutre(elementoQueExaure(e))).toBe(e)
     }
   })
 })

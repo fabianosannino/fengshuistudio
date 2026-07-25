@@ -11,6 +11,8 @@ import { calcularGridOrder } from '../../src/lib/bagua-grid'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
 import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
 import { periodoDaConstrucao, calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
+import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/graus'
+import { montanhaDoGrau } from '../../src/lib/montanhas'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -33,6 +35,11 @@ const SETORES = [
 // diagnóstico passa também faltaPct/excessoPct para incluir as recs geométricas.
 
 // Cálculo de qual setor cai em qual célula: src/lib/bagua-grid.ts (calcularGridOrder).
+
+// Assistente de 3 leituras (Modo A de orientação, fengshui-metodos-referencia.md §2.2):
+// acima deste desvio entre as 3 leituras, a medição não é confiável.
+const DESVIO_ALERTA_GRAUS = 3
+const NOME_YUAN_LONG = { terra: 'Terra', ceu: 'Céu', humano: 'Humano' } as const
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -188,6 +195,9 @@ function BaguaPlantaContent() {
   const [escola,   setEscola]   = useState<MetodologiaId>(METODOLOGIA_PADRAO)
   const [orientacaoGraus, setOrientacaoGraus] = useState<number>(0)
   const [dataConstrucao, setDataConstrucao] = useState<string>('')
+  // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
+  const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
+  const [leiturasAbertas, setLeiturasAbertas] = useState(false)
   const [lado,     setLado]     = useState<Lado>('centro')
   const [entrada,  setEntrada]  = useState<{x:number;y:number}|null>(null)
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
@@ -1515,7 +1525,7 @@ function BaguaPlantaContent() {
                       {escola==='bussola'&&(
                         <div style={{marginTop:'8px',padding:'8px',background:'#F5F3FF',borderRadius:'6px',border:'1px solid #DDD6FE'}}>
                           <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'5px'}}>
-                            🧭 Fachada voltada para <span style={{color:'#7C3AED'}}>{orientacaoGraus}°</span>
+                            🧭 Fachada voltada para <span style={{color:'#7C3AED'}}>{orientacaoGraus.toFixed(1)}°</span>
                           </label>
                           <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
                             {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
@@ -1525,10 +1535,51 @@ function BaguaPlantaContent() {
                               }}>{lbl}</button>
                             ))}
                           </div>
-                          <input id="input-orientacao" type="number" min={0} max={359} value={orientacaoGraus}
-                            onChange={e=>setOrientacaoGraus(((Number(e.target.value)%360)+360)%360)}
+                          <input id="input-orientacao" type="number" min={0} max={359.9} step={0.1} value={orientacaoGraus}
+                            onChange={e=>setOrientacaoGraus(normalizarGraus(Number(e.target.value)||0))}
                             style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
                           <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>Direção magnética que a porta/fachada principal encara.</p>
+                          {(()=>{
+                            const m=montanhaDoGrau(orientacaoGraus)
+                            return (
+                              <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6D28D9'}}>
+                                Montanha <strong>{m.pinyin} {m.nome}</strong> ({m.setor} · Yuan Long {NOME_YUAN_LONG[m.yuanLong]} · {m.polaridade==='yang'?'Yang':'Yin'})
+                              </p>
+                            )
+                          })()}
+                          <button type="button" onClick={()=>setLeiturasAbertas(v=>!v)}
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline'}}>
+                            {leiturasAbertas?'▾':'▸'} Assistente de 3 leituras (bússola/Luo Pan físico)
+                          </button>
+                          {leiturasAbertas&&(()=>{
+                            const numeros=leituras.map(l=>l.trim()===''?null:Number(l)).filter((n):n is number=>n!==null&&!isNaN(n))
+                            const media=numeros.length===3?mediaCircular(numeros):null
+                            const desvio=numeros.length===3?desvioCircular(numeros):null
+                            return (
+                              <div style={{marginTop:'6px',padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
+                                <p style={{margin:'0 0 5px',fontSize:'10px',color:'#6B7280'}}>Informe 3 leituras feitas em pontos distintos da fachada com a bússola/Luo Pan.</p>
+                                <div style={{display:'flex',gap:'5px'}}>
+                                  {leituras.map((l,i)=>(
+                                    <input key={i} type="number" min={0} max={359.9} step={0.1} value={l} placeholder={`Leitura ${i+1}`}
+                                      onChange={e=>setLeituras(prev=>{const next=[...prev] as [string,string,string]; next[i]=e.target.value; return next})}
+                                      style={{width:'62px',padding:'4px 6px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                                  ))}
+                                </div>
+                                {media!==null&&desvio!==null&&(
+                                  <div style={{marginTop:'6px'}}>
+                                    <p style={{margin:0,fontSize:'10px',color:desvio>DESVIO_ALERTA_GRAUS?'#DC2626':'#15803D'}}>
+                                      Média circular: <strong>{media.toFixed(1)}°</strong> · desvio: <strong>{desvio.toFixed(1)}°</strong>
+                                      {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
+                                    </p>
+                                    <button type="button" onClick={()=>setOrientacaoGraus(media)}
+                                      style={{marginTop:'4px',padding:'4px 10px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
+                                      Usar esta média
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
                           <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
                             📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
                           </label>
