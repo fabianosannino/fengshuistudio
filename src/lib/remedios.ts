@@ -11,8 +11,8 @@
  *   2. Problemas geométricos — setor ausente / extensão (regra do terço)
  *   3. Estratégia dos Cinco Elementos (`estrategiaElemental`)
  *
- * **NÃO cobre** as 117 dicas em texto livre de `SETOR_DICAS` (84) e
- * `CRITERIO_DICAS` (33). Isso não é preguiça nem esquecimento: atribuir
+ * **NÃO cobre** as 94 dicas em texto livre de `SETOR_DICAS` (70) e
+ * `CRITERIO_DICAS` (24). Isso não é preguiça nem esquecimento: atribuir
  * `forcaEvidencia` a uma recomendação de Feng Shui é um julgamento de
  * literatura clássica por afirmação — decidir se "adicione cristais negros
  * como obsidiana" é consenso clássico, variante de escola ou tradição
@@ -27,6 +27,7 @@
 
 import { estrategiaElemental, normalizarElemento, NOME_ELEMENTO, ATIVADORES, type Elemento } from './cinco-elementos'
 import { conflitosComodoSetor, normalizarSetor, ELEMENTO_DO_SETOR } from './comodo-setor'
+import { classificacaoDaDica } from './dicas-classificadas'
 import { LIMIAR_GEOMETRICO_PCT } from './recomendacoes'
 import { ordenarRemedios, type Remedio } from './sintese-metodos'
 
@@ -37,6 +38,17 @@ export interface RemediosInput {
   excessoPct?: number
   elemento?: string | null
   comodos?: Array<string | null | undefined>
+  /**
+   * Dicas de texto livre que JÁ se aplicam a este setor — normalmente a união
+   * de `gerarRecomendacoes(...).urgente/melhoria/manutencao`.
+   *
+   * Só as que estiverem curadas em `CATALOGO_DICAS` viram `Remedio`; as demais
+   * são ignoradas aqui (seguem aparecendo como texto no relatório). Recebemos
+   * a lista pronta de propósito: quem decide QUAIS dicas se aplicam é o motor
+   * de texto, e duplicar essa lógica (limiares de score, notas de critério)
+   * criaria duas fontes de verdade divergentes.
+   */
+  dicas?: string[]
 }
 
 /**
@@ -44,7 +56,7 @@ export interface RemediosInput {
  * reversível primeiro" (`ordenarRemedios`, Parte IV).
  */
 export function gerarRemedios(input: RemediosInput): Remedio[] {
-  const { nomeSetor, scorePct, faltaPct, excessoPct, elemento, comodos } = input
+  const { nomeSetor, scorePct, faltaPct, excessoPct, elemento, comodos, dicas } = input
   const remedios: Remedio[] = []
 
   // ── 1. Conflitos cômodo×setor ───────────────────────────────────────────
@@ -163,6 +175,29 @@ export function gerarRemedios(input: RemediosInput): Remedio[] {
         exigeSelecaoDeData: false,
       })
     }
+  }
+
+  // ── 4. Dicas de texto livre JÁ CURADAS ──────────────────────────────────
+  // Só entram as que existem em CATALOGO_DICAS. Enquanto o catálogo estiver
+  // vazio (estado inicial), este bloco não produz nada — e o relatório segue
+  // exibindo as dicas como texto, sem selo de evidência. Ver ADR 0015.
+  for (const dica of dicas ?? []) {
+    const classificacao = classificacaoDaDica(dica)
+    if (!classificacao) continue
+    remedios.push({
+      id: `dica-${nomeSetor}-${dica.slice(0, 40)}`,
+      metodo: 'formas',
+      setor: nomeSetor,
+      problema: `Ponto de atenção em ${nomeSetor}.`,
+      acao: dica,
+      mecanismo: classificacao.mecanismo,
+      acaoWuXing: 'nenhuma',
+      custo: classificacao.custo,
+      reversibilidade: classificacao.reversibilidade,
+      forcaEvidencia: classificacao.forcaEvidencia,
+      contraindicacoes: [],
+      exigeSelecaoDeData: false,
+    })
   }
 
   return ordenarRemedios(remedios)
