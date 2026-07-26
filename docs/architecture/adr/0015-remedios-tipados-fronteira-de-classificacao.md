@@ -161,3 +161,22 @@ documentos não voltem a divergir do conteúdo.
 - A migração completa de `recomendacoes.ts` para `Remedio` **não aconteceu** e
   não deve ser reivindicada: o motor de texto continua sendo a fonte das
   recomendações que o consultor vê nas seções de diagnóstico.
+
+## Atualização (2026-07-26) — a curadoria foi feita: ver ADR 0017
+
+O que este documento chama de "pendente, e é tarefa de domínio, não de código"
+**deixou de estar pendente**. Com um corpus de obras disponível em `docs/Books`,
+**68 das 76 dicas** foram curadas — e a ADR 0017 registra o método, as fontes,
+os três achados de prática contestada, as contraindicações que o relatório não
+mostrava e as 8 dicas que ficaram sem fonte localizável.
+
+Duas afirmações deste documento estão superadas, e ficam aqui só para o
+histórico ser legível:
+
+- **"`CURADORIA_EVIDENCIA` (vazia)"** — não está mais. E mudou de tipo: agora
+  cada entrada **exige** fonte nomeada, localizador e citação literal, com
+  conferência por script (`scripts/citacoes/`). A resposta ao risco de "rotular
+  errado" deixou de ser deixar o campo vazio e passou a ser tornar o palpite
+  impossível de digitar.
+- **"Curar uma dica é escrever uma linha com um valor"** — não é mais uma
+  linha, e o custo extra é o ponto.

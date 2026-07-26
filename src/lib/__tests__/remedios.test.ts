@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gerarRemedios } from '../remedios'
 import { gerarRecomendacoes } from '../recomendacoes'
+import { DICAS_SEM_FONTE_LOCALIZADA } from '../dicas-classificadas'
 import type { Remedio } from '../sintese-metodos'
 
 const ORDEM_CUSTO: Record<Remedio['custo'], number> = { zero: 0, baixo: 1, medio: 2, alto: 3, estrutural: 4 }
@@ -124,17 +125,35 @@ describe('coexistência com o motor de texto (não-regressão)', () => {
     expect(rem.some(x => x.id.startsWith('conflito-'))).toBe(true)
   })
 
-  it('dica de texto livre NÃO curada nunca vira remédio — fronteira declarada', () => {
-    // A fronteira real: uma dica só entra se estiver em CATALOGO_DICAS
-    // (ver ADR 0015). Passando dicas cruas, nada com prefixo 'dica-' aparece.
-    // O prefixo 'dica-' É legítimo, mas só para dicas já curadas — o teste de
-    // que isso funciona está em dicas-classificadas.test.ts.
+  it('só dica com proveniência vira remédio — a fronteira que ainda vale', () => {
+    // A fronteira mudou de lugar com a ADR 0017: já não é "nenhuma dica vira
+    // remédio" (a curadoria estava vazia), é "só vira remédio a dica com fonte
+    // nomeada". As 8 sem fonte localizada continuam de fora, e é isso que este
+    // teste tranca — passar uma delas junto de uma curada não pode produzir dois
+    // remédios de dica.
+    const semFonte = 'Exponha diplomas, prêmios e reconhecimentos'
+    const curada = 'Mantenha o caminho até a porta livre'
+    expect(DICAS_SEM_FONTE_LOCALIZADA).toContain(semFonte)
+
+    const r = gerarRemedios({ nomeSetor: 'Carreira', scorePct: 20, dicas: [semFonte, curada] })
+    const deDica = r.filter(x => x.id.startsWith('dica-'))
+    expect(deDica).toHaveLength(1)
+    expect(deDica[0].acao).toBe(curada)
+
+    const prefixosValidos = ['conflito-', 'geometria-', 'elemento-', 'dica-']
+    expect(r.every(x => prefixosValidos.some(p => x.id.startsWith(p)))).toBe(true)
+  })
+
+  it('todo remédio tem proveniência: força de evidência sempre preenchida', () => {
     const r = gerarRemedios({
-      nomeSetor: 'Carreira', scorePct: 20,
-      dicas: ['Adicione cristais negros como obsidiana', 'Mantenha o caminho até a porta livre'],
+      nomeSetor: 'Prosperidade', scorePct: 25, comodos: ['banheiro'],
+      faltaPct: 20, excessoPct: 20,
+      dicas: ['Adicione plantas saudáveis e viçosas'],
     })
-    expect(r.some(x => x.id.startsWith('dica-'))).toBe(false)
-    const prefixosEstruturados = ['conflito-', 'geometria-', 'elemento-']
-    expect(r.every(x => prefixosEstruturados.some(p => x.id.startsWith(p)))).toBe(true)
+    expect(r.length).toBeGreaterThan(3)
+    for (const x of r) {
+      expect(['consenso-classico', 'variante-de-escola', 'tradicao-popular'], x.id)
+        .toContain(x.forcaEvidencia)
+    }
   })
 })

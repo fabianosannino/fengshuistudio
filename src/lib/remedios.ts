@@ -11,16 +11,13 @@
  *   2. Problemas geométricos — setor ausente / extensão (regra do terço)
  *   3. Estratégia dos Cinco Elementos (`estrategiaElemental`)
  *
- * **NÃO cobre** as 94 dicas em texto livre de `SETOR_DICAS` (70) e
- * `CRITERIO_DICAS` (24). Isso não é preguiça nem esquecimento: atribuir
- * `forcaEvidencia` a uma recomendação de Feng Shui é um julgamento de
- * literatura clássica por afirmação — decidir se "adicione cristais negros
- * como obsidiana" é consenso clássico, variante de escola ou tradição
- * popular exige conhecimento que este código não tem. Rotular errado seria
- * pior que não rotular: colocaria selo de autoridade clássica em conselho
- * que talvez seja moderno, num relatório que vai para cliente pagante.
- * Essa curadoria é tarefa de quem tem a formação, não do software.
+ *   4. Dicas de texto livre **já curadas com fonte** (`dicas-classificadas.ts`
+ *      + `curadoria-evidencia.ts`): 68 das 76 acionáveis. As 8 restantes não
+ *      têm enunciado localizável em nenhuma obra do corpus e por isso não
+ *      viram `Remedio` — seguem aparecendo como texto, sem selo de evidência.
+ *      Ver ADR 0017.
  *
+
  * `gerarRecomendacoes` (o motor de texto usado por tela/detalhe/PDF) segue
  * **intocado** — este módulo é aditivo, não uma substituição.
  */
@@ -178,9 +175,9 @@ export function gerarRemedios(input: RemediosInput): Remedio[] {
   }
 
   // ── 4. Dicas de texto livre JÁ CURADAS ──────────────────────────────────
-  // Só entram as que existem em CATALOGO_DICAS. Enquanto o catálogo estiver
-  // vazio (estado inicial), este bloco não produz nada — e o relatório segue
-  // exibindo as dicas como texto, sem selo de evidência. Ver ADR 0015.
+  // Só entram as que têm sugestão mecânica E curadoria de evidência com fonte
+  // nomeada. As 8 dicas de DICAS_SEM_FONTE_LOCALIZADA nunca entram — seguem
+  // aparecendo como texto no relatório, sem selo. Ver ADR 0015 e ADR 0017.
   for (const dica of dicas ?? []) {
     const classificacao = classificacaoDaDica(dica)
     if (!classificacao) continue
@@ -195,7 +192,9 @@ export function gerarRemedios(input: RemediosInput): Remedio[] {
       custo: classificacao.custo,
       reversibilidade: classificacao.reversibilidade,
       forcaEvidencia: classificacao.forcaEvidencia,
-      contraindicacoes: [],
+      // Ressalvas e contestações levantadas na pesquisa de proveniência —
+      // o consultor precisa vê-las junto com a recomendação, não num doc.
+      contraindicacoes: classificacao.contraindicacoes,
       exigeSelecaoDeData: false,
     })
   }

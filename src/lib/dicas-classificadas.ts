@@ -18,29 +18,21 @@
  *    o caminho livre" não custa nada e é imediato. São sugestões revisáveis —
  *    corrija o que discordar.
  *
- * 2. **`CURADORIA_EVIDENCIA`** — `forcaEvidencia`. **Vazio de propósito.**
- *    Decidir se "adicione cristais negros como obsidiana" é consenso
- *    clássico, variante de escola ou tradição popular é julgamento de
- *    literatura clássica por afirmação. Rotular errado poria selo de
- *    autoridade clássica em conselho possivelmente moderno, num relatório que
- *    vai para cliente pagante. Ver ADR 0015.
+ * 2. **`CURADORIA_EVIDENCIA`** (em `curadoria-evidencia.ts`) —
+ *    `forcaEvidencia`. Decidir se "adicione cristais negros como obsidiana" é
+ *    consenso clássico, variante de escola ou tradição popular é julgamento de
+ *    literatura, e rotular errado poria selo de autoridade clássica em
+ *    conselho possivelmente moderno, num relatório que vai para cliente
+ *    pagante. Por isso o tipo daquele arquivo **exige fonte nomeada,
+ *    localizador e citação literal** em cada entrada: não dá para acrescentar
+ *    um palpite sem escrever de onde ele veio. Ver ADR 0015 e ADR 0017.
  *
- * Uma dica só vira `Remedio` quando tem **as duas metades**. Enquanto a
- * evidência não for preenchida, ela continua aparecendo no relatório como
- * texto, sem selo — que é o comportamento honesto.
+ * Uma dica só vira `Remedio` quando tem **as duas metades**. Sem curadoria,
+ * ela continua aparecendo no relatório como texto, sem selo — comportamento
+ * honesto, e é o que ainda vale para as 8 dicas de
+ * `DICAS_SEM_FONTE_LOCALIZADA`.
  *
- * ─── COMO CURAR ──────────────────────────────────────────────────────────
- *
- * Acrescente UMA linha em `CURADORIA_EVIDENCIA` por dica, usando o texto
- * exato como chave:
- *
- *     'Mantenha o caminho até a porta livre': 'consenso-classico',
- *
- * Pronto — a dica passa a aparecer na seção "Plano de Ação" do relatório,
- * ordenada por custo/reversibilidade. Funciona incrementalmente: não é
- * preciso curar as 77 para ver benefício.
- *
- * Planilha de apoio com as 77 dicas e as sugestões já preenchidas:
+ * Planilha de apoio com as 77 dicas, as sugestões e as fontes:
  * `docs/domain/curadoria-dicas.md`.
  *
  * ─── FRAGILIDADE CONHECIDA ───────────────────────────────────────────────
@@ -53,19 +45,52 @@
  * fragilidade, e ela está sob teste).
  */
 
+import { CURADORIA_EVIDENCIA, DICAS_SEM_FONTE_LOCALIZADA, citarFonte } from './curadoria-evidencia'
 import type {
   CustoRemedio, ForcaEvidencia, MecanismoRemedio, Reversibilidade,
 } from './sintese-metodos'
+
+export {
+  CURADORIA_EVIDENCIA, DICAS_SEM_FONTE_LOCALIZADA, FONTES_CURADORIA, citarFonte,
+} from './curadoria-evidencia'
+export type { EntradaCuradoria, Fonte, FonteId, Referencia } from './curadoria-evidencia'
 
 export interface ClassificacaoDica {
   custo: CustoRemedio
   reversibilidade: Reversibilidade
   forcaEvidencia: ForcaEvidencia
   mecanismo: MecanismoRemedio
+  /**
+   * Ressalvas achadas na própria pesquisa de proveniência (ex.: "planta não em
+   * quarto de casal", "triângulo nunca em quarto") e a contestação, quando
+   * existe. Alimenta `Remedio.contraindicacoes` — é o ganho mais concreto da
+   * curadoria: várias dessas dicas têm contraindicação documentada que o app
+   * não mostrava a ninguém.
+   *
+   * Contém **só o que interessa a quem vai aplicar a cura**. A `nota` de
+   * curadoria (onde a dica extrapola a fonte) fica FORA daqui de propósito: é
+   * metadado de curadoria, e o relatório vai para cliente pagante.
+   */
+  contraindicacoes: string[]
+  /** Proveniência formatada, para exibir ao consultor. */
+  fonte: string
+  /**
+   * Onde a dica vai além do que a fonte sustenta. Uso interno (planilha de
+   * curadoria, decisão de produto) — **não** é para o relatório do cliente.
+   */
+  nota?: string
 }
 
-/** As três dimensões que saem da leitura do texto, não do domínio. */
-export type SugestaoMecanica = Omit<ClassificacaoDica, 'forcaEvidencia'>
+/**
+ * As três dimensões que saem da leitura do texto, não do domínio.
+ *
+ * `forcaEvidencia`, `contraindicacoes` e `fonte` ficam de fora **por
+ * definição**: são a metade que exige literatura, e vivem em
+ * `curadoria-evidencia.ts`. Se este Omit encolher, o teste que garante que
+ * nenhuma sugestão carrega força de evidência é a rede de segurança.
+ */
+export type SugestaoMecanica =
+  Omit<ClassificacaoDica, 'forcaEvidencia' | 'contraindicacoes' | 'fonte'>
 
 /**
  * Sugestões de `custo`/`reversibilidade`/`mecanismo` por dica.
@@ -211,23 +236,34 @@ export const DICAS_NAO_ACIONAVEIS: readonly string[] = [
 ]
 
 /**
- * Força de evidência por dica — **a metade que exige julgamento humano.**
- *
- * Nasce vazio. Acrescente uma linha por dica curada:
- *     'Mantenha o caminho até a porta livre': 'consenso-classico',
- */
-export const CURADORIA_EVIDENCIA: Record<string, ForcaEvidencia> = {}
-
-/**
  * Classificação completa de uma dica — só existe quando a sugestão mecânica
- * E a curadoria de evidência estão presentes. Devolve null caso contrário,
- * o que é o que impede uma dica de virar remédio sem proveniência humana.
+ * E a curadoria de evidência (com fonte) estão presentes. Devolve null caso
+ * contrário, o que é o que impede uma dica de virar remédio sem proveniência.
  */
 export function classificacaoDaDica(dica: string): ClassificacaoDica | null {
   const mecanica = SUGESTOES_MECANICAS[dica]
   const evidencia = CURADORIA_EVIDENCIA[dica]
   if (!mecanica || !evidencia) return null
-  return { ...mecanica, forcaEvidencia: evidencia }
+
+  const contraindicacoes: string[] = []
+  if (evidencia.contraindicacao) contraindicacoes.push(evidencia.contraindicacao)
+  // Uma dica contestada precisa dizer QUEM a contesta ao consultor. Se ficasse
+  // só na `nota` do arquivo de curadoria, o relatório apresentaria a
+  // recomendação como se fosse pacífica.
+  if (evidencia.contestadaPor) {
+    contraindicacoes.push(
+      `Prática contestada na literatura — ${citarFonte(evidencia.contestadaPor)}: `
+      + `"${evidencia.contestadaPor.citacao}"`,
+    )
+  }
+
+  return {
+    ...mecanica,
+    forcaEvidencia: evidencia.forca,
+    contraindicacoes,
+    fonte: citarFonte(evidencia),
+    nota: evidencia.nota,
+  }
 }
 
 /** Progresso da curadoria: quantas dicas já têm força de evidência definida. */
@@ -235,7 +271,23 @@ export function totalDicasCuradas(): number {
   return Object.keys(CURADORIA_EVIDENCIA).length
 }
 
-/** Quantas dicas aguardam curadoria de evidência (têm sugestão, falta o julgamento). */
+/** Quantas dicas aguardam curadoria de evidência (têm sugestão, falta a fonte). */
 export function totalDicasAguardandoCuradoria(): number {
   return Object.keys(SUGESTOES_MECANICAS).filter(d => !CURADORIA_EVIDENCIA[d]).length
+}
+
+/**
+ * Dicas curadas cuja prática é **contestada** por outra fonte do corpus.
+ * Vale a pena olhar: são candidatas a sair de `constants.ts`, não só a receber
+ * selo fraco.
+ */
+export function dicasContestadas(): string[] {
+  return Object.entries(CURADORIA_EVIDENCIA)
+    .filter(([, e]) => e.contestadaPor)
+    .map(([dica]) => dica)
+}
+
+/** Confere que `DICAS_SEM_FONTE_LOCALIZADA` e a curadoria não se sobrepõem. */
+export function dicasSemFonteQueForamCuradas(): string[] {
+  return DICAS_SEM_FONTE_LOCALIZADA.filter(d => CURADORIA_EVIDENCIA[d])
 }

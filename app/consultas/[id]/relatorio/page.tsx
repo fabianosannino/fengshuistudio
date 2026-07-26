@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { Fragment, useEffect, useState, useRef } from 'react'
 import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import FlowLayout from '../../../components/FlowLayout'
@@ -1192,8 +1192,9 @@ export default function Relatorio() {
           // então remédios geométricos não aparecem aqui — só no diagnóstico.
           const remedios = setores.flatMap(s => {
             // As dicas de texto livre que já se aplicam a este setor. Só as que
-            // estiverem curadas em CATALOGO_DICAS viram linha aqui — enquanto o
-            // catálogo estiver vazio, nada muda (ver ADR 0015).
+            // têm proveniência (fonte nomeada + citação) viram linha aqui — as 8
+            // sem fonte localizável seguem só como texto nas seções anteriores.
+            // Ver ADR 0015 e ADR 0017.
             const rec = gerarRecomendacoes({
               nomeSetor: s.nome,
               scorePct: s.score_percentual ?? 0,
@@ -1237,21 +1238,43 @@ export default function Relatorio() {
                 </thead>
                 <tbody>
                   {ordenados.map(r => (
-                    <tr key={r.id} style={{ pageBreakInside: 'avoid' }}>
-                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
-                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: ink }}>{r.acao}</td>
-                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: r.custo === 'zero' ? '#15803D' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
-                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
-                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
-                    </tr>
+                    // Fragment por remédio: a linha da ação e, quando houver, a
+                    // linha de ressalvas. As ressalvas vêm da mesma pesquisa que
+                    // sustentou a classificação (ADR 0017) — apresentar a cura
+                    // sem elas era o que o relatório fazia antes, e é justamente
+                    // o que não se deve fazer com "não use planta em quarto de
+                    // casal" ou "triângulo nunca em quarto".
+                    <Fragment key={r.id}>
+                      <tr style={{ pageBreakInside: 'avoid' }}>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink }}>{r.acao}</td>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#15803D' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
+                      </tr>
+                      {r.contraindicacoes.length > 0 && (
+                        <tr style={{ pageBreakInside: 'avoid' }}>
+                          <td />
+                          <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#92400E', fontSize: '9.5px', lineHeight: 1.5 }}>
+                            {r.contraindicacoes.map((c, i) => (
+                              <div key={i} style={{ marginTop: i === 0 ? 0 : '2px' }}>⚠ {c}</div>
+                            ))}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
               <p style={{ margin: '0.7rem 0 0', fontSize: '10px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                Esta tabela cobre apenas as recomendações que o sistema consegue classificar com honestidade:
-                conflitos clássicos cômodo×setor e a estratégia dos Cinco Elementos. As demais dicas
-                (nas seções anteriores) ainda não têm classificação de evidência — atribuir esse selo é
-                julgamento de literatura clássica, e o sistema não o faz por conta própria.
+                Cada linha declara o custo, se dá para desfazer e o quanto a recomendação é
+                consolidada: <strong>consenso clássico</strong> tem âncora explícita em construto
+                clássico (ciclo dos Cinco Elementos, Ba Guá, Sheng/Shar Chi) e concordância entre
+                fontes; <strong>variante de escola</strong> é característica de uma linhagem, ou as
+                fontes divergem; <strong>tradição popular</strong> é uso difundido sem respaldo
+                clássico localizado. As ressalvas em ⚠ vêm da mesma leitura que sustentou a
+                classificação. Recomendações cuja origem não foi possível localizar na literatura
+                não entram nesta tabela — aparecem nas seções anteriores, sem selo de evidência.
                 {remedios.length > ordenados.length && ` Mostrando os ${ordenados.length} primeiros de ${remedios.length}.`}
               </p>
             </div>
