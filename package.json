@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
+    "geomagnetism": "^0.2.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.0",
     "next": "16.1.6",

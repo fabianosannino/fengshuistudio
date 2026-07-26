@@ -593,7 +593,18 @@ export const CURADORIA_EVIDENCIA: Record<string, EntradaCuradoria> = {
  * Não é "não pesquisei" — é "pesquisei e não achou". Todas foram buscadas por
  * termo no corpus inteiro (foto/quadro/retrato, prêmio/diploma/troféu,
  * lista/contato, projeto/obra criativa, conflito, equipamento elétrico).
- * Se você tiver a fonte, acrescente a entrada acima e a dica passa a valer.
+ *
+ * ─── DECISÃO DE PRODUTO (2026-07-26): ESTAS 8 FICAM ──────────────────────
+ *
+ * O proprietário decidiu que continuam no catálogo. **Isto não é uma lista de
+ * pendências** — é um estado estável e deliberado: dica que o consultor aplica
+ * por prática, sem respaldo de literatura localizado, e que por isso não recebe
+ * selo de evidência nem entra no Plano de Ação.
+ *
+ * Consequência para quem mexer aqui: **não "limpe" esta lista** presumindo que
+ * é trabalho inacabado, e não force uma classificação para zerá-la. Se algum
+ * dia aparecer a fonte, mova a dica para `CURADORIA_EVIDENCIA` — mas a ausência
+ * de fonte é um resultado publicado, não um bug.
  */
 export const DICAS_SEM_FONTE_LOCALIZADA: readonly string[] = [
   'Coloque fotos da família em momentos felizes',

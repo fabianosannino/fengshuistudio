@@ -271,15 +271,22 @@ export function totalDicasCuradas(): number {
   return Object.keys(CURADORIA_EVIDENCIA).length
 }
 
-/** Quantas dicas aguardam curadoria de evidência (têm sugestão, falta a fonte). */
-export function totalDicasAguardandoCuradoria(): number {
+/**
+ * Quantas dicas ficam **sem selo de evidência** — as que têm sugestão mecânica
+ * mas nenhuma fonte localizável no corpus.
+ *
+ * Antes chamava-se `totalDicasAguardandoCuradoria`, e o nome passou a mentir:
+ * por decisão de produto (2026-07-26) estas dicas **ficam assim**, não estão
+ * numa fila de espera. Ver `DICAS_SEM_FONTE_LOCALIZADA`.
+ */
+export function totalDicasSemSeloDeEvidencia(): number {
   return Object.keys(SUGESTOES_MECANICAS).filter(d => !CURADORIA_EVIDENCIA[d]).length
 }
 
 /**
  * Dicas curadas cuja prática é **contestada** por outra fonte do corpus.
  * Vale a pena olhar: são candidatas a sair de `constants.ts`, não só a receber
- * selo fraco.
+ * selo fraco. (Diferente das 8 sem fonte, que já têm decisão: ficam.)
  */
 export function dicasContestadas(): string[] {
   return Object.entries(CURADORIA_EVIDENCIA)

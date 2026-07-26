@@ -233,6 +233,12 @@ function BaguaPlantaContent() {
   // Um grau sem referência é ambíguo: Luo Pan lê magnético, o Modo C deriva verdadeiro.
   const [orientacaoReferencia, setOrientacaoReferencia] = useState<ReferenciaNorte>('magnetico')
   const [declinacao, setDeclinacao] = useState<string>('')
+  // Proveniência do cálculo automático de declinação (/api/declinacao, WMM oficial).
+  // Só é preenchido quando o valor VEIO do modelo — digitar à mão limpa, para a
+  // UI nunca atribuir ao WMM um número que o consultor escreveu.
+  const [declinacaoAuto, setDeclinacaoAuto] = useState<{modelo:string;validoAte:string}|null>(null)
+  const [declinacaoCarregando, setDeclinacaoCarregando] = useState(false)
+  const [declinacaoErro, setDeclinacaoErro] = useState<string>('')
   const [dataConstrucao, setDataConstrucao] = useState<string>('')
   // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
@@ -350,7 +356,12 @@ function BaguaPlantaContent() {
               if(be.orientacao_referencia==='verdadeiro'||be.orientacao_referencia==='magnetico'){
                 setOrientacaoReferencia(be.orientacao_referencia)
               }
-              if(typeof be.declinacao_magnetica==='number') setDeclinacao(String(be.declinacao_magnetica))
+              if(typeof be.declinacao_magnetica==='number'){
+                setDeclinacao(String(be.declinacao_magnetica))
+                // Valor vindo do banco: não sabemos se foi digitado ou calculado,
+                // então não atribuímos ao WMM. Proveniência só quando é fresca.
+                setDeclinacaoAuto(null)
+              }
               if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
               if(be.data_construcao) setDataConstrucao(be.data_construcao)
             }
@@ -398,6 +409,7 @@ function BaguaPlantaContent() {
       // magnética") — retrocompatibilidade explícita, não suposição nova.
       setOrientacaoReferencia(be.orientacao_referencia==='verdadeiro'?'verdadeiro':'magnetico')
       setDeclinacao(typeof be.declinacao_magnetica==='number'?String(be.declinacao_magnetica):'')
+      setDeclinacaoAuto(null) // ver nota no outro ponto de restauração
       setDataConstrucao(be.data_construcao||'')
       if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
       // Defer bounds/setores restoration after image+rotation effect runs
@@ -1007,6 +1019,45 @@ function BaguaPlantaContent() {
       i.src=ev.target?.result as string
     }
     reader.readAsDataURL(file)
+  }
+
+  /**
+   * Preenche a declinação a partir da geolocalização do navegador, via
+   * `/api/declinacao` (WMM oficial — ver src/lib/declinacao-automatica.ts).
+   *
+   * Fail-closed em toda ramificação: se o navegador nega a permissão, se não
+   * há GPS, se o modelo está fora da validade ou se a rota falha, o campo
+   * manual continua sendo o caminho e a mensagem diz isso. Nunca escreve zero.
+   */
+  async function calcularDeclinacaoAqui(){
+    setDeclinacaoErro('')
+    if(!('geolocation' in navigator)){
+      setDeclinacaoErro('Este navegador não expõe localização. Use a calculadora do NOAA e informe o valor.')
+      return
+    }
+    setDeclinacaoCarregando(true)
+    try{
+      const pos=await new Promise<GeolocationPosition>((resolve,reject)=>{
+        navigator.geolocation.getCurrentPosition(resolve,reject,{timeout:15_000,maximumAge:600_000})
+      })
+      const {latitude,longitude}=pos.coords
+      const r=await fetch(`/api/declinacao?lat=${latitude}&lon=${longitude}`)
+      const body=await r.json().catch(()=>null)
+      if(!r.ok){
+        setDeclinacaoErro(body?.error||'Não foi possível calcular. Informe a declinação manualmente.')
+        setDeclinacaoAuto(null)
+        return
+      }
+      setDeclinacao(String(body.declinacao))
+      setDeclinacaoAuto({modelo:body.modelo,validoAte:body.validoAte})
+    }catch(err){
+      // Inclui negativa de permissão (PERMISSION_DENIED) e timeout de GPS.
+      logger.warn('Declinação automática falhou no cliente',{error:String(err)})
+      setDeclinacaoErro('Não foi possível obter sua localização. Informe a declinação manualmente ou use a calculadora do NOAA.')
+      setDeclinacaoAuto(null)
+    }finally{
+      setDeclinacaoCarregando(false)
+    }
   }
 
   // Save analysis state as draft (called on key transitions)
@@ -1769,13 +1820,31 @@ function BaguaPlantaContent() {
                             </label>
                             <div style={{display:'flex',gap:'5px',alignItems:'center',flexWrap:'wrap'}}>
                               <input id="input-declinacao" type="number" step={0.1} value={declinacao} placeholder="ex.: -21.5"
-                                onChange={e=>setDeclinacao(e.target.value)}
+                                onChange={e=>{setDeclinacao(e.target.value);setDeclinacaoAuto(null)}}
                                 style={{width:'80px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                              <button type="button" onClick={calcularDeclinacaoAqui} disabled={declinacaoCarregando}
+                                style={{padding:'4px 9px',border:'1px solid #7C3AED',borderRadius:'5px',fontSize:'10px',
+                                  background:'#EDE9FE',color:'#7C3AED',fontWeight:'bold',
+                                  cursor:declinacaoCarregando?'wait':'pointer'}}>
+                                {declinacaoCarregando?'Calculando…':'📍 Calcular pela minha localização'}
+                              </button>
                               <a href={URL_CALCULADORA_DECLINACAO} target="_blank" rel="noopener noreferrer"
                                 style={{fontSize:'10px',color:'#7C3AED',fontWeight:'bold'}}>
-                                Obter na calculadora oficial (NOAA) ↗
+                                Calculadora oficial (NOAA) ↗
                               </a>
                             </div>
+                            {declinacaoErro&&(
+                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#DC2626'}}>{declinacaoErro}</p>
+                            )}
+                            {declinacaoAuto&&(
+                              // Declarar o modelo e sua validade: o consultor precisa saber
+                              // de onde veio o número, e que ele expira.
+                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#15803D'}}>
+                                Calculado por <strong>{declinacaoAuto.modelo}</strong> (NOAA/NGDC) para a sua posição
+                                {declinacaoAuto.validoAte&&<> · modelo válido até {new Date(declinacaoAuto.validoAte).toLocaleDateString('pt-BR')}</>}.
+                                Confira contra o endereço do imóvel se você não estiver nele.
+                              </p>
+                            )}
                             {(()=>{
                               const bruto=declinacao.trim()
                               if(bruto==='') return (
