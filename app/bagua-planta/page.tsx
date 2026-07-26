@@ -23,6 +23,7 @@ import { calcularTaiJi, setoresAusentes, setoresExtensao, type Ponto } from '../
 import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
+import QuestionarioFacing from '../components/QuestionarioFacing'
 import {
   converterLeitura, declinacaoPlausivel, rotuloReferencia,
   URL_CALCULADORA_DECLINACAO, type ReferenciaNorte,
@@ -231,6 +232,8 @@ function BaguaPlantaContent() {
   const [bussolaVirtualAberta, setBussolaVirtualAberta] = useState(false)
   // Alinhamento sobre mapa/satélite (Modo C) — idem: só o resultado aceito vira orientacaoGraus.
   const [mapaAberto, setMapaAberto] = useState(false)
+  // Questionário de determinação de facing (§2.5) — idem.
+  const [facingAberto, setFacingAberto] = useState(false)
   // Calculadora de Posicionamento de Mobiliário (Ba Zhai) — estado local, não persistido ainda.
   const [mobiliarioAberto, setMobiliarioAberto] = useState(false)
   const [mobiliarioTipo, setMobiliarioTipo] = useState<'cama' | 'fogao' | 'mesa'>('cama')
@@ -1801,6 +1804,16 @@ function BaguaPlantaContent() {
                           {/* O mapa (Web Mercator) deriva Norte VERDADEIRO — daí a referência ser marcada aqui. */}
                           {mapaAberto&&img&&(
                             <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('verdadeiro');setMapaAberto(false)}}/>
+                          )}
+                          <button type="button" onClick={()=>setFacingAberto(v=>!v)}
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            {facingAberto?'▾':'▸'} Qual face é a fachada? (questionário de facing)
+                          </button>
+                          {/* Não mexe na referência de Norte: o questionário decide QUAL face é a frente,
+                              não em que referência o grau foi medido — quem informou os graus das faces
+                              já os informou na referência corrente. */}
+                          {facingAberto&&(
+                            <QuestionarioFacing onAceitar={g=>{setOrientacaoGraus(g);setFacingAberto(false)}}/>
                           )}
                           <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
                             📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
