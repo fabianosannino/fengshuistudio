@@ -4,7 +4,7 @@ import {
   SUGESTOES_MECANICAS, CURADORIA_EVIDENCIA, DICAS_NAO_ACIONAVEIS,
   DICAS_SEM_FONTE_LOCALIZADA, FONTES_CURADORIA, citarFonte,
   classificacaoDaDica, dicasContestadas, dicasSemFonteQueForamCuradas,
-  totalDicasCuradas, totalDicasAguardandoCuradoria,
+  totalDicasCuradas, totalDicasSemSeloDeEvidencia,
 } from '../dicas-classificadas'
 import { gerarRemedios } from '../remedios'
 
@@ -68,7 +68,7 @@ describe('curadoria de evidência: proveniência obrigatória', () => {
   it('cobre 68 das 76 dicas acionáveis; as 8 restantes estão declaradas', () => {
     expect(totalDicasCuradas()).toBe(68)
     expect(DICAS_SEM_FONTE_LOCALIZADA).toHaveLength(8)
-    expect(totalDicasAguardandoCuradoria()).toBe(8)
+    expect(totalDicasSemSeloDeEvidencia()).toBe(8)
     // 68 + 8 = 76: nenhuma dica acionável fica fora das duas listas.
     expect(totalDicasCuradas() + DICAS_SEM_FONTE_LOCALIZADA.length)
       .toBe(Object.keys(SUGESTOES_MECANICAS).length)
@@ -76,6 +76,23 @@ describe('curadoria de evidência: proveniência obrigatória', () => {
 
   it('as duas listas são disjuntas — nada é curado E declarado sem fonte', () => {
     expect(dicasSemFonteQueForamCuradas()).toEqual([])
+  })
+
+  it('as 8 sem fonte são exatamente estas — decisão de produto, não fila de espera', () => {
+    // Trava a MEMBRESIA, não só o tamanho: por decisão do proprietário
+    // (2026-07-26) estas 8 ficam no catálogo sem selo de evidência. Se alguém
+    // "resolver" a lista forçando classificação, ou trocar uma dica por outra,
+    // este teste avisa em vez de a mudança passar como faxina inofensiva.
+    expect([...DICAS_SEM_FONTE_LOCALIZADA].sort()).toEqual([
+      'Coloque fotos da família em momentos felizes',
+      'Exponha diplomas, prêmios e reconhecimentos',
+      'Exponha projetos criativos e expressão artística',
+      'Exponha trabalhos criativos e projetos em andamento',
+      'Mantenha a área livre de objetos de conflito',
+      'Mantenha uma lista de contatos importantes visível',
+      'Remova imagens de solidão ou objetos únicos',
+      'Verifique equipamentos elétricos com mau funcionamento e conserte-os',
+    ])
   })
 
   it('TODA entrada tem fonte conhecida, localizador e citação não-trivial', () => {
