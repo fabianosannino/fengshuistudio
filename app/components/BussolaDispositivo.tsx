@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { normalizarGraus } from '../../src/lib/graus'
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { processarAmostrasBussola, type ResultadoAmostragemBussola } from '../../src/lib/bussola-dispositivo'
+import RosaDosVentos from './RosaDosVentos'
 
 /**
  * Bússola virtual (Modo B de orientação, fengshui-metodos-referencia.md
@@ -33,23 +34,7 @@ type Estado =
 
 const DURACAO_CALIBRACAO_MS = 3000
 const DURACAO_AMOSTRAGEM_MS = 5000
-const RAIO_EXTERNO = 90
-const RAIO_INTERNO = 74
-const CENTRO = 100
-
-function anguloParaXY(headingGraus: number, raio: number): { x: number; y: number } {
-  const rad = (headingGraus * Math.PI) / 180
-  return { x: CENTRO + raio * Math.sin(rad), y: CENTRO - raio * Math.cos(rad) }
-}
-
-function arcoSetor(faixaInicioGraus: number, raioInterno: number, raioExterno: number): string {
-  const a0 = faixaInicioGraus, a1 = faixaInicioGraus + 15
-  const p0ext = anguloParaXY(a0, raioExterno), p1ext = anguloParaXY(a1, raioExterno)
-  const p1int = anguloParaXY(a1, raioInterno), p0int = anguloParaXY(a0, raioInterno)
-  return `M ${p0ext.x} ${p0ext.y} A ${raioExterno} ${raioExterno} 0 0 1 ${p1ext.x} ${p1ext.y} L ${p1int.x} ${p1int.y} A ${raioInterno} ${raioInterno} 0 0 0 ${p0int.x} ${p0int.y} Z`
-}
-
-const LABELS_MAJOR: [string, number][] = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]]
+// Geometria da rosa dos ventos vive em RosaDosVentos.tsx — não duplicar aqui.
 
 const TEXTO_CONFIANCA: Record<'high' | 'medium' | 'low', { rotulo: string; cor: string }> = {
   high: { rotulo: 'Alta confiança', cor: '#15803D' },
@@ -137,27 +122,13 @@ export default function BussolaDispositivo({ onAceitar }: BussolaDispositivoProp
   return (
     <div style={{ marginTop: '8px', padding: '10px', background: '#fff', borderRadius: '7px', border: '1px solid #E5E7EB' }}>
       <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* viewBox com margem de 12 além do círculo (0–200): os rótulos N/E/S/W ficam no raio
-            RAIO_EXTERNO+10=100, exatamente na borda de um viewBox 0–200 — sem a margem, ficam cortados. */}
-        <svg viewBox="-12 -12 224 224" width="140" height="140" style={{ flexShrink: 0 }} data-testid="bussola-svg">
-          <circle cx={CENTRO} cy={CENTRO} r={RAIO_EXTERNO} fill="#F9FAFB" stroke="#D1D5DB" />
-          {Array.from({ length: 24 }, (_, i) => i * 15).map(g => {
-            const p0 = anguloParaXY(g, RAIO_EXTERNO), p1 = anguloParaXY(g, g % 45 === 0 ? RAIO_INTERNO - 6 : RAIO_INTERNO + 2)
-            return <line key={g} x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y} stroke="#9CA3AF" strokeWidth={g % 45 === 0 ? 1.4 : 0.7} />
-          })}
-          {montanhaAtual && estado === 'resultado' && (
-            <path d={arcoSetor(montanhaAtual.faixaInicio, RAIO_INTERNO, RAIO_EXTERNO)} fill="rgba(124,58,237,0.35)" data-testid="bussola-setor-atual" />
-          )}
-          {LABELS_MAJOR.map(([lbl, g]) => {
-            const p = anguloParaXY(g, RAIO_EXTERNO + 10)
-            return <text key={lbl} x={p.x} y={p.y} fontSize="11" fontWeight="bold" fill="#374151" textAnchor="middle" dominantBaseline="middle">{lbl}</text>
-          })}
-          {headingExibido !== null && (()=> {
-            const ponta = anguloParaXY(headingExibido, RAIO_INTERNO - 10)
-            return <line x1={CENTRO} y1={CENTRO} x2={ponta.x} y2={ponta.y} stroke="#DC2626" strokeWidth={2.5} data-testid="bussola-agulha" />
-          })()}
-          <circle cx={CENTRO} cy={CENTRO} r={3} fill="#374151" />
-        </svg>
+        {/* Mesma rosa dos ventos da entrada manual — só leitura aqui (sem onChange):
+            quem define o ângulo é o sensor, não o dedo do consultor. */}
+        <RosaDosVentos
+          graus={headingExibido ?? 0}
+          tamanho={140}
+          destacarMontanha={estado === 'resultado'}
+        />
 
         <div style={{ flex: 1, minWidth: '180px', fontSize: '11px', color: '#374151' }}>
           {estado === 'inicial' && (
