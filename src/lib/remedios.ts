@@ -25,6 +25,7 @@
 import { estrategiaElemental, normalizarElemento, NOME_ELEMENTO, ATIVADORES, type Elemento } from './cinco-elementos'
 import { conflitosComodoSetor, normalizarSetor, ELEMENTO_DO_SETOR } from './comodo-setor'
 import { classificacaoDaDica } from './dicas-classificadas'
+import { alertaEstrela5 } from './estrela-anual'
 import { LIMIAR_GEOMETRICO_PCT } from './recomendacoes'
 import { ordenarRemedios, type Remedio } from './sintese-metodos'
 
@@ -46,6 +47,17 @@ export interface RemediosInput {
    * criaria duas fontes de verdade divergentes.
    */
   dicas?: string[]
+  /**
+   * Metodologia ativa ('bussola' | 'btb'). Só com `'bussola'` o setor tem
+   * direção cardinal, e só então dá para dizer se a Estrela 5 anual cai aqui.
+   * Ausente = trata como desconhecido, e o aviso fica genérico.
+   */
+  escola?: string
+  /**
+   * Ano solar da consulta (Li Chun aplicado — use `dataSolar(...).anoSolar`,
+   * nunca `getFullYear()`). Sem ele não há alerta específico de Estrela 5.
+   */
+  anoSolar?: number
 }
 
 /**
@@ -53,8 +65,15 @@ export interface RemediosInput {
  * reversível primeiro" (`ordenarRemedios`, Parte IV).
  */
 export function gerarRemedios(input: RemediosInput): Remedio[] {
-  const { nomeSetor, scorePct, faltaPct, excessoPct, elemento, comodos, dicas } = input
+  const { nomeSetor, scorePct, faltaPct, excessoPct, elemento, comodos, dicas, escola, anoSolar } = input
   const remedios: Remedio[] = []
+
+  // Alerta específico da Estrela 5 anual, quando dá para saber (só na Escola
+  // da Bússola — ver ADR 0018 e `alertaEstrela5`). Substitui o aviso genérico
+  // da curadoria, que fica valendo em todo o resto.
+  const avisoEstrela5 = escola && anoSolar != null
+    ? alertaEstrela5(nomeSetor, anoSolar, escola)
+    : null
 
   // ── 1. Conflitos cômodo×setor ───────────────────────────────────────────
   // Classificação uniforme, verificada lendo as 14 curas da tabela: todas
@@ -197,6 +216,31 @@ export function gerarRemedios(input: RemediosInput): Remedio[] {
       contraindicacoes: classificacao.contraindicacoes,
       exigeSelecaoDeData: false,
     })
+  }
+
+  // ── 5. Alerta da Estrela 5 anual, se ela cai NESTE setor ────────────────
+  // Aplica a TODO remédio de ativação do setor — `elemento` e `ativacao` —, não
+  // só à dica que por acaso carrega a contraindicação genérica. O motivo é
+  // consistência: `estrategiaElemental` gera "Ative com iluminação quente,
+  // velas, tons de vermelho" no setor da Fama, que é exatamente o mesmo risco
+  // que a dica "adicione velas". Avisar num e calar no outro seria incoerente.
+  //
+  // NÃO se aplica a `layout`, `comportamental` nem `bloqueio-de-forma`: a
+  // regra clássica do Wu Huang é não ATIVAR nem revolver o palácio — limpar e
+  // desobstruir continuam recomendados ali.
+  //
+  // Também não se aplica a remédios de RESTRIÇÃO (`acaoWuXing: 'controlar'`,
+  // as recomendações do tipo "evite X em excesso neste setor"). Pego na
+  // conferência da saída: o alerta aparecia em "Evite Água em excesso",
+  // dizendo "adie ativações de Fogo aqui" — incoerente, porque não há ativação
+  // nenhuma sendo proposta. Restringir já é o comportamento que o Wu Huang
+  // pede.
+  if (avisoEstrela5) {
+    for (const r of remedios) {
+      const ehAtivacao = (r.mecanismo === 'elemento' || r.mecanismo === 'ativacao')
+        && r.acaoWuXing !== 'controlar'
+      if (ehAtivacao) r.contraindicacoes = [avisoEstrela5, ...r.contraindicacoes]
+    }
   }
 
   return ordenarRemedios(remedios)

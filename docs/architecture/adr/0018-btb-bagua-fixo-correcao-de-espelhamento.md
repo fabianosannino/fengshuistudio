@@ -99,10 +99,16 @@ Ou seja: a correção é um **re-rotulamento**, não uma perda. O que o consulto
 observou naquele canto da casa continua válido — estava com o nome errado.
 
 Consequência prática: consultas antigas com `lado='direita'`, ao serem
-reabertas, passam a mostrar nomes diferentes dos do relatório já entregue. Isso
-**não foi migrado automaticamente** nesta ADR: mexer em registro de cliente é
-decisão do proprietário, não do código. As opções levantadas foram recalcular
-em silêncio, marcar as afetadas com aviso, ou congelar as antigas.
+reabertas, passam a mostrar nomes diferentes dos do relatório já entregue.
+
+**Decisão do proprietário (2026-07-26): não há migração a fazer — as consultas
+existentes são de teste e podem ser descartadas.** Nenhum relatório real foi
+entregue a cliente com o mapa espelhado, então o risco que motivou a cautela
+não se materializou. Não foi escrito script de migração nem flag de aviso: para
+o dado que existe hoje, seria código morto.
+
+Se algum dia houver base real com esse problema, o caminho está mapeado acima —
+é re-rotulamento por `numero` de célula, não recálculo de avaliação.
 
 ### Como isto passou
 
@@ -123,3 +129,41 @@ O teste que travava o espelhamento foi **substituído**, não removido: agora h�
 um de regressão que falha se `[2,1,0,5,4,3,8,7,6]` voltar, e um que reproduz o
 layout da figura de Carter célula a célula, por nome de setor em vez de índice —
 para a próxima pessoa conferir contra a fonte, não contra um array.
+
+## Adendo — o alerta específico da Estrela 5 (mesma raiz, decisão simétrica)
+
+A ADR 0017 deixou como trabalho visível "ligar a contraindicação da Estrela 5 ao
+cálculo que já existe". Implementado agora, e a regra de escola desta ADR é
+justamente o que torna a decisão limpa.
+
+`alertaEstrela5(setor, anoSolar, escola)` só responde **na Escola da Bússola**,
+onde o setor É a direção (Fama é sempre Sul). No BTB devolve `null` — e `null`
+significa "não sei", nunca "não está". Lá o aviso genérico da curadoria continua
+valendo, só não ganha precisão que o método não coletou.
+
+Isso já era a convenção da casa: os painéis de Estrelas Voadoras e de estrela
+anual só renderizam com `escola==='bussola'`. O alerta segue a mesma linha em
+vez de abrir exceção.
+
+**Descoberta ao implementar:** `PALACIO_DO_SETOR` é constante e **não depende
+dos graus da fachada**. Os graus decidem qual setor cai em qual *célula da
+planta* (`gridOrderBussola`); a direção que o setor *representa* é fixa por
+definição da escola. A mudança de assinatura de `gerarRemedios` acabou sendo
+muito menor que o previsto — `escola` e `anoSolar`, sem orientação.
+
+**Escopo do alerta, e duas exclusões deliberadas:**
+
+- Vale para **todo remédio de ativação do setor**, não só para a dica que
+  carrega a contraindicação. `estrategiaElemental` gera "Ative com iluminação
+  quente, velas, tons de vermelho" na Fama — mesmo risco da dica "adicione
+  velas". Avisar num e calar no outro seria incoerente.
+- **Não** vale para `layout`/`comportamental`/`bloqueio-de-forma`: a regra do Wu
+  Huang é não ativar nem revolver o palácio; limpar e desobstruir seguem
+  recomendados ali.
+- **Não** vale para remédios de restrição (`acaoWuXing: 'controlar'`). Pego na
+  conferência da saída, não em revisão de código: o alerta aparecia em "Evite
+  Água em excesso neste setor" dizendo "adie ativações de Fogo aqui" — não há
+  ativação nenhuma sendo proposta ali. Restringir já é o que o Wu Huang pede.
+
+O ano é **solar** (Li Chun), nunca `getFullYear()`: em janeiro o ano solar ainda
+é o anterior, e a estrela apontada seria a errada.
