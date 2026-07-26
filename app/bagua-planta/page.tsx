@@ -21,6 +21,7 @@ import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
 import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
 import { calcularTaiJi, setoresAusentes, setoresExtensao, type Ponto } from '../../src/lib/poligono'
 import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
+import BussolaDispositivo from '../components/BussolaDispositivo'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -217,6 +218,8 @@ function BaguaPlantaContent() {
   // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
   const [leiturasAbertas, setLeiturasAbertas] = useState(false)
+  // Bússola virtual (Modo B) — estado local, não persistido (só o resultado aceito vira orientacaoGraus).
+  const [bussolaVirtualAberta, setBussolaVirtualAberta] = useState(false)
   // Calculadora de Posicionamento de Mobiliário (Ba Zhai) — estado local, não persistido ainda.
   const [mobiliarioAberto, setMobiliarioAberto] = useState(false)
   const [mobiliarioTipo, setMobiliarioTipo] = useState<'cama' | 'fogao' | 'mesa'>('cama')
@@ -1691,6 +1694,13 @@ function BaguaPlantaContent() {
                               </div>
                             )
                           })()}
+                          <button type="button" onClick={()=>setBussolaVirtualAberta(v=>!v)}
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            {bussolaVirtualAberta?'▾':'▸'} Bússola virtual (sensor do celular, experimental)
+                          </button>
+                          {bussolaVirtualAberta&&(
+                            <BussolaDispositivo onAceitar={g=>{setOrientacaoGraus(g);setBussolaVirtualAberta(false)}}/>
+                          )}
                           <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
                             📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
                           </label>
