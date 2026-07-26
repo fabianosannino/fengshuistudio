@@ -23,6 +23,10 @@ import { calcularTaiJi, setoresAusentes, setoresExtensao, type Ponto } from '../
 import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
+import {
+  converterLeitura, declinacaoPlausivel, rotuloReferencia,
+  URL_CALCULADORA_DECLINACAO, type ReferenciaNorte,
+} from '../../src/lib/declinacao-magnetica'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -215,6 +219,10 @@ function BaguaPlantaContent() {
   const [rot,      setRot]      = useState(0)
   const [escola,   setEscola]   = useState<MetodologiaId>(METODOLOGIA_PADRAO)
   const [orientacaoGraus, setOrientacaoGraus] = useState<number>(0)
+  // Referência de Norte da leitura + declinação do local (src/lib/declinacao-magnetica.ts).
+  // Um grau sem referência é ambíguo: Luo Pan lê magnético, o Modo C deriva verdadeiro.
+  const [orientacaoReferencia, setOrientacaoReferencia] = useState<ReferenciaNorte>('magnetico')
+  const [declinacao, setDeclinacao] = useState<string>('')
   const [dataConstrucao, setDataConstrucao] = useState<string>('')
   // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
@@ -326,6 +334,11 @@ function BaguaPlantaContent() {
                 setLado((be.lado||'centro') as Lado)
               }
               if(be.escola) setEscola(be.escola as MetodologiaId)
+              // Ver nota de retrocompatibilidade em restaurarRascunho.
+              if(be.orientacao_referencia==='verdadeiro'||be.orientacao_referencia==='magnetico'){
+                setOrientacaoReferencia(be.orientacao_referencia)
+              }
+              if(typeof be.declinacao_magnetica==='number') setDeclinacao(String(be.declinacao_magnetica))
               if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
               if(be.data_construcao) setDataConstrucao(be.data_construcao)
             }
@@ -368,6 +381,11 @@ function BaguaPlantaContent() {
       setLado((be.lado||'centro') as Lado)
       setEscola((be.escola as MetodologiaId)||METODOLOGIA_PADRAO)
       setOrientacaoGraus(typeof be.orientacao_graus==='number'?be.orientacao_graus:0)
+      // Consultas anteriores a este campo não declaravam a referência; assume-se
+      // 'magnetico' porque era o que o rótulo do campo dizia na época ("direção
+      // magnética") — retrocompatibilidade explícita, não suposição nova.
+      setOrientacaoReferencia(be.orientacao_referencia==='verdadeiro'?'verdadeiro':'magnetico')
+      setDeclinacao(typeof be.declinacao_magnetica==='number'?String(be.declinacao_magnetica):'')
       setDataConstrucao(be.data_construcao||'')
       if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
       // Defer bounds/setores restoration after image+rotation effect runs
@@ -985,6 +1003,8 @@ function BaguaPlantaContent() {
       lado:overrides?.ladoV??lado,
       escola,
       orientacao_graus:orientacaoGraus,
+      orientacao_referencia:orientacaoReferencia,
+      declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
       data_construcao:dataConstrucao||undefined,
       metragem_real:metragemRef.current||undefined,
     }
@@ -1299,7 +1319,10 @@ function BaguaPlantaContent() {
       const b=boundsRef.current
       const finalizacao:BaguaEntrada={
         x:entrada?.x??0, y:entrada?.y??0, lado,
-        escola, orientacao_graus:orientacaoGraus, data_construcao:dataConstrucao||undefined,
+        escola, orientacao_graus:orientacaoGraus,
+        orientacao_referencia:orientacaoReferencia,
+        declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
+        data_construcao:dataConstrucao||undefined,
         bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         tai_ji_poligono:poligonoTaiJiRef.current,
         finalizada_em:new Date().toISOString(),
@@ -1510,7 +1533,7 @@ function BaguaPlantaContent() {
               )}
               {step==='resultado'&&(
                 <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#0369A1',fontSize:'11px'}}>
-                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus}°</strong></>:<>Entrada: <strong>{lado}</strong></>} · Clique num setor para avaliar
+                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong></>} · Clique num setor para avaliar
                 </div>
               )}
 
@@ -1643,6 +1666,7 @@ function BaguaPlantaContent() {
                         <div style={{marginTop:'8px',padding:'8px',background:'#F5F3FF',borderRadius:'6px',border:'1px solid #DDD6FE'}}>
                           <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'5px'}}>
                             🧭 Fachada voltada para <span style={{color:'#7C3AED'}}>{orientacaoGraus.toFixed(1)}°</span>
+                            {' '}<span style={{fontWeight:'normal',color:'#6B7280'}}>(Norte {rotuloReferencia(orientacaoReferencia)})</span>
                           </label>
                           <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
                             {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
@@ -1655,7 +1679,72 @@ function BaguaPlantaContent() {
                           <input id="input-orientacao" type="number" min={0} max={359.9} step={0.1} value={orientacaoGraus}
                             onChange={e=>setOrientacaoGraus(normalizarGraus(Number(e.target.value)||0))}
                             style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
-                          <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>Direção magnética que a porta/fachada principal encara.</p>
+                          <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>Direção que a porta/fachada principal encara.</p>
+
+                          {/* Referência de Norte + declinação — sem isto o grau acima é ambíguo
+                              (Luo Pan lê magnético; o Modo C deriva verdadeiro do satélite). */}
+                          <div style={{marginTop:'7px',padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
+                            <span style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                              Referência de Norte desta leitura
+                            </span>
+                            <div style={{display:'flex',gap:'4px',marginBottom:'5px'}}>
+                              {([['magnetico','Magnético (Luo Pan)'],['verdadeiro','Verdadeiro (mapa)']] as [ReferenciaNorte,string][]).map(([id,lbl])=>(
+                                <button key={id} type="button" onClick={()=>setOrientacaoReferencia(id)} style={{
+                                  flex:1,padding:'4px 2px',fontSize:'10px',fontWeight:'bold',borderRadius:'5px',cursor:'pointer',border:'1px solid',
+                                  borderColor:orientacaoReferencia===id?'#7C3AED':'#D1D5DB',
+                                  background:orientacaoReferencia===id?'#EDE9FE':'#fff',
+                                  color:orientacaoReferencia===id?'#7C3AED':'#6B7280',
+                                }}>{lbl}</button>
+                              ))}
+                            </div>
+                            <label htmlFor="input-declinacao" style={{display:'block',fontSize:'10px',color:'#374151',marginBottom:'3px'}}>
+                              Declinação magnética do local <span style={{color:'#6B7280'}}>(graus, Leste positivo — no Brasil é negativa)</span>
+                            </label>
+                            <div style={{display:'flex',gap:'5px',alignItems:'center',flexWrap:'wrap'}}>
+                              <input id="input-declinacao" type="number" step={0.1} value={declinacao} placeholder="ex.: -21.5"
+                                onChange={e=>setDeclinacao(e.target.value)}
+                                style={{width:'80px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                              <a href={URL_CALCULADORA_DECLINACAO} target="_blank" rel="noopener noreferrer"
+                                style={{fontSize:'10px',color:'#7C3AED',fontWeight:'bold'}}>
+                                Obter na calculadora oficial (NOAA) ↗
+                              </a>
+                            </div>
+                            {(()=>{
+                              const bruto=declinacao.trim()
+                              if(bruto==='') return (
+                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#92400E'}}>
+                                  Sem a declinação não é possível converter entre magnético e verdadeiro. A carta usa o grau exatamente como informado acima.
+                                </p>
+                              )
+                              const valor=Number(bruto)
+                              if(!declinacaoPlausivel(valor)) return (
+                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#DC2626',fontWeight:'bold'}}>
+                                  Declinação fora da faixa plausível (−60° a 60°) — confira o valor. Não será usada na conversão.
+                                </p>
+                              )
+                              const destino:ReferenciaNorte=orientacaoReferencia==='magnetico'?'verdadeiro':'magnetico'
+                              const convertida=converterLeitura({graus:orientacaoGraus,referencia:orientacaoReferencia,declinacao:valor},destino)
+                              if(!convertida) return null
+                              const mConv=montanhaDoGrau(convertida.graus)
+                              const mAtual=montanhaDoGrau(orientacaoGraus)
+                              return (
+                                <div style={{margin:'5px 0 0',fontSize:'10px',color:'#374151'}}>
+                                  <p style={{margin:0}}>
+                                    Equivale a <strong>{convertida.graus.toFixed(1)}°</strong> em Norte {rotuloReferencia(destino)} — Montanha <strong>{mConv.pinyin} {mConv.nome}</strong> ({mConv.setor}).
+                                  </p>
+                                  {mConv.numero!==mAtual.numero&&(
+                                    <p style={{margin:'3px 0 0',color:'#D97706',fontWeight:'bold'}}>
+                                      ⚠ As duas referências caem em Montanhas diferentes ({mAtual.pinyin} vs {mConv.pinyin}). Confirme qual referência sua medição usou antes de fechar a carta.
+                                    </p>
+                                  )}
+                                  <button type="button" onClick={()=>{setOrientacaoGraus(convertida.graus);setOrientacaoReferencia(destino)}}
+                                    style={{marginTop:'4px',padding:'3px 9px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
+                                    Converter para Norte {rotuloReferencia(destino)}
+                                  </button>
+                                </div>
+                              )
+                            })()}
+                          </div>
                           {(()=>{
                             const m=montanhaDoGrau(orientacaoGraus)
                             return (
@@ -1701,15 +1790,17 @@ function BaguaPlantaContent() {
                             style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {bussolaVirtualAberta?'▾':'▸'} Bússola virtual (sensor do celular, experimental)
                           </button>
+                          {/* Magnetômetro do dispositivo lê Norte MAGNÉTICO, como o Luo Pan. */}
                           {bussolaVirtualAberta&&(
-                            <BussolaDispositivo onAceitar={g=>{setOrientacaoGraus(g);setBussolaVirtualAberta(false)}}/>
+                            <BussolaDispositivo onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('magnetico');setBussolaVirtualAberta(false)}}/>
                           )}
                           <button type="button" onClick={()=>setMapaAberto(v=>!v)}
                             style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {mapaAberto?'▾':'▸'} Alinhar sobre mapa/satélite (Modo C)
                           </button>
+                          {/* O mapa (Web Mercator) deriva Norte VERDADEIRO — daí a referência ser marcada aqui. */}
                           {mapaAberto&&img&&(
-                            <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{setOrientacaoGraus(g);setMapaAberto(false)}}/>
+                            <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('verdadeiro');setMapaAberto(false)}}/>
                           )}
                           <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
                             📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
