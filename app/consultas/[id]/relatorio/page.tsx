@@ -15,7 +15,8 @@ import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
 import { dataSolar } from '../../../../src/lib/data-solar'
 import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario'
 import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
-import { PERFIS_METODOS } from '../../../../src/lib/sintese-metodos'
+import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/lib/sintese-metodos'
+import { gerarRemedios } from '../../../../src/lib/remedios'
 import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
@@ -61,6 +62,19 @@ function scoreLevelLabel(pct: number | null): { label: string; color: string } {
   if (pct >= 70) return { label: 'BOM', color: '#16A34A' }
   if (pct >= 40) return { label: 'ATENÇÃO', color: '#D97706' }
   return { label: 'URGENTE', color: '#DC2626' }
+}
+
+// Rótulos em português dos campos de proveniência de `Remedio` (Parte IV / ADR 0015).
+const ROTULO_CUSTO: Record<Remedio['custo'], string> = {
+  zero: 'Nenhum', baixo: 'Baixo', medio: 'Médio', alto: 'Alto', estrutural: 'Obra',
+}
+const ROTULO_REVERSIBILIDADE: Record<Remedio['reversibilidade'], string> = {
+  instantanea: 'Na hora', facil: 'Fácil', dificil: 'Difícil', permanente: 'Definitivo',
+}
+const ROTULO_EVIDENCIA: Record<Remedio['forcaEvidencia'], string> = {
+  'consenso-classico': 'Consenso clássico',
+  'variante-de-escola': 'Variante de escola',
+  'tradicao-popular': 'Tradição popular',
 }
 
 function desvioLabel(pct: number | null): { nivel: string; cor: string } {
@@ -1167,6 +1181,67 @@ export default function Relatorio() {
           })}
         </div>
         )}
+
+        {/* ══════ PLANO DE AÇÃO — remédios tipados por custo/reversibilidade (Parte IV, ADR 0015) ══════ */}
+        {(selectedSections.completo || selectedSections.plano_acao) && (() => {
+          // Remédios ESTRUTURADOS (conflitos cômodo×setor e Cinco Elementos), com
+          // proveniência declarada e ordenados por "custo zero e reversível primeiro".
+          // Não repete as dicas de texto livre da seção de Recomendações — aqui o valor
+          // é justamente a procedência e o custo, que aquela seção não informa.
+          // faltaPct/excessoPct não existem no relatório (dependem de medidas do canvas),
+          // então remédios geométricos não aparecem aqui — só no diagnóstico.
+          const remedios = setores.flatMap(s => gerarRemedios({
+            nomeSetor: s.nome,
+            scorePct: s.score_percentual ?? 0,
+            elemento: s.elemento,
+            comodos: comodosDeSetorRow(s),
+          }))
+          if (remedios.length === 0) return null
+          const ordenados = ordenarRemedios(remedios).slice(0, 12)
+
+          return (
+            <div style={{ padding: '0 1.5rem 1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '0.8rem' }}>
+                <span style={{ fontSize: '20px', color: gold }}>🗂️</span>
+                Plano de Ação — do mais barato e reversível ao mais custoso
+              </div>
+              <p style={{ margin: '0 0 0.8rem', fontSize: '11px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Ordem proposital: comece pelo que não custa nada e pode ser desfeito na hora.
+                Reposicionar um móvel antes de comprar um objeto. Cada item declara de onde vem
+                e o quanto essa recomendação é consolidada entre as escolas.
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <thead>
+                  <tr style={{ background: paperWarm }}>
+                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Setor</th>
+                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Ação</th>
+                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink, whiteSpace: 'nowrap' }}>Custo</th>
+                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink, whiteSpace: 'nowrap' }}>Desfazer</th>
+                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Evidência</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordenados.map(r => (
+                    <tr key={r.id} style={{ pageBreakInside: 'avoid' }}>
+                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
+                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: ink }}>{r.acao}</td>
+                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: r.custo === 'zero' ? '#15803D' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
+                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
+                      <td style={{ padding: '5px 6px', borderBottom: `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{ margin: '0.7rem 0 0', fontSize: '10px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Esta tabela cobre apenas as recomendações que o sistema consegue classificar com honestidade:
+                conflitos clássicos cômodo×setor e a estratégia dos Cinco Elementos. As demais dicas
+                (nas seções anteriores) ainda não têm classificação de evidência — atribuir esse selo é
+                julgamento de literatura clássica, e o sistema não o faz por conta própria.
+                {remedios.length > ordenados.length && ` Mostrando os ${ordenados.length} primeiros de ${remedios.length}.`}
+              </p>
+            </div>
+          )
+        })()}
 
         {/* ══════ EVOLUÇÃO DO TRATAMENTO (antes → depois) ══════ */}
         {(selectedSections.completo || selectedSections.evolucao) && snapshots.length >= 2 && (() => {
