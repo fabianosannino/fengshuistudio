@@ -111,13 +111,37 @@ por isso não é duplicação de conteúdo, é um recorte diferente.
 O encaixe prometido acima existe agora, para a curadoria ser feita
 incrementalmente sem que o software invente proveniência:
 
-- **`src/lib/dicas-classificadas.ts`** — `CATALOGO_DICAS`, indexado pelo texto
-  exato da dica. **Nasce vazio de propósito.** Cada entrada exige os quatro
-  campos; não há valor padrão para `forcaEvidencia`, que é justamente o campo
-  que exige julgamento humano.
-- **`docs/domain/curadoria-dicas.md`** — planilha com as 94 dicas, **gerada a
-  partir de `constants.ts`** (não transcrita à mão, para não divergir), com os
-  valores possíveis de cada campo e instruções.
+- **`src/lib/dicas-classificadas.ts`** — a classificação está **partida em
+  duas metades**, e a divisão é o ponto:
+  - `SUGESTOES_MECANICAS` (76 entradas, preenchidas) — `custo`,
+    `reversibilidade` e `mecanismo`. Saem da LEITURA do texto, não de
+    conhecimento de Feng Shui: "adicione um aquário" custa e é removível;
+    "mantenha o caminho livre" não custa nada e é imediato. São sugestões
+    revisáveis, com o critério de cada faixa documentado no arquivo.
+  - `CURADORIA_EVIDENCIA` (vazia) — só `forcaEvidencia`, o campo que exige
+    julgamento de literatura clássica. Curar uma dica é escrever **uma linha
+    com um valor**.
+  - `classificacaoDaDica` só devolve algo com as **duas** metades presentes —
+    é isso que impede uma dica de virar remédio sem proveniência humana.
+- **`docs/domain/curadoria-dicas.md`** — planilha **gerada** de
+  `constants.ts` + das sugestões (não transcrita à mão), com Custo/Desfazer/
+  Mecanismo já preenchidos e só a coluna Evidência em branco.
+
+**Dois números corrigidos ao classificar:**
+
+- São 94 dicas mas **77 textos únicos** — 17 são cópias literais entre setores
+  duplicados (Centro/Centro-Saúde, Pessoas Uteis/Úteis, Fama/Fama-Reputação, e
+  algumas repetidas entre Filhos e Criatividade). Como o catálogo é indexado
+  pelo texto, as repetidas compartilham uma classificação: a curadoria são
+  **77 decisões, não 94**.
+- Uma delas **não é uma ação**: "Este setor influencia todos os demais" é
+  afirmação informativa, não recomendação acionável — registrada em
+  `DICAS_NAO_ACIONAVEIS`. Aparece ao consultor como se fosse conselho, e
+  talvez devesse sair de `SETOR_DICAS`. Restam **76 dicas** a curar.
+
+Um teste trava 94/77/1/76 e **falha se alguma dica acionável ficar sem
+sugestão** — se alguém acrescentar uma dica em `constants.ts`, o teste avisa
+em vez de ela ficar invisível para o motor.
 - `gerarRemedios` aceita `dicas?: string[]` e promove a `Remedio` só as que
   estiverem curadas. A lista de quais dicas se aplicam vem de fora, do motor de
   texto — duplicar essa seleção (limiares de score, notas de critério) criaria

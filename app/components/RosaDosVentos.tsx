@@ -49,10 +49,16 @@ export interface RosaDosVentosProps {
   tamanho?: number
   /** Destaca a faixa de 15° da Montanha corrente. Padrão true. */
   destacarMontanha?: boolean
+  /**
+   * Escreve o pinyin das 24 Montanhas no anel, cada um girado para acompanhar
+   * a circunferência. Só faz sentido a partir de ~200px: abaixo disso o texto
+   * fica ilegível (24 rótulos em 360°). Padrão false.
+   */
+  mostrarNomesMontanhas?: boolean
 }
 
 export default function RosaDosVentos({
-  graus, onChange, tamanho = 150, destacarMontanha = true,
+  graus, onChange, tamanho = 150, destacarMontanha = true, mostrarNomesMontanhas = false,
 }: RosaDosVentosProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const arrastandoRef = useRef(false)
@@ -139,6 +145,31 @@ export default function RosaDosVentos({
         return (
           <line key={m.numero} x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y}
             stroke="#9CA3AF" strokeWidth={ehOctante ? 1.4 : 0.7} />
+        )
+      })}
+
+      {/* Pinyin das 24 Montanhas dentro da faixa do anel, girado para acompanhar
+          a circunferência (como num Luo Pan). O meio de cada faixa é faixaInicio+7,5. */}
+      {mostrarNomesMontanhas && MONTANHAS.map(m => {
+        const meio = normalizarGraus(m.faixaInicio + 7.5)
+        const raioTexto = (RAIO_INTERNO + RAIO_EXTERNO) / 2
+        // Na metade inferior (90°–270°) o giro do anel deixaria o texto de cabeça
+        // para baixo. Num Luo Pan físico isso é normal — você gira o instrumento —
+        // mas na tela não dá, então esses rótulos levam +180° e são posicionados
+        // do outro lado do centro para continuarem na mesma faixa.
+        const invertido = meio > 90 && meio < 270
+        const rotacao = invertido ? meio + 180 : meio
+        const y = invertido ? CENTRO + raioTexto : CENTRO - raioTexto
+        return (
+          <text
+            key={`nome-${m.numero}`}
+            x={CENTRO} y={y}
+            fontSize="6" fill="#4B5563" textAnchor="middle" dominantBaseline="middle"
+            transform={`rotate(${rotacao} ${CENTRO} ${CENTRO})`}
+            style={{ pointerEvents: 'none' }}
+          >
+            {m.pinyin}
+          </text>
         )
       })}
 

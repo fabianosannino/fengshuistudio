@@ -1732,7 +1732,8 @@ function BaguaPlantaContent() {
                             <RosaDosVentos
                               graus={orientacaoGraus}
                               onChange={g=>setOrientacaoGraus(arredondarGrau(g))}
-                              tamanho={132}
+                              tamanho={210}
+                              mostrarNomesMontanhas
                             />
                             <div style={{flex:'1 1 130px',minWidth:0}}>
                               {/* value arredondado: a média circular do assistente de 3 leituras
