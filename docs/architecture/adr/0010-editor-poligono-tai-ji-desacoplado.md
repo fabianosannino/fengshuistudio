@@ -1,6 +1,6 @@
 # ADR 0010 — Editor de polígono do Tai Ji: componente desacoplado, sem integração com a foto ainda
 
-- **Status:** Aceito
+- **Status:** Aceito (integração descrita abaixo concluída na atualização de 2026-07-26 — ver ADR 0009)
 - **Data:** 2026-07-26
 
 ## Contexto
@@ -56,3 +56,12 @@ construir o editor como peça independente primeiro.
 - Até essa integração acontecer, o componente é utilizável em qualquer
   contexto que só precise do diagnóstico de Tai Ji sobre uma forma
   desenhada à mão (não necessariamente a planta real).
+
+**Atualização (2026-07-26):** integração concluída, ver ADR 0009. O
+componente ganhou props `largura`/`altura`/`transparente` (generalização
+do viewBox fixo 400×400 original) e passou a ser renderizado como overlay
+sobre o `<canvas>` real de `bagua-planta`, sem tocar `dragRef` — a
+recomendação acima ("avaliar refatorar `dragRef` antes de estender") foi
+seguida à risca: nenhuma linha da máquina de arrastar existente foi
+modificada; o novo editor coexiste como uma camada independente que só é
+montada durante o modo de edição de contorno.

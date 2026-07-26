@@ -71,24 +71,49 @@ o algoritmo aponta exatamente essa célula, e as duas vazias ao lado dela
 saem como "ausente", nunca as duas categorias ao mesmo tempo (verificado
 para as 3 formas de teste do arquivo).
 
-**Continua fora deste incremento:**
+**Atualização (2026-07-26): editor de polígono integrado ao canvas real.**
+`EditorPoligonoTaiJi` (ADR 0010) passou a ser renderizado como overlay SVG
+transparente por cima do `<canvas>` real de `app/bagua-planta/page.tsx`,
+sem tocar a máquina de arrastar existente (`dragRef`) — os dois sistemas de
+interação coexistem porque o editor só é montado quando o consultor entra
+no modo "editar contorno" (`editandoPoligono`), fora desse modo o canvas
+funciona exatamente como antes.
 
-1. **A ferramenta de desenho de polígono na UI**, e sua integração
-   pixel-perfeita com a foto real da planta. Hoje a captura é um
-   retângulo ajustável; existe um editor desacoplado (ADR 0010) mas
-   ainda não conectado à foto real — desenhar/mover vértices sobre a
-   imagem exige tocar a máquina de arrastar já existente, um projeto de
-   interação por si só.
+Dois pontos exigiram atenção específica, ambos verificados com uma página
+de teste temporária (Playwright, deletada antes do commit) que reproduziu
+o algoritmo real de `resizeCanvas`:
+
+1. **Espaço de coordenadas**: o `viewBox` do overlay usa
+   `rotRef.current.width/height` (pixels da imagem já rotacionada,
+   "naturais" — o mesmo espaço onde `bounds` já vive), não pixels de tela.
+   Isso elimina qualquer conta manual de escala/zoom — o SVG se estica
+   sozinho para caber no elemento pai.
+2. **Alinhamento do overlay com o canvas**: o container
+   (`canvasContainerRef`) é `width:100%`, mas o `<canvas>` dentro dele tem
+   largura/altura fixas em px calculadas por `resizeCanvas()`
+   (`s=Math.min(maxW/r.width,maxH/r.height)`). Quando a escala é limitada
+   pela ALTURA (comum em fotos em retrato), o canvas fica mais estreito
+   que o container — um overlay com `inset:0` preenchendo o container
+   inteiro ficaria desalinhado com a imagem. Corrigido dimensionando o
+   overlay com o tamanho renderizado do próprio `<canvas>`
+   (`cv.style.width/height`), não do container. Bug real, pego e
+   corrigido antes do commit ao testar especificamente o caso
+   altura-limitada.
+
+O contorno é persistido em `bagua_entrada.tai_ji_poligono` (rascunho,
+finalização e restauração), reseta ao trocar a rotação (coordenadas são
+relativas à imagem rotacionada) e ao reiniciar a análise. Um resumo
+somente-leitura (setor ausente/extensão, aviso de centro fora da área)
+aparece fora do modo de edição.
 
 ## Consequências
 
 - `calcularTaiJi`, `coberturaPorCelula`, `setoresAusentes` e
-  `setoresExtensao` já estão prontos para uso assim que existir uma forma
-  de capturar o polígono real (hoje seriam chamados com os 4 cantos do
-  `Bounds` atual — o que devolve exatamente o mesmo resultado que o
-  bounding box já usa para o centróide, e nenhuma extensão/ausência para
-  um retângulo puro, então **não há ganho prático até a ferramenta de
-  desenho existir**). Nenhum foi conectado à UI por esse motivo.
+  `setoresExtensao` já estavam prontos para uso e agora estão conectados
+  à UI real via `EditorPoligonoTaiJi` — quando o consultor não desenha um
+  contorno customizado, o cálculo cai de volta nos 4 cantos de `bounds`
+  (equivalente ao bounding box, sem ganho sobre o retângulo, comportamento
+  documentado e sinalizado na UI).
 - Mapear célula da grade (linha, coluna) → setor cardeal (N/NE/E…) é
   responsabilidade de quem chamar essas funções, pois depende do
   facing/rotação do imóvel — mesma separação de responsabilidade já usada

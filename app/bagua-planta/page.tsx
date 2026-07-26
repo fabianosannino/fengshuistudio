@@ -19,6 +19,8 @@ import { zhengShenLingShen } from '../../src/lib/liu-fa'
 import { calcularMingGua, normalizarGenero } from '../../src/lib/ming-gua'
 import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
 import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
+import { calcularTaiJi, setoresAusentes, setoresExtensao, type Ponto } from '../../src/lib/poligono'
+import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -225,6 +227,10 @@ function BaguaPlantaContent() {
   const [lado,     setLado]     = useState<Lado>('centro')
   const [entrada,  setEntrada]  = useState<{x:number;y:number}|null>(null)
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
+  // Tai Ji real (contorno de polígono, src/lib/poligono.ts) — independente da metodologia (BTB ou Bússola).
+  const [poligonoTaiJi, setPoligonoTaiJi] = useState<Ponto[]|null>(null)
+  const [editandoPoligono, setEditandoPoligono] = useState(false)
+  const poligonoTaiJiRef = useRef<Ponto[]|null>(null)
   const [lh,       setLh]       = useState([1/3,2/3])
   const [lv,       setLv]       = useState([1/3,2/3])
   const [modo,     setModo]     = useState<'nenhum'|'bordas'|'marcarFalta'|'marcarExcesso'>('nenhum')
@@ -274,6 +280,7 @@ function BaguaPlantaContent() {
 
   // Sync refs with state (so drag end handlers always read latest values)
   useEffect(()=>{ boundsRef.current=bounds },[bounds])
+  useEffect(()=>{ poligonoTaiJiRef.current=poligonoTaiJi },[poligonoTaiJi])
   useEffect(()=>{ lhRef.current=lh },[lh])
   useEffect(()=>{ lvRef.current=lv },[lv])
   useEffect(()=>{ plantaUrlRef.current=plantaUrl },[plantaUrl])
@@ -365,6 +372,10 @@ function BaguaPlantaContent() {
           const b={x:be.bordas.x,y:be.bordas.y,w:be.bordas.w,h:be.bordas.h}
           setBounds(b); boundsRef.current=b
         }
+        if(Array.isArray(be.tai_ji_poligono)&&be.tai_ji_poligono.length>=3){
+          const p=be.tai_ji_poligono.map(pt=>({x:pt.x,y:pt.y}))
+          setPoligonoTaiJi(p); poligonoTaiJiRef.current=p
+        }
         if(be.lh){setLh(be.lh);lhRef.current=be.lh}
         if(be.lv){setLv(be.lv);lvRef.current=be.lv}
         // Restore step
@@ -416,6 +427,7 @@ function BaguaPlantaContent() {
     rascunhoRef.current=null
     setImg(null); setStep('upload'); setRot(0)
     setBounds(null); boundsRef.current=null
+    setPoligonoTaiJi(null); setEditandoPoligono(false)
     setEntrada(null); setSetores([]); setLh([1/3,2/3]); setLv([1/3,2/3])
     lhRef.current=[1/3,2/3]; lvRef.current=[1/3,2/3]
     // Clear saved draft (keep planta_url for storage but clear state)
@@ -453,8 +465,10 @@ function BaguaPlantaContent() {
     })
     // Skip reset during restoration (bounds/setores are set by restaurarRascunho)
     if(restaurandoRef.current) return
-    // reset posicionamento ao girar
+    // reset posicionamento ao girar (o polígono do Tai Ji também: as coordenadas são
+    // relativas à imagem rotacionada, então giram invalidam um contorno já desenhado)
     setBounds(null); setEntrada(null); setSetores([])
+    setPoligonoTaiJi(null); setEditandoPoligono(false)
   },[img,rot,resizeCanvas])
 
   // ── escala pixels do rotCanvas → pixels do canvas de exibição ─────────────
@@ -973,6 +987,7 @@ function BaguaPlantaContent() {
       draft.x=ent!.x; draft.y=ent!.y
     }
     if(b) draft.bordas={x:b.x,y:b.y,w:b.w,h:b.h}
+    if(poligonoTaiJiRef.current) draft.tai_ji_poligono=poligonoTaiJiRef.current
     if(curLh) draft.lh=curLh
     if(curLv) draft.lv=curLv
     // Save sector draft data (criterios, ajustes)
@@ -1280,6 +1295,7 @@ function BaguaPlantaContent() {
         x:entrada?.x??0, y:entrada?.y??0, lado,
         escola, orientacao_graus:orientacaoGraus, data_construcao:dataConstrucao||undefined,
         bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
+        tai_ji_poligono:poligonoTaiJiRef.current,
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
         rotacao:rot, etapa:'resultado',
@@ -1492,6 +1508,58 @@ function BaguaPlantaContent() {
                 </div>
               )}
 
+              {/* Tai Ji real (contorno de polígono) — regra do terço (setor ausente/extensão) */}
+              {step==='resultado'&&bounds&&(
+                <div style={{marginBottom:'8px',padding:'8px 10px',background:'#F5F3FF',borderRadius:'6px',border:'1px solid #DDD6FE'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',flexWrap:'wrap'}}>
+                    <span style={{fontSize:'11px',color:'#5B21B6',fontWeight:600}}>
+                      🔷 Tai Ji real (contorno do imóvel) — avançado, opcional
+                    </span>
+                    <button
+                      type="button"
+                      onClick={()=>{
+                        if(!editandoPoligono&&!poligonoTaiJiRef.current&&bounds){
+                          const padrao:Ponto[]=[
+                            {x:bounds.x,y:bounds.y},
+                            {x:bounds.x+bounds.w,y:bounds.y},
+                            {x:bounds.x+bounds.w,y:bounds.y+bounds.h},
+                            {x:bounds.x,y:bounds.y+bounds.h},
+                          ]
+                          setPoligonoTaiJi(padrao); poligonoTaiJiRef.current=padrao
+                        }
+                        if(editandoPoligono) salvarRascunho()
+                        setEditandoPoligono(v=>!v)
+                      }}
+                      style={{padding:'4px 10px',fontSize:'11px',fontWeight:'bold',background:editandoPoligono?'#7C3AED':'#fff',color:editandoPoligono?'#fff':'#7C3AED',border:'1px solid #7C3AED',borderRadius:'6px',cursor:'pointer'}}
+                    >
+                      {editandoPoligono?'✓ Concluir edição':(poligonoTaiJi?'✏️ Editar contorno':'✏️ Desenhar contorno real')}
+                    </button>
+                  </div>
+                  {!editandoPoligono&&(()=>{
+                    const pontosResumo=poligonoTaiJi??(bounds?[
+                      {x:bounds.x,y:bounds.y},{x:bounds.x+bounds.w,y:bounds.y},
+                      {x:bounds.x+bounds.w,y:bounds.y+bounds.h},{x:bounds.x,y:bounds.y+bounds.h},
+                    ]:[])
+                    const taiJi=calcularTaiJi(pontosResumo)
+                    const ausentes=setoresAusentes(pontosResumo)
+                    const extensoes=setoresExtensao(pontosResumo)
+                    if(!poligonoTaiJi) return (
+                      <p style={{margin:'6px 0 0',fontSize:'11px',color:'#6D28D9'}}>
+                        Ainda usando o retângulo das bordas como contorno (sem ganho sobre o bounding box). Desenhe o contorno real para detectar setor ausente/extensão.
+                      </p>
+                    )
+                    return (
+                      <div style={{margin:'6px 0 0',fontSize:'11px',color:'#6D28D9'}}>
+                        {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#DC2626',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
+                        {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#DC2626'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
+                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#D97706'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
+                        {ausentes.length===0&&extensoes.length===0&&<p style={{margin:0}}>Contorno regular — sem setor ausente ou extensão detectados.</p>}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
               {/* ══ CANVAS ÚNICO — nunca sai do DOM ══ */}
               <div ref={canvasContainerRef} style={{position:'relative',display:'inline-block',width:'100%'}}>
                 <canvas ref={cvRef}
@@ -1525,6 +1593,25 @@ function BaguaPlantaContent() {
                     }}/>
                   )
                 })()}
+                {/* Editor interativo do contorno real (Tai Ji) — overlay transparente sobre o canvas.
+                    Dimensionado com o tamanho renderizado do PRÓPRIO canvas (cv.style.width/height,
+                    já em px CSS — ver resizeCanvas), não do container: quando a escala é limitada pela
+                    altura (fotos em retrato), o canvas fica mais estreito que o container (width:100%),
+                    e um overlay preenchendo o container inteiro ficaria desalinhado com a imagem. */}
+                {editandoPoligono&&bounds&&rotRef.current&&cvRef.current&&(
+                  <div style={{position:'absolute',left:0,top:0,width:cvRef.current.style.width,height:cvRef.current.style.height}}>
+                    <EditorPoligonoTaiJi
+                      largura={rotRef.current.width}
+                      altura={rotRef.current.height}
+                      pontosIniciais={poligonoTaiJi??[
+                        {x:bounds.x,y:bounds.y},{x:bounds.x+bounds.w,y:bounds.y},
+                        {x:bounds.x+bounds.w,y:bounds.y+bounds.h},{x:bounds.x,y:bounds.y+bounds.h},
+                      ]}
+                      onChange={p=>{setPoligonoTaiJi(p);poligonoTaiJiRef.current=p}}
+                      transparente
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Controles CONFIGURAR */}
