@@ -20,16 +20,19 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // geolocation liberada só para a própria origem (self): o Modo C de orientação
+          // (alinhar planta sobre satélite) oferece "usar minha localização atual" para
+          // centralizar o mapa. Câmera e microfone seguem totalmente bloqueados.
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://js.stripe.com https://www.googletagmanager.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://js.stripe.com https://www.googletagmanager.com https://maps.googleapis.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com data:",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live wss://ws-us3.pusher.com https://viacep.com.br https://api.stripe.com https://fonts.googleapis.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live wss://ws-us3.pusher.com https://viacep.com.br https://api.stripe.com https://fonts.googleapis.com https://maps.googleapis.com https://maps.gstatic.com",
               "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://billing.stripe.com",
               "frame-ancestors 'none'",
             ].join('; '),
