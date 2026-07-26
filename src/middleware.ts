@@ -1,18 +1,16 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createSupabaseMiddlewareClient } from './lib/supabase-server'
+import { ROTA_CALLBACK_AUTH, ehCaminhoRelativoSeguro } from './lib/auth-rotas'
 
-const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha', '/landing', '/termos', '/privacidade']
+// `/auth/callback` é público por necessidade: é ele quem cria a sessão a
+// partir do link de e-mail. Exigir sessão ali tornaria o fluxo impossível.
+const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha', '/landing', '/termos', '/privacidade', ROTA_CALLBACK_AUTH]
 
 // APIs públicas: webhooks do Stripe (chegam sem cookie de sessão e validam
 // assinatura na própria rota) e as APIs da loja pública (compradores
 // anônimos). As demais rotas /api exigem sessão e respondem 401 — nunca
 // redirect, que quebraria fetch() e integrações externas.
 const PUBLIC_API_PREFIXES = ['/api/stripe/webhooks', '/api/stripe/checkout', '/api/stripe/products']
-
-function isSafeRedirect(path: string): boolean {
-  // Only allow relative paths starting with / and no protocol://
-  return path.startsWith('/') && !path.startsWith('//') && !path.includes('://')
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -38,7 +36,7 @@ export async function middleware(request: NextRequest) {
     }
     const loginUrl = new URL('/login', request.url)
     // Validate redirect param to prevent open redirect attacks
-    if (isSafeRedirect(pathname)) {
+    if (ehCaminhoRelativoSeguro(pathname)) {
       loginUrl.searchParams.set('redirect', pathname)
     }
     return NextResponse.redirect(loginUrl)
