@@ -1190,12 +1190,27 @@ export default function Relatorio() {
           // é justamente a procedência e o custo, que aquela seção não informa.
           // faltaPct/excessoPct não existem no relatório (dependem de medidas do canvas),
           // então remédios geométricos não aparecem aqui — só no diagnóstico.
-          const remedios = setores.flatMap(s => gerarRemedios({
-            nomeSetor: s.nome,
-            scorePct: s.score_percentual ?? 0,
-            elemento: s.elemento,
-            comodos: comodosDeSetorRow(s),
-          }))
+          const remedios = setores.flatMap(s => {
+            // As dicas de texto livre que já se aplicam a este setor. Só as que
+            // estiverem curadas em CATALOGO_DICAS viram linha aqui — enquanto o
+            // catálogo estiver vazio, nada muda (ver ADR 0015).
+            const rec = gerarRecomendacoes({
+              nomeSetor: s.nome,
+              scorePct: s.score_percentual ?? 0,
+              criterios: criteriosPorNomeParaArray(
+                Object.fromEntries((s.diagnostico_criterios ?? []).map(c => [c.criterio, c.score])),
+              ),
+              elemento: s.elemento,
+              comodos: comodosDeSetorRow(s),
+            })
+            return gerarRemedios({
+              nomeSetor: s.nome,
+              scorePct: s.score_percentual ?? 0,
+              elemento: s.elemento,
+              comodos: comodosDeSetorRow(s),
+              dicas: [...rec.urgente, ...rec.melhoria, ...rec.manutencao],
+            })
+          })
           if (remedios.length === 0) return null
           const ordenados = ordenarRemedios(remedios).slice(0, 12)
 

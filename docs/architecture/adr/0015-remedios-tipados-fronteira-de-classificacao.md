@@ -21,7 +21,7 @@ Ao atacar essa migração, o levantamento do conteúdo revelou que o problema n�
   `comodo-setor.ts`), problemas geométricos da regra do terço, e a estratégia
   dos Cinco Elementos (`estrategiaElemental`). O código conhece a semântica de
   cada uma.
-- **Texto livre** (117 strings): `SETOR_DICAS` (84) + `CRITERIO_DICAS` (33) —
+- **Texto livre** (94 strings): `SETOR_DICAS` (70) + `CRITERIO_DICAS` (24) —
   dicas como "Adicione cristais negros como obsidiana" ou "Use tons roxo, verde
   e dourado".
 
@@ -37,7 +37,7 @@ Ao atacar essa migração, o levantamento do conteúdo revelou que o problema n�
 sites de produção (tela, detalhe, PDF) não mudaram de comportamento, e há teste
 de não-regressão garantindo isso.
 
-### Por que as 117 dicas em texto livre NÃO foram classificadas
+### Por que as 94 dicas em texto livre NÃO foram classificadas
 
 Atribuir `forcaEvidencia` a uma recomendação de Feng Shui é **julgamento de
 literatura clássica por afirmação**. Decidir se "adicione cristais negros como
@@ -102,11 +102,38 @@ por isso não é duplicação de conteúdo, é um recorte diferente.
 - Remédios **geométricos não aparecem no relatório** — `faltaPct`/`excessoPct`
   dependem de medidas do canvas, que só existem na tela de diagnóstico. Não é
   bug: é o dado que não trafega até lá.
-- **Pendente, e é tarefa de domínio, não de código:** classificar as 117 dicas
-  de `SETOR_DICAS`/`CRITERIO_DICAS`. Quando essa curadoria existir, o encaixe
-  está pronto — basta as dicas passarem a carregar os mesmos campos e entrarem
-  em `gerarRemedios`. Enquanto não existir, elas continuam aparecendo no
-  relatório como hoje, sem selo de evidência (o que é honesto).
+- **Pendente, e é tarefa de domínio, não de código:** classificar as 94 dicas
+  de `SETOR_DICAS`/`CRITERIO_DICAS`. Enquanto não existir, elas continuam
+  aparecendo no relatório como hoje, sem selo de evidência (o que é honesto).
+
+## Atualização (2026-07-26) — instrumentação da curadoria
+
+O encaixe prometido acima existe agora, para a curadoria ser feita
+incrementalmente sem que o software invente proveniência:
+
+- **`src/lib/dicas-classificadas.ts`** — `CATALOGO_DICAS`, indexado pelo texto
+  exato da dica. **Nasce vazio de propósito.** Cada entrada exige os quatro
+  campos; não há valor padrão para `forcaEvidencia`, que é justamente o campo
+  que exige julgamento humano.
+- **`docs/domain/curadoria-dicas.md`** — planilha com as 94 dicas, **gerada a
+  partir de `constants.ts`** (não transcrita à mão, para não divergir), com os
+  valores possíveis de cada campo e instruções.
+- `gerarRemedios` aceita `dicas?: string[]` e promove a `Remedio` só as que
+  estiverem curadas. A lista de quais dicas se aplicam vem de fora, do motor de
+  texto — duplicar essa seleção (limiares de score, notas de critério) criaria
+  duas fontes de verdade divergentes.
+
+**Fragilidade conhecida e coberta:** a chave é o texto exato, então editar a
+redação de uma dica em `constants.ts` desligaria a classificação em silêncio.
+`dicas-classificadas.test.ts` falha se qualquer chave do catálogo não existir
+mais na origem. Optei por chave-de-texto em vez de introduzir ids porque não
+exige tocar `constants.ts` nem os consumidores — o custo é essa fragilidade, e
+ela está sob teste.
+
+**Correção de um número:** as ADRs e notas anteriores diziam "117 dicas". O
+número correto é **94** (70 + 24); o 117 vinha de contar aspas no fonte, o que
+incluía as chaves dos objetos. Um teste agora trava 70/24/94, para que os
+documentos não voltem a divergir do conteúdo.
 - A migração completa de `recomendacoes.ts` para `Remedio` **não aconteceu** e
   não deve ser reivindicada: o motor de texto continua sendo a fonte das
   recomendações que o consultor vê nas seções de diagnóstico.

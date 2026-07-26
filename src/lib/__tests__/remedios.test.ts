@@ -124,11 +124,17 @@ describe('coexistência com o motor de texto (não-regressão)', () => {
     expect(rem.some(x => x.id.startsWith('conflito-'))).toBe(true)
   })
 
-  it('não cobre as dicas de texto livre — fronteira declarada, não acidente', () => {
-    // SETOR_DICAS/CRITERIO_DICAS não são classificadas (ver cabeçalho do módulo
-    // e ADR 0015): nenhum remédio estruturado deve vir delas.
-    const r = gerarRemedios({ nomeSetor: 'Carreira', scorePct: 20 })
-    const prefixosEsperados = ['conflito-', 'geometria-', 'elemento-']
-    expect(r.every(x => prefixosEsperados.some(p => x.id.startsWith(p)))).toBe(true)
+  it('dica de texto livre NÃO curada nunca vira remédio — fronteira declarada', () => {
+    // A fronteira real: uma dica só entra se estiver em CATALOGO_DICAS
+    // (ver ADR 0015). Passando dicas cruas, nada com prefixo 'dica-' aparece.
+    // O prefixo 'dica-' É legítimo, mas só para dicas já curadas — o teste de
+    // que isso funciona está em dicas-classificadas.test.ts.
+    const r = gerarRemedios({
+      nomeSetor: 'Carreira', scorePct: 20,
+      dicas: ['Adicione cristais negros como obsidiana', 'Mantenha o caminho até a porta livre'],
+    })
+    expect(r.some(x => x.id.startsWith('dica-'))).toBe(false)
+    const prefixosEstruturados = ['conflito-', 'geometria-', 'elemento-']
+    expect(r.every(x => prefixosEstruturados.some(p => x.id.startsWith(p)))).toBe(true)
   })
 })
