@@ -11,6 +11,7 @@
  */
 
 import type { Elemento } from './cinco-elementos'
+import type { Palacio } from './lo-shu'
 
 export type SetorCanonico =
   | 'carreira' | 'conhecimento' | 'familia' | 'prosperidade' | 'fama'
@@ -40,6 +41,30 @@ export function normalizarSetor(nome: string | null | undefined): SetorCanonico 
     'centro/saude': 'centro',
   }
   return mapa[limpo] ?? null
+}
+
+/**
+ * Palácio (direção cardinal) de cada setor — **só vale na Escola da Bússola**.
+ *
+ * Na Bússola o setor É a direção por definição: Carreira é sempre Norte, Fama
+ * é sempre Sul. Por isso este mapa é constante e não depende dos graus da
+ * fachada — os graus decidem qual setor cai em qual CÉLULA da planta
+ * (`gridOrderBussola`), não qual direção o setor representa.
+ *
+ * **Não use isto no BTB.** Lá o Ba Guá se alinha à porta e os setores não têm
+ * direção cardinal nenhuma (ADR 0018). Quem consulta este mapa precisa saber
+ * qual escola está ativa — ver `alertaEstrela5` em `estrela-anual.ts`.
+ */
+export const PALACIO_DO_SETOR: Record<SetorCanonico, Palacio> = {
+  carreira: 'N',
+  conhecimento: 'NE',
+  familia: 'E',
+  prosperidade: 'SE',
+  fama: 'S',
+  relacionamentos: 'SW',
+  criatividade: 'W',
+  pessoas_uteis: 'NW',
+  centro: 'C',
 }
 
 /** Elemento clássico de cada setor do Ba Guá (fallback quando o banco não traz). */

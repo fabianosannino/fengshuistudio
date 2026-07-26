@@ -1190,6 +1190,11 @@ export default function Relatorio() {
           // é justamente a procedência e o custo, que aquela seção não informa.
           // faltaPct/excessoPct não existem no relatório (dependem de medidas do canvas),
           // então remédios geométricos não aparecem aqui — só no diagnóstico.
+          // Escola e ano solar alimentam o alerta específico da Estrela 5 anual.
+          // Ano SOLAR (Li Chun), não civil: em janeiro o ano solar ainda é o
+          // anterior, e usar getFullYear() apontaria a estrela errada.
+          const beRem = consulta.bagua_entrada
+          const anoSolarAtual = dataSolar(new Date())?.anoSolar
           const remedios = setores.flatMap(s => {
             // As dicas de texto livre que já se aplicam a este setor. Só as que
             // têm proveniência (fonte nomeada + citação) viram linha aqui — as 8
@@ -1210,6 +1215,8 @@ export default function Relatorio() {
               elemento: s.elemento,
               comodos: comodosDeSetorRow(s),
               dicas: [...rec.urgente, ...rec.melhoria, ...rec.manutencao],
+              escola: beRem?.escola,
+              anoSolar: anoSolarAtual,
             })
           })
           if (remedios.length === 0) return null

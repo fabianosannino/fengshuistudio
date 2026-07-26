@@ -8,7 +8,7 @@ import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
 import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/lib/reavaliacao'
-import { calcularGridOrder } from '../../src/lib/bagua-grid'
+import { calcularGridOrder, guaDaPorta } from '../../src/lib/bagua-grid'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
 import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
 import { periodoDaConstrucao, calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
@@ -1634,7 +1634,7 @@ function BaguaPlantaContent() {
               )}
               {step==='resultado'&&(
                 <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#0369A1',fontSize:'11px'}}>
-                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong></>} · Clique num setor para avaliar
+                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong> (guá <strong>{guaDaPorta(lado)}</strong>)</>} · Clique num setor para avaliar
                 </div>
               )}
 
@@ -1992,7 +1992,7 @@ function BaguaPlantaContent() {
                   </button>
                   {entrada&&(
                     <div style={{padding:'5px 11px',background:'#F0FDF4',borderRadius:'6px',color:'#15803D',fontSize:'12px'}}>
-                      ✅ Entrada: <strong>{lado}</strong>
+                      ✅ Entrada: <strong>{lado}</strong> — a porta cai no guá <strong>{guaDaPorta(lado)}</strong>
                     </div>
                   )}
                   {entrada&&(
