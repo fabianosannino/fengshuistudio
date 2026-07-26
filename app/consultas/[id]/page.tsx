@@ -421,7 +421,14 @@ export default function ConsultaDetalhe() {
       notas: notas[setorId]?.[criterio] || null
     }))
 
-    await supabase.from('diagnostico_criterios').delete().eq('setor_id', setorId)
+    // O delete precisa ser checado: se ele falhar e o insert passar, os critérios
+    // DUPLICAM em vez de substituir — corrupção, não só perda.
+    const { error: errorDelete } = await supabase.from('diagnostico_criterios').delete().eq('setor_id', setorId)
+    if (errorDelete) {
+      setMessage('Erro ao salvar: ' + errorDelete.message)
+      setSaving(false)
+      return
+    }
     const { error } = await supabase.from('diagnostico_criterios').insert(inserts)
 
     if (error) {
@@ -434,7 +441,14 @@ export default function ConsultaDetalhe() {
       }
       // Save room mapping (JSONB array)
       updateData.comodos = comodoMap[setorId] || []
-      await supabase.from('setores_bagua').update(updateData).eq('id', setorId)
+      // Sem esta checagem, o score/recomendações/cômodos podiam não ser gravados e a tela
+      // ainda exibia "Setor salvo com sucesso!" com o valor novo — que sumia ao recarregar.
+      const { error: errorSetor } = await supabase.from('setores_bagua').update(updateData).eq('id', setorId)
+      if (errorSetor) {
+        setMessage('Erro ao salvar o setor: ' + errorSetor.message)
+        setSaving(false)
+        return
+      }
       setSetores(prev => prev.map(s => s.id === setorId ? {
         ...s, score_percentual: pct,
         recomendacoes_custom: customRecs[setorId] || [],
