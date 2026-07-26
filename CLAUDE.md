@@ -59,10 +59,37 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
 
 - `docs/architecture/overview.md` — visão geral e camadas.
 - `docs/architecture/adr/` — decisões (ADR): pagamentos (0002), autorização/RLS
-  (0003), CSP (0004), storage/LGPD (0005). Toda decisão arquitetural nova vira
-  um ADR.
+  (0003), CSP (0004), storage/LGPD (0005), cálculos de Feng Shui (0007–0012),
+  hierarquia de precedência entre métodos (0013), referência de norte e
+  declinação (0014), fronteira de classificação dos remédios (0015),
+  questionário de facing (0016), curadoria de evidência com proveniência
+  (0017). Toda decisão arquitetural nova vira um ADR.
 - `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
 - `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).
+- `docs/domain/fengshui-metodos-referencia.md` — documento-mestre dos métodos e
+  o anexo de status de implementação.
+
+## Recomendações ao cliente: nada sem proveniência
+
+Toda dica que vira `Remedio` precisa de **fonte nomeada, localizador e citação
+literal** em `src/lib/curadoria-evidencia.ts` — o tipo obriga, não é convenção.
+Dica sem fonte localizável continua aparecendo como texto, **sem selo de
+evidência**: é o comportamento honesto, não uma pendência a "resolver"
+inventando classificação.
+
+Ao mexer nisso:
+
+- As citações são conferíveis: `python3 scripts/citacoes/extrair-corpus.py &&
+  python3 scripts/citacoes/verificar-citacoes.py` (precisa de `docs/Books` e
+  `pip install pypdf`; não roda no CI).
+- `docs/domain/curadoria-dicas.md` é **gerado** —
+  `npx vite-node scripts/citacoes/gerar-planilha.mts`. Não editar à mão.
+- `contraindicacao` é **impressa no relatório do cliente**: sem referência a
+  arquivo de código, sem discussão de curadoria. Isso vai em `nota`, que não
+  chega ao relatório.
+- Aspas duplas nesses textos são reservadas a citação de obra; para citar texto
+  do próprio app use «guilemetes», senão o verificador cobra a frase como se
+  fosse do livro.
 
 ## Débitos e histórico
 
