@@ -122,3 +122,41 @@ existentes realmente sustentam:
   apresenta o trade-off e quem foi priorizado") não está implementada.
   Depende de um modelo de morador-por-cômodo que o schema não tem — a
   mesma lacuna já registrada para a calculadora de mobiliário do Método 2.
+
+## Atualização (2026-07-26) — motor conectado ao relatório
+
+A consequência registrada acima ("o motor é puro e não tem nenhum call site na
+UI ainda") deixou de valer no mesmo dia. `src/lib/sintese-imovel.ts` agrega
+`sintetizarSetor` sobre os 8 setores e alimenta a seção **"Onde as escolas
+divergem neste imóvel"** em `app/consultas/[id]/relatorio/page.tsx` — a
+invariante de honestidade da Parte IV agora chega ao cliente final, não só ao
+código.
+
+A seção mostra, por setor divergente: qual método prevaleceu e por quê, qual
+discordou e com que argumento, e a razão explícita da perda (a posição na
+hierarquia). Setores com veredicto `perigoso` ganham um bloco próprio de
+cautela antes das divergências. É registrável/desmarcável no seletor de seções
+do relatório (chave `divergencias`).
+
+Detalhes que exigiram atenção:
+
+- **Ano solar, não civil.** A sobreposição anual usa `dataSolar(new Date())
+  .anoSolar`, não `getFullYear()` — a estrela anual muda no Li Chun (~4/fev),
+  então o ano civil daria a estrela errada em janeiro. Mesmo padrão já usado
+  em `bagua-planta`; a primeira versão desta seção tinha o erro e foi corrigida
+  antes de mesclar.
+- **Só a Escola da Bússola.** A seção não aparece em BTB: não há segunda fonte
+  para conflitar, e o BTB é isolado por decisão desta própria ADR.
+- **Escopo declarado na própria seção.** O texto do relatório diz quais
+  métodos participaram, quais faltaram e por quê (falta data de construção,
+  falta data de nascimento do cliente), que só a Estrela 5 é classificada, e em
+  que referência de Norte a orientação foi lida (ADR 0014).
+
+Verificado com dados sintéticos reais (Período 8, fachada Sul, Kua 1) num
+harness isolado com Playwright: o Setor S sai como divergente — Estrela 5
+natal + anual contra uma direção favorável do Ba Zhai — com a frase de
+precedência correta, enquanto o Setor SW sai como perigoso **sem** divergência
+(ambos os métodos concordam que é ruim). Zero erros de runtime.
+
+Continua fora de escopo: migrar `src/lib/recomendacoes.ts` para o tipo
+`Remedio`.

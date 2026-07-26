@@ -11,6 +11,12 @@ import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
 import { calcularMingGua } from '../../../../src/lib/ming-gua'
 import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
 import { periodoDaConstrucao, calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
+import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
+import { dataSolar } from '../../../../src/lib/data-solar'
+import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario'
+import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
+import { PERFIS_METODOS } from '../../../../src/lib/sintese-metodos'
+import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../../../src/lib/types'
@@ -112,6 +118,7 @@ export default function Relatorio() {
     fotos: true,
     proximos_passos: true,
     calendario: true,
+    divergencias: true,
     conclusao: true,
   })
 
@@ -536,7 +543,7 @@ export default function Relatorio() {
                 setSelectedSections({
                   completo: val, capa: val, introducao: val, bagua: val, curas: val,
                   checklist: val, roda_vida: val, plano_acao: val, evolucao: val, fotos: val,
-                  proximos_passos: val, calendario: val, conclusao: val,
+                  proximos_passos: val, calendario: val, divergencias: val, conclusao: val,
                 })
               }}
               style={{ width: '20px', height: '20px', accentColor: '#7C3AED' }} />
@@ -554,13 +561,14 @@ export default function Relatorio() {
             { key: 'fotos', label: '8. Fotos do Imóvel' },
             { key: 'proximos_passos', label: '9. Próximos Passos' },
             { key: 'calendario', label: '10. Calendário Lunar' },
-            { key: 'conclusao', label: '11. Conclusão + Encerramento' },
+            { key: 'divergencias', label: '11. Onde as escolas divergem (síntese de métodos)' },
+            { key: 'conclusao', label: '12. Conclusão + Encerramento' },
           ].map(s => (
             <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', cursor: 'pointer' }}>
               <input type="checkbox" checked={selectedSections[s.key as keyof typeof selectedSections]}
                 onChange={e => {
                   const next = { ...selectedSections, [s.key]: e.target.checked }
-                  const allKeys = ['capa','introducao','bagua','curas','checklist','roda_vida','plano_acao','evolucao','fotos','proximos_passos','calendario','conclusao'] as const
+                  const allKeys = ['capa','introducao','bagua','curas','checklist','roda_vida','plano_acao','evolucao','fotos','proximos_passos','calendario','divergencias','conclusao'] as const
                   next.completo = allKeys.every(k => next[k])
                   setSelectedSections(next)
                 }}
@@ -1583,6 +1591,100 @@ export default function Relatorio() {
           </div>
         </div>
         )}
+
+        {/* ══════ ONDE AS ESCOLAS DIVERGEM (motor de síntese, ADR 0013) ══════ */}
+        {!showSelector && (selectedSections.completo || selectedSections.divergencias) && (() => {
+          const be = consulta.bagua_entrada
+          // Só a Escola da Bússola produz os métodos que podem conflitar (Fei Xing e Ba Zhai
+          // dependem de orientação). Em BTB não há segunda fonte — e o BTB é isolado por decisão
+          // de domínio (ADR 0013), então não há síntese a fazer.
+          if (be?.escola !== 'bussola' || typeof be.orientacao_graus !== 'number') return null
+
+          const periodo = be.data_construcao ? periodoDaConstrucao(be.data_construcao) : null
+          const mapa = periodo != null ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus, periodo }) : null
+          const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
+          const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
+          const favoraveis = mg ? setoresFavoraveis(mg.direcoes) : null
+          // Ano SOLAR, não civil: a estrela anual muda no Li Chun (~4/fev), então
+          // `getFullYear()` daria a estrela errada em janeiro. Mesmo padrão de bagua-planta.
+          const anoSolarAtual = dataSolar(new Date())?.anoSolar
+          const gradeAnual = anoSolarAtual != null ? calcularGradeAnual(anoSolarAtual) : null
+
+          // Sem nenhuma das duas fontes não há o que sintetizar.
+          if (!mapa && !favoraveis) return null
+
+          const sintese = sintetizarImovel({ mapaEstrelas: mapa, gradeAnual: mapa ? gradeAnual : null, baZhaiFavoraveis: favoraveis })
+
+          return (
+            <div style={{ padding: '0 1.5rem 1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 400, paddingBottom: '8px', borderBottom: `1px solid ${border}`, marginBottom: '1rem' }}>
+                <span style={{ fontSize: '20px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>合</span>
+                Onde as escolas divergem neste imóvel
+              </div>
+
+              <p style={{ margin: '0 0 0.8rem', fontSize: '11px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Métodos de Feng Shui discordam entre si — isso é normal e esperado. Em vez de esconder a divergência
+                atrás de um número único, este relatório mostra qual método prevaleceu e por quê, seguindo a hierarquia
+                de precedência adotada: Formas → Estrelas Voadoras → Oito Mansões → Liu Fa.
+              </p>
+
+              {sintese.perigosos.length > 0 && (
+                <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '4px', padding: '0.8rem', marginBottom: '0.8rem', pageBreakInside: 'avoid' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#991B1B', marginBottom: '5px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                    Setores que exigem cautela ({sintese.perigosos.length})
+                  </div>
+                  {sintese.perigosos.map(p => (
+                    <div key={p.setor} style={{ fontSize: '11px', color: '#7F1D1D', marginBottom: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                      <strong>{p.setor}</strong> — {p.resolucao.motivoFinal}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {sintese.temDivergencia ? (
+                sintese.divergentes.map(d => (
+                  <div key={d.setor} style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '0.8rem', marginBottom: '0.6rem', pageBreakInside: 'avoid', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: ink, marginBottom: '5px' }}>
+                      Setor {d.setor}
+                    </div>
+                    <div style={{ fontSize: '11px', color: ink, marginBottom: '4px' }}>
+                      <span style={{ color: '#15803D', fontWeight: 700 }}>Prevaleceu</span>
+                      {' — '}
+                      {d.resolucao.metodoVencedor ? PERFIS_METODOS[d.resolucao.metodoVencedor].nome : '—'}: {d.resolucao.motivoFinal}
+                    </div>
+                    {d.resolucao.divergencias.map((div, i) => (
+                      <div key={i} style={{ fontSize: '11px', color: inkLt, marginBottom: '2px', paddingLeft: '10px', borderLeft: `2px solid ${border}` }}>
+                        <span style={{ fontWeight: 700 }}>{PERFIS_METODOS[div.metodo].nome}</span> discorda: {div.motivo}
+                        <br /><span style={{ fontSize: '10px' }}>{div.razaoDaPerda}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <p style={{ margin: 0, fontSize: '11px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  Os métodos aplicados concordam em todos os 8 setores — não há divergência a reportar neste imóvel.
+                </p>
+              )}
+
+              {sintese.avisos.map((aviso, i) => (
+                <p key={i} style={{ margin: '0.5rem 0 0', fontSize: '10px', color: '#92400E', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  ⚠ {aviso}
+                </p>
+              ))}
+
+              <p style={{ margin: '0.8rem 0 0', fontSize: '10px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Escopo desta síntese: participam as Estrelas Voadoras{mapa ? '' : ' (ausentes — falta data de construção)'} e
+                as Oito Mansões{favoraveis ? '' : ' (ausentes — falta data de nascimento/gênero do cliente)'}.
+                Das Estrelas Voadoras considera-se apenas a Estrela 5 (Wu Huang), cuja gravidade não tem divergência
+                entre escolas; as demais combinações não são classificadas automaticamente
+                {mapa && gradeAnual && anoSolarAtual != null && `, e a sobreposição anual usada é a do ano solar ${anoSolarAtual}`}.
+                Escola das Formas, BaZi e
+                Da Gua/San He não participam — dependem de dados que o sistema ainda não captura de forma estruturada.
+                Orientação usada: {be.orientacao_graus.toFixed(1)}° em Norte {rotuloReferencia(be.orientacao_referencia === 'verdadeiro' ? 'verdadeiro' : 'magnetico')}.
+              </p>
+            </div>
+          )
+        })()}
 
         {/* ══════ CONCLUSÃO (editável) ══════ */}
         {!showSelector && (selectedSections.completo || selectedSections.conclusao) && (
