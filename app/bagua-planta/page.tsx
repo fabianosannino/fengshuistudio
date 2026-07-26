@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import { logger } from '../../src/lib/logger'
 import FlowLayout from '../components/FlowLayout'
 import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
@@ -459,7 +460,15 @@ function BaguaPlantaContent() {
     lhRef.current=[1/3,2/3]; lvRef.current=[1/3,2/3]
     // Clear saved draft (keep planta_url for storage but clear state)
     if(consultaId){
-      supabase.from('consultas').update({bagua_entrada:null,bagua_imagem:null}).eq('id',consultaId).then(()=>{}).then(null,(e: Error)=>console.error('Erro ao limpar rascunho:',e))
+      // `.then(null, ...)` só pegaria REJEIÇÃO — erro de banco vem em {error} na resolução.
+      supabase.from('consultas').update({bagua_entrada:null,bagua_imagem:null}).eq('id',consultaId)
+        .then(({error})=>{
+          if(error){
+            logger.error('Falha ao limpar rascunho do Ba Guá',{action:'recomecarAnalise',consultaId,erro:error.message})
+            setMsg('⚠ Não foi possível limpar o rascunho no servidor. A tela foi reiniciada, mas o rascunho antigo pode reaparecer.')
+            setMsgTipo('erro')
+          }
+        })
     }
   }
 
@@ -967,7 +976,13 @@ function BaguaPlantaContent() {
                 // Save initial draft state
                 supabase.from('consultas').update({
                   bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'metragem',rotacao:0,lado:'centro'}
-                }).eq('id',consultaId).then(()=>{}).then(null,(e: Error)=>console.error('Erro ao salvar rascunho:',e))
+                }).eq('id',consultaId).then(({error})=>{
+                  if(error){
+                    logger.error('Falha ao salvar rascunho inicial da planta',{action:'uploadPlanta',consultaId,erro:error.message})
+                    setMsg('⚠ A planta foi enviada, mas não foi possível registrá-la na consulta. Recarregue e tente de novo.')
+                    setMsgTipo('erro')
+                  }
+                })
                 return d.url as string
               }
               setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.'); setMsgTipo('erro')
@@ -1034,7 +1049,17 @@ function BaguaPlantaContent() {
     if(curMarcacoes.length>0){
       draft.marcacoes=curMarcacoes.map(m=>({id:m.id,tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h}))
     }
-    await supabase.from('consultas').update({bagua_entrada:draft}).eq('id',consultaId)
+    // O cliente Supabase RESOLVE com {error} em vez de lançar — sem esta checagem o
+    // rascunho se perdia em silêncio (RLS, rede, linha inexistente) e o consultor seguia
+    // achando que o trabalho estava salvo. Ver CLAUDE.md: nunca engolir falha de escrita.
+    const {error:eRascunho}=await supabase.from('consultas').update({bagua_entrada:draft}).eq('id',consultaId)
+    if(eRascunho){
+      logger.error('Falha ao salvar rascunho do Ba Guá',{action:'salvarRascunho',consultaId,erro:eRascunho.message})
+      setMsg('⚠ Não foi possível salvar o rascunho. Verifique sua conexão — não feche a página até salvar.')
+      setMsgTipo('erro')
+      return false
+    }
+    return true
   }
 
   // ── click ──────────────────────────────────────────────────────────────────
@@ -1247,14 +1272,19 @@ function BaguaPlantaContent() {
     const {error:eDelC}=await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
     const {error:eInsC}=await supabase.from('diagnostico_criterios').insert(inserts)
     if(eDelC||eInsC){setMsg('Erro ao salvar critérios do diagnóstico: '+((eDelC||eInsC)?.message||''));setMsgTipo('erro');return}
-    // Save canvas snapshot to consulta (best effort - column may not exist yet)
+    // Snapshot do canvas: best-effort DE PROPÓSITO (a coluna pode não existir), então a
+    // falha não bloqueia o salvamento dos critérios — mas passa a ser registrada em vez
+    // de desaparecer num catch vazio.
     try {
       const cv=cvRef.current
       if(cv){
         const dataUrl=cv.toDataURL('image/png',0.7)
-        await supabase.from('consultas').update({bagua_imagem:dataUrl}).eq('id',consultaId)
+        const {error:eImg}=await supabase.from('consultas').update({bagua_imagem:dataUrl}).eq('id',consultaId)
+        if(eImg) logger.warn('Snapshot do Ba Guá não salvo (best-effort)',{action:'salvarSetor',consultaId,erro:eImg.message})
       }
-    } catch{}
+    } catch(err){
+      logger.warn('Snapshot do Ba Guá não gerado (best-effort)',{action:'salvarSetor',consultaId,erro:err instanceof Error?err.message:'desconhecido'})
+    }
     setMsg(`"${stDef.nome}" salvo!`); setMsgTipo('sucesso')
     setTimeout(()=>setMsg(''),3000)
   }
@@ -1348,11 +1378,20 @@ function BaguaPlantaContent() {
       if(marcacoes.length>0){
         finalizacao.marcacoes=marcacoes.map(m=>({id:m.id,tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h}))
       }
-      await supabase.from('consultas').update({
+      // ATENÇÃO: este await NÃO lança em erro de banco — o cliente Supabase resolve com
+      // {error}. Sem a checagem abaixo, o try/catch em volta nunca disparava e o app
+      // exibia "salvo com sucesso" e navegava para outra página com a análise perdida.
+      const {error:eFinal}=await supabase.from('consultas').update({
         bagua_imagem:dataUrl,
         bagua_entrada:finalizacao,
         status:'em_andamento',
       }).eq('id',consultaId)
+      if(eFinal){
+        logger.error('Falha ao salvar análise final do Ba Guá',{action:'salvarTudo',consultaId,erro:eFinal.message})
+        setMsg('Erro ao salvar a análise. Nada foi perdido na tela — tente novamente antes de sair.')
+        setMsgTipo('erro')
+        return
+      }
       // Show toast
       setMsg('✓ Análise salva com sucesso. Todas as páginas foram atualizadas.'); setMsgTipo('sucesso')
       setTimeout(()=>{
