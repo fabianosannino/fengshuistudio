@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { areaPoligono, centroidePoligono, pontoDentroDoPoligono, calcularTaiJi, type Ponto } from '../poligono'
+import {
+  areaPoligono, centroidePoligono, pontoDentroDoPoligono, calcularTaiJi,
+  retanguloDelimitador, recortarPoligono, coberturaPorCelula, setoresAusentes,
+  type Ponto,
+} from '../poligono'
 
 describe('areaPoligono', () => {
   it('quadrado 4x4 tem área 16', () => {
@@ -97,5 +101,110 @@ describe('calcularTaiJi', () => {
 
   it('polígono degenerado → null', () => {
     expect(calcularTaiJi([{ x: 0, y: 0 }, { x: 1, y: 1 }])).toBeNull()
+  })
+})
+
+describe('retanguloDelimitador', () => {
+  it('quadrado: delimitador é ele mesmo', () => {
+    expect(retanguloDelimitador([{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }]))
+      .toEqual({ x: 0, y: 0, w: 4, h: 4 })
+  })
+
+  it('formato em L: delimitador é o retângulo total, não a área real', () => {
+    const pontosL: Ponto[] = [
+      { x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 2 }, { x: 2, y: 2 }, { x: 2, y: 4 }, { x: 0, y: 4 },
+    ]
+    expect(retanguloDelimitador(pontosL)).toEqual({ x: 0, y: 0, w: 4, h: 4 })
+  })
+
+  it('lista vazia → null', () => {
+    expect(retanguloDelimitador([])).toBeNull()
+  })
+})
+
+describe('recortarPoligono', () => {
+  it('polígono totalmente dentro do retângulo: devolve a mesma área', () => {
+    const quadrado: Ponto[] = [{ x: 2, y: 2 }, { x: 4, y: 2 }, { x: 4, y: 4 }, { x: 2, y: 4 }]
+    const recorte = recortarPoligono(quadrado, { x: 0, y: 0, w: 10, h: 10 })
+    expect(areaPoligono(recorte)).toBeCloseTo(4)
+  })
+
+  it('polígono totalmente fora: devolve vazio', () => {
+    const quadrado: Ponto[] = [{ x: 20, y: 20 }, { x: 24, y: 20 }, { x: 24, y: 24 }, { x: 20, y: 24 }]
+    expect(recortarPoligono(quadrado, { x: 0, y: 0, w: 10, h: 10 })).toEqual([])
+  })
+
+  it('triângulo cortado ao meio por um retângulo: área é metade da original', () => {
+    // Triângulo (0,0)-(10,0)-(10,10), área 50. Recorte em x<=5 corta a metade esquerda.
+    const triangulo: Ponto[] = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }]
+    expect(areaPoligono(triangulo)).toBeCloseTo(50)
+    const recorte = recortarPoligono(triangulo, { x: 0, y: 0, w: 5, h: 10 })
+    expect(areaPoligono(recorte)).toBeCloseTo(12.5) // triângulo semelhante de lado 5: área (5*5)/2
+  })
+})
+
+describe('coberturaPorCelula', () => {
+  it('quadrado que preenche exatamente o próprio bounding box: cobertura 1 em todas as 9 células', () => {
+    const quadrado: Ponto[] = [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }, { x: 0, y: 9 }]
+    const celulas = coberturaPorCelula(quadrado)
+    expect(celulas).toHaveLength(9)
+    for (const c of celulas) expect(c.cobertura).toBeCloseTo(1)
+  })
+
+  it('formato em L alinhado à grade 3×3 (9x9 menos o bloco 3x3 superior-direito): essa célula tem cobertura 0, as outras 8 têm cobertura 1', () => {
+    const pontosL: Ponto[] = [
+      { x: 0, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 9, y: 3 }, { x: 9, y: 9 }, { x: 0, y: 9 },
+    ]
+    const celulas = coberturaPorCelula(pontosL)
+    const celulaFaltante = celulas.find(c => c.linha === 0 && c.coluna === 2)!
+    expect(celulaFaltante.cobertura).toBeCloseTo(0)
+    for (const c of celulas) {
+      if (c.linha === 0 && c.coluna === 2) continue
+      expect(c.cobertura).toBeCloseTo(1)
+    }
+  })
+
+  it('triângulo diagonal: gera cobertura fracionária (0, 0.5 e 1) nas células certas', () => {
+    // Triângulo (0,0)-(9,0)-(9,9), metade do quadrado 9x9 (abaixo da diagonal y=x).
+    const triangulo: Ponto[] = [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }]
+    const celulas = coberturaPorCelula(triangulo)
+    const cobertura = (linha: number, coluna: number) => celulas.find(c => c.linha === linha && c.coluna === coluna)!.cobertura
+    expect(cobertura(0, 0)).toBeCloseTo(0.5)
+    expect(cobertura(0, 1)).toBeCloseTo(1)
+    expect(cobertura(0, 2)).toBeCloseTo(1)
+    expect(cobertura(1, 0)).toBeCloseTo(0)
+    expect(cobertura(1, 1)).toBeCloseTo(0.5)
+    expect(cobertura(1, 2)).toBeCloseTo(1)
+    expect(cobertura(2, 0)).toBeCloseTo(0)
+    expect(cobertura(2, 1)).toBeCloseTo(0)
+    expect(cobertura(2, 2)).toBeCloseTo(0.5)
+  })
+
+  it('polígono degenerado → lista vazia', () => {
+    expect(coberturaPorCelula([{ x: 0, y: 0 }, { x: 1, y: 1 }])).toEqual([])
+  })
+})
+
+describe('setoresAusentes', () => {
+  it('quadrado perfeito: nenhum setor ausente', () => {
+    const quadrado: Ponto[] = [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }, { x: 0, y: 9 }]
+    expect(setoresAusentes(quadrado)).toEqual([])
+  })
+
+  it('formato em L: exatamente a célula removida aparece como setor ausente', () => {
+    const pontosL: Ponto[] = [
+      { x: 0, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 9, y: 3 }, { x: 9, y: 9 }, { x: 0, y: 9 },
+    ]
+    const ausentes = setoresAusentes(pontosL)
+    expect(ausentes).toHaveLength(1)
+    expect(ausentes[0]).toMatchObject({ linha: 0, coluna: 2 })
+  })
+
+  it('nunca inclui a célula Central (linha 1, coluna 1), mesmo com limiar permissivo', () => {
+    const pontosL: Ponto[] = [
+      { x: 0, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 9, y: 3 }, { x: 9, y: 9 }, { x: 0, y: 9 },
+    ]
+    const ausentes = setoresAusentes(pontosL, 0.99) // limiar quase máximo: quase tudo "conta" como ausente
+    expect(ausentes.some(c => c.linha === 1 && c.coluna === 1)).toBe(false)
   })
 })
