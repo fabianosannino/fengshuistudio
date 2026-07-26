@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import { ROTA_REDEFINIR_SENHA, urlCallbackAuth } from '../../src/lib/auth-rotas'
 
 export default function EsqueciSenha() {
   const [email, setEmail] = useState('')
@@ -14,8 +15,10 @@ export default function EsqueciSenha() {
     setLoading(true)
     setMessage('')
 
+    // O link do e-mail precisa passar pelo callback: é ele que troca o código
+    // PKCE por sessão antes de entregar o usuário à tela de nova senha.
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/redefinir-senha`
+      redirectTo: urlCallbackAuth(window.location.origin, ROTA_REDEFINIR_SENHA)
     })
 
     if (error) {

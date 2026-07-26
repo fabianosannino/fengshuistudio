@@ -5,9 +5,9 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import { planoEfetivo, planoLabel, isProfissional as isProfissionalFn, PROF_TYPES } from '../../src/lib/plano-utils'
+import { SENHA_MIN_CARACTERES } from '../../src/lib/auth-rotas'
 import type { User } from '@supabase/supabase-js'
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
-const SENHA_MIN_CARACTERES = 8
 
 export default function Perfil() {
   const [user, setUser] = useState<User | null>(null)
