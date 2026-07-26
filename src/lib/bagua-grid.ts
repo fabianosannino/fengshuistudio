@@ -19,14 +19,59 @@
 export const CELULAS_HORARIO_DESDE_NORTE = [7, 6, 3, 0, 1, 2, 5, 8] as const
 
 /**
- * BTB (Chapéu Preto): o grid gira com a PORTA — a Carreira fica sempre na
- * parede da entrada, não importa para onde a casa realmente esteja voltada.
- * Comportamento preservado igual ao histórico (só 'direita' é tratado; ver
- * débito técnico documentado no PR — 'esquerda' cai no caso padrão).
+ * BTB (Chapéu Preto / Black Hat): o Ba Guá é **FIXO** e se alinha à parede da
+ * ENTRADA, que fica sempre na base da planta. A Carreira fica sempre na
+ * parede da entrada, não importa para onde a casa esteja voltada — o BTB não
+ * usa bússola nenhuma.
+ *
+ * Layout canônico (Karen Rauch Carter, *Move Your Stuff, Change Your Life*,
+ * Figura 2 — "Simplified bagua showing the associated life situations"):
+ *
+ *   Prosperidade | Fama         | Relacionamentos     ← fundo
+ *   Família      | Saúde/Centro | Criatividade
+ *   Conhecimento | Carreira     | Pessoas Úteis       ← PAREDE DA ENTRADA
+ *
+ * A legenda da figura é categórica: *"THIS SIDE OF THE BAGUA ALWAYS HAS THE
+ * MAIN DOOR OF THE HOME OR ROOM LOCATED ON IT."* Sempre esse lado — o mapa
+ * **não** se move.
+ *
+ * ─── POR QUE `lado` É IGNORADO (correção de bug de domínio) ───────────────
+ *
+ * A versão anterior devolvia `[2,1,0,5,4,3,8,7,6]` quando a porta caía no
+ * terço direito. Isso **espelha** cada linha (não gira), e jogava a
+ * Prosperidade para o fundo-DIREITO. Contradiz a doutrina em cheio: o mapa é
+ * fixo, e a Prosperidade é sempre o canto do fundo à ESQUERDA.
+ *
+ * Um Ba Guá espelhado é quiralmente invertido — nenhuma escola usa isso. Se a
+ * intenção original fosse tratar outra parede de entrada, o correto seria
+ * GIRAR a planta (o que a UI já permite: 0/90/180/270 e ângulo livre), não
+ * refletir o mapa.
+ *
+ * O `lado` continua sendo capturado, mas é **diagnóstico**: diz em qual dos
+ * três guás frontais a porta caiu (ver `guaDaPorta`), que é informação útil de
+ * leitura — não uma transformação da grade.
  */
-export function gridOrderBTB(lado: string): number[] {
-  if (lado === 'direita') return [2, 1, 0, 5, 4, 3, 8, 7, 6]
+// O parâmetro segue na assinatura para não quebrar os call sites, e o
+// eslint-disable é o marcador de que ignorá-lo é a CORREÇÃO, não um descuido.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function gridOrderBTB(_lado?: string): number[] {
   return [0, 1, 2, 3, 4, 5, 6, 7, 8]
+}
+
+/** Guás da parede da entrada, da esquerda para a direita (linha de baixo). */
+const GUA_DA_PORTA: Record<string, string> = {
+  esquerda: 'Conhecimento',
+  centro: 'Carreira',
+  direita: 'Pessoas Úteis',
+}
+
+/**
+ * Em qual guá frontal a porta de entrada caiu — leitura clássica do BTB
+ * ("a porta está no guá da Carreira"). Substitui o uso indevido de `lado`
+ * como transformação da grade.
+ */
+export function guaDaPorta(lado: string): string {
+  return GUA_DA_PORTA[lado] ?? GUA_DA_PORTA.centro
 }
 
 /**

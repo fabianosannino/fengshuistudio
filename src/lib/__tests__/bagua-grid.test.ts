@@ -1,19 +1,55 @@
 import { describe, it, expect } from 'vitest'
-import { gridOrderBTB, gridOrderBussola, calcularGridOrder } from '../bagua-grid'
+import { gridOrderBTB, gridOrderBussola, calcularGridOrder, guaDaPorta } from '../bagua-grid'
 
 // Rótulos de direção por célula, na mesma disposição row-major usada pelo grid.
 // Serve só para os testes lerem a saída de forma legível — não duplica a
 // lógica de bagua-grid.ts (que trabalha só com índices).
 const DIRECAO_DA_CELULA = ['SE', 'S', 'SW', 'E', 'C', 'W', 'NE', 'N', 'NW']
 
-describe('gridOrderBTB — comportamento histórico preservado', () => {
-  it('ordem padrão (entrada não é "direita") é a identidade', () => {
-    expect(gridOrderBTB('centro')).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8])
-    expect(gridOrderBTB('esquerda')).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8])
+describe('gridOrderBTB — o Ba Guá do BTB é FIXO à parede da entrada', () => {
+  it('a grade é a mesma para qualquer posição da porta', () => {
+    // Doutrina (Carter, Move Your Stuff Change Your Life, Fig. 2): "THIS SIDE
+    // OF THE BAGUA ALWAYS HAS THE MAIN DOOR ... LOCATED ON IT". A porta define
+    // QUAL parede vai para a base (girando a planta), não como o mapa se
+    // arranja. Onde a porta cai nessa parede é diagnóstico, não transformação.
+    const identidade = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    for (const lado of ['centro', 'esquerda', 'direita', 'qualquer-coisa', '']) {
+      expect(gridOrderBTB(lado), lado).toEqual(identidade)
+    }
+    expect(gridOrderBTB()).toEqual(identidade)
   })
 
-  it('entrada "direita" gira o grid (comportamento existente)', () => {
-    expect(gridOrderBTB('direita')).toEqual([2, 1, 0, 5, 4, 3, 8, 7, 6])
+  it('REGRESSÃO: a porta à direita não espelha mais o mapa', () => {
+    // Bug corrigido: devolvia [2,1,0,5,4,3,8,7,6], que inverte cada linha e
+    // jogava a Prosperidade para o fundo-DIREITO. A doutrina diz que o canto
+    // da prosperidade é SEMPRE o fundo-esquerdo, em toda planta.
+    expect(gridOrderBTB('direita')).not.toEqual([2, 1, 0, 5, 4, 3, 8, 7, 6])
+  })
+
+  it('o layout canônico da figura de Carter é reproduzido célula a célula', () => {
+    // Trava o mapa contra a fonte, em vez de contra um array de índices.
+    const SETORES = [
+      'Prosperidade', 'Fama', 'Relacionamentos',
+      'Família', 'Centro', 'Criatividade',
+      'Conhecimento', 'Carreira', 'Pessoas Úteis',
+    ]
+    const grade = gridOrderBTB('centro').map(i => SETORES[i])
+    expect(grade.slice(0, 3)).toEqual(['Prosperidade', 'Fama', 'Relacionamentos'])
+    expect(grade.slice(3, 6)).toEqual(['Família', 'Centro', 'Criatividade'])
+    // A linha da ENTRADA: Conhecimento / Carreira / Pessoas Úteis.
+    expect(grade.slice(6, 9)).toEqual(['Conhecimento', 'Carreira', 'Pessoas Úteis'])
+  })
+})
+
+describe('guaDaPorta — o `lado` virou leitura, não transformação', () => {
+  it('mapeia o terço da parede da entrada para o guá correspondente', () => {
+    expect(guaDaPorta('esquerda')).toBe('Conhecimento')
+    expect(guaDaPorta('centro')).toBe('Carreira')
+    expect(guaDaPorta('direita')).toBe('Pessoas Úteis')
+  })
+
+  it('valor desconhecido cai no centro, sem estourar', () => {
+    expect(guaDaPorta('x')).toBe('Carreira')
   })
 })
 
@@ -79,8 +115,12 @@ describe('gridOrderBussola — setores fixos à direção cardinal real', () => 
 })
 
 describe('calcularGridOrder — dispatcher usado pela tela', () => {
-  it('metodologia "btb" usa lado, ignora orientação', () => {
-    expect(calcularGridOrder('btb', { lado: 'direita', orientacaoGraus: 90 })).toEqual(gridOrderBTB('direita'))
+  it('metodologia "btb" ignora a orientação — e agora também o lado', () => {
+    // O BTB não usa bússola: mesmo recebendo graus, a grade não muda.
+    expect(calcularGridOrder('btb', { lado: 'direita', orientacaoGraus: 90 }))
+      .toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8])
+    expect(calcularGridOrder('btb', { lado: 'esquerda', orientacaoGraus: 270 }))
+      .toEqual(calcularGridOrder('btb', { lado: 'direita' }))
   })
 
   it('metodologia "bussola" usa orientação, ignora lado', () => {
