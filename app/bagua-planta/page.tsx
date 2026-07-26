@@ -25,6 +25,7 @@ import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
 import QuestionarioFacing from '../components/QuestionarioFacing'
+import RosaDosVentos from '../components/RosaDosVentos'
 import {
   converterLeitura, declinacaoPlausivel, rotuloReferencia,
   URL_CALCULADORA_DECLINACAO, type ReferenciaNorte,
@@ -55,6 +56,13 @@ const SETORES = [
 // Assistente de 3 leituras (Modo A de orientação, fengshui-metodos-referencia.md §2.2):
 // acima deste desvio entre as 3 leituras, a medição não é confiável.
 const DESVIO_ALERTA_GRAUS = 3
+/**
+ * Arredonda um grau para 1 decimal, para exibição e armazenamento.
+ * A média circular (`mediaCircular`) e o arraste da rosa dos ventos produzem
+ * floats como 0.4999998984606009 — o rótulo já usava toFixed(1), mas o campo
+ * numérico mostrava o valor cru.
+ */
+const arredondarGrau = (g: number): number => Math.round(g * 10) / 10
 const NOME_YUAN_LONG = { terra: 'Terra', ceu: 'Céu', humano: 'Humano' } as const
 const NOME_SETOR = { N: 'Norte', NE: 'Nordeste', E: 'Leste', SE: 'Sudeste', S: 'Sul', SW: 'Sudoeste', W: 'Oeste', NW: 'Noroeste' } as const
 
@@ -1718,10 +1726,26 @@ function BaguaPlantaContent() {
                               }}>{lbl}</button>
                             ))}
                           </div>
-                          <input id="input-orientacao" type="number" min={0} max={359.9} step={0.1} value={orientacaoGraus}
-                            onChange={e=>setOrientacaoGraus(normalizarGraus(Number(e.target.value)||0))}
-                            style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
-                          <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>Direção que a porta/fachada principal encara.</p>
+                          <div style={{display:'flex',gap:'10px',alignItems:'flex-start',flexWrap:'wrap'}}>
+                            {/* Rosa dos ventos INTERATIVA: arrastar a agulha define os graus.
+                                Campo numérico e octantes continuam, para quem tem o valor exato. */}
+                            <RosaDosVentos
+                              graus={orientacaoGraus}
+                              onChange={g=>setOrientacaoGraus(arredondarGrau(g))}
+                              tamanho={132}
+                            />
+                            <div style={{flex:'1 1 130px',minWidth:0}}>
+                              {/* value arredondado: a média circular do assistente de 3 leituras
+                                  produz floats como 0.4999998984606009, que apareciam crus no campo. */}
+                              <input id="input-orientacao" type="number" min={0} max={359.9} step={0.1}
+                                value={arredondarGrau(orientacaoGraus)}
+                                onChange={e=>setOrientacaoGraus(normalizarGraus(Number(e.target.value)||0))}
+                                style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                              <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>
+                                Direção que a porta/fachada principal encara. Arraste a agulha na bússola ou digite o grau.
+                              </p>
+                            </div>
+                          </div>
 
                           {/* Referência de Norte + declinação — sem isto o grau acima é ambíguo
                               (Luo Pan lê magnético; o Modo C deriva verdadeiro do satélite). */}
@@ -1819,7 +1843,7 @@ function BaguaPlantaContent() {
                                       Média circular: <strong>{media.toFixed(1)}°</strong> · desvio: <strong>{desvio.toFixed(1)}°</strong>
                                       {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
                                     </p>
-                                    <button type="button" onClick={()=>setOrientacaoGraus(media)}
+                                    <button type="button" onClick={()=>setOrientacaoGraus(arredondarGrau(media))}
                                       style={{marginTop:'4px',padding:'4px 10px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
                                       Usar esta média
                                     </button>
