@@ -16,6 +16,9 @@ import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
 import { dataSolar } from '../../src/lib/data-solar'
 import { zhengShenLingShen } from '../../src/lib/liu-fa'
+import { calcularMingGua, normalizarGenero } from '../../src/lib/ming-gua'
+import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
+import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
@@ -44,6 +47,16 @@ const SETORES = [
 const DESVIO_ALERTA_GRAUS = 3
 const NOME_YUAN_LONG = { terra: 'Terra', ceu: 'Céu', humano: 'Humano' } as const
 const NOME_SETOR = { N: 'Norte', NE: 'Nordeste', E: 'Leste', SE: 'Sudeste', S: 'Sul', SW: 'Sudoeste', W: 'Oeste', NW: 'Noroeste' } as const
+
+// Correspondência fixa Escola da Bússola (setor nomeado → direção cardinal real,
+// glossary.md: "Carreira é sempre Norte, Fama é sempre Sul…"). Mesma tabela das
+// posições dos SETORES acima, só que já convertida para o código de Setor
+// (N/NE/E/SE/S/SW/W/NW) usado por avaliarPosicionamento/DIRECOES_POR_KUA.
+// Centro fica de fora — Ba Zhai não classifica o Centro como favorável/desfavorável.
+const SETOR_NOMEADO_PARA_COMPASSO: [string, SetorCompasso][] = [
+  ['Carreira', 'N'], ['Espiritualidade', 'NE'], ['Família', 'E'], ['Prosperidade', 'SE'],
+  ['Fama/Reputação', 'S'], ['Relacionamentos', 'SW'], ['Criatividade', 'W'], ['Pessoas Úteis', 'NW'],
+]
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -202,6 +215,13 @@ function BaguaPlantaContent() {
   // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
   const [leiturasAbertas, setLeiturasAbertas] = useState(false)
+  // Calculadora de Posicionamento de Mobiliário (Ba Zhai) — estado local, não persistido ainda.
+  const [mobiliarioAberto, setMobiliarioAberto] = useState(false)
+  const [mobiliarioTipo, setMobiliarioTipo] = useState<'cama' | 'fogao' | 'mesa'>('cama')
+  const [mobiliarioDataNascimento, setMobiliarioDataNascimento] = useState('')
+  const [mobiliarioGenero, setMobiliarioGenero] = useState('')
+  const [mobiliarioLocalizacao, setMobiliarioLocalizacao] = useState<SetorCompasso>('N')
+  const [mobiliarioDirecaoGraus, setMobiliarioDirecaoGraus] = useState(180)
   const [lado,     setLado]     = useState<Lado>('centro')
   const [entrada,  setEntrada]  = useState<{x:number;y:number}|null>(null)
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
@@ -1786,6 +1806,84 @@ function BaguaPlantaContent() {
                       </div>
                     )
                   })()}
+
+                  {/* Posicionamento de Mobiliário (Ba Zhai) — calculadora "sentar no mal, olhar para o bem" */}
+                  {escola==='bussola'&&(
+                    <div style={{marginTop:'10px',padding:'9px',background:'#F5F3FF',borderRadius:'7px',border:'1px solid #DDD6FE'}}>
+                      <button type="button" onClick={()=>setMobiliarioAberto(v=>!v)}
+                        style={{background:'none',border:'none',padding:0,color:'#6D28D9',fontSize:'11px',fontWeight:'bold',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                        {mobiliarioAberto?'▾':'▸'} 🛋️ Posicionamento de Mobiliário (Ba Zhai)
+                      </button>
+                      {mobiliarioAberto&&(()=>{
+                        const genero=normalizarGenero(mobiliarioGenero)
+                        const mingGua=calcularMingGua(mobiliarioDataNascimento||null,genero)
+                        const octante=Math.round(((mobiliarioDirecaoGraus%360)+360)%360/45)%8
+                        const direcaoSetor=(['N','NE','E','SE','S','SW','W','NW'] as SetorCompasso[])[octante]
+                        const avaliacao=mingGua?avaliarPosicionamento(mingGua.direcoes,mobiliarioLocalizacao,direcaoSetor):null
+                        return (
+                          <div style={{marginTop:'8px'}}>
+                            <p style={{margin:'0 0 8px',fontSize:'10px',color:'#4C1D95'}}>
+                              Regra 坐凶向吉 ("sentar no mal, olhar para o bem"): o corpo do objeto pode estar num setor
+                              desfavorável — é onde essas coisas normalmente já estão — mas a direção para a qual ele
+                              aponta (boca do fogão, perpendicular à cabeceira da cama, olhar na mesa) deve ser favorável
+                              para quem o usa.
+                            </p>
+                            <div style={{display:'flex',gap:'4px',marginBottom:'8px',flexWrap:'wrap'}}>
+                              {(['cama','fogao','mesa'] as const).map(t=>(
+                                <button key={t} onClick={()=>setMobiliarioTipo(t)} style={{
+                                  padding:'4px 10px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                                  borderColor:mobiliarioTipo===t?'#7C3AED':'#D1D5DB',background:mobiliarioTipo===t?'#7C3AED':'#fff',color:mobiliarioTipo===t?'#fff':'#6B7280',
+                                }}>{t==='cama'?'Cama':t==='fogao'?'Fogão':'Mesa'}</button>
+                              ))}
+                            </div>
+                            <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                              De quem é o Ming Gua a considerar (quem dorme na cama, cozinha, ou usa a mesa)?
+                            </label>
+                            <div style={{display:'flex',gap:'6px',marginBottom:'8px',flexWrap:'wrap'}}>
+                              <input type="date" value={mobiliarioDataNascimento} onChange={e=>setMobiliarioDataNascimento(e.target.value)}
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                              <select value={mobiliarioGenero} onChange={e=>setMobiliarioGenero(e.target.value)}
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}>
+                                <option value="">Gênero...</option>
+                                <option value="masculino">Masculino</option>
+                                <option value="feminino">Feminino</option>
+                              </select>
+                            </div>
+                            <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                              Localização (setor onde o corpo do objeto está)
+                            </label>
+                            <select value={mobiliarioLocalizacao} onChange={e=>setMobiliarioLocalizacao(e.target.value as SetorCompasso)}
+                              style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',marginBottom:'8px',width:'100%'}}>
+                              {SETOR_NOMEADO_PARA_COMPASSO.map(([nome,setor])=>(
+                                <option key={setor} value={setor}>{nome} ({NOME_SETOR[setor]})</option>
+                              ))}
+                            </select>
+                            <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                              Direção (para onde o objeto aponta): <span style={{color:'#7C3AED'}}>{mobiliarioDirecaoGraus.toFixed(1)}°</span> ({NOME_SETOR[direcaoSetor]})
+                            </label>
+                            <input type="number" min={0} max={359.9} step={0.1} value={mobiliarioDirecaoGraus}
+                              onChange={e=>setMobiliarioDirecaoGraus(normalizarGraus(Number(e.target.value)||0))}
+                              style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',marginBottom:'8px'}}/>
+                            {!genero&&mobiliarioGenero&&(
+                              <p style={{margin:'4px 0',fontSize:'10px',color:'#DC2626'}}>Gênero não reconhecido.</p>
+                            )}
+                            {mingGua&&avaliacao&&(
+                              <div style={{padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
+                                <p style={{margin:'0 0 4px',fontSize:'10px',color:'#374151'}}>
+                                  Ming Gua {mingGua.kua} (grupo {mingGua.grupo==='leste'?'Leste':'Oeste'})
+                                </p>
+                                <p style={{margin:0,fontSize:'11px',fontWeight:'bold',color:avaliacao.direcaoFavoravel?'#15803D':'#DC2626'}}>
+                                  {avaliacao.direcaoFavoravel
+                                    ?'✅ Direção favorável — bem posicionado.'
+                                    :'⚠ Direção desfavorável — considere reposicionar para uma direção favorável.'}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
 
                   {/* Mini-cards 3x3 */}
                   {setores.length>0&&(
