@@ -131,6 +131,13 @@ export interface BaguaEntrada {
   lv?: number[]
   marcacoes?: BaguaMarcacaoJSON[]
   setores_rascunho?: BaguaSetorRascunho[]
+  /**
+   * Contorno real do imóvel para o Tai Ji (src/lib/poligono.ts), no mesmo
+   * espaço de coordenadas de `bordas` (pixels da imagem rotacionada, não da
+   * tela). Opcional — quando ausente, o Tai Ji usa os 4 cantos de `bordas`
+   * (equivalente ao bounding box, sem ganho sobre o retângulo).
+   */
+  tai_ji_poligono?: { x: number; y: number }[] | null
 }
 
 /** Content of the consultas.roda_da_vida JSONB column */
