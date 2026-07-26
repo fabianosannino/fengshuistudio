@@ -204,7 +204,7 @@ export function coberturaPorCelula(pontos: Ponto[], divisoes = 3): CoberturaCelu
 }
 
 /**
- * Regra do terço — SÓ o lado do "setor ausente" (缺角): células da grade 3×3
+ * Regra do terço — lado do "setor ausente" (缺角): células da grade 3×3
  * (excluindo o Centro) cuja cobertura fica abaixo do limiar dado.
  *
  * Escolha de implementação (documentada, não uma citação literal): o
@@ -213,16 +213,94 @@ export function coberturaPorCelula(pontos: Ponto[], divisoes = 3): CoberturaCelu
  * cobertura de ÁREA da célula — célula com menos de (1 − limiarFalta) da
  * área coberta conta como "ausente". Para o limiar padrão de 1/3 isso
  * significa: célula com menos de 2/3 de cobertura → setor ausente.
- *
- * O lado da "extensão" (凸出 — projeção além do corpo principal do imóvel)
- * FICA DE FORA: exige definir uma referência de "corpo principal" que não é
- * o próprio bounding box (por definição nada pode "se projetar além" do seu
- * próprio retângulo delimitador) — é uma decisão de design em aberto, não
- * resolvida aqui (ver ADR 0009).
  */
 export function setoresAusentes(pontos: Ponto[], limiarFalta = 1 / 3): CoberturaCelula[] {
   const CENTRO = 1 // linha 1, coluna 1 na grade 3×3
   return coberturaPorCelula(pontos, 3).filter(
     c => !(c.linha === CENTRO && c.coluna === CENTRO) && c.cobertura < 1 - limiarFalta
+  )
+}
+
+interface RetanguloDaGrade {
+  linhaInicio: number
+  linhaFim: number
+  colunaInicio: number
+  colunaFim: number
+}
+
+function celulaDentroDoRetangulo(linha: number, coluna: number, r: RetanguloDaGrade): boolean {
+  return linha >= r.linhaInicio && linha < r.linhaFim && coluna >= r.colunaInicio && coluna < r.colunaFim
+}
+
+/**
+ * Regra do terço — lado da "extensão" (凸出): protrusão sólida além do corpo
+ * principal do imóvel.
+ *
+ * Diferente do "setor ausente" (que só precisa do bounding box do próprio
+ * polígono), extensão exige uma referência de "corpo principal" — nada se
+ * projeta além do seu próprio retângulo delimitador, por definição. ADR 0009
+ * deixava isso em aberto; a definição abaixo é um algoritmo PRÓPRIO,
+ * declarado, não uma citação de fonte clássica:
+ *
+ *   1. Marca cada célula da grade 3×3 como "cheia" (cobertura ≥ 1−limiarFalta,
+ *      o mesmo limiar e o complemento exato de "ausente" — uma célula nunca é
+ *      as duas coisas ao mesmo tempo).
+ *   2. Entre todos os sub-retângulos da grade (alinhados aos eixos) que
+ *      contêm o Centro e cujas células são TODAS "cheias", encontra a maior
+ *      área possível — o tamanho do "corpo principal".
+ *   3. Faz a UNIÃO de TODOS os retângulos que atingem essa área máxima (não
+ *      só um, escolhido arbitrariamente) — essencial quando há empate: um
+ *      formato em L simples tem DOIS retângulos de mesma área máxima (as
+ *      "duas pernas" do L), e escolher só um trataria a outra perna como
+ *      "extensão" por engano. Unindo os dois, o L inteiro vira corpo
+ *      principal e não sobra nenhuma extensão — comportamento verificado em
+ *      teste.
+ *   4. Toda célula "cheia" que fica FORA dessa união é uma extensão.
+ *
+ * Verificado com dois casos hand-verified: (a) um L simples não gera nenhuma
+ * extensão (a "perna" que sobra é corpo principal, não saliência); (b) corpo
+ * principal ocupando as 2/3 superiores da grade mais uma saliência sólida na
+ * célula inferior-central — o algoritmo aponta exatamente essa célula como
+ * extensão, e as duas células vazias ao lado dela como "ausente" (nunca as
+ * duas categorias ao mesmo tempo).
+ */
+export function setoresExtensao(pontos: Ponto[], limiarFalta = 1 / 3): CoberturaCelula[] {
+  const DIVISOES = 3
+  const CENTRO = 1
+  const celulas = coberturaPorCelula(pontos, DIVISOES)
+  if (celulas.length === 0) return []
+
+  const limiarCheia = 1 - limiarFalta
+  const cheia = (linha: number, coluna: number) =>
+    celulas.find(c => c.linha === linha && c.coluna === coluna)!.cobertura >= limiarCheia
+
+  const candidatos: (RetanguloDaGrade & { area: number })[] = []
+  for (let linhaInicio = 0; linhaInicio < DIVISOES; linhaInicio++) {
+    for (let linhaFim = linhaInicio + 1; linhaFim <= DIVISOES; linhaFim++) {
+      for (let colunaInicio = 0; colunaInicio < DIVISOES; colunaInicio++) {
+        for (let colunaFim = colunaInicio + 1; colunaFim <= DIVISOES; colunaFim++) {
+          const r: RetanguloDaGrade = { linhaInicio, linhaFim, colunaInicio, colunaFim }
+          if (!celulaDentroDoRetangulo(CENTRO, CENTRO, r)) continue
+
+          let todasCheias = true
+          for (let linha = linhaInicio; linha < linhaFim && todasCheias; linha++) {
+            for (let coluna = colunaInicio; coluna < colunaFim; coluna++) {
+              if (!cheia(linha, coluna)) { todasCheias = false; break }
+            }
+          }
+          if (!todasCheias) continue
+
+          candidatos.push({ ...r, area: (colunaFim - colunaInicio) * (linhaFim - linhaInicio) })
+        }
+      }
+    }
+  }
+
+  if (candidatos.length === 0) return []
+  const areaMaxima = Math.max(...candidatos.map(c => c.area))
+  const corposPrincipais = candidatos.filter(c => c.area === areaMaxima)
+
+  return celulas.filter(
+    c => cheia(c.linha, c.coluna) && !corposPrincipais.some(r => celulaDentroDoRetangulo(c.linha, c.coluna, r))
   )
 }

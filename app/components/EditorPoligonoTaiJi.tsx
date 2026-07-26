@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { calcularTaiJi, type Ponto } from '../../src/lib/poligono'
+import {
+  calcularTaiJi, coberturaPorCelula, setoresAusentes, setoresExtensao,
+  retanguloDelimitador, type Ponto,
+} from '../../src/lib/poligono'
 
 /**
  * Editor de polígono para o Tai Ji real do imóvel — DESACOPLADO do canvas
@@ -93,6 +96,12 @@ export default function EditorPoligonoTaiJi({ pontosIniciais, onChange }: Editor
   }
 
   const taiJi = calcularTaiJi(pontos)
+  const bbox = retanguloDelimitador(pontos)
+  const celulas = coberturaPorCelula(pontos)
+  const ausentes = setoresAusentes(pontos)
+  const extensoes = setoresExtensao(pontos)
+  const ehAusente = (linha: number, coluna: number) => ausentes.some(c => c.linha === linha && c.coluna === coluna)
+  const ehExtensao = (linha: number, coluna: number) => extensoes.some(c => c.linha === linha && c.coluna === coluna)
 
   return (
     <div>
@@ -115,6 +124,26 @@ export default function EditorPoligonoTaiJi({ pontosIniciais, onChange }: Editor
           stroke="#7C3AED"
           strokeWidth={2}
         />
+
+        {bbox && celulas.map(c => {
+          const larguraCelula = bbox.w / 3
+          const alturaCelula = bbox.h / 3
+          const ausente = ehAusente(c.linha, c.coluna)
+          const extensao = ehExtensao(c.linha, c.coluna)
+          if (!ausente && !extensao) return null
+          return (
+            <rect
+              key={`celula-${c.linha}-${c.coluna}`}
+              x={bbox.x + c.coluna * larguraCelula} y={bbox.y + c.linha * alturaCelula}
+              width={larguraCelula} height={alturaCelula}
+              fill={ausente ? 'rgba(220,38,38,0.15)' : 'rgba(217,119,6,0.2)'}
+              stroke={ausente ? '#DC2626' : '#D97706'}
+              strokeWidth={1} strokeDasharray="4 3"
+              pointerEvents="none"
+              data-testid={ausente ? `celula-ausente-${c.linha}-${c.coluna}` : `celula-extensao-${c.linha}-${c.coluna}`}
+            />
+          )
+        })}
 
         {pontos.map((p, i) => {
           const proximo = pontos[(i + 1) % pontos.length]
@@ -157,6 +186,16 @@ export default function EditorPoligonoTaiJi({ pontosIniciais, onChange }: Editor
         {taiJi?.centroForaDaArea && (
           <p style={{ color: '#DC2626', fontWeight: 'bold', margin: '0 0 4px' }} data-testid="aviso-centro-fora">
             ⚠ O centro (Tai Ji) cai fora da área construída — comum em plantas em L, U ou T. É um diagnóstico em si, não um erro de desenho.
+          </p>
+        )}
+        {ausentes.length > 0 && (
+          <p style={{ color: '#DC2626', margin: '0 0 4px' }} data-testid="resumo-ausentes">
+            Setor ausente (área hachurada vermelha): {ausentes.length} célula(s) da grade 3×3.
+          </p>
+        )}
+        {extensoes.length > 0 && (
+          <p style={{ color: '#D97706', margin: '0 0 4px' }} data-testid="resumo-extensoes">
+            Extensão (área hachurada laranja): {extensoes.length} célula(s) da grade 3×3.
           </p>
         )}
         <p style={{ margin: '0 0 8px' }}>

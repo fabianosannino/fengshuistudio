@@ -1,7 +1,7 @@
 # ADR 0009 — Tai Ji: centróide geométrico real implementado; regra do terço e desenho de polígono adiados
 
 - **Status:** Aceito
-- **Data:** 2026-07-25 (atualizado no mesmo dia com o lado "setor ausente" da regra do terço)
+- **Data:** 2026-07-25 (atualizado no mesmo dia com "setor ausente"; atualizado em 2026-07-26 com "extensão")
 
 ## Contexto
 
@@ -44,35 +44,56 @@ do terço, com uma escolha de design explícita e documentada no código
   — testada com casos hand-verified (quadrado com corte alinhado à grade,
   e um triângulo diagonal para confirmar cobertura fracionária correta:
   0, 0,5 e 1 nas células certas).
-- **O lado da "extensão" (凸出) CONTINUA fora.** Diferente do "setor
-  ausente" (que só precisa do próprio bounding box do polígono), detectar
-  uma projeção/protrusão exige uma referência de "corpo principal do
-  imóvel" que não é o bounding box (por definição nada se projeta além do
-  seu próprio retângulo delimitador) — isso é um problema de geometria
-  computacional genuinamente mais ambíguo (ex.: maior retângulo inscrito?
-  moda de largura/profundidade?) e não foi resolvido aqui.
+**Atualização (2026-07-26):** implementado também o lado "extensão"
+(凸出) — `setoresExtensao` em `src/lib/poligono.ts`. Esta é a peça que a
+atualização anterior desta ADR classificava como "genuinamente mais
+ambígua" (precisa de uma referência de "corpo principal" que não é o
+próprio bounding box). Resolvida com um **algoritmo próprio, declarado**,
+não uma citação de fonte clássica:
+
+1. Marca cada célula da grade 3×3 como "cheia" (mesmo limiar/complemento
+   exato de "ausente" — nunca as duas coisas ao mesmo tempo).
+2. Encontra a maior área possível entre os sub-retângulos da grade
+   (alinhados aos eixos) que contêm o Centro e são inteiramente "cheios"
+   — o tamanho do "corpo principal".
+3. Faz a **união de todos** os retângulos que atingem essa área máxima,
+   não um escolhido arbitrariamente. Isso importa: um L simples tem dois
+   retângulos de área máxima empatada (as duas "pernas" do L); escolher
+   só um trataria a outra perna como "extensão" por engano — bug real que
+   apareceu ao testar e foi corrigido antes de mesclar (o teste do L
+   pegou exatamente isso).
+4. Toda célula "cheia" fora dessa união é extensão.
+
+Testado com dois casos hand-verified: um L simples não gera nenhuma
+extensão (confirma o ponto 3 acima); e um corpo principal nas 2/3
+superiores da grade com uma saliência sólida na célula inferior-central —
+o algoritmo aponta exatamente essa célula, e as duas vazias ao lado dela
+saem como "ausente", nunca as duas categorias ao mesmo tempo (verificado
+para as 3 formas de teste do arquivo).
 
 **Continua fora deste incremento:**
 
-1. **O lado "extensão" da regra do terço** — ver justificativa acima.
-2. **A ferramenta de desenho de polígono na UI.** Hoje a captura da
-   planta é um retângulo ajustável; desenhar um polígono arbitrário
-   (com handles por vértice, tratamento de polígono com furo, etc.) é
-   um projeto de interação de UI por si só, maior e com riscos
-   próprios (não é "trocar uma fórmula", é uma ferramenta nova).
+1. **A ferramenta de desenho de polígono na UI**, e sua integração
+   pixel-perfeita com a foto real da planta. Hoje a captura é um
+   retângulo ajustável; existe um editor desacoplado (ADR 0010) mas
+   ainda não conectado à foto real — desenhar/mover vértices sobre a
+   imagem exige tocar a máquina de arrastar já existente, um projeto de
+   interação por si só.
 
 ## Consequências
 
-- `calcularTaiJi`, `coberturaPorCelula` e `setoresAusentes` já estão
-  prontos para uso assim que existir uma forma de capturar o polígono
-  real (hoje seriam chamados com os 4 cantos do `Bounds` atual — o que
-  devolve exatamente o mesmo resultado que o bounding box já usa, então
-  **não há ganho prático até a ferramenta de desenho existir**). Nenhum
-  foi conectado à UI neste PR por esse motivo.
+- `calcularTaiJi`, `coberturaPorCelula`, `setoresAusentes` e
+  `setoresExtensao` já estão prontos para uso assim que existir uma forma
+  de capturar o polígono real (hoje seriam chamados com os 4 cantos do
+  `Bounds` atual — o que devolve exatamente o mesmo resultado que o
+  bounding box já usa para o centróide, e nenhuma extensão/ausência para
+  um retângulo puro, então **não há ganho prático até a ferramenta de
+  desenho existir**). Nenhum foi conectado à UI por esse motivo.
 - Mapear célula da grade (linha, coluna) → setor cardeal (N/NE/E…) é
   responsabilidade de quem chamar essas funções, pois depende do
   facing/rotação do imóvel — mesma separação de responsabilidade já usada
   em `calcularGridOrder` (`bagua-grid.ts`).
-- Quando o desenho de polígono for implementado, o lado "extensão" deve
-  ser revisitado com uma especificação mais precisa (idealmente validada
-  contra exemplos de um consultor) antes de codificar.
+- `setoresExtensao` é O(3^4) na resolução 3×3 (81 combinações de
+  sub-retângulo, cada uma varrendo até 9 células) — trivial nesse
+  tamanho; não escala a uma grade maior sem repensar o algoritmo, mas a
+  regra do terço nunca pediu resolução além de 3×3.

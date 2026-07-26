@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   areaPoligono, centroidePoligono, pontoDentroDoPoligono, calcularTaiJi,
-  retanguloDelimitador, recortarPoligono, coberturaPorCelula, setoresAusentes,
+  retanguloDelimitador, recortarPoligono, coberturaPorCelula, setoresAusentes, setoresExtensao,
   type Ponto,
 } from '../poligono'
 
@@ -206,5 +206,63 @@ describe('setoresAusentes', () => {
     ]
     const ausentes = setoresAusentes(pontosL, 0.99) // limiar quase máximo: quase tudo "conta" como ausente
     expect(ausentes.some(c => c.linha === 1 && c.coluna === 1)).toBe(false)
+  })
+})
+
+describe('setoresExtensao', () => {
+  it('quadrado perfeito: nenhuma extensão (o corpo principal é a grade inteira)', () => {
+    const quadrado: Ponto[] = [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }, { x: 0, y: 9 }]
+    expect(setoresExtensao(quadrado)).toEqual([])
+  })
+
+  it('formato em L (só setor ausente): nenhuma extensão — faltar um canto não é o mesmo que ter uma saliência', () => {
+    const pontosL: Ponto[] = [
+      { x: 0, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 9, y: 3 }, { x: 9, y: 9 }, { x: 0, y: 9 },
+    ]
+    expect(setoresExtensao(pontosL)).toEqual([])
+  })
+
+  it('saliência hand-verified: corpo principal nas 2/3 superiores da grade, com uma saliência sólida na célula inferior-central', () => {
+    // Retângulo principal (0,0)-(9,6) [linhas 0-1] + uma aba pendurada em x:[3,6],y:[6,9] (linha 2, coluna 1).
+    const pontosComSaliencia: Ponto[] = [
+      { x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 6 }, { x: 6, y: 6 },
+      { x: 6, y: 9 }, { x: 3, y: 9 }, { x: 3, y: 6 }, { x: 0, y: 6 },
+    ]
+    const extensoes = setoresExtensao(pontosComSaliencia)
+    expect(extensoes).toHaveLength(1)
+    expect(extensoes[0]).toMatchObject({ linha: 2, coluna: 1 })
+
+    // As duas células vazias ao lado da saliência são "ausentes", não "extensão" — categorias mutuamente exclusivas.
+    const ausentes = setoresAusentes(pontosComSaliencia)
+    expect(ausentes).toHaveLength(2)
+    expect(ausentes.map(c => c.coluna).sort()).toEqual([0, 2])
+    expect(ausentes.every(c => c.linha === 2)).toBe(true)
+  })
+
+  it('uma célula nunca é "ausente" e "extensão" ao mesmo tempo, para qualquer polígono testado', () => {
+    const formas: Ponto[][] = [
+      [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }, { x: 0, y: 9 }],
+      [{ x: 0, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 9, y: 3 }, { x: 9, y: 9 }, { x: 0, y: 9 }],
+      [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 9 }, { x: 3, y: 9 }, { x: 3, y: 6 }, { x: 0, y: 6 }],
+    ]
+    for (const pontos of formas) {
+      const ausentes = setoresAusentes(pontos)
+      const extensoes = setoresExtensao(pontos)
+      for (const a of ausentes) {
+        expect(extensoes.some(e => e.linha === a.linha && e.coluna === a.coluna)).toBe(false)
+      }
+    }
+  })
+
+  it('nunca inclui a célula Central', () => {
+    const pontosComSaliencia: Ponto[] = [
+      { x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 6 }, { x: 6, y: 6 },
+      { x: 6, y: 9 }, { x: 3, y: 9 }, { x: 3, y: 6 }, { x: 0, y: 6 },
+    ]
+    expect(setoresExtensao(pontosComSaliencia).some(c => c.linha === 1 && c.coluna === 1)).toBe(false)
+  })
+
+  it('polígono degenerado → lista vazia', () => {
+    expect(setoresExtensao([{ x: 0, y: 0 }, { x: 1, y: 1 }])).toEqual([])
   })
 })
