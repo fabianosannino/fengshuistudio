@@ -63,7 +63,8 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
   hierarquia de precedência entre métodos (0013), referência de norte e
   declinação (0014), fronteira de classificação dos remédios (0015),
   questionário de facing (0016), curadoria de evidência com proveniência
-  (0017). Toda decisão arquitetural nova vira um ADR.
+  (0017), Ba Guá fixo no BTB (0018), erro genérico ≠ erro enganoso (0019).
+  Toda decisão arquitetural nova vira um ADR.
 - `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
 - `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).
 - `docs/domain/fengshui-metodos-referencia.md` — documento-mestre dos métodos e

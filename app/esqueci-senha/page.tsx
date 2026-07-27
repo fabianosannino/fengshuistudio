@@ -3,17 +3,20 @@
 import { useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import { ROTA_REDEFINIR_SENHA, urlCallbackAuth } from '../../src/lib/auth-rotas'
+import { falhaAuth } from '../../src/lib/auth-erros'
 
 export default function EsqueciSenha() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
+  const [messageIsError, setMessageIsError] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setMessage('')
+    setMessageIsError(false)
 
     // O link do e-mail precisa passar pelo callback: é ele que troca o código
     // PKCE por sessão antes de entregar o usuário à tela de nova senha.
@@ -22,7 +25,10 @@ export default function EsqueciSenha() {
     })
 
     if (error) {
-      setMessage('Erro ao enviar e-mail: ' + error.message)
+      // Nunca repassar `error.message`: era assim que «Invalid API key» —
+      // problema de configuração do deploy — chegava à tela do usuário.
+      setMessage(falhaAuth(error, 'resetPasswordForEmail').mensagem)
+      setMessageIsError(true)
     } else {
       setSent(true)
       setMessage('E-mail enviado! Verifique sua caixa de entrada e spam.')
@@ -73,7 +79,7 @@ export default function EsqueciSenha() {
             <p style={{ color: '#374151', fontSize: '15px', marginBottom: '24px' }}>
               Enviamos um link para <strong>{email}</strong>. Clique no link do e-mail para criar uma nova senha.
             </p>
-            <button onClick={() => { setSent(false); setEmail(''); setMessage('') }} style={{
+            <button onClick={() => { setSent(false); setEmail(''); setMessage(''); setMessageIsError(false) }} style={{
               padding: '10px 24px', background: '#F3F4F6', color: '#374151',
               border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
             }}>Reenviar para outro e-mail</button>
@@ -83,9 +89,9 @@ export default function EsqueciSenha() {
         {message && (
           <div style={{
             marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') ? '#DC2626' : '#15803D',
+            background: messageIsError ? '#FEF2F2' : '#F0FDF4',
+            border: `1px solid ${messageIsError ? '#FECACA' : '#BBF7D0'}`,
+            color: messageIsError ? '#DC2626' : '#15803D',
             fontSize: '14px', textAlign: 'center'
           }}>{message}</div>
         )}
