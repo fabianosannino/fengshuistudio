@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import { falhaAuth } from '../../src/lib/auth-erros'
 import {
   ROTA_ESQUECI_SENHA,
   ROTA_LOGIN,
@@ -13,6 +14,7 @@ export default function RedefinirSenha() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [messageIsError, setMessageIsError] = useState(false)
   const [success, setSuccess] = useState(false)
   const [verificando, setVerificando] = useState(true)
   const [sessaoValida, setSessaoValida] = useState(false)
@@ -48,19 +50,22 @@ export default function RedefinirSenha() {
       return
     }
     if (password !== confirmPassword) {
-      setMessage('As senhas não coincidem.')
+      setMessage('As senhas não coincidem.'); setMessageIsError(true)
       return
     }
     setLoading(true)
     setMessage('')
+    setMessageIsError(false)
 
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setMessage('Erro ao redefinir senha: ' + error.message)
+      setMessage(falhaAuth(error, 'updateUser').mensagem)
+      setMessageIsError(true)
     } else {
       setSuccess(true)
       setMessage('Senha redefinida com sucesso!')
+      setMessageIsError(false)
     }
     setLoading(false)
   }
@@ -154,9 +159,9 @@ export default function RedefinirSenha() {
             {message && !success && (
               <div style={{
                 marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-                background: message.includes('Erro') || message.includes('coincidem') || message.includes('mínimo') ? '#FEF2F2' : '#F0FDF4',
-                border: `1px solid ${message.includes('Erro') || message.includes('coincidem') || message.includes('mínimo') ? '#FECACA' : '#BBF7D0'}`,
-                color: message.includes('Erro') || message.includes('coincidem') || message.includes('mínimo') ? '#DC2626' : '#15803D',
+                background: messageIsError ? '#FEF2F2' : '#F0FDF4',
+                border: `1px solid ${messageIsError ? '#FECACA' : '#BBF7D0'}`,
+                color: messageIsError ? '#DC2626' : '#15803D',
                 fontSize: '14px', textAlign: 'center'
               }}>{message}</div>
             )}

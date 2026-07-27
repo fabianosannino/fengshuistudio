@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import { falhaAuth } from '../../src/lib/auth-erros'
 
 const TIPOS_USUARIO = [
   { id: 'pessoal', label: 'Pessoal', desc: 'Uso para minha residência' },
@@ -26,6 +27,7 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [messageIsError, setMessageIsError] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
   const [signUpDone, setSignUpDone] = useState(false)
@@ -59,16 +61,42 @@ function LoginForm() {
     return () => subscription.unsubscribe()
   }, [router, redirectTo])
 
+  function limparMensagem() {
+    setMessage('')
+    setMessageIsError(false)
+  }
+
+  function mostrarSucesso(texto: string) {
+    setMessage(texto)
+    setMessageIsError(false)
+  }
+
+  function mostrarAviso(texto: string) {
+    setMessage(texto)
+    setMessageIsError(true)
+  }
+
+  /**
+   * Mostra a causa provável da falha, não um chute.
+   *
+   * Antes, qualquer erro daqui virava «E-mail ou senha incorretos» — inclusive
+   * queda de rede e chave de API inválida. `falhaAuth` separa os casos e deixa
+   * o detalhe técnico no logger, fora da tela.
+   */
+  function mostrarFalha(erro: unknown, acao: string) {
+    mostrarAviso(falhaAuth(erro, acao).mensagem)
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setMessage('')
+    limparMensagem()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setMessage('E-mail ou senha incorretos. Tente novamente.')
+      mostrarFalha(error, 'signInWithPassword')
       setLoading(false)
     } else {
-      setMessage('Login realizado! Redirecionando...')
+      mostrarSucesso('Login realizado! Redirecionando...')
     }
   }
 
@@ -76,7 +104,7 @@ function LoginForm() {
     e.preventDefault()
     if (isProfessional) {
       setSignUpStep(2)
-      setMessage('')
+      limparMensagem()
     } else {
       doSignUp()
     }
@@ -89,7 +117,7 @@ function LoginForm() {
 
   async function doSignUp() {
     setLoading(true)
-    setMessage('')
+    limparMensagem()
     const metadata: Record<string, string> = {
       nome_completo: name,
       tipo_usuario: tipoUsuario,
@@ -112,14 +140,14 @@ function LoginForm() {
       }
     })
     if (error) {
-      setMessage('Erro ao criar conta: ' + error.message)
+      mostrarFalha(error, 'signUp')
     } else if (
       (data.user && data.user.identities && data.user.identities.length === 0) ||
       (data.user && data.user.email_confirmed_at) ||
       (!data.session && data.user && data.user.created_at &&
         new Date().getTime() - new Date(data.user.created_at).getTime() > 5000)
     ) {
-      setMessage('Este e-mail já está cadastrado. Use a aba "Entrar" para fazer login, ou clique em "Esqueci minha senha" para recuperar o acesso.')
+      mostrarAviso('Este e-mail já está cadastrado. Use a aba «Entrar» para fazer login, ou clique em «Esqueci minha senha» para recuperar o acesso.')
     } else {
       setSignUpDone(true)
     }
@@ -128,16 +156,16 @@ function LoginForm() {
 
   async function handleResendConfirmation() {
     setResending(true)
-    setMessage('')
+    limparMensagem()
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
       options: { emailRedirectTo: `${window.location.origin}/login` }
     })
     if (error) {
-      setMessage('Erro ao reenviar: ' + error.message)
+      mostrarFalha(error, 'resendConfirmation')
     } else {
-      setMessage('E-mail reenviado! Verifique sua caixa de entrada e spam.')
+      mostrarSucesso('E-mail reenviado! Verifique sua caixa de entrada e spam.')
     }
     setResending(false)
   }
@@ -145,7 +173,7 @@ function LoginForm() {
   function resetSignUp() {
     setSignUpDone(false)
     setSignUpStep(1)
-    setMessage('')
+    limparMensagem()
     setIsSignUp(false)
   }
 
@@ -172,12 +200,12 @@ function LoginForm() {
 
         {!isSignUp && (
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
-            <button onClick={() => { setIsSignUp(false); setMessage('') }} style={{
+            <button onClick={() => { setIsSignUp(false); limparMensagem() }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
               background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
             }}>Entrar</button>
-            <button onClick={() => { setIsSignUp(true); setMessage(''); setSignUpStep(1) }} style={{
+            <button onClick={() => { setIsSignUp(true); limparMensagem(); setSignUpStep(1) }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
               background: 'transparent', color: '#6B7280'
@@ -187,7 +215,7 @@ function LoginForm() {
 
         {isSignUp && !signUpDone && (
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
-            <button onClick={() => { setIsSignUp(false); setMessage(''); setSignUpStep(1) }} style={{
+            <button onClick={() => { setIsSignUp(false); limparMensagem(); setSignUpStep(1) }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
               background: 'transparent', color: '#6B7280'
@@ -402,7 +430,7 @@ function LoginForm() {
         )}
 
         {message && (() => {
-          const isError = message.includes('Erro') || message.includes('incorretos') || message.includes('já está cadastrado')
+          const isError = messageIsError
           return (
             <div style={{
               marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
