@@ -85,6 +85,11 @@ export async function POST(request: Request) {
     pais: pais || null,
     notas: notas || null,
     consultor_id: user.id,
+    // Explícito de propósito: a coluna é NOT NULL e ficou sem DEFAULT depois da
+    // restauração de constraints pós-incidente, derrubando todo cadastro com
+    // 23502. O default foi devolvido no banco; dizer aqui também deixa a
+    // intenção visível e não deixa a rota depender de um default invisível.
+    ativo: true,
   }).select().single()
 
   if (error) {
