@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
@@ -88,13 +89,20 @@ export default function Planos() {
       setProfile(data)
 
       // Load current subscription
-      const { data: subs } = await supabase
+      // `.maybeSingle()`, não `.single()`: quem nunca assinou não tem linha, e
+      // isso é normal — `.single()` devolvia 406 e sujava o console a cada visita.
+      const { data: subs, error: erroSubs } = await supabase
         .from('subscriptions')
         .select('status, cancel_at_period_end, current_period_end, billing_cycle')
         .eq('user_id', user.id)
         .in('status', ['active', 'past_due', 'trial', 'gratuidade'])
         .limit(1)
-        .single()
+        .maybeSingle()
+      if (erroSubs) {
+        logger.error('Falha ao carregar assinatura do usuário', {
+          route: '/planos', action: 'select subscriptions', erro: erroSubs.message,
+        })
+      }
       if (subs) setSubscription(subs)
 
       setLoading(false)

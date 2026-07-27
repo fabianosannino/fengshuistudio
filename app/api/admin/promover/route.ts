@@ -61,13 +61,21 @@ export async function POST(request: Request) {
   }
 
   // Audit log
-  await supabase.from('admin_audit_log').insert({
+  const { error: erroAuditoria } = await supabase.from('admin_audit_log').insert({
     action: 'promote_user',
     target_type: 'user',
     target_id: body.user_id,
     details: { nome: target.nome_completo, from_plan: previousPlan, to_plan: 'pro' },
     performed_by: user.id,
+    // Sem carimbo de tempo a trilha não serve para nada: a coluna não
+    // tinha default e as linhas antigas ficaram NULL (renderizadas como 1970).
+    performed_at: new Date().toISOString(),
   })
+  if (erroAuditoria) {
+    logger.error('Falha ao gravar log de auditoria', {
+      route: '/api/admin/promover', action: 'insert admin_audit_log', error: erroAuditoria.message,
+    })
+  }
 
   return NextResponse.json({ success: true, nome: target.nome_completo })
 }

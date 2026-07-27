@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
 
 interface ProdutoAfiliadoRow {
@@ -144,13 +145,19 @@ function ProdutosContent() {
       if (!user) { window.location.href = '/login'; return }
 
       // Try to load custom affiliate products from database
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('produtos_afiliados')
         .select('*')
         .eq('ativo', true)
         .order('categoria, nome')
 
-      if (data && data.length > 0) {
+      // O catálogo estático é o piso, não o plano B silencioso: se a consulta
+      // falhar, a tela continua útil, mas a falha precisa aparecer no log.
+      if (error) {
+        logger.error('Falha ao carregar produtos afiliados', {
+          route: '/produtos', action: 'select produtos_afiliados', erro: error.message,
+        })
+      } else if (data && data.length > 0) {
         setProdutosAfiliados(data)
       }
 

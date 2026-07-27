@@ -146,12 +146,20 @@ export async function POST(request: Request) {
   }
 
   // Audit log
-  await supabase.from('admin_audit_log').insert({
+  const { error: erroAuditoria } = await supabase.from('admin_audit_log').insert({
     action: 'generate_keys',
     target_type: 'activation_key',
     details: { quantidade, plan_type, expires_at, note, key_ids: data?.map(k => k.id) },
     performed_by: admin.user.id,
+    // Sem carimbo de tempo a trilha não serve para nada: a coluna não
+    // tinha default e as linhas antigas ficaram NULL (renderizadas como 1970).
+    performed_at: new Date().toISOString(),
   })
+  if (erroAuditoria) {
+    logger.error('Falha ao gravar log de auditoria', {
+      route: '/api/admin/chaves', action: 'insert admin_audit_log', error: erroAuditoria.message,
+    })
+  }
 
   return NextResponse.json({ keys: data })
 }
@@ -184,13 +192,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    await supabase.from('admin_audit_log').insert({
+    const { error: erroAuditoria } = await supabase.from('admin_audit_log').insert({
       action: 'cancel_key',
       target_type: 'activation_key',
       target_id: body.id,
       details: {},
       performed_by: admin.user.id,
+      // Sem carimbo de tempo a trilha não serve para nada: a coluna não
+      // tinha default e as linhas antigas ficaram NULL (renderizadas como 1970).
+      performed_at: new Date().toISOString(),
     })
+    if (erroAuditoria) {
+      logger.error('Falha ao gravar log de auditoria', {
+        route: '/api/admin/chaves', action: 'insert admin_audit_log', error: erroAuditoria.message,
+      })
+    }
 
     return NextResponse.json({ success: true })
   }
