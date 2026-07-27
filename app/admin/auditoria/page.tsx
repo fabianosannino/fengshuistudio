@@ -4,8 +4,10 @@ import { useEffect, useState, useCallback } from 'react'
 import AppShell from '../../components/AppShell'
 import Skeleton from '../../components/Skeleton'
 import type { AuditLogEntry } from '../../../src/lib/types'
+import { dataDeAuditoria } from '../../../src/lib/data-auditoria'
 
 const PAGE_SIZE = 30
+
 
 const ACTION_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   generate_keys:  { label: 'Geração de chaves', icon: '🔑', color: '#7C3AED' },
@@ -85,7 +87,7 @@ export default function AdminAuditoria() {
                   return (
                     <tr key={log.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '10px 8px', color: '#6B7280', whiteSpace: 'nowrap', fontSize: '12px' }}>
-                        {new Date(log.performed_at).toLocaleString('pt-BR')}
+                        {dataDeAuditoria(log.performed_at)}
                       </td>
                       <td style={{ padding: '10px 8px' }}>
                         <span style={{
