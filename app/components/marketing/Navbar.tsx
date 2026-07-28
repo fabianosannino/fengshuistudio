@@ -79,7 +79,7 @@ export default function Navbar() {
             </div>
           </div>
           <Link href="/precos" className={linkCls('/precos')}>Preços</Link>
-          <Link href="/parceiros" className={linkCls('/parceiros')}>Parceiros</Link>
+          <Link href="/rede-de-parceiros" className={linkCls('/rede-de-parceiros')}>Parceiros</Link>
           <Link href="/sobre" className={linkCls('/sobre')}>Sobre</Link>
         </nav>
 
@@ -122,7 +122,7 @@ export default function Navbar() {
           ))}
           <div className="pt-2 space-y-2">
             <Link href="/precos" className="block py-2 text-ink font-medium">Preços</Link>
-            <Link href="/parceiros" className="block py-2 text-ink font-medium">Parceiros</Link>
+              <Link href="/rede-de-parceiros" className="block py-2 text-ink font-medium">Parceiros</Link>
             <Link href="/sobre" className="block py-2 text-ink font-medium">Sobre</Link>
           </div>
           <div className="pt-4 flex flex-col gap-3">

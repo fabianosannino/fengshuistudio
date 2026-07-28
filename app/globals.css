@@ -213,6 +213,35 @@
     }
   }
 
+  /* Range slider "Chi" — trilha dourada sobre fundo tinta, thumb dourado */
+  .chi-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 9999px;
+    background: oklch(1 0 0 / 15%);
+    outline: none;
+  }
+  .chi-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 9999px;
+    background: var(--gold-500);
+    border: 3px solid var(--paper-50);
+    box-shadow: 0 1px 4px oklch(0 0 0 / 35%);
+    cursor: pointer;
+  }
+  .chi-range::-moz-range-thumb {
+    height: 18px;
+    width: 18px;
+    border-radius: 9999px;
+    background: var(--gold-500);
+    border: 3px solid var(--paper-50);
+    cursor: pointer;
+  }
+
   /* Container centralizado com padding responsivo */
   .container {
     width: 100%;

@@ -17,6 +17,11 @@ export default function FadeUp({
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    // Se o observer não existir (SSR/ambientes antigos), revela imediatamente.
+    if (typeof IntersectionObserver === 'undefined') {
+      el.classList.add('in-view')
+      return
+    }
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -24,10 +29,16 @@ export default function FadeUp({
           obs.disconnect()
         }
       },
-      { threshold: 0.12 },
+      { threshold: 0.1, rootMargin: '0px 0px -8% 0px' },
     )
     obs.observe(el)
-    return () => obs.disconnect()
+    // Fallback de segurança: se por algum motivo o observer não disparar,
+    // garante que o conteúdo apareça (evita seções invisíveis).
+    const fallback = window.setTimeout(() => el.classList.add('in-view'), 1200)
+    return () => {
+      obs.disconnect()
+      window.clearTimeout(fallback)
+    }
   }, [])
 
   return (

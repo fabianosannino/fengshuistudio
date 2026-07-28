@@ -7,8 +7,14 @@ import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional as isProfissionalFn, planoUsuario } from '../../src/lib/plano-utils'
 import PaymentBanner from './PaymentBanner'
 import NotificationBell from './NotificationBell'
+import {
+  LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
+  Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard,
+  BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu,
+  type LucideIcon,
+} from 'lucide-react'
 
-type NavItem = { label: string; icon: string; href: string; bloqueado?: boolean }
+type NavItem = { label: string; icon: LucideIcon; href: string; bloqueado?: boolean }
 
 export default function AppShell({
   children,

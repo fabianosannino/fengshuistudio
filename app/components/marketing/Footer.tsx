@@ -39,7 +39,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm">
               <li><Link href="/para-consultores" className="hover:text-gold transition-colors">Consultores</Link></li>
               <li><Link href="/minha-casa" className="hover:text-gold transition-colors">Minha casa</Link></li>
-              <li><Link href="/parceiros" className="hover:text-gold transition-colors">Rede de parceiros</Link></li>
+              <li><Link href="/rede-de-parceiros" className="hover:text-gold transition-colors">Rede de parceiros</Link></li>
             </ul>
           </nav>
           <nav aria-label="Empresa">
