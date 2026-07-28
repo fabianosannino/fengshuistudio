@@ -341,8 +341,8 @@ export default function Planos() {
                       background: rec.disponivel ? '#F0FDF4' : '#F3F4F6',
                       color: rec.disponivel ? '#15803D' : '#D1D5DB',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '12px', fontWeight: 'bold', flexShrink: 0
-                    }}>{rec.disponivel ? '✓' : '✕'}</span>
+                      flexShrink: 0
+                    }}>{rec.disponivel ? <Check size={12} strokeWidth={3} aria-hidden="true" /> : <X size={12} strokeWidth={3} aria-hidden="true" />}</span>
                     <span style={{ color: '#374151', fontSize: '14px', flex: 1 }}>{rec.nome}</span>
                     {rec.valor && <span style={{ color: rec.disponivel ? '#111827' : '#D1D5DB', fontSize: '13px', fontWeight: 'bold' }}>{rec.valor}</span>}
                   </div>
@@ -392,7 +392,7 @@ export default function Planos() {
             boxShadow: `0 4px 20px ${targetCor}25`, border: `2px solid ${targetCor}`,
             maxWidth: '500px', margin: '0 auto 40px', textAlign: 'center'
           }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔑</div>
+            <KeyRound size={30} strokeWidth={1.75} color={targetCor} style={{ margin: '0 auto 12px' }} aria-hidden="true" />
             <h3 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
               Ativar Plano {targetNome}
             </h3>
@@ -431,7 +431,7 @@ export default function Planos() {
               <tr>
                 <th style={{ textAlign: 'left', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280' }}>Funcionalidade</th>
                 <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280' }}>Free</th>
-                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#059669' }}>Simples</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#C9A227' }}>Simples</th>
                 <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#2E7D6B' }}>Profissional</th>
               </tr>
             </thead>
@@ -443,7 +443,7 @@ export default function Planos() {
                     const val = feat[plan]
                     return (
                       <td key={plan} style={{ textAlign: 'center', padding: '10px 8px', borderBottom: '1px solid #F3F4F6' }}>
-                        {val === true ? <span style={{ color: '#15803D', fontWeight: 'bold' }}>✓</span>
+                        {val === true ? <Check size={16} strokeWidth={3} color="#15803D" style={{ display: 'inline-block', verticalAlign: 'middle' }} aria-hidden="true" />
                           : val === false ? <span style={{ color: '#D1D5DB' }}>—</span>
                           : <span style={{ color: '#374151', fontSize: '13px' }}>{val}</span>}
                       </td>
