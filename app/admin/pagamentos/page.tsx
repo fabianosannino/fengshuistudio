@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
+import { X } from 'lucide-react'
 
 interface Metrics {
   mrr: number
@@ -252,7 +253,7 @@ export default function AdminPagamentos() {
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Detalhes do Usuário</h2>
-              <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#9CA3AF' }}>✕</button>
+              <button onClick={() => setSelectedUser(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'inline-flex', alignItems: 'center' }}><X size={20} strokeWidth={2} aria-hidden="true" /></button>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

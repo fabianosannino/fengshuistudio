@@ -7,6 +7,7 @@ import Skeleton from '../components/Skeleton'
 import { planoEfetivo, planoLabel, isProfissional as isProfissionalFn, PROF_TYPES } from '../../src/lib/plano-utils'
 import { SENHA_MIN_CARACTERES } from '../../src/lib/auth-rotas'
 import type { User } from '@supabase/supabase-js'
+import { Lock } from 'lucide-react'
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
 export default function Perfil() {
@@ -385,7 +386,7 @@ export default function Perfil() {
         {/* ── Alterar senha ─────────────────────────────────────────────── */}
         <form onSubmit={handleAlterarSenha} style={{ marginTop: '24px' }}>
           <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>🔒 Alterar senha</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}><Lock size={16} strokeWidth={1.75} aria-hidden="true" /> Alterar senha</h3>
             <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
               Mínimo de {SENHA_MIN_CARACTERES} caracteres. Você continuará conectado após a troca.
             </p>

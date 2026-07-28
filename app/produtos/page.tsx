@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
+import { Sparkle, Gem, Droplets, Leaf, Wind, Flame, Lamp, Lightbulb, Search, type LucideIcon } from 'lucide-react'
 
 interface ProdutoAfiliadoRow {
   id?: string
@@ -33,7 +34,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'espelhos',
     nome: 'Espelhos',
-    icon: '🪞',
+    iconComp: Sparkle as LucideIcon,
     cor: '#1D4ED8',
     descricao: 'Espelhos côncavos, convexos e Ba Gua para harmonização',
     produtos: [
@@ -45,7 +46,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'cristais',
     nome: 'Cristais e Pedras',
-    icon: '💎',
+    iconComp: Gem as LucideIcon,
     cor: '#2E7D6B',
     descricao: 'Cristais para ativação energética dos setores do Ba Gua',
     produtos: [
@@ -59,7 +60,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'fontes',
     nome: 'Fontes de Água',
-    icon: '⛲',
+    iconComp: Droplets as LucideIcon,
     cor: '#0EA5E9',
     descricao: 'Fontes para ativar o elemento água e prosperidade',
     produtos: [
@@ -71,7 +72,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'plantas',
     nome: 'Plantas e Vasos',
-    icon: '🌿',
+    iconComp: Leaf as LucideIcon,
     cor: '#15803D',
     descricao: 'Plantas vivas e artificiais para purificação e ativação',
     produtos: [
@@ -83,7 +84,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'sinos',
     nome: 'Sinos de Vento e Mobiles',
-    icon: '🎐',
+    iconComp: Wind as LucideIcon,
     cor: '#B45309',
     descricao: 'Sinos e móbiles metálicos para ativação do elemento metal',
     produtos: [
@@ -95,7 +96,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'velas',
     nome: 'Velas e Incensos',
-    icon: '🕯️',
+    iconComp: Flame as LucideIcon,
     cor: '#DC2626',
     descricao: 'Velas e incensos para ativar o elemento Fogo',
     produtos: [
@@ -107,7 +108,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'decoracao',
     nome: 'Decoração e Símbolos',
-    icon: '🏮',
+    iconComp: Lamp as LucideIcon,
     cor: '#BE185D',
     descricao: 'Objetos decorativos e símbolos para ativação dos setores',
     produtos: [
@@ -214,7 +215,7 @@ function ProdutosContent() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
           <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando produtos...</p>
         </div>
       </div>
@@ -239,7 +240,7 @@ function ProdutosContent() {
         borderRadius: '12px', padding: '16px 24px', marginBottom: '24px',
         display: 'flex', alignItems: 'center', gap: '12px'
       }}>
-        <span style={{ fontSize: '24px' }}>💡</span>
+        <Lightbulb size={22} strokeWidth={1.75} color="#F0D888" style={{ flexShrink: 0 }} aria-hidden="true" />
         <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', margin: '0' }}>
           Os produtos listados são recomendações baseadas em práticas de Feng Shui.
           Ao clicar em &quot;Ver produto&quot;, você será redirecionado para a loja parceira.
@@ -297,7 +298,7 @@ function ProdutosContent() {
           >
             <option value="todos">Todas as categorias</option>
             {CATEGORIAS_PRODUTOS.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.icon} {cat.nome}</option>
+              <option key={cat.id} value={cat.id}>{cat.nome}</option>
             ))}
           </select>
         </div>
@@ -331,7 +332,7 @@ function ProdutosContent() {
               boxShadow: categoriaAtiva === cat.id ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
               width: '100%'
             }}>
-              <span style={{ fontSize: '20px' }}>{cat.icon}</span>
+              <cat.iconComp size={20} strokeWidth={1.75} color={categoriaAtiva === cat.id ? '#C9A227' : cat.cor} aria-hidden="true" style={{ flexShrink: 0 }} />
               <div>
                 <div>{cat.nome}</div>
                 <div style={{ fontSize: '11px', color: categoriaAtiva === cat.id ? 'rgba(255,255,255,0.7)' : '#9CA3AF' }}>
@@ -346,8 +347,8 @@ function ProdutosContent() {
         <div>
           {categoriaData && (
             <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-                {categoriaData.icon} {categoriaData.nome}
+              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <categoriaData.iconComp size={22} strokeWidth={1.75} color={categoriaData.cor} aria-hidden="true" /> {categoriaData.nome}
               </h2>
               <p style={{ color: '#6B7280', fontSize: '14px', margin: '0' }}>{categoriaData.descricao}</p>
             </div>
@@ -355,7 +356,7 @@ function ProdutosContent() {
 
           {filteredProdutos.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px', color: '#9CA3AF' }}>
-              <p style={{ fontSize: '32px', margin: '0 0 8px 0' }}>🔍</p>
+              <Search size={32} strokeWidth={1.5} color="#9CA3AF" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
               <p>Nenhum produto encontrado</p>
             </div>
           ) : (
@@ -416,7 +417,7 @@ export default function Produtos() {
     <Suspense fallback={
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
           <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando produtos...</p>
         </div>
       </div>

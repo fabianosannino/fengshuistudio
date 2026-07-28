@@ -8,6 +8,7 @@ import Image from 'next/image'
 import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, podeClientes } from '../../src/lib/plano-utils'
+import { Camera, Users, Search, Mail, Phone, MapPin, CheckCircle2, RefreshCw } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -370,7 +371,7 @@ export default function Clientes() {
                 {fotoPreview ? (
                   <Image src={fotoPreview} alt="Preview" fill unoptimized style={{ objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
+                  <Camera size={26} strokeWidth={1.5} color="#9CA3AF" aria-hidden="true" />
                 )}
               </div>
               <div>
@@ -486,7 +487,7 @@ export default function Clientes() {
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>👤</div>
+          <Users size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum cliente cadastrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Clique em &quot;Novo cliente&quot; para comecar</p>
         </div>
@@ -495,7 +496,7 @@ export default function Clientes() {
           background: '#ffffff', borderRadius: '12px', padding: '48px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔍</div>
+          <Search size={34} strokeWidth={1.5} color="#9CA3AF" style={{ margin: '0 auto 12px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '16px', marginBottom: '8px' }}>Nenhum cliente encontrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Tente ajustar o filtro de busca.</p>
         </div>
@@ -532,14 +533,18 @@ export default function Clientes() {
                 <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
                   {cliente.nome_completo}
                 </h3>
-                {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>✉ {cliente.email}</p>}
-                {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📱 {cliente.telefone}</p>}
-                {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
+                {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.email}</p>}
+                {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.telefone}</p>}
+                {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
                 <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
                   <span>{stats?.total || 0} consulta(s)</span>
                   {stats?.lastStatus && (
-                    <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280' }}>
-                      {stats.lastStatus === 'finalizada' ? '✅ Concluída' : stats.lastStatus === 'em_andamento' ? '🔄 Em andamento' : '☯ ' + stats.lastStatus}
+                    <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      {stats.lastStatus === 'finalizada'
+                        ? <><CheckCircle2 size={13} strokeWidth={2} aria-hidden="true" /> Concluída</>
+                        : stats.lastStatus === 'em_andamento'
+                        ? <><RefreshCw size={13} strokeWidth={2} aria-hidden="true" /> Em andamento</>
+                        : stats.lastStatus}
                     </span>
                   )}
                 </div>

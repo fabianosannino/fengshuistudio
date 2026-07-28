@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import Skeleton from '../components/Skeleton'
 import type { Pagamento, Cliente, Consulta } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { Wrench, Wallet, User as UserIcon, Home as HomeIcon, Check } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> = {
   pendente: { label: 'Pendente', cor: '#D97706', bg: '#FFFBEB' },
@@ -298,7 +299,7 @@ export default function Pagamentos() {
         background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px',
         padding: '16px 20px', marginBottom: '24px', textAlign: 'center'
       }}>
-        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🚧</div>
+        <Wrench size={22} strokeWidth={1.75} color="#92400E" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
         <p style={{ color: '#92400E', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Pagamentos — Em desenvolvimento
         </p>
@@ -367,7 +368,7 @@ export default function Pagamentos() {
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>💰</div>
+          <Wallet size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum pagamento encontrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>Registre pagamentos para controlar seu financeiro</p>
           <button onClick={openNew} style={{
@@ -402,9 +403,10 @@ export default function Pagamentos() {
                       fontSize: '11px', fontWeight: 'bold',
                     }}>{vencido ? 'Atrasado' : st.label}</span>
                   </div>
-                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '0' }}>
-                    {pag.clientes?.nome_completo && `👤 ${pag.clientes.nome_completo}`}
-                    {pag.consultas?.nome_imovel && ` • 🏠 ${pag.consultas.nome_imovel}`}
+                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    {pag.clientes?.nome_completo && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><UserIcon size={13} strokeWidth={1.75} aria-hidden="true" /> {pag.clientes.nome_completo}</span>}
+                    {pag.clientes?.nome_completo && pag.consultas?.nome_imovel && <span aria-hidden="true">•</span>}
+                    {pag.consultas?.nome_imovel && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><HomeIcon size={13} strokeWidth={1.75} aria-hidden="true" /> {pag.consultas.nome_imovel}</span>}
                   </p>
                   <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>
                     Vence: {formatDate(pag.data_vencimento)}
@@ -427,7 +429,8 @@ export default function Pagamentos() {
                       padding: '6px 14px', background: '#F0FDF4', color: '#15803D',
                       border: '1px solid #BBF7D0', borderRadius: '6px',
                       fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
-                    }}>✓ Pago</button>
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    }}><Check size={13} strokeWidth={2.5} aria-hidden="true" /> Pago</button>
                   )}
                   <button onClick={() => openEdit(pag)} style={{
                     padding: '6px 14px', background: '#F3F4F6', color: '#374151',

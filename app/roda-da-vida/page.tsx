@@ -5,6 +5,7 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import type { User } from '@supabase/supabase-js'
 import { AREAS, CATEGORIAS, avg, defaultRespostas } from '../../src/lib/roda-da-vida-constants'
+import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react'
 
 type RodaDaVidaData = {
   respostas?: Record<string, number[]>
@@ -244,7 +245,7 @@ export default function RodaDaVidaPage() {
                 <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes((c.roda_da_vida.acoes as unknown as Acao[]) || defaultAcoes()) } }}
                   style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === c.id ? '2px solid #2E7D6B' : '1px solid #D1D5DB', background: selectedConsultaId === c.id ? '#EAF4F1' : '#fff', cursor: 'pointer' }}>
                   <div style={{ fontSize: 14, fontWeight: 'bold', color: '#0E1B2C' }}>{c.nome_imovel}</div>
-                  <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? '— ◎ Já tem Roda da Vida' : ''}</div>
+                  <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? <><span aria-hidden="true">—</span><CheckCircle2 size={12} strokeWidth={2} color="#2E7D6B" aria-hidden="true" /> Já tem Roda da Vida</> : ''}</div>
                 </button>
               ))}
               <button onClick={() => setSelectedConsultaId(null)}
@@ -367,8 +368,8 @@ export default function RodaDaVidaPage() {
                   <span style={{ fontSize: 16, fontWeight: 'bold', color: a.cor }}>{areaAvg.toFixed(1)}</span>
                 </div>
                 <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{a.categoria}</div>
-                <button onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#2E7D6B', cursor: 'pointer', padding: 0, fontWeight: 'bold' }}>
-                  {expanded ? '▼' : '▶'} Detalhes das 5 perguntas
+                <button onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#2E7D6B', cursor: 'pointer', padding: 0, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {expanded ? <ChevronDown size={13} strokeWidth={2.5} aria-hidden="true" /> : <ChevronRight size={13} strokeWidth={2.5} aria-hidden="true" />} Detalhes das 5 perguntas
                 </button>
                 {expanded && (
                   <div style={{ marginTop: 6, paddingLeft: 16 }}>
