@@ -238,7 +238,8 @@ export default function Clientes() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meus Clientes</h1>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Clientes</p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Meus Clientes</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{totalCount} cliente(s) cadastrado(s)</p>
         </div>
         <button onClick={() => {
@@ -258,9 +259,8 @@ export default function Clientes() {
       </div>
 
       {/* Filter / Sort Bar */}
-      <div style={{
-        background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px',
+      <div className="panel" style={{
+        padding: '16px 20px', marginBottom: '20px',
         display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center'
       }}>
         <input
@@ -352,9 +352,8 @@ export default function Clientes() {
       )}
 
       {showForm && (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '32px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '32px',
+        <div className="panel" style={{
+          padding: '32px', marginBottom: '32px',
           borderTop: '3px solid #2E7D6B'
         }}>
           <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '24px', marginTop: '0' }}>
@@ -483,18 +482,16 @@ export default function Clientes() {
       {loading ? (
         <Skeleton variant="list" rows={4} />
       ) : totalCount === 0 ? (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        <div className="panel" style={{
+          padding: '64px 32px', textAlign: 'center',
         }}>
           <Users size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum cliente cadastrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Clique em &quot;Novo cliente&quot; para comecar</p>
         </div>
       ) : filteredClientes.length === 0 ? (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '48px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        <div className="panel" style={{
+          padding: '48px 32px', textAlign: 'center',
         }}>
           <Search size={34} strokeWidth={1.5} color="#9CA3AF" style={{ margin: '0 auto 12px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '16px', marginBottom: '8px' }}>Nenhum cliente encontrado</h3>
@@ -506,9 +503,8 @@ export default function Clientes() {
             const stats = consultaStats[cliente.id]
             const isActive = (cliente as Cliente & { ativo?: boolean }).ativo !== false
             return (
-              <div key={cliente.id} style={{
-                background: '#ffffff', borderRadius: '12px', padding: '20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${isActive ? '#2E7D6B' : '#9CA3AF'}`
+              <div key={cliente.id} className="panel panel-interactive" style={{
+                padding: '20px', borderLeft: `4px solid ${isActive ? '#2E7D6B' : '#9CA3AF'}`
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div style={{
