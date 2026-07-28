@@ -430,9 +430,12 @@ export default function Dashboard() {
   return (
     <AppShell currentPage="dashboard">
       {/* Header */}
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
+            Painel
+          </p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
             Bem-vindo ao FengShui Studio
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -447,7 +450,7 @@ export default function Dashboard() {
       </div>
 
       {showSettings && (
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+        <div className="panel" style={{ padding: '20px', marginBottom: '20px' }}>
           <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#0E1B2C' }}>Escolha os módulos visíveis</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
             {DASHBOARD_MODULES.map(m => (
@@ -475,9 +478,8 @@ export default function Dashboard() {
           { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#2E7D6B', link: '/calendario' },
           { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: Star, color: '#C9A227', link: '/planos' },
         ].map((kpi, i) => (
-          <div key={i} onClick={() => window.location.href = kpi.link} style={{
-            background: '#ffffff', borderRadius: '12px', padding: '24px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`,
+          <div key={i} className="panel panel-interactive" onClick={() => window.location.href = kpi.link} style={{
+            padding: '24px', borderLeft: `4px solid ${kpi.color}`,
             cursor: 'pointer',
           }}>
             <div style={{ marginBottom: '8px' }}><kpi.icon size={26} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
@@ -494,8 +496,9 @@ export default function Dashboard() {
         {/* CHART 1: Status Consultas - Pie */}
         {visibleModules.status_consultas !== false && (
         <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          background: '#ffffff', borderRadius: '14px', padding: '24px',
+          border: '1px solid rgba(14,27,44,0.06)',
+          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
         }}>
           <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Status das Consultas
@@ -507,8 +510,9 @@ export default function Dashboard() {
         {/* CHART 2: Pagamentos - Bar empilhado */}
         {visibleModules.pagamentos !== false && (
         <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          background: '#ffffff', borderRadius: '14px', padding: '24px',
+          border: '1px solid rgba(14,27,44,0.06)',
+          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
@@ -551,8 +555,9 @@ export default function Dashboard() {
         {/* CHART 3: Evolução Consultas - Line */}
         {visibleModules.consultas_mes !== false && (
         <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          background: '#ffffff', borderRadius: '14px', padding: '24px',
+          border: '1px solid rgba(14,27,44,0.06)',
+          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
         }}>
           <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Consultas por Mês
@@ -564,8 +569,9 @@ export default function Dashboard() {
         {/* AGENDA */}
         {visibleModules.proximas_atividades !== false && (
         <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          background: '#ffffff', borderRadius: '14px', padding: '24px',
+          border: '1px solid rgba(14,27,44,0.06)',
+          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
@@ -629,8 +635,9 @@ export default function Dashboard() {
       {visibleModules.novos_clientes !== false && (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginBottom: '32px' }}>
         <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          background: '#ffffff', borderRadius: '14px', padding: '24px',
+          border: '1px solid rgba(14,27,44,0.06)',
+          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
         }}>
           <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Novos Clientes por Mês
@@ -649,9 +656,8 @@ export default function Dashboard() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {analisesBagua.map(a => (
-              <div key={a.id} onClick={() => window.location.href = `/consultas/${a.id}`} style={{
-                background: '#ffffff', borderRadius: '10px', padding: '14px 18px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                <div key={a.id} className="panel panel-interactive" onClick={() => window.location.href = `/consultas/${a.id}`} style={{
+                  padding: '14px 18px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 borderLeft: `4px solid ${a.status_bagua==='concluida'?'#15803D':'#D97706'}`
               }}>
@@ -694,9 +700,8 @@ export default function Dashboard() {
             { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#15803D', link: '/consultas' },
             { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: Moon, color: '#C9A227', link: '/calendario' },
           ].map((kpi, i) => (
-            <div key={i} onClick={() => window.location.href = kpi.link} style={{
-              background: '#ffffff', borderRadius: '12px', padding: '20px',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                <div key={i} className="panel panel-interactive" onClick={() => window.location.href = kpi.link} style={{
+                  padding: '20px', cursor: 'pointer',
               borderTop: `3px solid ${kpi.color}`,
             }}>
               <div style={{ marginBottom: '8px' }}><kpi.icon size={24} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
