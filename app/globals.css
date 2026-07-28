@@ -1,26 +1,239 @@
+/*
+ * Design System "Chi" — FengShui Studio
+ * Zen editorial premium: navy-tinta (água), jade (madeira/CTA), dourado (metal),
+ * areia/papel (terra), terracota (fogo). Fraunces (display) + Figtree (corpo).
+ * Proibido: roxo, neon. Contraste WCAG AA. Movimento contido <300ms ease-out.
+ */
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-ink: var(--ink-900);
+  --color-ink-700: var(--ink-700);
+  --color-jade: var(--jade-500);
+  --color-jade-300: var(--jade-300);
+  --color-gold: var(--gold-500);
+  --color-terra: var(--terra-300);
+  --color-sand: var(--sand-100);
+  --color-paper: var(--paper-50);
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Chi palette raw tokens */
+  --ink-900: oklch(0.235 0.045 250);      /* #0E1B2C azul-tinta profundo */
+  --ink-700: oklch(0.34 0.055 245);       /* #1C3A52 azul-petróleo */
+  --jade-500: oklch(0.545 0.085 175);     /* #2E7D6B verde-jade */
+  --jade-300: oklch(0.73 0.06 172);       /* #7FB8A8 jade claro */
+  --gold-500: oklch(0.71 0.13 92);        /* #C9A227 dourado suave */
+  --terra-300: oklch(0.78 0.07 55);       /* #D9A88C terracota clara */
+  --sand-100: oklch(0.945 0.015 90);      /* #F3EEE4 areia */
+  --paper-50: oklch(0.975 0.008 95);      /* #FBF9F4 off-white quente */
+
+  --primary: var(--jade-500);
+  --primary-foreground: var(--paper-50);
+  --sidebar-primary: var(--jade-500);
+  --sidebar-primary-foreground: var(--paper-50);
+  --chart-1: var(--jade-500);
+  --chart-2: var(--gold-500);
+  --chart-3: var(--terra-300);
+  --chart-4: var(--ink-700);
+  --chart-5: var(--jade-300);
+  --radius: 0.75rem;
+  --background: var(--paper-50);
+  --foreground: var(--ink-900);
+  --card: oklch(0.99 0.005 95);
+  --card-foreground: var(--ink-900);
+  --popover: oklch(0.99 0.005 95);
+  --popover-foreground: var(--ink-900);
+  --secondary: var(--sand-100);
+  --secondary-foreground: var(--ink-700);
+  --muted: var(--sand-100);
+  --muted-foreground: oklch(0.48 0.03 250);
+  --accent: oklch(0.93 0.025 172);
+  --accent-foreground: var(--ink-900);
+  --destructive: oklch(0.55 0.13 35);     /* #B4533A */
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.9 0.015 90);
+  --input: oklch(0.9 0.015 90);
+  --ring: var(--jade-500);
+  --sidebar: var(--paper-50);
+  --sidebar-foreground: var(--ink-900);
+  --sidebar-accent: var(--sand-100);
+  --sidebar-accent-foreground: var(--ink-900);
+  --sidebar-border: oklch(0.9 0.015 90);
+  --sidebar-ring: var(--jade-500);
+}
+
+.dark {
+  --primary: var(--jade-500);
+  --primary-foreground: var(--paper-50);
+  --sidebar-primary: var(--jade-500);
+  --sidebar-primary-foreground: var(--paper-50);
+  --background: var(--ink-900);
+  --foreground: var(--paper-50);
+  --card: var(--ink-700);
+  --card-foreground: var(--paper-50);
+  --popover: var(--ink-700);
+  --popover-foreground: var(--paper-50);
+  --secondary: var(--ink-700);
+  --secondary-foreground: oklch(0.88 0.01 95);
+  --muted: var(--ink-700);
+  --muted-foreground: oklch(0.75 0.02 95);
+  --accent: var(--ink-700);
+  --accent-foreground: oklch(0.95 0.008 95);
+  --destructive: oklch(0.62 0.14 35);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--gold-500);
+  --chart-1: var(--jade-300);
+  --chart-2: var(--gold-500);
+  --chart-3: var(--terra-300);
+  --chart-4: var(--jade-500);
+  --chart-5: oklch(0.85 0.02 95);
+  --sidebar: var(--ink-900);
+  --sidebar-foreground: oklch(0.95 0.008 95);
+  --sidebar-accent: var(--ink-700);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: var(--gold-500);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Eyebrow dourado — assinatura da marca */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase;
+    letter-spacing: 0.22em;
+    color: var(--gold-500);
+    font-family: var(--font-sans);
+  }
+
+  /* Grade Ba Guá sutil para seções escuras */
+  .bagua-grid-bg {
+    background-image:
+      linear-gradient(oklch(1 0 0 / 4%) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 4%) 1px, transparent 1px);
+    background-size: 33.34% 33.34%;
+  }
+
+  /* Sublinhado de pincel dourado */
+  .brush-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .brush-underline::after {
+    content: "";
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    bottom: -0.08em;
+    height: 0.22em;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'%3E%3Cpath d='M2 9 C 40 3, 90 2, 130 5 S 190 8, 198 5' stroke='%23C9A227' stroke-width='4' fill='none' stroke-linecap='round' opacity='0.85'/%3E%3C/svg%3E") no-repeat center / 100% 100%;
+    pointer-events: none;
+  }
+
+  /* Fade-up de entrada em scroll */
+  @media (prefers-reduced-motion: no-preference) {
+    .fade-up {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.55s cubic-bezier(0.23, 1, 0.32, 1), transform 0.55s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .fade-up.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Container centralizado com padding responsivo */
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1280px;
+    }
+  }
 }

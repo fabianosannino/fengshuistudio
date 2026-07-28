@@ -1,479 +1,393 @@
-'use client'
+/*
+ * Design "Chi" — Home: hero ink segmentado + produto vivo, barra de prova,
+ * problema→virada, bento recursos, como funciona, ROI, jornada pessoal, FAQ, CTA.
+ * Paleta: ink/jade/gold/sand/paper. Fraunces display. Sem roxo, sem emojis.
+ */
+import Link from 'next/link'
+import {
+  Compass, FileText, PieChart, Waves, Users, Moon,
+  Upload, ClipboardCheck, Send, ArrowRight, Home as HomeIcon, Sparkles,
+} from 'lucide-react'
+import Navbar from './components/marketing/Navbar'
+import Footer from './components/marketing/Footer'
+import FadeUp from './components/marketing/FadeUp'
+import CtaBand from './components/marketing/CtaBand'
+import ChiDivider from './components/marketing/ChiDivider'
+import FaqAccordion from './components/marketing/FaqAccordion'
+import { ASSETS, REGISTER_URL } from './components/marketing/assets'
 
-import { useEffect, useState } from 'react'
+const bento = [
+  {
+    href: '/recursos/bagua',
+    title: 'Análise Ba Guá com planta',
+    desc: 'Sobreponha a grade dos 9 setores à planta do imóvel, oriente com a bússola e receba scores automáticos.',
+    img: ASSETS.heroBagua,
+    icon: Compass,
+    big: true,
+  },
+  {
+    href: '/recursos/relatorios',
+    title: 'Relatórios PDF com a sua marca',
+    desc: 'Entregue um documento premium, com seu logo e recomendações organizadas por setor.',
+    img: ASSETS.relatorioPdf,
+    icon: FileText,
+    big: true,
+  },
+  {
+    href: '/recursos/roda-da-vida',
+    title: 'Roda da Vida',
+    desc: '12 áreas, 60 perguntas e um radar claro do equilíbrio do seu cliente.',
+    img: ASSETS.rodaDaVida,
+    icon: PieChart,
+    big: false,
+  },
+  {
+    href: '/recursos/roda-da-vida',
+    title: 'Fluxo do Chi',
+    desc: 'Mapeie o caminho da energia e encontre pontos de estagnação.',
+    img: ASSETS.fluxoChi,
+    icon: Waves,
+    big: false,
+  },
+  {
+    href: '/recursos/relatorios',
+    title: 'Clientes & Financeiro',
+    desc: 'CRM completo com propostas, status e recebimentos em um só lugar.',
+    img: ASSETS.crm,
+    icon: Users,
+    big: false,
+  },
+  {
+    href: '/recursos/calendario',
+    title: 'Calendário Lunar',
+    desc: 'Fases da lua e rituais para escolher os melhores períodos.',
+    img: ASSETS.calendarioLunar,
+    icon: Moon,
+    big: false,
+  },
+]
 
-export default function LandingPage() {
-  const [scrollY, setScrollY] = useState(0)
-  const [mounted, setMounted] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [activeFaq, setActiveFaq] = useState<number | null>(null)
+const faq = [
+  {
+    q: 'Preciso de cartão de crédito para começar?',
+    a: 'Não. O plano Free é gratuito para sempre e não pede cartão. Você cria a conta, cadastra um imóvel e já gera seu primeiro diagnóstico.',
+  },
+  {
+    q: 'O investimento compensa para quem atende poucos clientes?',
+    a: 'Uma consultoria de Feng Shui no Brasil custa em média de R$ 350 a R$ 2.000. O plano Profissional custa R$ 49/mês — ou seja, uma única consulta cobre mais de um ano de plataforma, além das horas economizadas em cada relatório.',
+  },
+  {
+    q: 'Funciona no celular?',
+    a: 'Sim. A plataforma é um PWA: funciona no navegador do celular e pode ser instalada como aplicativo, incluindo o uso da bússola do próprio aparelho para orientar a planta.',
+  },
+  {
+    q: 'Posso usar sem ser consultor profissional?',
+    a: 'Pode. O modo Minha Casa foi feito para quem quer harmonizar o próprio lar: linguagem simples, guia passo a passo e curas práticas por setor.',
+  },
+  {
+    q: 'Meus dados e os dos meus clientes estão protegidos?',
+    a: 'Sim. Seguimos a LGPD, usamos criptografia em trânsito (SSL) e isolamento de dados por conta. Pagamentos são processados pela Stripe, líder global em segurança de pagamentos.',
+  },
+  {
+    q: 'Posso cancelar quando quiser?',
+    a: 'Sim, o cancelamento é feito em um clique dentro da plataforma, sem fidelidade e sem burocracia. Você mantém acesso até o fim do período pago.',
+  },
+]
 
-  useEffect(() => {
-    setMounted(true)
-    const handleScroll = () => setScrollY(window.scrollY)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  const navSolid = scrollY > 60
-
-  const faqs = [
-    { q: 'Preciso ter experiência com tecnologia?', a: 'Não! O FengShui Studio foi feito para consultores de Feng Shui, não para programadores. A interface é intuitiva e você aprende em minutos.' },
-    { q: 'Posso cancelar o plano Pro a qualquer momento?', a: 'Sim. Não há fidelidade. Você pode fazer upgrade ou downgrade quando quiser, sem burocracia.' },
-    { q: 'Meus dados estão seguros?', a: 'Absolutamente. Usamos criptografia de ponta a ponta e servidores seguros. Seus dados e os de seus clientes estão protegidos.' },
-    { q: 'O relatório PDF é personalizável?', a: 'O relatório inclui automaticamente seus dados profissionais, logo e informações do imóvel analisado, gerando um documento profissional com a sua marca.' },
-  ]
-
-  if (!mounted) return null
-
+export default function Home() {
   return (
-    <div style={{ fontFamily: "'Outfit', sans-serif", color: '#1a1a2e', overflowX: 'hidden' }}>
+    <div className="min-h-screen flex flex-col bg-paper">
+      <Navbar />
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body { overflow-x: hidden; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
-        @keyframes rotateSlowly { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .fade-up { animation: fadeUp 0.8s ease-out forwards; opacity: 0; }
-        .fade-up-d1 { animation-delay: 0.1s; }
-        .fade-up-d2 { animation-delay: 0.2s; }
-        .fade-up-d3 { animation-delay: 0.3s; }
-        .fade-up-d4 { animation-delay: 0.4s; }
-        .fade-up-d5 { animation-delay: 0.5s; }
-        .fade-up-d6 { animation-delay: 0.6s; }
-        .btn-primary { background: linear-gradient(135deg, #7C3AED, #5B21B6); color: #ffffff; border: none; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: 'Outfit', sans-serif; letter-spacing: 0.02em; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124, 58, 237, 0.4); }
-        .btn-secondary { background: transparent; color: #ffffff; border: 2px solid rgba(255,255,255,0.4); padding: 14px 36px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-family: 'Outfit', sans-serif; }
-        .btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.8); }
-        .feature-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .feature-card:hover { transform: translateY(-8px); box-shadow: 0 20px 60px rgba(0,0,0,0.12); }
-        .pricing-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .pricing-card:hover { transform: translateY(-4px); }
-        .testimonial-card { transition: all 0.3s ease; }
-        .testimonial-card:hover { transform: scale(1.02); }
-        .nav-link { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 15px; font-weight: 500; transition: color 0.2s; cursor: pointer; background: none; border: none; font-family: 'Outfit', sans-serif; }
-        .nav-link:hover { color: #ffffff; }
-        @media (max-width: 768px) {
-          .hide-mobile { display: none !important; }
-          .hero-grid { flex-direction: column !important; text-align: center !important; }
-          .hero-buttons { justify-content: center !important; }
-          .features-grid { grid-template-columns: 1fr !important; }
-          .pricing-grid { grid-template-columns: 1fr !important; max-width: 400px !important; margin: 0 auto !important; }
-          .footer-grid { grid-template-columns: 1fr !important; text-align: center !important; }
-          .stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-grid { grid-template-columns: 1fr !important; }
-          .testimonials-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+      <main id="conteudo" className="flex-1">
+        {/* 1. HERO */}
+        <section className="relative bg-ink text-paper overflow-hidden">
+          <div className="absolute inset-0 bagua-grid-bg" aria-hidden="true" />
+          <div
+            className="absolute inset-x-0 bottom-0 h-40 opacity-[0.15] bg-cover bg-center"
+            style={{ backgroundImage: `url(${ASSETS.sumieMontanhas})` }}
+            aria-hidden="true"
+          />
+          <div className="container relative grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center py-16 md:py-24 lg:py-28">
+            <div>
+              <FadeUp>
+                <p className="eyebrow mb-5">A plataforma brasileira de Feng Shui</p>
+                <h1 className="font-display text-4xl md:text-5xl lg:text-[3.4rem] leading-[1.12] text-paper text-balance">
+                  Do diagnóstico ao relatório: sua consultoria de Feng Shui em{' '}
+                  <span className="brush-underline">uma tarde</span>
+                </h1>
+                <p className="mt-6 text-lg text-paper/75 max-w-xl leading-relaxed">
+                  Análise Ba Guá sobre a planta, Roda da Vida, curas por setor e relatórios profissionais com a sua marca — tudo em um só lugar.
+                </p>
+                <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4">
+                  <Link
+                    href={REGISTER_URL}
+                    className="inline-flex justify-center items-center rounded-xl bg-jade text-paper text-base font-semibold px-8 py-4 shadow-lg hover:brightness-110 active:scale-[0.97] transition-all duration-200"
+                  >
+                    Começar grátis
+                  </Link>
+                  <Link
+                    href="/recursos"
+                    className="inline-flex justify-center items-center rounded-xl border border-paper/25 text-paper/90 text-base font-medium px-8 py-4 hover:bg-paper/10 active:scale-[0.97] transition-all duration-200"
+                  >
+                    Conhecer os recursos
+                  </Link>
+                </div>
+                <p className="mt-3 text-sm text-paper/55">Sem cartão · Plano Free para sempre</p>
 
-      {/* NAV */}
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        padding: navSolid ? '12px 0' : '20px 0',
-        background: navSolid ? 'rgba(15, 23, 42, 0.95)' : 'transparent',
-        backdropFilter: navSolid ? 'blur(20px)' : 'none',
-        borderBottom: navSolid ? '1px solid rgba(255,255,255,0.05)' : 'none',
-        transition: 'all 0.4s ease',
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '28px' }}>☯</span>
-            <span style={{ fontFamily: "'Playfair Display', serif", color: '#C9A84C', fontSize: '22px', fontWeight: 700 }}>FengShui Studio</span>
-          </div>
-          <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-            <a href="#recursos" className="nav-link">Recursos</a>
-            <a href="#como-funciona" className="nav-link">Como funciona</a>
-            <a href="#precos" className="nav-link">Planos</a>
-            <a href="#depoimentos" className="nav-link">Depoimentos</a>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => window.location.href = '/login'} className="nav-link hide-mobile">Entrar</button>
-            <button onClick={() => window.location.href = '/login'} style={{
-              background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', color: '#fff', border: 'none', padding: '10px 24px',
-              borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
-            }}>Começar grátis</button>
-          </div>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(165deg, #0f172a 0%, #1E3A5F 40%, #1a3352 70%, #162544 100%)',
-        position: 'relative', display: 'flex', alignItems: 'center', overflow: 'hidden',
-      }}>
-        <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '700px', height: '700px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', animation: 'pulse 6s ease-in-out infinite' }} />
-        <div style={{ position: 'absolute', bottom: '-15%', left: '-5%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
-        <div style={{ position: 'absolute', top: '15%', right: '8%', fontSize: '200px', opacity: 0.03, color: '#ffffff', animation: 'rotateSlowly 60s linear infinite', fontFamily: "'Playfair Display', serif" }}>☯</div>
-
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '120px 32px 80px', width: '100%' }}>
-          <div className="hero-grid" style={{ display: 'flex', alignItems: 'center', gap: '60px' }}>
-            <div style={{ flex: 1 }}>
-              <div className="fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: '100px', padding: '8px 20px', marginBottom: '24px' }}>
-                <span style={{ fontSize: '12px' }}>✨</span>
-                <span style={{ color: '#C4B5FD', fontSize: '13px', fontWeight: 600, letterSpacing: '0.05em' }}>PLATAFORMA #1 PARA CONSULTORES</span>
+                <div className="mt-9 flex flex-wrap gap-3">
+                  <Link
+                    href="/para-consultores"
+                    className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 text-gold text-sm font-medium px-4 py-2 hover:bg-gold/20 transition-colors"
+                  >
+                    <Sparkles className="h-4 w-4" /> Sou consultor(a)
+                  </Link>
+                  <Link
+                    href="/minha-casa"
+                    className="inline-flex items-center gap-2 rounded-full border border-paper/25 bg-paper/5 text-paper/85 text-sm font-medium px-4 py-2 hover:bg-paper/15 transition-colors"
+                  >
+                    <HomeIcon className="h-4 w-4" /> Quero harmonizar minha casa
+                  </Link>
+                </div>
+              </FadeUp>
+            </div>
+            <FadeUp delay={150}>
+              <div className="relative">
+                <div className="absolute -inset-6 bg-jade/20 blur-3xl rounded-full" aria-hidden="true" />
+                <img
+                  src={ASSETS.heroBagua || '/placeholder.svg'}
+                  alt="Tela da análise Ba Guá: planta baixa com a grade de 9 setores e scores por área"
+                  className="relative rounded-2xl shadow-2xl border border-paper/10 w-full"
+                  loading="eager"
+                />
               </div>
+            </FadeUp>
+          </div>
+        </section>
 
-              <h1 className="fade-up fade-up-d1" style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(36px, 5vw, 56px)', color: '#ffffff', lineHeight: 1.1, marginBottom: '24px', fontWeight: 700 }}>
-                Transforme suas consultas de{' '}
-                <span style={{ background: 'linear-gradient(135deg, #C9A84C, #E8D48B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Feng Shui</span>
-                {' '}em uma experiência profissional
-              </h1>
-
-              <p className="fade-up fade-up-d2" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '18px', lineHeight: 1.7, marginBottom: '40px', maxWidth: '520px' }}>
-                Análise Ba Guá com upload de planta, Roda da Vida com 12 áreas, curas e ativações, relatórios PDF e calendário lunar. Tudo em uma única plataforma feita para consultores como você.
+        {/* 2. BARRA DE PROVA */}
+        <section className="bg-sand border-b border-border/50">
+          <div className="container py-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-3 text-center">
+            {[
+              ['500+', 'consultores na plataforma'],
+              ['2.000+', 'consultas realizadas'],
+              ['9', 'setores analisados por imóvel'],
+            ].map(([n, l]) => (
+              <p key={l} className="text-ink">
+                <span className="font-display text-3xl md:text-4xl text-jade">{n}</span>{' '}
+                <span className="text-sm text-ink/70 block md:inline md:ml-1">{l}</span>
               </p>
+            ))}
+          </div>
+        </section>
 
-              <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
-                <button className="btn-primary" onClick={() => window.location.href = '/login'}>Começar gratuitamente</button>
-                <a href="#como-funciona" className="btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Ver como funciona</a>
-              </div>
-
-              <div className="fade-up fade-up-d4 stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+        {/* 3. PROBLEMA → VIRADA */}
+        <section className="py-20 md:py-28">
+          <div className="container grid md:grid-cols-2 gap-12 items-center">
+            <FadeUp>
+              <p className="eyebrow mb-4">O antes e o depois</p>
+              <h2 className="font-display text-3xl md:text-4xl leading-tight text-ink text-balance">
+                Você ainda entrega sua consultoria em planilhas e documentos soltos?
+              </h2>
+              <p className="mt-5 text-ink/70 leading-relaxed">
+                Horas montando relatórios no Word, mapas desenhados à mão, anotações espalhadas. O FengShui Studio transforma esse processo: você faz o diagnóstico guiado na plataforma e entrega um relatório impecável, com a sua marca, no mesmo dia.
+              </p>
+              <ul className="mt-7 space-y-3">
                 {[
-                  { num: '500+', label: 'Consultores ativos' },
-                  { num: '2.000+', label: 'Consultas realizadas' },
-                  { num: '4.8★', label: 'Avaliação média' },
-                ].map((stat, i) => (
-                  <div key={i}>
-                    <p style={{ color: '#C9A84C', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>{stat.num}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0, fontWeight: 500 }}>{stat.label}</p>
-                  </div>
+                  'Diagnóstico guiado dos 9 setores com 8 critérios cada',
+                  'Recomendações organizadas por prioridade: urgente, melhoria e manutenção',
+                  'Relatório PDF profissional gerado em um clique',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-3 text-ink/80">
+                    <span className="mt-1.5 h-2 w-2 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                    {t}
+                  </li>
                 ))}
+              </ul>
+            </FadeUp>
+            <FadeUp delay={120}>
+              <div className="relative flex justify-center">
+                <img
+                  src={ASSETS.relatorioPdf || '/placeholder.svg'}
+                  alt="Capa do relatório de consultoria Feng Shui em PDF com a marca do consultor"
+                  className="rounded-2xl shadow-xl max-h-[520px] w-auto"
+                  loading="lazy"
+                />
               </div>
-            </div>
+            </FadeUp>
+          </div>
+        </section>
 
-            {/* Hero visual - Bagua & I Ching */}
-            <div className="hide-mobile" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '500px' }}>
-              <div className="fade-up fade-up-d3" style={{
-                background: 'linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,58,95,0.8))',
-                borderRadius: '24px', padding: '40px',
-                boxShadow: '0 40px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-                border: '1px solid rgba(201,168,76,0.25)',
-                animation: 'float 6s ease-in-out infinite', position: 'relative',
-              }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '320px' }}>
-                  {[
-                    { nome: 'Prosperidade', cor: '#A78BFA', elemento: 'Madeira', trigram: '☴' },
-                    { nome: 'Fama', cor: '#FF6B6B', elemento: 'Fogo', trigram: '☲' },
-                    { nome: 'Amor', cor: '#F9A8D4', elemento: 'Terra', trigram: '☷' },
-                    { nome: 'Família', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
-                    { nome: 'Centro', cor: '#FBBF24', elemento: 'Terra', trigram: '☯' },
-                    { nome: 'Filhos', cor: '#F59E0B', elemento: 'Metal', trigram: '☱' },
-                    { nome: 'Saber', cor: '#60A5FA', elemento: 'Terra', trigram: '☶' },
-                    { nome: 'Carreira', cor: '#38BDF8', elemento: 'Água', trigram: '☵' },
-                    { nome: 'Amigos', cor: '#CBD5E1', elemento: 'Metal', trigram: '☰' },
-                  ].map((setor, i) => (
-                    <div key={i} style={{
-                      background: `${setor.cor}15`, border: `2px solid ${setor.cor}60`,
-                      borderRadius: '14px', padding: '14px 10px', textAlign: 'center',
-                    }}>
-                      <div style={{ fontSize: '24px', marginBottom: '4px', lineHeight: 1 }}>{setor.trigram}</div>
-                      <p style={{ color: setor.cor, fontSize: '12px', fontWeight: 800, margin: '0 0 2px 0', fontFamily: "'Outfit', sans-serif" }}>{setor.nome}</p>
-                      <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', margin: 0 }}>{setor.elemento}</p>
+        {/* 4. BENTO RECURSOS */}
+        <section className="bg-sand py-20 md:py-28">
+          <div className="container">
+            <FadeUp className="grid md:grid-cols-[1fr_auto] items-end gap-6 mb-14">
+              <div>
+                <p className="eyebrow mb-4">Recursos</p>
+                <h2 className="font-display text-3xl md:text-4xl text-ink leading-tight max-w-xl text-balance">
+                  Tudo o que sua consultoria precisa, em um só lugar
+                </h2>
+              </div>
+              <Link href="/recursos" className="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold text-jade hover:underline pb-1">
+                Ver todos os recursos <ArrowRight className="h-4 w-4" />
+              </Link>
+            </FadeUp>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {bento.map((b, i) => (
+                <FadeUp key={b.title} delay={i * 60} className={b.big ? 'lg:col-span-2' : ''}>
+                  <Link
+                    href={b.href}
+                    className="group block h-full bg-paper rounded-2xl border border-border/70 p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-jade/10 text-jade">
+                        <b.icon className="h-5 w-5" strokeWidth={1.5} />
+                      </span>
+                      <h3 className="font-display text-lg text-ink">{b.title}</h3>
                     </div>
-                  ))}
-                </div>
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                  <p style={{ color: '#C9A84C', fontSize: '14px', fontWeight: 700, fontFamily: "'Playfair Display', serif", margin: 0, letterSpacing: '0.1em' }}>✦ MAPA BA GUA ✦</p>
-                </div>
-              </div>
-
-              <div className="fade-up fade-up-d5" style={{
-                position: 'absolute', bottom: '10px', left: '-10px', background: '#ffffff', borderRadius: '16px',
-                padding: '18px 22px', boxShadow: '0 16px 48px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '14px',
-                animation: 'float 5s ease-in-out infinite', animationDelay: '1s',
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '40px' }}>
-                  <div style={{ height: '5px', background: '#1E3A5F', borderRadius: '2px' }} />
-                  <div style={{ height: '5px', background: '#1E3A5F', borderRadius: '2px' }} />
-                  <div style={{ height: '5px', background: '#1E3A5F', borderRadius: '2px' }} />
-                  <div style={{ display: 'flex', gap: '8px' }}><div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} /><div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} /></div>
-                  <div style={{ display: 'flex', gap: '8px' }}><div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} /><div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} /></div>
-                  <div style={{ display: 'flex', gap: '8px' }}><div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} /><div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} /></div>
-                </div>
-                <div>
-                  <p style={{ color: '#1E3A5F', fontWeight: 700, fontSize: '16px', margin: 0, fontFamily: "'Playfair Display', serif" }}>泰 Tai</p>
-                  <p style={{ color: '#7C3AED', fontSize: '13px', margin: '2px 0 0 0', fontWeight: 600 }}>Paz &amp; Harmonia</p>
-                  <p style={{ color: '#94a3b8', fontSize: '11px', margin: '2px 0 0 0' }}>I Ching • Hex. 11</p>
-                </div>
-              </div>
-
-              <div className="fade-up fade-up-d6" style={{
-                position: 'absolute', top: '15px', right: '0px', background: '#ffffff', borderRadius: '50%',
-                width: '80px', height: '80px', boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
-                animation: 'float 7s ease-in-out infinite', animationDelay: '2s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span style={{ fontSize: '48px', lineHeight: 1 }}>☯</span>
-              </div>
-
-              <div className="fade-up fade-up-d4" style={{
-                position: 'absolute', top: '100px', right: '-25px', background: '#ffffff', borderRadius: '14px',
-                padding: '12px 16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-                animation: 'float 6s ease-in-out infinite', animationDelay: '3s',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '18px' }}>🔥</span><span style={{ fontSize: '18px' }}>💧</span><span style={{ fontSize: '18px' }}>🌿</span><span style={{ fontSize: '18px' }}>⛰️</span><span style={{ fontSize: '18px' }}>🪙</span>
-                </div>
-                <p style={{ color: '#1E3A5F', fontSize: '10px', margin: '4px 0 0 0', textAlign: 'center', fontWeight: 700 }}>5 Elementos</p>
-              </div>
+                    <p className="text-sm text-ink/65 leading-relaxed mb-4">{b.desc}</p>
+                    <div className={`overflow-hidden rounded-xl border border-border/60 bg-sand ${b.big ? 'aspect-[2/1]' : 'aspect-[3/2]'}`}>
+                      <img
+                        src={b.img || '/placeholder.svg'}
+                        alt=""
+                        className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+                    <p className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-jade">
+                      Explorar <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                    </p>
+                  </Link>
+                </FadeUp>
+              ))}
             </div>
           </div>
-        </div>
+        </section>
 
-        <div style={{ position: 'absolute', bottom: -2, left: 0, right: 0 }}>
-          <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', width: '100%' }}>
-            <path d="M0 50C360 90 720 10 1440 50V100H0V50Z" fill="#FAFAF9" />
-          </svg>
-        </div>
-      </section>
-
-      {/* RECURSOS */}
-      <section id="recursos" style={{ background: '#FAFAF9', padding: '100px 32px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>RECURSOS</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#0f172a', fontWeight: 700, marginBottom: '16px' }}>Tudo que você precisa em um só lugar</h2>
-            <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '560px', margin: '0 auto', lineHeight: 1.7 }}>Ferramentas projetadas especificamente para consultores de Feng Shui que querem profissionalizar seu trabalho.</p>
-          </div>
-          <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-            {[
-              { icon: '🧭', title: 'Análise Ba Guá Interativa', desc: 'Faça upload da planta do imóvel e avalie os 9 setores do Ba Guá com critérios padronizados e scores automáticos.', color: '#7C3AED' },
-              { icon: '◎', title: 'Roda da Vida Completa', desc: 'Questionário com 12 áreas da vida e 60 perguntas. Gráfico radar, médias por categoria e plano de ação integrado.', color: '#BE185D' },
-              { icon: '📊', title: 'Relatórios PDF Personalizados', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
-              { icon: '👥', title: 'Gestão de Clientes e Consultas', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
-              { icon: '📅', title: 'Calendário Lunar com Rituais', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações, rituais e datas auspiciosas.', color: '#D97706' },
-              { icon: '✨', title: 'Curas e Ativações por Setor', desc: 'Cristais, plantas, objetos, mudras, meditações e mantras para cada setor do Ba Guá.', color: '#C9A84C' },
-              { icon: '📱', title: 'PWA — Funciona como App', desc: 'Instale no celular como um app nativo. Funciona em qualquer dispositivo com interface responsiva.', color: '#0891B2' },
-              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#DC2626' },
-            ].map((feat, i) => (
-              <div key={i} className="feature-card" style={{ background: '#ffffff', borderRadius: '20px', padding: '32px', border: '1px solid #f1f5f9' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: `${feat.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', marginBottom: '20px' }}>{feat.icon}</div>
-                <h3 style={{ color: '#0f172a', fontSize: '18px', fontWeight: 700, marginBottom: '10px' }}>{feat.title}</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: 1.7, margin: 0 }}>{feat.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* COMO FUNCIONA */}
-      <section id="como-funciona" style={{ background: '#ffffff', padding: '100px 32px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span style={{ color: '#C9A84C', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>COMO FUNCIONA</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#0f172a', fontWeight: 700, marginBottom: '16px' }}>Simples como deve ser</h2>
-            <p style={{ color: '#64748b', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Em apenas 3 passos você transforma seu atendimento.</p>
-          </div>
-          <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '48px', position: 'relative' }}>
-            <div className="hide-mobile" style={{ position: 'absolute', top: '60px', left: '16%', right: '16%', height: '2px', background: 'linear-gradient(90deg, #7C3AED, #C9A84C, #15803D)', opacity: 0.3 }} />
-            {[
-              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imóveis a serem analisados.', color: '#7C3AED' },
-              { step: '02', title: 'Realize o diagnóstico', desc: 'Avalie cada setor do Ba Guá com os critérios integrados e gere scores automáticos.', color: '#C9A84C' },
-              { step: '03', title: 'Entregue o relatório', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
-            ].map((item, i) => (
-              <div key={i} style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: `linear-gradient(135deg, ${item.color}15, ${item.color}08)`, border: `3px solid ${item.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                  <span style={{ color: item.color, fontSize: '24px', fontWeight: 800 }}>{item.step}</span>
-                </div>
-                <h3 style={{ color: '#0f172a', fontSize: '18px', fontWeight: 700, marginBottom: '10px' }}>{item.title}</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: 1.7, margin: 0 }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* PRECOS */}
-      <section id="precos" style={{ background: 'linear-gradient(165deg, #0f172a, #1E3A5F)', padding: '100px 32px', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '10%', right: '5%', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)' }} />
-        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span style={{ color: '#C4B5FD', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>PREÇOS</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Escolha o plano ideal para você</h2>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '17px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.7 }}>Comece gratuitamente e faça upgrade quando quiser.</p>
-          </div>
-          <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-            <div className="pricing-card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '40px 32px' }}>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>FREE</p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$0</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>Até 3 imóveis</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
-                {['Até 3 imóveis cadastrados', '1 análise Ba Guá por imóvel', 'Roda da Vida completa', 'Curas e ativações'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✓</div>
-                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '15px' }}>{item}</span>
-                  </div>
-                ))}
-                {['Relatório PDF', 'Calendário lunar', 'Cadastro de clientes'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✕</div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', textDecoration: 'line-through' }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => window.location.href = '/login'} style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Começar grátis</button>
-            </div>
-            <div className="pricing-card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '24px', padding: '40px 32px' }}>
-              <p style={{ color: '#93C5FD', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>SIMPLES</p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$20</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>1 imóvel ativo, uso pessoal</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
-                {['1 imóvel ativo', 'Análise Ba Guá completa', 'Relatório PDF com marca d\'água', 'Calendário lunar', 'Roda da Vida completa', 'Rede de parceiros'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0, color: '#93C5FD' }}>✓</div>
-                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '15px' }}>{item}</span>
-                  </div>
-                ))}
-                {['Cadastro de clientes', 'Relatório sem marca d\'água'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.35 }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>✕</div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', textDecoration: 'line-through' }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => window.location.href = '/login'} style={{ width: '100%', padding: '14px', background: 'rgba(59,130,246,0.2)', color: '#93C5FD', border: '1px solid rgba(59,130,246,0.4)', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Assinar Simples</button>
-            </div>
-            <div className="pricing-card" style={{ background: 'linear-gradient(145deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05))', border: '2px solid rgba(124,58,237,0.4)', borderRadius: '24px', padding: '40px 32px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: '16px', right: '16px', background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', borderRadius: '100px', padding: '6px 16px' }}>
-                <span style={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}>POPULAR</span>
-              </div>
-              <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, margin: '0 0 8px 0' }}>PROFISSIONAL</p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$49</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>Ilimitado, relatório limpo</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
-                {['Imóveis ilimitados', 'Clientes ilimitados', 'Relatório PDF sem marca d\'água', 'Análise Ba Guá completa', 'Calendário lunar com rituais', 'Curas e ativações por setor', 'Suporte prioritário'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#fff', flexShrink: 0 }}>✓</div>
-                    <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '15px' }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => window.location.href = '/login'} className="btn-primary" style={{ width: '100%' }}>Assinar Profissional</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* DEPOIMENTOS */}
-      <section id="depoimentos" style={{ background: '#FAFAF9', padding: '100px 32px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>DEPOIMENTOS</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 42px)', color: '#0f172a', fontWeight: 700, marginBottom: '16px' }}>O que dizem nossos consultores</h2>
-          </div>
-          <div className="testimonials-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-            {[
-              { name: 'Marina Silva', city: 'São Paulo, SP', text: 'Antes eu fazia tudo em planilhas. Com o FengShui Studio, meus relatórios ficaram muito mais profissionais. Meus clientes adoram!', avatar: 'M' },
-              { name: 'Ricardo Tanaka', city: 'Curitiba, PR', text: 'O diagnóstico por setor com scores automáticos economiza horas do meu trabalho. Recomendo para todos os consultores de Feng Shui.', avatar: 'R' },
-              { name: 'Ana Beatriz Costa', city: 'Rio de Janeiro, RJ', text: 'A plataforma é intuitiva e o calendário lunar integrado é um diferencial incrível. Vale cada centavo do plano Pro.', avatar: 'A' },
-            ].map((t, i) => (
-              <div key={i} className="testimonial-card" style={{ background: '#ffffff', borderRadius: '20px', padding: '32px', border: '1px solid #f1f5f9' }}>
-                <div style={{ display: 'flex', marginBottom: '16px' }}>{[1,2,3,4,5].map(s => (<span key={s} style={{ color: '#C9A84C', fontSize: '18px' }}>★</span>))}</div>
-                <p style={{ color: '#334155', fontSize: '15px', lineHeight: 1.8, fontStyle: 'italic', margin: '0 0 24px 0' }}>&quot;{t.text}&quot;</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '18px' }}>{t.avatar}</div>
-                  <div>
-                    <p style={{ color: '#0f172a', fontWeight: 700, fontSize: '15px', margin: 0 }}>{t.name}</p>
-                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>{t.city}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section style={{ background: '#ffffff', padding: '100px 32px' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <span style={{ color: '#C9A84C', fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', display: 'block', marginBottom: '12px' }}>FAQ</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 36px)', color: '#0f172a', fontWeight: 700 }}>Perguntas frequentes</h2>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {faqs.map((faq, i) => (
-              <div key={i} style={{ border: '1px solid #f1f5f9', borderRadius: '16px', overflow: 'hidden', background: activeFaq === i ? '#FAFAF9' : '#ffffff', transition: 'all 0.3s ease' }}>
-                <button onClick={() => setActiveFaq(activeFaq === i ? null : i)} style={{ width: '100%', padding: '20px 24px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
-                  <span style={{ color: '#0f172a', fontSize: '16px', fontWeight: 600, textAlign: 'left' }}>{faq.q}</span>
-                  <span style={{ color: '#7C3AED', fontSize: '20px', fontWeight: 300, transform: activeFaq === i ? 'rotate(45deg)' : 'none', transition: 'transform 0.3s ease' }}>+</span>
-                </button>
-                <div style={{ maxHeight: activeFaq === i ? '200px' : '0', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
-                  <p style={{ padding: '0 24px 20px', color: '#64748b', fontSize: '15px', lineHeight: 1.7, margin: 0 }}>{faq.a}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', padding: '80px 32px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
-        <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(28px, 4vw, 40px)', color: '#ffffff', fontWeight: 700, marginBottom: '16px' }}>Pronto para transformar suas consultas?</h2>
-          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>Junte-se a centenas de consultores que já usam o FengShui Studio para elevar a qualidade do seu trabalho.</p>
-          <button onClick={() => window.location.href = '/login'} style={{ background: '#ffffff', color: '#7C3AED', border: 'none', padding: '16px 48px', borderRadius: '12px', fontSize: '17px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Criar minha conta grátis</button>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '16px' }}>Sem cartão de crédito. Cancele quando quiser.</p>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer style={{ background: '#0f172a', padding: '64px 32px 32px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '48px', marginBottom: '48px' }}>
+        {/* 5. COMO FUNCIONA */}
+        <section className="py-20 md:py-28 overflow-hidden">
+          <div className="container grid lg:grid-cols-[0.9fr_1.1fr] gap-14 items-center">
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <span style={{ fontSize: '24px' }}>☯</span>
-                <span style={{ fontFamily: "'Playfair Display', serif", color: '#C9A84C', fontSize: '20px', fontWeight: 700 }}>FengShui Studio</span>
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', lineHeight: 1.7, maxWidth: '300px' }}>A plataforma completa para consultores de Feng Shui que querem profissionalizar seu trabalho.</p>
-            </div>
-            <div>
-              <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px' }}>PRODUTO</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Recursos', 'Preços', 'Depoimentos'].map((item, i) => (
-                  <a key={i} href={`#${item.toLowerCase()}`} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', textDecoration: 'none' }}>{item}</a>
+              <FadeUp>
+                <p className="eyebrow mb-4">Como funciona</p>
+                <h2 className="font-display text-3xl md:text-4xl text-ink leading-tight">
+                  Três passos, um fluxo <span className="brush-underline">contínuo</span>
+                </h2>
+              </FadeUp>
+              <div className="mt-10 relative">
+                <span className="absolute left-[27px] top-3 bottom-3 w-px bg-gradient-to-b from-gold/70 via-jade/40 to-transparent" aria-hidden="true" />
+                {[
+                  { icon: Upload, t: 'Cadastre o imóvel', d: 'Envie a planta baixa (ou use o modo sem planta), oriente com a bússola e defina o centro Tai Ji.' },
+                  { icon: ClipboardCheck, t: 'Diagnostique os 9 setores', d: 'Avalie cada guá com 8 critérios objetivos e receba scores e recomendações automáticas.' },
+                  { icon: Send, t: 'Entregue com a sua marca', d: 'Gere o relatório PDF personalizado e acompanhe o cliente pelo CRM integrado.' },
+                ].map((s, i) => (
+                  <FadeUp key={s.t} delay={i * 100} className="relative pl-20 pb-10 last:pb-0">
+                    <span className="absolute left-0 top-0 inline-flex h-[54px] w-[54px] items-center justify-center rounded-2xl bg-ink text-gold shadow-md">
+                      <s.icon className="h-6 w-6" strokeWidth={1.5} />
+                    </span>
+                    <p className="font-display text-gold/90 text-sm mb-0.5">Passo {i + 1}</p>
+                    <h3 className="font-display text-xl text-ink mb-1.5">{s.t}</h3>
+                    <p className="text-sm text-ink/65 leading-relaxed max-w-md">{s.d}</p>
+                  </FadeUp>
                 ))}
               </div>
             </div>
-            <div>
-              <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px' }}>EMPRESA</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Sobre', 'Blog', 'Contato'].map((item, i) => (
-                  <span key={i} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', cursor: 'pointer' }}>{item}</span>
-                ))}
+            <FadeUp delay={120}>
+              <div className="relative">
+                <img
+                  src={ASSETS.fluxoChi || '/placeholder.svg'}
+                  alt="Análise do Fluxo do Chi sobre a planta, com score de fluidez e checklist"
+                  className="rounded-2xl shadow-2xl border border-border/70 w-full"
+                  loading="lazy"
+                />
+                <img
+                  src={ASSETS.relatorioPdf || '/placeholder.svg'}
+                  alt=""
+                  className="hidden md:block absolute -bottom-10 -left-8 w-36 rounded-xl shadow-xl border border-border/70 rotate-[-4deg]"
+                  loading="lazy"
+                />
               </div>
-            </div>
-            <div>
-              <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, marginBottom: '16px' }}>LEGAL</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {['Termos de uso', 'Privacidade'].map((item, i) => (
-                  <span key={i} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', cursor: 'pointer' }}>{item}</span>
-                ))}
-              </div>
-            </div>
+            </FadeUp>
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px', textAlign: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>© {new Date().getFullYear()} FengShui Studio. Todos os direitos reservados.</p>
+        </section>
+
+        {/* 6. ROI */}
+        <ChiDivider color="var(--ink-900)" />
+        <section className="bg-ink bagua-grid-bg text-paper py-16 md:py-20 -mt-px">
+          <div className="container grid md:grid-cols-[1fr_auto] gap-10 items-center">
+            <FadeUp>
+              <p className="eyebrow mb-4">O investimento que se paga</p>
+              <h2 className="font-display text-2xl md:text-4xl leading-tight text-paper max-w-2xl text-balance">
+                Uma consultoria média custa R$ 700. O plano Profissional custa R$ 49/mês.
+              </h2>
+              <p className="mt-4 text-paper/70 max-w-xl">
+                Uma única consulta paga mais de um ano de plataforma — sem contar as horas que você economiza em cada relatório.
+              </p>
+            </FadeUp>
+            <FadeUp delay={120}>
+              <div className="text-center bg-paper/5 border border-gold/30 rounded-2xl px-10 py-8">
+                <p className="font-display text-6xl text-gold">14×</p>
+                <p className="text-sm text-paper/70 mt-2 max-w-[180px]">o valor da mensalidade,<br />em uma única consulta</p>
+              </div>
+            </FadeUp>
           </div>
-        </div>
-      </footer>
+        </section>
+
+        {/* 7. SEGUNDA JORNADA — MINHA CASA */}
+        <section className="py-20 md:py-28 overflow-hidden">
+          <div className="container grid md:grid-cols-2 gap-12 items-center">
+            <FadeUp className="order-2 md:order-1">
+              <div className="relative">
+                <img
+                  src={ASSETS.salaHarmonizada || '/placeholder.svg'}
+                  alt="Sala de estar clara e harmonizada com plantas e luz natural"
+                  className="rounded-2xl shadow-xl w-full"
+                  loading="lazy"
+                />
+                <div className="absolute -bottom-5 -right-4 md:-right-8 bg-paper rounded-xl shadow-lg border border-border px-5 py-4">
+                  <p className="text-xs text-ink/60">Sua casa</p>
+                  <p className="font-display text-2xl text-jade">72% em harmonia</p>
+                </div>
+              </div>
+            </FadeUp>
+            <FadeUp delay={120} className="order-1 md:order-2">
+              <p className="eyebrow mb-4">Para você e sua casa</p>
+              <h2 className="font-display text-3xl md:text-4xl text-ink leading-tight">
+                Sua casa também fala. <span className="brush-underline">Aprenda a ouvi-la.</span>
+              </h2>
+              <p className="mt-5 text-ink/70 leading-relaxed max-w-lg">
+                Você não precisa ser especialista: o modo Minha Casa guia você pelos 9 setores do seu lar com linguagem simples, mostra onde a energia pede atenção e sugere curas práticas — plantas, cores, cristais e pequenos ajustes.
+              </p>
+              <Link
+                href="/minha-casa"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl border-2 border-jade text-jade font-semibold px-6 py-3.5 hover:bg-jade hover:text-paper active:scale-[0.97] transition-all duration-200"
+              >
+                Conhecer o modo Minha Casa <ArrowRight className="h-4 w-4" />
+              </Link>
+            </FadeUp>
+          </div>
+        </section>
+
+        {/* 8. FAQ */}
+        <section className="bg-sand py-20 md:py-28">
+          <div className="container max-w-3xl">
+            <FadeUp className="text-center mb-12">
+              <p className="eyebrow mb-4">Perguntas frequentes</p>
+              <h2 className="font-display text-3xl md:text-4xl text-ink">Antes de começar</h2>
+            </FadeUp>
+            <FadeUp delay={100}>
+              <FaqAccordion items={faq} />
+            </FadeUp>
+          </div>
+        </section>
+
+        {/* 9. CTA FINAL */}
+        <CtaBand
+          title="Sua próxima consultoria pode nascer aqui"
+          subtitle="Crie sua conta gratuita, cadastre um imóvel e gere seu primeiro diagnóstico Ba Guá ainda hoje."
+        />
+      </main>
+      <Footer />
     </div>
   )
 }
