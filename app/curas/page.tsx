@@ -7,6 +7,7 @@ import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import type { SetorBagua } from '../../src/lib/types'
 import { ELEMENTOS } from '../../src/lib/curas'
+import { BookOpen, Gem, Leaf, Amphora, MapPin, Flower2, AudioLines } from 'lucide-react'
 
 interface CuraCustomRef {
   id: string
@@ -422,8 +423,8 @@ function CurasPageContent() {
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 8px 0' }}>
           Cristais, plantas, objetos, mudras, meditações e mantras organizados por elemento e Guá do Ba Guá
         </p>
-        <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' }}>
-          📚 Entenda mais sobre Curas e Ativações
+        <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <BookOpen size={14} strokeWidth={1.75} aria-hidden="true" /> Entenda mais sobre Curas e Ativações
         </a>
       </div>
 
@@ -579,7 +580,7 @@ function CurasPageContent() {
               {(filtroTipo === 'todos' || filtroTipo === 'cristais') && (
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>💎</span> Cristais
+                  <Gem size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Cristais
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {el.cristais.map(c => (
@@ -606,7 +607,7 @@ function CurasPageContent() {
               {(filtroTipo === 'todos' || filtroTipo === 'plantas') && (
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🌿</span> Plantas
+                  <Leaf size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Plantas
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
                   {el.plantas.map(p => (
@@ -616,7 +617,7 @@ function CurasPageContent() {
                         <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>{p.nome}</span>
                       </div>
                       <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px 0' }}>{p.dica}</p>
-                      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>📍 {p.posicao}</p>
+                      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={11} strokeWidth={1.75} aria-hidden="true" /> {p.posicao}</p>
                     </div>
                   ))}
                 </div>
@@ -628,7 +629,7 @@ function CurasPageContent() {
               {(filtroTipo === 'todos' || filtroTipo === 'objetos') && (
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🏺</span> Objetos & Curas
+                  <Amphora size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Objetos & Curas
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {el.objetos.map(o => (
@@ -638,7 +639,7 @@ function CurasPageContent() {
                       <span style={{ fontSize: '22px' }}>{o.icon}</span>
                       <div>
                         <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 2px 0' }}>{o.nome}</p>
-                        <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>📍 {o.posicao}</p>
+                        <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={11} strokeWidth={1.75} aria-hidden="true" /> {o.posicao}</p>
                       </div>
                     </div>
                   ))}
@@ -678,7 +679,7 @@ function CurasPageContent() {
                   border: '1px solid #BBF7D0',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '24px' }}>🧘</span>
+                    <Flower2 size={22} strokeWidth={1.75} color="#15803D" aria-hidden="true" />
                     <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#15803D', margin: 0 }}>
                       {el.meditacao.nome}
                     </h4>
@@ -701,7 +702,7 @@ function CurasPageContent() {
               {(filtroTipo === 'todos' || filtroTipo === 'mantras') && (
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🕉️</span> Mantras
+                  <AudioLines size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Mantras
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {el.mantras.map((m, i) => (

@@ -7,6 +7,7 @@ import AppShell from '../components/AppShell'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo } from '../../src/lib/plano-utils'
+import { Check, X, KeyRound } from 'lucide-react'
 
 const PLANOS = [
   {
@@ -208,7 +209,7 @@ export default function Planos() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
           <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando...</p>
         </div>
       </div>
