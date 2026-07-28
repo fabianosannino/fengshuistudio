@@ -92,7 +92,7 @@ export default function QuestionarioFacing({ onAceitar }: QuestionarioFacingProp
                 type="checkbox" checked={face.criterios.includes(criterio)}
                 onChange={() => alternarCriterio(i, criterio)}
                 data-testid={`criterio-${i}-${criterio}`}
-                style={{ marginTop: '2px', accentColor: '#7C3AED' }}
+                style={{ marginTop: '2px', accentColor: '#2E7D6B' }}
               />
               <span>
                 <strong>{CRITERIOS_FACING[criterio].rotulo}</strong>
@@ -144,12 +144,12 @@ export default function QuestionarioFacing({ onAceitar }: QuestionarioFacingProp
 
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '5px' }}>
               <button type="button" onClick={() => onAceitar(resultado.facingGraus!)} data-testid="usar-hipotese-1"
-                style={{ padding: '4px 10px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
+                style={{ padding: '4px 10px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Usar {resultado.ambiguo ? 'hipótese 1' : 'este facing'}
               </button>
               {resultado.concorrente && (
                 <button type="button" onClick={() => onAceitar(normalizarGraus(resultado.concorrente!.face.graus))} data-testid="usar-hipotese-2"
-                  style={{ padding: '4px 10px', background: '#fff', color: '#7C3AED', border: '1px solid #7C3AED', borderRadius: '5px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ padding: '4px 10px', background: '#fff', color: '#2E7D6B', border: '1px solid #2E7D6B', borderRadius: '5px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Usar hipótese 2
                 </button>
               )}

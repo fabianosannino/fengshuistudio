@@ -14,7 +14,7 @@ const STATUS_LABELS: Record<string, { icon: string; label: string; bg: string; c
   sem_analise: { icon: '☯', label: 'Sem análise', bg: '#F3F4F6', color: '#6B7280' },
   em_andamento: { icon: '🔄', label: 'Em andamento', bg: '#FFF7ED', color: '#D97706' },
   finalizada: { icon: '✅', label: 'Concluída', bg: '#F0FDF4', color: '#15803D' },
-  arquivada: { icon: '📦', label: 'Arquivada', bg: '#F5F3FF', color: '#7C3AED' },
+  arquivada: { icon: '📦', label: 'Arquivada', bg: '#EEF6F3', color: '#2E7D6B' },
 }
 
 export default function ClienteDetalhe() {
@@ -328,14 +328,14 @@ export default function ClienteDetalhe() {
         {!editing && (
           <div style={{
             background: '#ffffff', borderRadius: '12px', padding: '28px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7C3AED',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #2E7D6B',
             marginBottom: '32px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{
                   width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
-                  background: '#7C3AED', display: 'flex', alignItems: 'center',
+                  background: '#2E7D6B', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px',
                   flexShrink: 0, position: 'relative' as const,
                 }}>
@@ -346,7 +346,7 @@ export default function ClienteDetalhe() {
                   )}
                 </div>
                 <div>
-                  <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{cliente.nome_completo}</h1>
+                  <h1 style={{ color: '#0E1B2C', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{cliente.nome_completo}</h1>
                   <span style={{
                     background: '#F0FDF4', color: '#15803D', padding: '2px 10px',
                     borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
@@ -376,8 +376,8 @@ export default function ClienteDetalhe() {
                 const mg = calcularMingGua(cliente.data_nascimento, cliente.genero)
                 if (!mg) return null
                 return (
-                  <div style={{ gridColumn: '1 / -1', background: '#F5F0FF', border: '1px solid #DDD6FE', borderRadius: '8px', padding: '10px 14px' }}>
-                    <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>☯ Ming Gua {mg.kua} · Grupo {mg.grupo === 'leste' ? 'Leste' : 'Oeste'}</span>
+                  <div style={{ gridColumn: '1 / -1', background: '#EAF4F1', border: '1px solid #CFE6E0', borderRadius: '8px', padding: '10px 14px' }}>
+                    <span style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold' }}>☯ Ming Gua {mg.kua} · Grupo {mg.grupo === 'leste' ? 'Leste' : 'Oeste'}</span>
                     <p style={{ color: '#374151', fontSize: '13px', margin: '4px 0 0 0' }}>
                       Direções favoráveis — Prosperidade: <strong>{mg.direcoes.shengChi}</strong> · Saúde: <strong>{mg.direcoes.tienYi}</strong> · Relacionamentos: <strong>{mg.direcoes.yenNien}</strong> · Estabilidade: <strong>{mg.direcoes.fuWei}</strong>
                     </p>
@@ -406,7 +406,7 @@ export default function ClienteDetalhe() {
 
             <div style={{ marginTop: '20px' }}>
               <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
-                padding: '10px 24px', background: '#7C3AED', color: '#fff',
+                padding: '10px 24px', background: '#2E7D6B', color: '#fff',
                 border: 'none', borderRadius: '8px', fontSize: '14px',
                 fontWeight: 'bold', cursor: 'pointer'
               }}>+ Nova consulta</button>
@@ -417,10 +417,10 @@ export default function ClienteDetalhe() {
         {editing && (
           <div style={{
             background: '#ffffff', borderRadius: '12px', padding: '28px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderTop: '3px solid #7C3AED',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderTop: '3px solid #2E7D6B',
             marginBottom: '32px'
           }}>
-            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginTop: '0', marginBottom: '24px' }}>Editar Cliente</h2>
+            <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginTop: '0', marginBottom: '24px' }}>Editar Cliente</h2>
             <form onSubmit={handleSave}>
               {/* Foto de perfil */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
@@ -490,7 +490,7 @@ export default function ClienteDetalhe() {
 
               {/* Endereço */}
               <div style={{ marginBottom: '16px' }}>
-                <h3 style={{ color: '#1E3A5F', fontSize: '15px', fontWeight: 'bold', margin: '8px 0 12px 0' }}>Endereço</h3>
+                <h3 style={{ color: '#0E1B2C', fontSize: '15px', fontWeight: 'bold', margin: '8px 0 12px 0' }}>Endereço</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '12px' }}>
                   <div>
                     <label htmlFor="input-cep" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>CEP</label>
@@ -574,7 +574,7 @@ export default function ClienteDetalhe() {
                   border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
                 }}>Cancelar</button>
                 <button type="submit" disabled={saving} style={{
-                  padding: '10px 32px', background: saving ? '#9CA3AF' : '#7C3AED',
+                  padding: '10px 32px', background: saving ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '14px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
                 }}>{saving ? 'Salvando...' : 'Salvar alterações'}</button>
@@ -584,11 +584,11 @@ export default function ClienteDetalhe() {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
             Consultas ({consultasVisiveis.length})
           </h2>
           <button onClick={() => window.location.href = `/consultas/nova?clienteId=${cliente.id}`} style={{
-            padding: '8px 20px', background: '#7C3AED', color: '#fff',
+            padding: '8px 20px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '13px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>+ Nova Consulta</button>

@@ -89,8 +89,8 @@ function ComodoAutocomplete({ selected, onChange }: { selected: string[]; onChan
           {input.trim() && !COMODO_SUGGESTIONS.includes(input.trim()) && (
             <button onClick={addCustom} style={{
               display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
-              border: 'none', borderTop: '1px solid #E5E7EB', background: '#F5F0FF',
-              cursor: 'pointer', fontSize: '13px', color: '#7C3AED', fontWeight: 'bold'
+              border: 'none', borderTop: '1px solid #E5E7EB', background: '#EAF4F1',
+              cursor: 'pointer', fontSize: '13px', color: '#2E7D6B', fontWeight: 'bold'
             }}>
               + Adicionar &quot;{input.trim()}&quot;
             </button>
@@ -193,7 +193,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} style={{
-        width: '100%', padding: '10px', background: '#7C3AED', color: '#fff',
+        width: '100%', padding: '10px', background: '#2E7D6B', color: '#fff',
         border: 'none', borderRadius: '8px', cursor: 'pointer',
         fontSize: '13px', fontWeight: 'bold'
       }}>+ Adicionar recomendação</button>
@@ -201,7 +201,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
   }
 
   return (
-    <div style={{ background: '#ffffff', borderRadius: '8px', padding: '14px', border: '1px solid #E9D5FF' }}>
+    <div style={{ background: '#ffffff', borderRadius: '8px', padding: '14px', border: '1px solid #DCEFE9' }}>
       {/* Tipo */}
       <div style={{ marginBottom: '10px' }}>
         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Classificação</label>
@@ -241,9 +241,9 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
           {PRODUTO_CATEGORIAS.map(cat => (
             <button key={cat.value} onClick={() => toggleProduto(cat.value)} style={{
               padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold',
-              border: produtos.includes(cat.value) ? '2px solid #7C3AED' : '1px solid #D1D5DB',
-              background: produtos.includes(cat.value) ? '#EDE9FE' : '#fff',
-              color: produtos.includes(cat.value) ? '#7C3AED' : '#6B7280',
+              border: produtos.includes(cat.value) ? '2px solid #2E7D6B' : '1px solid #D1D5DB',
+              background: produtos.includes(cat.value) ? '#E6F2EF' : '#fff',
+              color: produtos.includes(cat.value) ? '#2E7D6B' : '#6B7280',
               cursor: 'pointer'
             }}>{cat.label}</button>
           ))}
@@ -253,7 +253,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
       {/* Ações */}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={handleAdd} disabled={!texto.trim()} style={{
-          flex: 1, padding: '10px', background: texto.trim() ? '#7C3AED' : '#D1D5DB',
+          flex: 1, padding: '10px', background: texto.trim() ? '#2E7D6B' : '#D1D5DB',
           color: '#fff', border: 'none', borderRadius: '8px', cursor: texto.trim() ? 'pointer' : 'not-allowed',
           fontSize: '13px', fontWeight: 'bold'
         }}>Adicionar</button>
@@ -553,10 +553,10 @@ export default function ConsultaDetalhe() {
 
   if (loading || !consulta) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando consulta...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando consulta...</p>
         </div>
       </div>
     )
@@ -586,7 +586,7 @@ export default function ConsultaDetalhe() {
             }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                  <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                  <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
                     Recomendações — {recSetorData.nome}
                   </h2>
                   <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
@@ -651,12 +651,12 @@ export default function ConsultaDetalhe() {
                 if (cRecs.length === 0) return null
                 return (
                   <div style={{ marginTop: '16px' }}>
-                    <div style={{ display: 'inline-block', background: '#7C3AED', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
+                    <div style={{ display: 'inline-block', background: '#2E7D6B', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
                       DO CONSULTOR ({cRecs.length})
                     </div>
                     {cRecs.map((cr, i) => (
                       <div key={i} style={{
-                        padding: '10px 12px', background: '#F5F0FF',
+                        padding: '10px 12px', background: '#EAF4F1',
                         borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
                         borderRadius: '6px', marginBottom: '6px'
                       }}>
@@ -674,7 +674,7 @@ export default function ConsultaDetalhe() {
                               const cat = PRODUTO_CATEGORIAS.find(c => c.value === p)
                               return (
                                 <a key={p} href={`/produtos?categoria=${p}`} style={{
-                                  padding: '3px 8px', background: '#7C3AED', color: '#fff',
+                                  padding: '3px 8px', background: '#2E7D6B', color: '#fff',
                                   borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
                                   textDecoration: 'none'
                                 }}>{cat?.label || p}</a>
@@ -705,16 +705,16 @@ export default function ConsultaDetalhe() {
                 return (
                   <div style={{
                     marginTop: '16px', padding: '14px 16px',
-                    background: '#F5F0FF', borderRadius: '10px',
-                    border: '1px solid #E9D5FF'
+                    background: '#EAF4F1', borderRadius: '10px',
+                    border: '1px solid #DCEFE9'
                   }}>
-                    <p style={{ color: '#7C3AED', fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
+                    <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
                       Produtos recomendados para este setor
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {Array.from(allProds.values()).map(p => (
                         <a key={p.categoria} href={`/produtos?categoria=${p.categoria}`} style={{
-                          padding: '6px 12px', background: '#7C3AED', color: '#fff',
+                          padding: '6px 12px', background: '#2E7D6B', color: '#fff',
                           borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
                           textDecoration: 'none', cursor: 'pointer'
                         }}>{p.nome}</a>
@@ -758,7 +758,7 @@ export default function ConsultaDetalhe() {
         {!fotoGeral && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            <h1 style={{ color: '#0E1B2C', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
               {consulta.nome_imovel}
             </h1>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0' }}>
@@ -767,12 +767,12 @@ export default function ConsultaDetalhe() {
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
-              background: '#7C3AED', color: '#ffffff', border: 'none',
+              background: '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>治 Curas & Ativações</button>
             <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
-              background: '#1E3A5F', color: '#ffffff', border: 'none',
+              background: '#0E1B2C', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Montar Relatório</button>
@@ -789,12 +789,12 @@ export default function ConsultaDetalhe() {
         {fotoGeral && (
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
             <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
-              background: '#7C3AED', color: '#ffffff', border: 'none',
+              background: '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>治 Curas & Ativações</button>
             <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
-              background: '#1E3A5F', color: '#ffffff', border: 'none',
+              background: '#0E1B2C', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Montar Relatório</button>
@@ -857,7 +857,7 @@ export default function ConsultaDetalhe() {
             }}>
               {/* Header */}
               <div style={{
-                background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 100%)',
+                background: 'linear-gradient(135deg, #0E1B2C 0%, #163A52 100%)',
                 padding: '20px 24px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexWrap: 'wrap', gap: '16px'
@@ -893,7 +893,7 @@ export default function ConsultaDetalhe() {
                   {/* Estado 1: Sem planta */}
                   {!plantaUrl && !finalizada && (
                     <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                      style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                       + Enviar planta
                     </button>
                   )}
@@ -901,7 +901,7 @@ export default function ConsultaDetalhe() {
                   {emAndamento && (
                     <>
                       <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                        style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Continuar análise
                       </button>
                       <button onClick={alterarPlanta}
@@ -914,7 +914,7 @@ export default function ConsultaDetalhe() {
                   {finalizada && (
                     <>
                       <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                        style={{ background: '#B8860B', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Visualizar / Revisar análise
                       </button>
                       <button onClick={alterarPlanta}
@@ -937,7 +937,7 @@ export default function ConsultaDetalhe() {
                           padding: '8px', borderRadius: '6px',
                           background: devCor(pct) + '12', borderLeft: `3px solid ${devCor(pct)}`
                         }}>
-                          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1E3A5F' }}>{s.nome}</div>
+                          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0E1B2C' }}>{s.nome}</div>
                           <div style={{ fontSize: '16px', fontWeight: 'bold', color: devCor(pct) }}>{pct}%</div>
                           <div style={{ fontSize: '9px', color: '#6B7280' }}>
                             {pct >= 70 ? '✓ Equilibrado' : pct >= 40 ? '⚠ Atenção' : '▼ Urgente'}
@@ -986,7 +986,7 @@ export default function ConsultaDetalhe() {
                 flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none',
                 cursor: 'pointer', fontSize: '14px', fontWeight: 'bold',
                 background: isActive ? '#ffffff' : 'transparent',
-                color: isActive ? '#1E3A5F' : '#6B7280',
+                color: isActive ? '#0E1B2C' : '#6B7280',
                 boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
@@ -1004,7 +1004,7 @@ export default function ConsultaDetalhe() {
 
             {/* Sidebar setores */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <h3 style={{ color: '#1E3A5F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <h3 style={{ color: '#0E1B2C', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Setores Ba Gua
               </h3>
               {setores.map(setor => {
@@ -1016,8 +1016,8 @@ export default function ConsultaDetalhe() {
                 return (
                   <div key={setor.id} style={{
                     padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
-                    background: ativo ? '#1E3A5F' : '#ffffff',
-                    border: `2px solid ${ativo ? '#1E3A5F' : '#E5E7EB'}`,
+                    background: ativo ? '#0E1B2C' : '#ffffff',
+                    border: `2px solid ${ativo ? '#0E1B2C' : '#E5E7EB'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     gap: '8px'
                   }}>
@@ -1048,7 +1048,7 @@ export default function ConsultaDetalhe() {
                         onClick={e => { e.stopPropagation(); setRecModal(setor.id) }}
                         title="Ver recomendações"
                         style={{
-                          background: ativo ? 'rgba(255,255,255,0.2)' : '#EDE9FE',
+                          background: ativo ? 'rgba(255,255,255,0.2)' : '#E6F2EF',
                           border: 'none', borderRadius: '7px', padding: '4px 8px',
                           cursor: 'pointer', fontSize: '14px', lineHeight: 1
                         }}>💡</button>
@@ -1063,7 +1063,7 @@ export default function ConsultaDetalhe() {
               <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <div>
-                    <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                    <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
                       {setorAtivoData.nome}
                     </h2>
                     <p style={{ color: '#6B7280', fontSize: '13px', margin: '0' }}>
@@ -1081,7 +1081,7 @@ export default function ConsultaDetalhe() {
                     <button
                       onClick={() => setRecModal(setorAtivoData.id)}
                       style={{
-                        background: '#EDE9FE', color: '#7C3AED', border: 'none',
+                        background: '#E6F2EF', color: '#2E7D6B', border: 'none',
                         borderRadius: '8px', padding: '8px 14px', cursor: 'pointer',
                         fontSize: '13px', fontWeight: 'bold'
                       }}>Recomendações</button>
@@ -1091,7 +1091,7 @@ export default function ConsultaDetalhe() {
                 {/* ── Room Mapping — multi-select with autocomplete ── */}
                 <div style={{
                   marginBottom: '20px', padding: '14px 16px',
-                  background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF'
+                  background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9'
                 }}>
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '4px' }}>
@@ -1104,7 +1104,7 @@ export default function ConsultaDetalhe() {
                         return (
                           <span key={i} style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px',
-                            background: '#E9D5FF', color: '#7C3AED', padding: '4px 10px',
+                            background: '#DCEFE9', color: '#2E7D6B', padding: '4px 10px',
                             borderRadius: '16px', fontSize: '12px', fontWeight: 'bold'
                           }}>
                             {COMODO_LABELS[comodo] || comodo}
@@ -1120,7 +1120,7 @@ export default function ConsultaDetalhe() {
                                 [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, idx) => idx !== i)
                               }))
                             }} style={{
-                              background: 'none', border: 'none', color: '#7C3AED',
+                              background: 'none', border: 'none', color: '#2E7D6B',
                               cursor: 'pointer', fontSize: '14px', padding: '0 2px'
                             }}>&times;</button>
                           </span>
@@ -1184,10 +1184,10 @@ export default function ConsultaDetalhe() {
 
                 {/* ── Custom Recommendations ─────────────────────── */}
                 <div style={{
-                  marginBottom: '24px', padding: '20px', background: '#F5F0FF',
-                  borderRadius: '10px', border: '1px solid #E9D5FF'
+                  marginBottom: '24px', padding: '20px', background: '#EAF4F1',
+                  borderRadius: '10px', border: '1px solid #DCEFE9'
                 }}>
-                  <h3 style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>
+                  <h3 style={{ color: '#2E7D6B', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>
                     Recomendações do Consultor
                   </h3>
 
@@ -1214,8 +1214,8 @@ export default function ConsultaDetalhe() {
                                   const cat = PRODUTO_CATEGORIAS.find(c => c.value === p)
                                   return (
                                     <span key={p} style={{
-                                      fontSize: '10px', padding: '2px 6px', background: '#EDE9FE',
-                                      color: '#7C3AED', borderRadius: '4px', fontWeight: 'bold'
+                                      fontSize: '10px', padding: '2px 6px', background: '#E6F2EF',
+                                      color: '#2E7D6B', borderRadius: '4px', fontWeight: 'bold'
                                     }}>{cat?.label || p}</span>
                                   )
                                 })}
@@ -1246,7 +1246,7 @@ export default function ConsultaDetalhe() {
                 </div>
 
                 <button onClick={() => handleSaveSetor(setorAtivoData.id)} disabled={saving} style={{
-                  width: '100%', padding: '14px', background: saving ? '#9CA3AF' : '#7C3AED',
+                  width: '100%', padding: '14px', background: saving ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
                 }}>{saving ? 'Salvando...' : 'Salvar avaliação deste setor'}</button>

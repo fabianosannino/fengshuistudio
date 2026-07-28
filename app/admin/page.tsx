@@ -8,7 +8,7 @@ export default function AdminRedirect() {
   }, [])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-figtree), sans-serif' }}>
       <p style={{ color: '#6B7280' }}>Redirecionando...</p>
     </div>
   )

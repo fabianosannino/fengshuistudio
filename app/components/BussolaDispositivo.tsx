@@ -176,7 +176,7 @@ export default function BussolaDispositivo({ onAceitar }: BussolaDispositivoProp
                 {TEXTO_CONFIANCA[resultado.confianca].rotulo}
                 {resultado.amostrasDescartadas > 0 && ` · ${resultado.amostrasDescartadas} amostra(s) descartada(s) de ${resultado.amostrasTotais}`}
               </p>
-              <p style={{ margin: '0 0 6px', color: '#6D28D9' }}>
+              <p style={{ margin: '0 0 6px', color: '#245F52' }}>
                 Montanha <strong>{montanhaAtual.pinyin} {montanhaAtual.nome}</strong> ({montanhaAtual.setor})
               </p>
               {resultado.confianca === 'low' ? (
@@ -202,7 +202,7 @@ export default function BussolaDispositivo({ onAceitar }: BussolaDispositivoProp
 }
 
 const estiloBotaoPrimario: CSSProperties = {
-  padding: '5px 12px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '5px',
+  padding: '5px 12px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '5px',
   fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
 }
 const estiloBotaoSecundario: CSSProperties = {

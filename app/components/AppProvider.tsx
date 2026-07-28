@@ -141,7 +141,7 @@ export default function AppProvider({ children }: { children: ReactNode }) {
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
           background: '#DC2626', color: '#fff', textAlign: 'center',
           padding: '8px 16px', fontSize: '13px', fontWeight: 'bold',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'var(--font-figtree), sans-serif',
         }}>
           Sem conexão com a internet. Verifique sua rede.
         </div>

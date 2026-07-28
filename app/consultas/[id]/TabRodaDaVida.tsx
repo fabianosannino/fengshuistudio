@@ -147,7 +147,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
   const progress = ((areaAtual + 1) / n * 100)
   const scores = areaScores(rodaData, area?.key || '')
 
-  const btnPrimary = (bg = '#7C3AED'): React.CSSProperties => ({
+  const btnPrimary = (bg = '#2E7D6B'): React.CSSProperties => ({
     padding: '10px 20px', borderRadius: 8, background: bg, color: '#fff',
     border: 'none', fontWeight: 'bold', fontSize: 14, cursor: 'pointer'
   })
@@ -156,7 +156,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
     <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             Roda da Vida
           </h2>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
@@ -172,7 +172,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
             </button>
           )}
           <div style={{
-            background: '#1E3A5F', color: '#fff', borderRadius: '12px',
+            background: '#0E1B2C', color: '#fff', borderRadius: '12px',
             padding: '8px 16px', fontSize: '16px', fontWeight: 'bold'
           }}>
             Média: {media}
@@ -186,7 +186,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
           {/* Progress bar */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ height: 6, borderRadius: 3, background: '#E5E7EB' }}>
-              <div style={{ height: '100%', borderRadius: 3, background: '#7C3AED', width: `${progress}%`, transition: 'width 0.3s' }} />
+              <div style={{ height: '100%', borderRadius: 3, background: '#2E7D6B', width: `${progress}%`, transition: 'width 0.3s' }} />
             </div>
           </div>
 
@@ -209,7 +209,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
           <div style={{ background: '#F9FAFB', borderRadius: 10, padding: 20, border: `2px solid ${area.cor}22` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: area.cor }} />
-              <span style={{ fontSize: 16, fontWeight: 'bold', color: '#1E3A5F' }}>{area.label}</span>
+              <span style={{ fontSize: 16, fontWeight: 'bold', color: '#0E1B2C' }}>{area.label}</span>
               <span style={{ fontSize: 12, color: area.cor, fontWeight: 'bold', background: area.cor + '18', padding: '3px 10px', borderRadius: 12 }}>{area.categoria}</span>
               <span style={{ marginLeft: 'auto', fontSize: 18, fontWeight: 'bold', color: area.cor }}>
                 {areaValue(rodaData, area.key).toFixed(1)}
@@ -269,7 +269,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                   )
                 })}
                 {/* Filled polygon */}
-                <polygon points={polygonStr} fill="rgba(124,58,237,0.15)" stroke="#7C3AED" strokeWidth={2} />
+                <polygon points={polygonStr} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={2} />
                 {/* Data points */}
                 {points.map((p, i) => (
                   <g key={AREAS[i].key}
@@ -306,8 +306,8 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                 return (
                   <div key={a.key} style={{
                     padding: '10px 14px', borderRadius: '8px',
-                    background: hovered === a.key ? '#F5F0FF' : '#F9FAFB',
-                    border: `1px solid ${hovered === a.key ? '#E9D5FF' : '#E5E7EB'}`,
+                    background: hovered === a.key ? '#EAF4F1' : '#F9FAFB',
+                    border: `1px solid ${hovered === a.key ? '#DCEFE9' : '#E5E7EB'}`,
                     transition: 'all 0.15s'
                   }}
                     onMouseEnter={() => setHovered(a.key)}
@@ -341,7 +341,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                       <div style={{ marginTop: 4 }}>
                         <button onClick={() => setExpandedArea(expandedArea === a.key ? null : a.key)} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          fontSize: '11px', color: '#7C3AED', fontWeight: 'bold', padding: '2px 0'
+                          fontSize: '11px', color: '#2E7D6B', fontWeight: 'bold', padding: '2px 0'
                         }}>
                           {expandedArea === a.key ? '▼' : '▶'} Detalhes das 5 perguntas
                         </button>
@@ -386,7 +386,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
 
               <button onClick={onSave} disabled={saving} style={{
                 width: '100%', padding: '14px', marginTop: '8px',
-                background: saving ? '#9CA3AF' : '#7C3AED',
+                background: saving ? '#9CA3AF' : '#2E7D6B',
                 color: '#ffffff', border: 'none', borderRadius: '8px',
                 fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
               }}>{saving ? 'Salvando...' : 'Salvar Roda da Vida'}</button>
@@ -420,13 +420,13 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
 
           {/* Diagnostic comparison */}
           {setores.length > 0 && AREAS.some(a => areaValue(rodaData, a.key) > 0) && (
-            <div style={{ marginTop: '16px', padding: '16px', background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF' }}>
-              <h3 style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+            <div style={{ marginTop: '16px', padding: '16px', background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9' }}>
+              <h3 style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
                 Diagnóstico comparativo: Roda da Vida x Ba Guá
               </h3>
 
               {/* Explanatory text */}
-              <div style={{ background: '#fff', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: '1px solid #E9D5FF', fontSize: '12px', color: '#374151', lineHeight: 1.6 }}>
+              <div style={{ background: '#fff', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: '1px solid #DCEFE9', fontSize: '12px', color: '#374151', lineHeight: 1.6 }}>
                 <p style={{ margin: '0 0 6px 0' }}>
                   Este diagnóstico cruza a <strong>percepção subjetiva</strong> do cliente (Roda da Vida) com a <strong>análise objetiva</strong> do imóvel (Ba Guá):
                 </p>
@@ -444,7 +444,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                 if (vidaScore === 0 && setorPct === null) return null
                 const corr = correlacao(a.key)
                 return (
-                  <div key={a.key} style={{ marginBottom: '10px', padding: '8px 10px', background: '#fff', borderRadius: '8px', border: '1px solid #E9D5FF' }}>
+                  <div key={a.key} style={{ marginBottom: '10px', padding: '8px 10px', background: '#fff', borderRadius: '8px', border: '1px solid #DCEFE9' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', marginBottom: '4px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a.cor }} />
                       <span style={{ width: '160px', fontWeight: 'bold', color: '#374151' }}>{a.label}</span>
@@ -473,7 +473,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
               {/* General consultant observation */}
               {onChangeObservacaoGeral && (
                 <div style={{ marginTop: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#7C3AED', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#2E7D6B', marginBottom: '4px' }}>
                     Observação geral do consultor
                   </label>
                   <textarea

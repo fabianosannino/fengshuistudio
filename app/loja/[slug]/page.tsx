@@ -79,7 +79,7 @@ export default function LojaConsultor() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB' }}>
-      <p style={{ color: '#7C3AED' }}>Carregando loja...</p>
+      <p style={{ color: '#2E7D6B' }}>Carregando loja...</p>
     </div>
   )
 
@@ -87,30 +87,30 @@ export default function LojaConsultor() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', flexDirection: 'column', gap: '12px' }}>
       <div style={{ fontSize: '48px' }}>☯</div>
       <p style={{ color: '#6B7280', fontSize: '16px' }}>{error}</p>
-      <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 'bold' }}>Voltar ao início</Link>
+      <Link href="/" style={{ color: '#2E7D6B', textDecoration: 'none', fontWeight: 'bold' }}>Voltar ao início</Link>
     </div>
   )
 
   if (!profile) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1E3A5F, #2d5a8e)', padding: '40px 32px', textAlign: 'center', color: '#fff' }}>
+      <div style={{ background: 'linear-gradient(135deg, #0E1B2C, #163A52)', padding: '40px 32px', textAlign: 'center', color: '#fff' }}>
         <div style={{ fontSize: '48px', marginBottom: '12px' }}>☯</div>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px' }}>{profile.nome_completo}</h1>
         {profile.profissao && <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', margin: '0 0 4px' }}>{profile.profissao}</p>}
         {profile.cidade && <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0 }}>{profile.cidade}{profile.estado ? `, ${profile.estado}` : ''}</p>}
         {profile.bio && <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', maxWidth: '500px', margin: '12px auto 0', lineHeight: 1.6 }}>{profile.bio}</p>}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
-          {profile.instagram && <a href={`https://instagram.com/${profile.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#B8860B', fontSize: '13px', textDecoration: 'none' }}>@{profile.instagram.replace('@','')}</a>}
-          {profile.site && <a href={profile.site} target="_blank" rel="noopener noreferrer" style={{ color: '#B8860B', fontSize: '13px', textDecoration: 'none' }}>{profile.site}</a>}
+          {profile.instagram && <a href={`https://instagram.com/${profile.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#C9A227', fontSize: '13px', textDecoration: 'none' }}>@{profile.instagram.replace('@','')}</a>}
+          {profile.site && <a href={profile.site} target="_blank" rel="noopener noreferrer" style={{ color: '#C9A227', fontSize: '13px', textDecoration: 'none' }}>{profile.site}</a>}
         </div>
       </div>
 
       {/* Products */}
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px' }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>Serviços e Produtos</h2>
+        <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>Serviços e Produtos</h2>
         {products.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <p style={{ color: '#6B7280' }}>Nenhum produto cadastrado ainda.</p>
@@ -119,15 +119,15 @@ export default function LojaConsultor() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
             {products.map((p) => (
               <div key={p.id} style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB' }}>
-                <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px' }}>{p.name}</h3>
+                <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px' }}>{p.name}</h3>
                 {p.description && <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 12px', lineHeight: 1.5 }}>{p.description}</p>}
                 {p.price && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#1E3A5F' }}>
+                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#0E1B2C' }}>
                       {(p.price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                     <button onClick={() => handleBuy(p)} style={{
-                      padding: '8px 20px', background: '#7C3AED', color: '#fff', border: 'none',
+                      padding: '8px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
                       borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer'
                     }}>Comprar</button>
                   </div>
@@ -140,7 +140,7 @@ export default function LojaConsultor() {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', padding: '24px', color: '#9CA3AF', fontSize: '12px' }}>
-        Loja hospedada no <Link href="/" style={{ color: '#7C3AED', textDecoration: 'none' }}>FengShui Studio</Link>
+        Loja hospedada no <Link href="/" style={{ color: '#2E7D6B', textDecoration: 'none' }}>FengShui Studio</Link>
       </div>
     </div>
   )

@@ -217,7 +217,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
         background: '#ffffff', borderRadius: '12px', padding: '24px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px',
       }}>
-        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Foto Geral do Imóvel
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
@@ -280,7 +280,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
               Fotos por Cômodo
             </h3>
             <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
@@ -289,7 +289,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
           </div>
           {!showNovoComodo && (
             <button onClick={() => setShowNovoComodo(true)} style={{
-              padding: '10px 20px', background: '#7C3AED', color: '#fff',
+              padding: '10px 20px', background: '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '8px', fontSize: '13px',
               fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
             }}>+ Adicionar cômodo</button>
@@ -299,8 +299,8 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
         {/* Add room form */}
         {showNovoComodo && (
           <div style={{
-            marginBottom: '20px', padding: '16px', background: '#F5F0FF',
-            borderRadius: '10px', border: '1px solid #E9D5FF',
+            marginBottom: '20px', padding: '16px', background: '#EAF4F1',
+            borderRadius: '10px', border: '1px solid #DCEFE9',
           }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
@@ -333,7 +333,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               )}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={handleAddComodo} style={{
-                  padding: '10px 20px', background: '#7C3AED', color: '#fff',
+                  padding: '10px 20px', background: '#2E7D6B', color: '#fff',
                   border: 'none', borderRadius: '8px', fontSize: '13px',
                   fontWeight: 'bold', cursor: 'pointer',
                 }}>Adicionar</button>
@@ -367,7 +367,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                   onDragOver={e => handleDragOver(e, idx)}
                   onDragEnd={handleDragEnd}
                   style={{
-                    border: `2px solid ${isDragging ? '#7C3AED' : '#E5E7EB'}`,
+                    border: `2px solid ${isDragging ? '#2E7D6B' : '#E5E7EB'}`,
                     borderRadius: '10px', overflow: 'hidden',
                     opacity: isDragging ? 0.7 : 1,
                     transition: 'border-color 0.2s, opacity 0.2s',
@@ -378,13 +378,13 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                     onClick={() => setExpandedComodo(isExpanded ? null : idx)}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '14px 16px', background: isExpanded ? '#F5F0FF' : '#F9FAFB',
+                      padding: '14px 16px', background: isExpanded ? '#EAF4F1' : '#F9FAFB',
                       cursor: 'pointer', userSelect: 'none',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ cursor: 'grab', fontSize: '16px', color: '#9CA3AF' }} title="Arraste para reordenar">⠿</span>
-                      <span style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '14px' }}>{comodo.comodo}</span>
+                      <span style={{ color: '#0E1B2C', fontWeight: 'bold', fontSize: '14px' }}>{comodo.comodo}</span>
                       <span style={{
                         background: '#E5E7EB', color: '#6B7280', padding: '2px 8px',
                         borderRadius: '10px', fontSize: '12px', fontWeight: 'bold',
@@ -472,7 +472,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
         background: '#ffffff', borderRadius: '12px', padding: '24px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px',
       }}>
-        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Fotos do Antes
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
@@ -548,7 +548,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
         background: '#ffffff', borderRadius: '12px', padding: '24px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px',
       }}>
-        <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Fotos do Depois
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>

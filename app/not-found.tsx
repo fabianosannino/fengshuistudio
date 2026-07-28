@@ -8,7 +8,7 @@ export default function NotFound() {
       alignItems: 'center',
       justifyContent: 'center',
       background: '#F9FAFB',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'var(--font-figtree), sans-serif',
     }}>
       <div style={{
         textAlign: 'center',
@@ -19,7 +19,7 @@ export default function NotFound() {
         <div style={{ fontSize: '56px', marginBottom: '20px' }}>☯</div>
 
         <h1 style={{
-          color: '#1E3A5F',
+          color: '#0E1B2C',
           fontSize: '72px',
           fontWeight: 'bold',
           marginBottom: '4px',
@@ -29,7 +29,7 @@ export default function NotFound() {
         </h1>
 
         <h2 style={{
-          color: '#1E3A5F',
+          color: '#0E1B2C',
           fontSize: '22px',
           fontWeight: 'bold',
           marginBottom: '8px',
@@ -52,7 +52,7 @@ export default function NotFound() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            background: '#7C3AED',
+            background: '#2E7D6B',
             color: '#ffffff',
             textDecoration: 'none',
             padding: '12px 28px',

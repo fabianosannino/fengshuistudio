@@ -39,9 +39,9 @@ export default function EsqueciSenha() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1E3A5F 0%, #2d5a8e 50%, #1E3A5F 100%)',
+      background: 'linear-gradient(135deg, #0E1B2C 0%, #163A52 50%, #0E1B2C 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif', padding: '20px'
+      fontFamily: 'var(--font-figtree), sans-serif', padding: '20px'
     }}>
       <div style={{
         background: '#ffffff', borderRadius: '16px', padding: '48px 40px',
@@ -49,7 +49,7 @@ export default function EsqueciSenha() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '48px', marginBottom: '8px' }}>☯</div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Esqueci minha senha</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Esqueci minha senha</h1>
           <p style={{ color: '#6B7280', fontSize: '14px', margin: '0' }}>
             {sent ? 'Verifique seu e-mail para redefinir a senha' : 'Digite seu e-mail para receber o link de recuperação'}
           </p>
@@ -65,7 +65,7 @@ export default function EsqueciSenha() {
             </div>
             <button type="submit" disabled={loading} style={{
               width: '100%', padding: '14px',
-              background: loading ? '#9CA3AF' : '#7C3AED',
+              background: loading ? '#9CA3AF' : '#2E7D6B',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '16px', fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer'
@@ -97,7 +97,7 @@ export default function EsqueciSenha() {
         )}
 
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <a href="/login" style={{ color: '#7C3AED', fontSize: '14px', textDecoration: 'none' }}>← Voltar para o login</a>
+          <a href="/login" style={{ color: '#2E7D6B', fontSize: '14px', textDecoration: 'none' }}>← Voltar para o login</a>
         </div>
       </div>
     </div>

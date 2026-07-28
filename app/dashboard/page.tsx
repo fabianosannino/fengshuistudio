@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton'
 import type { Profile, BaguaEntrada, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, isProfissional, planoUsuario } from '../../src/lib/plano-utils'
+import { Users, ClipboardList, Moon, Star, Sparkles, FileText, CalendarDays, CircleAlert, Wallet, Check, Clock, Settings, type LucideIcon } from 'lucide-react'
 
 const ChartLoadingSkeleton = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -58,7 +59,7 @@ const DASHBOARD_MODULES = [
   { key: 'consultas_mes', label: 'Consultas por Mês' },
   { key: 'proximas_atividades', label: 'Próximas Atividades' },
   { key: 'novos_clientes', label: 'Novos Clientes por Mês' },
-  { key: 'analises_bagua', label: '☯ Análises Ba Gua Recentes' },
+  { key: 'analises_bagua', label: 'Análises Ba Gua Recentes' },
   { key: 'acoes_rapidas', label: 'Ações Rápidas' },
 ]
 
@@ -319,8 +320,8 @@ export default function Dashboard() {
           subtitulo: r.clientes?.nome_completo || '',
           data: r.data_ritual,
           horario: r.horario,
-          icon: '🌙',
-          cor: '#7C3AED',
+          icon: 'ritual',
+          cor: '#2E7D6B',
         })
       })
 
@@ -332,7 +333,7 @@ export default function Dashboard() {
           subtitulo: c.clientes?.nome_completo || '',
           data: c.criado_em?.split('T')[0],
           horario: null,
-          icon: '📋',
+          icon: 'consulta',
           cor: '#F59E0B',
         })
       })
@@ -345,7 +346,7 @@ export default function Dashboard() {
           subtitulo: `R$ ${Number(p.valor).toFixed(2)} • ${p.clientes?.nome_completo || ''}`,
           data: p.data_vencimento,
           horario: null,
-          icon: p.status === 'atrasado' ? '🔴' : '💰',
+          icon: p.status === 'atrasado' ? 'atrasado' : 'pagamento',
           cor: p.status === 'atrasado' ? '#DC2626' : '#15803D',
         })
       })
@@ -431,7 +432,7 @@ export default function Dashboard() {
       {/* Header */}
       <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             Bem-vindo ao FengShui Studio
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -440,13 +441,14 @@ export default function Dashboard() {
         </div>
         <button onClick={() => setShowSettings(!showSettings)} style={{
           background: 'none', border: '1px solid #D1D5DB', borderRadius: '8px',
-          padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280'
-        }}>⚙️ Personalizar</button>
+          padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280',
+          display: 'inline-flex', alignItems: 'center', gap: '6px'
+        }}><Settings size={15} strokeWidth={1.75} aria-hidden="true" /> Personalizar</button>
       </div>
 
       {showSettings && (
         <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#1E3A5F' }}>Escolha os módulos visíveis</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#0E1B2C' }}>Escolha os módulos visíveis</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
             {DASHBOARD_MODULES.map(m => (
               <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: 'pointer', background: visibleModules[m.key] ? '#F0FDF4' : '#F9FAFB' }}>
@@ -454,7 +456,7 @@ export default function Dashboard() {
                   const next = { ...visibleModules, [m.key]: e.target.checked }
                   setVisibleModules(next)
                   try { localStorage.setItem('fengshui-dashboard-modules', JSON.stringify(next)) } catch {}
-                }} style={{ accentColor: '#7C3AED' }} />
+                }} style={{ accentColor: '#2E7D6B' }} />
                 <span style={{ fontSize: '13px', color: '#374151' }}>{m.label}</span>
               </label>
             ))}
@@ -468,17 +470,17 @@ export default function Dashboard() {
         gap: '20px', marginBottom: '32px'
       }}>
         {[
-          { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
-          { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
-          { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#7C3AED', link: '/calendario' },
-          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
+          { label: 'Clientes ativos', value: String(totalClientes), icon: Users, color: '#1D4ED8', link: '/clientes' },
+          { label: 'Consultas realizadas', value: String(totalConsultas), icon: ClipboardList, color: '#15803D', link: '/consultas' },
+          { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#2E7D6B', link: '/calendario' },
+          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: Star, color: '#C9A227', link: '/planos' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => window.location.href = kpi.link} style={{
             background: '#ffffff', borderRadius: '12px', padding: '24px',
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`,
             cursor: 'pointer',
           }}>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>{kpi.icon}</div>
+            <div style={{ marginBottom: '8px' }}><kpi.icon size={26} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
             <div style={{ fontSize: '28px', fontWeight: 'bold', color: kpi.color, marginBottom: '4px' }}>{kpi.value}</div>
             <div style={{ color: '#6B7280', fontSize: '13px' }}>{kpi.label}</div>
           </div>
@@ -495,7 +497,7 @@ export default function Dashboard() {
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Status das Consultas
           </h3>
           <StatusPieChart statusData={statusData} />
@@ -509,11 +511,11 @@ export default function Dashboard() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Pagamentos
             </h3>
             <button onClick={() => window.location.href = '/pagamentos'} style={{
-              background: 'none', border: 'none', color: '#7C3AED',
+              background: 'none', border: 'none', color: '#2E7D6B',
               fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
             }}>Ver todos →</button>
           </div>
@@ -552,7 +554,7 @@ export default function Dashboard() {
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Consultas por Mês
           </h3>
           <ConsultasLineChart consultasMesData={consultasMesData} />
@@ -566,7 +568,7 @@ export default function Dashboard() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Próximas Atividades
             </h3>
             <span style={{ color: '#9CA3AF', fontSize: '12px' }}>Próximos 30 dias</span>
@@ -584,8 +586,14 @@ export default function Dashboard() {
                     width: '40px', height: '40px', borderRadius: '10px',
                     background: `${item.cor}15`, display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
-                    fontSize: '20px', flexShrink: 0,
-                  }}>{item.icon}</div>
+                    flexShrink: 0,
+                  }}>
+                    {(() => {
+                      const map: Record<string, LucideIcon> = { ritual: Moon, consulta: ClipboardList, pagamento: Wallet, atrasado: CircleAlert }
+                      const Icon = map[item.icon] || CalendarDays
+                      return <Icon size={20} strokeWidth={1.75} color={item.cor} aria-hidden="true" />
+                    })()}
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ color: '#111827', fontSize: '13px', fontWeight: 'bold', margin: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.titulo}
@@ -607,7 +615,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ height: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '32px' }}>📅</span>
+              <CalendarDays size={32} strokeWidth={1.5} color="#9CA3AF" aria-hidden="true" />
               <p style={{ color: '#9CA3AF', fontSize: '14px', textAlign: 'center', margin: '0' }}>Nenhuma atividade próxima</p>
               <p style={{ color: '#D1D5DB', fontSize: '12px', textAlign: 'center', margin: '0' }}>Rituais, consultas e pagamentos aparecem aqui</p>
             </div>
@@ -624,7 +632,7 @@ export default function Dashboard() {
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Novos Clientes por Mês
           </h3>
           <ClientesBarChart clientesMesData={clientesMesData} />
@@ -635,8 +643,9 @@ export default function Dashboard() {
       {/* Análises Baguá recentes */}
       {visibleModules.analises_bagua !== false && analisesBagua.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-            ☯ Análises Ba Gua recentes
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src="/marketing/logo-fengshui.png" alt="" width={22} height={22} />
+            Análises Ba Gua recentes
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {analisesBagua.map(a => (
@@ -659,9 +668,12 @@ export default function Dashboard() {
                 <span style={{
                   background: a.status_bagua==='concluida'?'#F0FDF4':'#FFF7ED',
                   color: a.status_bagua==='concluida'?'#15803D':'#D97706',
-                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
+                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
+                  display: 'inline-flex', alignItems: 'center', gap: '4px'
                 }}>
-                  {a.status_bagua==='concluida' ? '✓ Concluída' : '○ Em andamento'}
+                  {a.status_bagua==='concluida'
+                    ? <><Check size={12} strokeWidth={2.5} aria-hidden="true" /> Concluída</>
+                    : <><Clock size={12} strokeWidth={2.5} aria-hidden="true" /> Em andamento</>}
                 </span>
               </div>
             ))}
@@ -672,22 +684,22 @@ export default function Dashboard() {
       {/* Ações rápidas */}
       {visibleModules.acoes_rapidas !== false && (
       <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
+        <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
           Ações rápidas
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {[
-            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: '✨', color: '#7C3AED', link: '/consultas/nova' },
-            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8', link: '/clientes' },
-            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
-            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
+            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: Sparkles, color: '#2E7D6B', link: '/consultas/nova' },
+            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: Users, color: '#1D4ED8', link: '/clientes' },
+            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#15803D', link: '/consultas' },
+            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: Moon, color: '#C9A227', link: '/calendario' },
           ].map((kpi, i) => (
             <div key={i} onClick={() => window.location.href = kpi.link} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
               borderTop: `3px solid ${kpi.color}`,
             }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>{kpi.icon}</div>
+              <div style={{ marginBottom: '8px' }}><kpi.icon size={24} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
               <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{kpi.label}</div>
               <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{kpi.desc}</div>
             </div>
@@ -699,7 +711,7 @@ export default function Dashboard() {
       {/* Banner upgrade */}
       {planoUsuario(profile) !== 'profissional' && (
         <div style={{
-          background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
+          background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
           borderRadius: '12px', padding: '24px 32px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: '16px'
@@ -713,7 +725,7 @@ export default function Dashboard() {
             </p>
           </div>
           <button onClick={() => window.location.href = '/planos'} style={{
-            background: '#B8860B', color: '#ffffff', border: 'none',
+            background: '#C9A227', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
           }}>

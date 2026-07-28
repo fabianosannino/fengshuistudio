@@ -46,7 +46,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'cristais',
     nome: 'Cristais e Pedras',
     icon: '💎',
-    cor: '#7C3AED',
+    cor: '#2E7D6B',
     descricao: 'Cristais para ativação energética dos setores do Ba Gua',
     produtos: [
       { nome: 'Cristal Multifacetado', desc: 'Cristal de pendurar para dispersar energia estagnada e trazer luz', tag: 'Ativação', preco: 'A partir de R$ 19,90' },
@@ -212,10 +212,10 @@ function ProdutosContent() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando produtos...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando produtos...</p>
         </div>
       </div>
     )
@@ -225,7 +225,7 @@ function ProdutosContent() {
     <AppShell currentPage="produtos">
 
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Produtos Recomendados
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -235,7 +235,7 @@ function ProdutosContent() {
 
       {/* Info banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
+        background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
         borderRadius: '12px', padding: '16px 24px', marginBottom: '24px',
         display: 'flex', alignItems: 'center', gap: '12px'
       }}>
@@ -325,7 +325,7 @@ function ProdutosContent() {
             <button key={cat.id} onClick={() => { setCategoriaAtiva(cat.id); setFiltroBusca('') }} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '12px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-              background: categoriaAtiva === cat.id ? '#1E3A5F' : '#ffffff',
+              background: categoriaAtiva === cat.id ? '#0E1B2C' : '#ffffff',
               color: categoriaAtiva === cat.id ? '#ffffff' : '#374151',
               textAlign: 'left', fontSize: '14px', fontWeight: categoriaAtiva === cat.id ? 'bold' : 'normal',
               boxShadow: categoriaAtiva === cat.id ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
@@ -346,7 +346,7 @@ function ProdutosContent() {
         <div>
           {categoriaData && (
             <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
                 {categoriaData.icon} {categoriaData.nome}
               </h2>
               <p style={{ color: '#6B7280', fontSize: '14px', margin: '0' }}>{categoriaData.descricao}</p>
@@ -373,8 +373,8 @@ function ProdutosContent() {
                     </h3>
                     {(produto.tag) && (
                       <span style={{
-                        background: `${categoriaData?.cor || '#7C3AED'}15`,
-                        color: categoriaData?.cor || '#7C3AED',
+                        background: `${categoriaData?.cor || '#2E7D6B'}15`,
+                        color: categoriaData?.cor || '#2E7D6B',
                         padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold',
                         whiteSpace: 'nowrap', marginLeft: '8px'
                       }}>{produto.tag}</span>
@@ -389,7 +389,7 @@ function ProdutosContent() {
                     </span>
                     {produto.link_afiliado ? (
                       <a href={produto.link_afiliado} target="_blank" rel="noopener noreferrer" style={{
-                        padding: '8px 16px', background: '#7C3AED', color: '#fff',
+                        padding: '8px 16px', background: '#2E7D6B', color: '#fff',
                         border: 'none', borderRadius: '6px', fontSize: '13px',
                         fontWeight: 'bold', textDecoration: 'none', cursor: 'pointer'
                       }}>Ver produto</a>
@@ -414,10 +414,10 @@ function ProdutosContent() {
 export default function Produtos() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando produtos...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando produtos...</p>
         </div>
       </div>
     }>

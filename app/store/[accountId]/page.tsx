@@ -79,25 +79,25 @@ export default function Storefront() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
       {/* Header */}
       <header style={{
-        background: '#1E3A5F', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: '12px'
+        background: '#0E1B2C', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: '12px'
       }}>
         <span style={{ fontSize: '28px' }}>☯</span>
-        <span style={{ color: '#B8860B', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
+        <span style={{ color: '#C9A227', fontSize: '20px', fontWeight: 'bold' }}>FengShui Studio</span>
         <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: '8px', fontSize: '14px' }}>Vitrine de Serviços</span>
       </header>
 
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Serviços Disponíveis</h1>
+        <h1 style={{ color: '#0E1B2C', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Serviços Disponíveis</h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 32px 0' }}>
           Escolha um serviço de consultoria Feng Shui e faça o pagamento seguro via Stripe.
         </p>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px' }}>
-            <p style={{ color: '#7C3AED' }}>Carregando produtos...</p>
+            <p style={{ color: '#2E7D6B' }}>Carregando produtos...</p>
           </div>
         ) : products.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '16px' }}>
@@ -113,7 +113,7 @@ export default function Storefront() {
               }}>
                 {/* Product Image or Placeholder */}
                 <div style={{
-                  height: '120px', background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
+                  height: '120px', background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
                   <span style={{ fontSize: '48px', opacity: 0.4 }}>☯</span>
@@ -125,12 +125,12 @@ export default function Storefront() {
                     <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 16px 0', flex: 1 }}>{product.description}</p>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                    <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#7C3AED' }}>
+                    <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#2E7D6B' }}>
                       {product.price ? formatPrice(product.price.unit_amount, product.price.currency) : 'Preço sob consulta'}
                     </span>
                     {product.price && (
                       <button onClick={() => handleBuy(product)} disabled={purchasing === product.id} style={{
-                        padding: '10px 24px', background: purchasing === product.id ? '#9CA3AF' : '#7C3AED',
+                        padding: '10px 24px', background: purchasing === product.id ? '#9CA3AF' : '#2E7D6B',
                         color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold',
                         cursor: purchasing === product.id ? 'not-allowed' : 'pointer', fontSize: '14px'
                       }}>

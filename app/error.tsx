@@ -19,7 +19,7 @@ export default function Error({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'var(--font-figtree), sans-serif',
     }}>
       <div style={{
         textAlign: 'center',
@@ -34,7 +34,7 @@ export default function Error({
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
 
         <h2 style={{
-          color: '#1E3A5F',
+          color: '#0E1B2C',
           fontSize: '22px',
           fontWeight: 'bold',
           marginBottom: '8px',
@@ -89,7 +89,7 @@ export default function Error({
           <button
             onClick={() => reset()}
             style={{
-              background: '#7C3AED',
+              background: '#2E7D6B',
               color: '#ffffff',
               border: 'none',
               padding: '12px 28px',
@@ -110,7 +110,7 @@ export default function Error({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              background: '#1E3A5F',
+              background: '#0E1B2C',
               color: '#ffffff',
               textDecoration: 'none',
               padding: '12px 28px',

@@ -28,7 +28,7 @@ function StripeSuccess() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Arial, sans-serif',
+      minHeight: '100vh', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif',
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div style={{
@@ -59,7 +59,7 @@ function StripeSuccess() {
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <a href="/dashboard" style={{
-            padding: '12px 24px', background: '#7C3AED', color: '#fff',
+            padding: '12px 24px', background: '#2E7D6B', color: '#fff',
             borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px'
           }}>Ir para o Dashboard</a>
           <a href="/stripe/onboard" style={{

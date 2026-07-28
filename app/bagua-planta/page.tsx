@@ -37,7 +37,7 @@ import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
 // As dicas de cada setor vêm de SETOR_DICAS (src/lib/constants) via o motor
 // canônico de recomendações — não são duplicadas aqui.
 const SETORES = [
-  { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#7C3AED' },
+  { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#2E7D6B' },
   { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626' },
   { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D' },
   { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D' },
@@ -566,7 +566,7 @@ function BaguaPlantaContent() {
     }
 
     // ── borda externa ──
-    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#1E3A5F'
+    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#0E1B2C'
     ctx.lineWidth=modo==='bordas'?3:2.5
     ctx.setLineDash(modo==='bordas'?[6,4]:[])
     ctx.strokeRect(bx,by,bw,bh); ctx.setLineDash([])
@@ -746,7 +746,7 @@ function BaguaPlantaContent() {
     }
 
     // Boundary
-    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#1E3A5F'
+    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#0E1B2C'
     ctx.lineWidth=modo==='bordas'?3:2.5
     ctx.setLineDash(modo==='bordas'?[8,5]:[])
     ctx.strokeRect(bx,by,bw,bh); ctx.setLineDash([])
@@ -1491,7 +1491,7 @@ function BaguaPlantaContent() {
       <main style={{padding:'14px 18px',maxWidth:'1160px',margin:'0 auto'}}>
 
         <div style={{marginBottom:'10px'}}>
-          <h1 style={{color:'#1E3A5F',fontSize:'17px',fontWeight:'bold',margin:'0 0 2px 0'}}>Análise de Planta Ba Gua</h1>
+          <h1 style={{color:'#0E1B2C',fontSize:'17px',fontWeight:'bold',margin:'0 0 2px 0'}}>Análise de Planta Ba Gua</h1>
           <p style={{color:'#6B7280',fontSize:'12px',margin:0}}>Mapeamento e avaliação energética por setor</p>
         </div>
 
@@ -1501,7 +1501,7 @@ function BaguaPlantaContent() {
             <div key={i} style={{display:'flex',alignItems:'center',gap:'5px'}}>
               <div style={{width:'20px',height:'20px',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',
                 fontSize:'10px',fontWeight:'bold',
-                background:i<stepN?'#15803D':i===stepN?'#1E3A5F':'#E5E7EB',
+                background:i<stepN?'#15803D':i===stepN?'#0E1B2C':'#E5E7EB',
                 color:i<=stepN?'#fff':'#9CA3AF'}}>
                 {i<stepN?'✓':i+1}
               </div>
@@ -1515,7 +1515,7 @@ function BaguaPlantaContent() {
         {carregandoPlanta&&(
           <div style={{background:'#fff',borderRadius:'12px',padding:'48px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
             <div style={{fontSize:'48px',marginBottom:'10px'}}>☯</div>
-            <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>Carregando planta salva...</h3>
+            <h3 style={{color:'#0E1B2C',fontSize:'16px',marginBottom:'6px'}}>Carregando planta salva...</h3>
             <p style={{color:'#6B7280',fontSize:'13px'}}>Restaurando análise anterior</p>
           </div>
         )}
@@ -1524,7 +1524,7 @@ function BaguaPlantaContent() {
         {showRetomar&&!carregandoPlanta&&(
           <div style={{background:'#fff',borderRadius:'12px',padding:'36px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
             <div style={{fontSize:'48px',marginBottom:'10px'}}>🏠</div>
-            <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>
+            <h3 style={{color:'#0E1B2C',fontSize:'16px',marginBottom:'6px'}}>
               {rascunhoRef.current?.finalizada_em?'Diagnóstico finalizado anteriormente':'Análise em andamento'}
             </h3>
             <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>
@@ -1554,11 +1554,11 @@ function BaguaPlantaContent() {
         {step==='upload'&&!showRetomar&&!carregandoPlanta&&(
           <div style={{background:'#fff',borderRadius:'12px',padding:'48px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
             <div style={{fontSize:'48px',marginBottom:'10px'}}>🏠</div>
-            <h3 style={{color:'#1E3A5F',fontSize:'16px',marginBottom:'6px'}}>Upload da planta baixa</h3>
+            <h3 style={{color:'#0E1B2C',fontSize:'16px',marginBottom:'6px'}}>Upload da planta baixa</h3>
             <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>JPG ou PNG · fundo branco com paredes escuras</p>
             <input ref={fileRef} type="file" accept="image/*" onChange={onUpload} style={{display:'none'}}/>
             <button onClick={()=>fileRef.current?.click()}
-              style={{background:'#7C3AED',color:'#fff',border:'none',padding:'10px 28px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+              style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'10px 28px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
               Selecionar arquivo
             </button>
           </div>
@@ -1568,7 +1568,7 @@ function BaguaPlantaContent() {
         {step==='metragem'&&!showRetomar&&!carregandoPlanta&&(
           <div style={{background:'#fff',borderRadius:'12px',padding:'36px',boxShadow:'0 1px 4px rgba(0,0,0,0.08)',maxWidth:'480px',margin:'0 auto'}}>
             <div style={{fontSize:'36px',textAlign:'center',marginBottom:'10px'}}>📐</div>
-            <h3 style={{color:'#1E3A5F',fontSize:'16px',textAlign:'center',marginBottom:'6px'}}>Metragem do imóvel</h3>
+            <h3 style={{color:'#0E1B2C',fontSize:'16px',textAlign:'center',marginBottom:'6px'}}>Metragem do imóvel</h3>
             <p style={{color:'#6B7280',fontSize:'12px',textAlign:'center',marginBottom:'20px'}}>
               Informe a área total construída para converter os valores de pixels em metros quadrados
             </p>
@@ -1592,7 +1592,7 @@ function BaguaPlantaContent() {
                 ← Voltar
               </button>
               <button onClick={()=>setStep('configurar')}
-                style={{flex:2,padding:'10px',background:metragemReal>0?'#1E3A5F':'#93C5FD',color:'#fff',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:metragemReal>0?'pointer':'not-allowed',opacity:metragemReal>0?1:0.6}}
+                style={{flex:2,padding:'10px',background:metragemReal>0?'#0E1B2C':'#93C5FD',color:'#fff',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:metragemReal>0?'pointer':'not-allowed',opacity:metragemReal>0?1:0.6}}
                 disabled={metragemReal<=0}>
                 Continuar → Configurar planta
               </button>
@@ -1640,9 +1640,9 @@ function BaguaPlantaContent() {
 
               {/* Tai Ji real (contorno de polígono) — regra do terço (setor ausente/extensão) */}
               {step==='resultado'&&bounds&&(
-                <div style={{marginBottom:'8px',padding:'8px 10px',background:'#F5F3FF',borderRadius:'6px',border:'1px solid #DDD6FE'}}>
+                <div style={{marginBottom:'8px',padding:'8px 10px',background:'#EEF6F3',borderRadius:'6px',border:'1px solid #CFE6E0'}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',flexWrap:'wrap'}}>
-                    <span style={{fontSize:'11px',color:'#5B21B6',fontWeight:600}}>
+                    <span style={{fontSize:'11px',color:'#1D4D43',fontWeight:600}}>
                       🔷 Tai Ji real (contorno do imóvel) — avançado, opcional
                     </span>
                     <button
@@ -1660,7 +1660,7 @@ function BaguaPlantaContent() {
                         if(editandoPoligono) salvarRascunho()
                         setEditandoPoligono(v=>!v)
                       }}
-                      style={{padding:'4px 10px',fontSize:'11px',fontWeight:'bold',background:editandoPoligono?'#7C3AED':'#fff',color:editandoPoligono?'#fff':'#7C3AED',border:'1px solid #7C3AED',borderRadius:'6px',cursor:'pointer'}}
+                      style={{padding:'4px 10px',fontSize:'11px',fontWeight:'bold',background:editandoPoligono?'#2E7D6B':'#fff',color:editandoPoligono?'#fff':'#2E7D6B',border:'1px solid #2E7D6B',borderRadius:'6px',cursor:'pointer'}}
                     >
                       {editandoPoligono?'✓ Concluir edição':(poligonoTaiJi?'✏️ Editar contorno':'✏️ Desenhar contorno real')}
                     </button>
@@ -1674,12 +1674,12 @@ function BaguaPlantaContent() {
                     const ausentes=setoresAusentes(pontosResumo)
                     const extensoes=setoresExtensao(pontosResumo)
                     if(!poligonoTaiJi) return (
-                      <p style={{margin:'6px 0 0',fontSize:'11px',color:'#6D28D9'}}>
+                      <p style={{margin:'6px 0 0',fontSize:'11px',color:'#245F52'}}>
                         Ainda usando o retângulo das bordas como contorno (sem ganho sobre o bounding box). Desenhe o contorno real para detectar setor ausente/extensão.
                       </p>
                     )
                     return (
-                      <div style={{margin:'6px 0 0',fontSize:'11px',color:'#6D28D9'}}>
+                      <div style={{margin:'6px 0 0',fontSize:'11px',color:'#245F52'}}>
                         {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#DC2626',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
                         {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#DC2626'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
                         {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#D97706'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
@@ -1759,21 +1759,21 @@ function BaguaPlantaContent() {
                             style={{
                               flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',
                               cursor:m.disponivel?'pointer':'not-allowed',opacity:m.disponivel?1:0.4,
-                              borderColor:escola===m.id?'#7C3AED':'#D1D5DB',background:escola===m.id?'#EDE9FE':'#fff',color:escola===m.id?'#7C3AED':'#6B7280',
+                              borderColor:escola===m.id?'#2E7D6B':'#D1D5DB',background:escola===m.id?'#E6F2EF':'#fff',color:escola===m.id?'#2E7D6B':'#6B7280',
                             }}>{m.icone} {m.nomeCurto}<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>{m.descricaoCurta}</span></button>
                         ))}
                       </div>
                       {escola==='bussola'&&(
-                        <div style={{marginTop:'8px',padding:'8px',background:'#F5F3FF',borderRadius:'6px',border:'1px solid #DDD6FE'}}>
+                        <div style={{marginTop:'8px',padding:'8px',background:'#EEF6F3',borderRadius:'6px',border:'1px solid #CFE6E0'}}>
                           <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'5px'}}>
-                            🧭 Fachada voltada para <span style={{color:'#7C3AED'}}>{orientacaoGraus.toFixed(1)}°</span>
+                            🧭 Fachada voltada para <span style={{color:'#2E7D6B'}}>{orientacaoGraus.toFixed(1)}°</span>
                             {' '}<span style={{fontWeight:'normal',color:'#6B7280'}}>(Norte {rotuloReferencia(orientacaoReferencia)})</span>
                           </label>
                           <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
                             {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
                               <button key={lbl} onClick={()=>setOrientacaoGraus(g as number)} style={{
                                 padding:'3px 7px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
-                                borderColor:orientacaoGraus===g?'#7C3AED':'#D1D5DB',background:orientacaoGraus===g?'#7C3AED':'#fff',color:orientacaoGraus===g?'#fff':'#6B7280',
+                                borderColor:orientacaoGraus===g?'#2E7D6B':'#D1D5DB',background:orientacaoGraus===g?'#2E7D6B':'#fff',color:orientacaoGraus===g?'#fff':'#6B7280',
                               }}>{lbl}</button>
                             ))}
                           </div>
@@ -1809,9 +1809,9 @@ function BaguaPlantaContent() {
                               {([['magnetico','Magnético (Luo Pan)'],['verdadeiro','Verdadeiro (mapa)']] as [ReferenciaNorte,string][]).map(([id,lbl])=>(
                                 <button key={id} type="button" onClick={()=>setOrientacaoReferencia(id)} style={{
                                   flex:1,padding:'4px 2px',fontSize:'10px',fontWeight:'bold',borderRadius:'5px',cursor:'pointer',border:'1px solid',
-                                  borderColor:orientacaoReferencia===id?'#7C3AED':'#D1D5DB',
-                                  background:orientacaoReferencia===id?'#EDE9FE':'#fff',
-                                  color:orientacaoReferencia===id?'#7C3AED':'#6B7280',
+                                  borderColor:orientacaoReferencia===id?'#2E7D6B':'#D1D5DB',
+                                  background:orientacaoReferencia===id?'#E6F2EF':'#fff',
+                                  color:orientacaoReferencia===id?'#2E7D6B':'#6B7280',
                                 }}>{lbl}</button>
                               ))}
                             </div>
@@ -1823,13 +1823,13 @@ function BaguaPlantaContent() {
                                 onChange={e=>{setDeclinacao(e.target.value);setDeclinacaoAuto(null)}}
                                 style={{width:'80px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
                               <button type="button" onClick={calcularDeclinacaoAqui} disabled={declinacaoCarregando}
-                                style={{padding:'4px 9px',border:'1px solid #7C3AED',borderRadius:'5px',fontSize:'10px',
-                                  background:'#EDE9FE',color:'#7C3AED',fontWeight:'bold',
+                                style={{padding:'4px 9px',border:'1px solid #2E7D6B',borderRadius:'5px',fontSize:'10px',
+                                  background:'#E6F2EF',color:'#2E7D6B',fontWeight:'bold',
                                   cursor:declinacaoCarregando?'wait':'pointer'}}>
                                 {declinacaoCarregando?'Calculando…':'📍 Calcular pela minha localização'}
                               </button>
                               <a href={URL_CALCULADORA_DECLINACAO} target="_blank" rel="noopener noreferrer"
-                                style={{fontSize:'10px',color:'#7C3AED',fontWeight:'bold'}}>
+                                style={{fontSize:'10px',color:'#2E7D6B',fontWeight:'bold'}}>
                                 Calculadora oficial (NOAA) ↗
                               </a>
                             </div>
@@ -1874,7 +1874,7 @@ function BaguaPlantaContent() {
                                     </p>
                                   )}
                                   <button type="button" onClick={()=>{setOrientacaoGraus(convertida.graus);setOrientacaoReferencia(destino)}}
-                                    style={{marginTop:'4px',padding:'3px 9px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
+                                    style={{marginTop:'4px',padding:'3px 9px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
                                     Converter para Norte {rotuloReferencia(destino)}
                                   </button>
                                 </div>
@@ -1884,13 +1884,13 @@ function BaguaPlantaContent() {
                           {(()=>{
                             const m=montanhaDoGrau(orientacaoGraus)
                             return (
-                              <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6D28D9'}}>
+                              <p style={{margin:'4px 0 0',fontSize:'10px',color:'#245F52'}}>
                                 Montanha <strong>{m.pinyin} {m.nome}</strong> ({m.setor} · Yuan Long {NOME_YUAN_LONG[m.yuanLong]} · {m.polaridade==='yang'?'Yang':'Yin'})
                               </p>
                             )
                           })()}
                           <button type="button" onClick={()=>setLeiturasAbertas(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline'}}>
                             {leiturasAbertas?'▾':'▸'} Assistente de 3 leituras (bússola/Luo Pan físico)
                           </button>
                           {leiturasAbertas&&(()=>{
@@ -1914,7 +1914,7 @@ function BaguaPlantaContent() {
                                       {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
                                     </p>
                                     <button type="button" onClick={()=>setOrientacaoGraus(arredondarGrau(media))}
-                                      style={{marginTop:'4px',padding:'4px 10px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
+                                      style={{marginTop:'4px',padding:'4px 10px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
                                       Usar esta média
                                     </button>
                                   </div>
@@ -1923,7 +1923,7 @@ function BaguaPlantaContent() {
                             )
                           })()}
                           <button type="button" onClick={()=>setBussolaVirtualAberta(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {bussolaVirtualAberta?'▾':'▸'} Bússola virtual (sensor do celular, experimental)
                           </button>
                           {/* Magnetômetro do dispositivo lê Norte MAGNÉTICO, como o Luo Pan. */}
@@ -1931,7 +1931,7 @@ function BaguaPlantaContent() {
                             <BussolaDispositivo onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('magnetico');setBussolaVirtualAberta(false)}}/>
                           )}
                           <button type="button" onClick={()=>setMapaAberto(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {mapaAberto?'▾':'▸'} Alinhar sobre mapa/satélite (Modo C)
                           </button>
                           {/* O mapa (Web Mercator) deriva Norte VERDADEIRO — daí a referência ser marcada aqui. */}
@@ -1939,7 +1939,7 @@ function BaguaPlantaContent() {
                             <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('verdadeiro');setMapaAberto(false)}}/>
                           )}
                           <button type="button" onClick={()=>setFacingAberto(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#7C3AED',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {facingAberto?'▾':'▸'} Qual face é a fachada? (questionário de facing)
                           </button>
                           {/* Não mexe na referência de Norte: o questionário decide QUAL face é a frente,
@@ -1959,7 +1959,7 @@ function BaguaPlantaContent() {
                     </div>
                     <div>
                       <label htmlFor="input-rotacao" style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>
-                        2️⃣ Rotação <span style={{color:'#7C3AED',fontWeight:'normal'}}>{rot}°</span>
+                        2️⃣ Rotação <span style={{color:'#2E7D6B',fontWeight:'normal'}}>{rot}°</span>
                       </label>
                       <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'6px'}}>
                         <button onClick={()=>setRot(r=>(r-90+360)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↺</button>
@@ -1970,14 +1970,14 @@ function BaguaPlantaContent() {
                         {[0,90,180,270].map(r=>(
                           <button key={r} onClick={()=>setRot(r)} style={{
                             flex:1,padding:'3px 0',fontSize:'11px',border:'1px solid',borderRadius:'4px',cursor:'pointer',
-                            borderColor:rot===r?'#7C3AED':'#D1D5DB',background:rot===r?'#EDE9FE':'#fff',color:rot===r?'#7C3AED':'#6B7280',
+                            borderColor:rot===r?'#2E7D6B':'#D1D5DB',background:rot===r?'#E6F2EF':'#fff',color:rot===r?'#2E7D6B':'#6B7280',
                           }}>{r}°</button>
                         ))}
                       </div>
                     </div>
                   </div>
                   <button onClick={()=>setStep('entrada')}
-                    style={{width:'100%',background:'#1E3A5F',color:'#fff',border:'none',padding:'10px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                    style={{width:'100%',background:'#0E1B2C',color:'#fff',border:'none',padding:'10px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                     Continuar → Marcar entrada principal
                   </button>
                 </div>
@@ -1997,7 +1997,7 @@ function BaguaPlantaContent() {
                   )}
                   {entrada&&(
                     <button onClick={calcular}
-                      style={{padding:'8px 20px',background:'#1E3A5F',color:'#fff',border:'none',borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{padding:'8px 20px',background:'#0E1B2C',color:'#fff',border:'none',borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       Calcular Ba Gua →
                     </button>
                   )}
@@ -2011,7 +2011,7 @@ function BaguaPlantaContent() {
                     width:'100%',padding:'12px 18px',background:'transparent',border:'none',cursor:'pointer',
                     display:'flex',alignItems:'center',justifyContent:'space-between'
                   }}>
-                    <span style={{fontWeight:'bold',color:'#1E3A5F',fontSize:'13px'}}>📋 Instrucoes de ajuste</span>
+                    <span style={{fontWeight:'bold',color:'#0E1B2C',fontSize:'13px'}}>📋 Instrucoes de ajuste</span>
                     <span style={{fontSize:'14px',color:'#6B7280',transition:'transform 0.2s',transform:instrucaoAberta?'rotate(0deg)':'rotate(180deg)'}}>{instrucaoAberta?'▲':'▼'}</span>
                   </button>
                   {instrucaoAberta&&(
@@ -2019,7 +2019,7 @@ function BaguaPlantaContent() {
                       <div style={{display:'flex',gap:'10px',alignItems:'flex-start',marginBottom:'12px'}}>
                         <span style={{fontSize:'20px',flexShrink:0}}>ℹ️</span>
                         <div>
-                          <div style={{fontWeight:'bold',color:'#1E3A5F',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
+                          <div style={{fontWeight:'bold',color:'#0E1B2C',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
                           <p style={{color:'#374151',fontSize:'11px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
                             A análise automática considera o retângulo envolvente detectado na imagem. Para resultados precisos:
                           </p>
@@ -2096,8 +2096,8 @@ function BaguaPlantaContent() {
                   {escola==='bussola'&&(()=>{
                     const casa=calcularKuaDaCasa(orientacaoGraus)
                     return (
-                      <div style={{marginTop:'12px',padding:'9px',background:'#F5F3FF',borderRadius:'7px',border:'1px solid #DDD6FE'}}>
-                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#6D28D9',marginBottom:'4px'}}>
+                      <div style={{marginTop:'12px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
+                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#245F52',marginBottom:'4px'}}>
                           🏠 Kua da Casa: {casa.kua} · Grupo {casa.grupo==='leste'?'Leste':'Oeste'}
                         </div>
                         <div style={{fontSize:'10px',color:'#4C1D95'}}>
@@ -2153,9 +2153,9 @@ function BaguaPlantaContent() {
 
                   {/* Posicionamento de Mobiliário (Ba Zhai) — calculadora "sentar no mal, olhar para o bem" */}
                   {escola==='bussola'&&(
-                    <div style={{marginTop:'10px',padding:'9px',background:'#F5F3FF',borderRadius:'7px',border:'1px solid #DDD6FE'}}>
+                    <div style={{marginTop:'10px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
                       <button type="button" onClick={()=>setMobiliarioAberto(v=>!v)}
-                        style={{background:'none',border:'none',padding:0,color:'#6D28D9',fontSize:'11px',fontWeight:'bold',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                        style={{background:'none',border:'none',padding:0,color:'#245F52',fontSize:'11px',fontWeight:'bold',cursor:'pointer',textAlign:'left',width:'100%'}}>
                         {mobiliarioAberto?'▾':'▸'} 🛋️ Posicionamento de Mobiliário (Ba Zhai)
                       </button>
                       {mobiliarioAberto&&(()=>{
@@ -2176,7 +2176,7 @@ function BaguaPlantaContent() {
                               {(['cama','fogao','mesa'] as const).map(t=>(
                                 <button key={t} onClick={()=>setMobiliarioTipo(t)} style={{
                                   padding:'4px 10px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
-                                  borderColor:mobiliarioTipo===t?'#7C3AED':'#D1D5DB',background:mobiliarioTipo===t?'#7C3AED':'#fff',color:mobiliarioTipo===t?'#fff':'#6B7280',
+                                  borderColor:mobiliarioTipo===t?'#2E7D6B':'#D1D5DB',background:mobiliarioTipo===t?'#2E7D6B':'#fff',color:mobiliarioTipo===t?'#fff':'#6B7280',
                                 }}>{t==='cama'?'Cama':t==='fogao'?'Fogão':'Mesa'}</button>
                               ))}
                             </div>
@@ -2203,7 +2203,7 @@ function BaguaPlantaContent() {
                               ))}
                             </select>
                             <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
-                              Direção (para onde o objeto aponta): <span style={{color:'#7C3AED'}}>{mobiliarioDirecaoGraus.toFixed(1)}°</span> ({NOME_SETOR[direcaoSetor]})
+                              Direção (para onde o objeto aponta): <span style={{color:'#2E7D6B'}}>{mobiliarioDirecaoGraus.toFixed(1)}°</span> ({NOME_SETOR[direcaoSetor]})
                             </label>
                             <input type="number" min={0} max={359.9} step={0.1} value={mobiliarioDirecaoGraus}
                               onChange={e=>setMobiliarioDirecaoGraus(normalizarGraus(Number(e.target.value)||0))}
@@ -2232,7 +2232,7 @@ function BaguaPlantaContent() {
                   {/* Mini-cards 3x3 */}
                   {setores.length>0&&(
                     <div style={{marginTop:'12px'}}>
-                      <div style={{fontSize:'11px',fontWeight:'bold',color:'#1E3A5F',marginBottom:'6px'}}>📊 Resumo por setor</div>
+                      <div style={{fontSize:'11px',fontWeight:'bold',color:'#0E1B2C',marginBottom:'6px'}}>📊 Resumo por setor</div>
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const sel=ativo===i
@@ -2244,7 +2244,7 @@ function BaguaPlantaContent() {
                               padding:'7px',borderRadius:'6px',cursor:'pointer',
                               border:`2px solid ${sel?corTotal(ts):'#E5E7EB'}`,background:sel?corTotal(ts)+'18':'#F9FAFB',
                             }}>
-                              <div style={{fontSize:'10px',fontWeight:'bold',color:'#1E3A5F'}}>{st.nome}</div>
+                              <div style={{fontSize:'10px',fontWeight:'bold',color:'#0E1B2C'}}>{st.nome}</div>
                               <div style={{display:'flex',flexDirection:'column',gap:'1px',marginTop:'2px'}}>
                                 <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
                                   <span style={{color:'#6B7280'}}>Geo:</span>
@@ -2259,7 +2259,7 @@ function BaguaPlantaContent() {
                                 </div>
                               </div>
                               <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts} pts · {lblTotal(ts)}</div>
-                              {sc.ajusteManual!==null&&<div style={{fontSize:'7px',color:'#7C3AED',marginTop:'1px'}}>&#x270F; Ajustado</div>}
+                              {sc.ajusteManual!==null&&<div style={{fontSize:'7px',color:'#2E7D6B',marginTop:'1px'}}>&#x270F; Ajustado</div>}
                             </div>
                           )
                         })}
@@ -2281,7 +2281,7 @@ function BaguaPlantaContent() {
                     <button onClick={finalizarAnalise} disabled={salvandoTudo}
                       style={{
                         marginTop:'14px',width:'100%',padding:'12px',
-                        background:salvandoTudo?'#93C5FD':'linear-gradient(135deg, #1E3A5F, #2D5A8E)',
+                        background:salvandoTudo?'#93C5FD':'linear-gradient(135deg, #0E1B2C, #163A52)',
                         color:'#fff',border:'none',borderRadius:'8px',
                         fontSize:'14px',fontWeight:'bold',cursor:salvandoTudo?'not-allowed':'pointer',
                       }}>
@@ -2299,7 +2299,7 @@ function BaguaPlantaContent() {
                 position:'sticky',top:'16px',maxHeight:'calc(100vh - 100px)',overflowY:'auto'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
                   <div>
-                    <span style={{fontSize:'14px',fontWeight:'bold',color:'#1E3A5F'}}>{stAtivo.nome}</span>
+                    <span style={{fontSize:'14px',fontWeight:'bold',color:'#0E1B2C'}}>{stAtivo.nome}</span>
                     <div style={{fontSize:'10px',color:'#6B7280'}}>{stAtivo.elem} · {stAtivo.dir}</div>
                   </div>
                   <button onClick={()=>setAtivo(null)} style={{background:'transparent',border:'none',fontSize:'18px',cursor:'pointer',color:'#9CA3AF'}}>×</button>
@@ -2331,8 +2331,8 @@ function BaguaPlantaContent() {
                           <div style={{fontSize:'9px',color:'#D97706',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
                         )}
                         {scAtivo.ajusteManual!==null&&(
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 8px',background:'#EDE9FE',borderRadius:'4px',borderLeft:'3px solid #7C3AED'}}>
-                            <span style={{fontSize:'9px',color:'#5B21B6',fontWeight:'bold'}}>Geo ajustado:</span>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 8px',background:'#E6F2EF',borderRadius:'4px',borderLeft:'3px solid #2E7D6B'}}>
+                            <span style={{fontSize:'9px',color:'#1D4D43',fontWeight:'bold'}}>Geo ajustado:</span>
                             <span style={{fontSize:'10px',fontWeight:'bold',color:corGeo(scAtivo.ajusteManual,scAtivo)}}>{scAtivo.ajusteManual} pts</span>
                           </div>
                         )}
@@ -2391,7 +2391,7 @@ function BaguaPlantaContent() {
 
                 {/* ── Avançado — Ajuste do consultor (colapsável) ── */}
                 <details style={{marginBottom:'10px',marginTop:'4px'}}>
-                  <summary style={{fontSize:'11px',fontWeight:'bold',color:'#7C3AED',cursor:'pointer',padding:'6px 0',userSelect:'none',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
+                  <summary style={{fontSize:'11px',fontWeight:'bold',color:'#2E7D6B',cursor:'pointer',padding:'6px 0',userSelect:'none',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
                     🎛 Avançado — Ajuste do consultor
                   </summary>
                   <div style={{padding:'10px',background:'#FAFAFA',borderRadius:'8px',border:'1px solid #E5E7EB',marginTop:'4px'}}>
@@ -2425,7 +2425,7 @@ function BaguaPlantaContent() {
                       </button>
                     )}
                     {scAtivo.ajusteManual!==null&&(
-                      <div style={{marginTop:'4px',fontSize:'9px',color:'#7C3AED',fontWeight:'bold'}}>
+                      <div style={{marginTop:'4px',fontSize:'9px',color:'#2E7D6B',fontWeight:'bold'}}>
                         Valor geo sobrescrito — total recalculado automaticamente
                       </div>
                     )}
@@ -2499,7 +2499,7 @@ function BaguaPlantaContent() {
                 })()}
 
                 <button onClick={()=>salvarSetorDB(ativo!)}
-                  style={{width:'100%',marginTop:'8px',background:consultaId?'#7C3AED':'#1E3A5F',color:'#fff',border:'none',padding:'9px',borderRadius:'7px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{width:'100%',marginTop:'8px',background:consultaId?'#2E7D6B':'#0E1B2C',color:'#fff',border:'none',padding:'9px',borderRadius:'7px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   💾 Salvar avaliação{consultaId?' no banco':''}
                 </button>
 
@@ -2522,7 +2522,7 @@ function BaguaPlantaContent() {
               justifyContent:'space-between', background:'rgba(0,0,0,0.5)'
             }}>
               <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-                <span style={{color:'#B8860B',fontSize:'16px',fontWeight:'bold'}}>☯ FengShui Studio</span>
+                <span style={{color:'#C9A227',fontSize:'16px',fontWeight:'bold'}}>☯ FengShui Studio</span>
                 <span style={{color:'rgba(255,255,255,0.5)',fontSize:'12px'}}>— Tela cheia</span>
               </div>
               <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
@@ -2609,10 +2609,10 @@ function BaguaPlantaContent() {
 export default function BaguaPlanta() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando planta...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando planta...</p>
         </div>
       </div>
     }>
