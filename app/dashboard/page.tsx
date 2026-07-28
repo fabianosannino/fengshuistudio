@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton'
 import type { Profile, BaguaEntrada, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, isProfissional, planoUsuario } from '../../src/lib/plano-utils'
+import { Users, ClipboardList, Moon, Star, Sparkles, FileText, CalendarDays, CircleAlert, Wallet, Check, Clock, Settings, type LucideIcon } from 'lucide-react'
 
 const ChartLoadingSkeleton = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -58,7 +59,7 @@ const DASHBOARD_MODULES = [
   { key: 'consultas_mes', label: 'Consultas por Mês' },
   { key: 'proximas_atividades', label: 'Próximas Atividades' },
   { key: 'novos_clientes', label: 'Novos Clientes por Mês' },
-  { key: 'analises_bagua', label: '☯ Análises Ba Gua Recentes' },
+  { key: 'analises_bagua', label: 'Análises Ba Gua Recentes' },
   { key: 'acoes_rapidas', label: 'Ações Rápidas' },
 ]
 
@@ -319,7 +320,7 @@ export default function Dashboard() {
           subtitulo: r.clientes?.nome_completo || '',
           data: r.data_ritual,
           horario: r.horario,
-          icon: '🌙',
+          icon: 'ritual',
           cor: '#2E7D6B',
         })
       })
@@ -332,7 +333,7 @@ export default function Dashboard() {
           subtitulo: c.clientes?.nome_completo || '',
           data: c.criado_em?.split('T')[0],
           horario: null,
-          icon: '📋',
+          icon: 'consulta',
           cor: '#F59E0B',
         })
       })
@@ -345,7 +346,7 @@ export default function Dashboard() {
           subtitulo: `R$ ${Number(p.valor).toFixed(2)} • ${p.clientes?.nome_completo || ''}`,
           data: p.data_vencimento,
           horario: null,
-          icon: p.status === 'atrasado' ? '🔴' : '💰',
+          icon: p.status === 'atrasado' ? 'atrasado' : 'pagamento',
           cor: p.status === 'atrasado' ? '#DC2626' : '#15803D',
         })
       })
@@ -440,8 +441,9 @@ export default function Dashboard() {
         </div>
         <button onClick={() => setShowSettings(!showSettings)} style={{
           background: 'none', border: '1px solid #D1D5DB', borderRadius: '8px',
-          padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280'
-        }}>⚙️ Personalizar</button>
+          padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280',
+          display: 'inline-flex', alignItems: 'center', gap: '6px'
+        }}><Settings size={15} strokeWidth={1.75} aria-hidden="true" /> Personalizar</button>
       </div>
 
       {showSettings && (
@@ -468,17 +470,17 @@ export default function Dashboard() {
         gap: '20px', marginBottom: '32px'
       }}>
         {[
-          { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
-          { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
-          { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#2E7D6B', link: '/calendario' },
-          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#C9A227', link: '/planos' },
+          { label: 'Clientes ativos', value: String(totalClientes), icon: Users, color: '#1D4ED8', link: '/clientes' },
+          { label: 'Consultas realizadas', value: String(totalConsultas), icon: ClipboardList, color: '#15803D', link: '/consultas' },
+          { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#2E7D6B', link: '/calendario' },
+          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: Star, color: '#C9A227', link: '/planos' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => window.location.href = kpi.link} style={{
             background: '#ffffff', borderRadius: '12px', padding: '24px',
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${kpi.color}`,
             cursor: 'pointer',
           }}>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>{kpi.icon}</div>
+            <div style={{ marginBottom: '8px' }}><kpi.icon size={26} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
             <div style={{ fontSize: '28px', fontWeight: 'bold', color: kpi.color, marginBottom: '4px' }}>{kpi.value}</div>
             <div style={{ color: '#6B7280', fontSize: '13px' }}>{kpi.label}</div>
           </div>
@@ -584,8 +586,14 @@ export default function Dashboard() {
                     width: '40px', height: '40px', borderRadius: '10px',
                     background: `${item.cor}15`, display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
-                    fontSize: '20px', flexShrink: 0,
-                  }}>{item.icon}</div>
+                    flexShrink: 0,
+                  }}>
+                    {(() => {
+                      const map: Record<string, LucideIcon> = { ritual: Moon, consulta: ClipboardList, pagamento: Wallet, atrasado: CircleAlert }
+                      const Icon = map[item.icon] || CalendarDays
+                      return <Icon size={20} strokeWidth={1.75} color={item.cor} aria-hidden="true" />
+                    })()}
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ color: '#111827', fontSize: '13px', fontWeight: 'bold', margin: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.titulo}
@@ -607,7 +615,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ height: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '32px' }}>📅</span>
+              <CalendarDays size={32} strokeWidth={1.5} color="#9CA3AF" aria-hidden="true" />
               <p style={{ color: '#9CA3AF', fontSize: '14px', textAlign: 'center', margin: '0' }}>Nenhuma atividade próxima</p>
               <p style={{ color: '#D1D5DB', fontSize: '12px', textAlign: 'center', margin: '0' }}>Rituais, consultas e pagamentos aparecem aqui</p>
             </div>
@@ -635,8 +643,9 @@ export default function Dashboard() {
       {/* Análises Baguá recentes */}
       {visibleModules.analises_bagua !== false && analisesBagua.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-            ☯ Análises Ba Gua recentes
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src="/marketing/logo-fengshui.png" alt="" width={22} height={22} />
+            Análises Ba Gua recentes
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {analisesBagua.map(a => (
@@ -659,9 +668,12 @@ export default function Dashboard() {
                 <span style={{
                   background: a.status_bagua==='concluida'?'#F0FDF4':'#FFF7ED',
                   color: a.status_bagua==='concluida'?'#15803D':'#D97706',
-                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
+                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
+                  display: 'inline-flex', alignItems: 'center', gap: '4px'
                 }}>
-                  {a.status_bagua==='concluida' ? '✓ Concluída' : '○ Em andamento'}
+                  {a.status_bagua==='concluida'
+                    ? <><Check size={12} strokeWidth={2.5} aria-hidden="true" /> Concluída</>
+                    : <><Clock size={12} strokeWidth={2.5} aria-hidden="true" /> Em andamento</>}
                 </span>
               </div>
             ))}
@@ -677,17 +689,17 @@ export default function Dashboard() {
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {[
-            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: '✨', color: '#2E7D6B', link: '/consultas/nova' },
-            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8', link: '/clientes' },
-            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
-            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: '🌙', color: '#C9A227', link: '/calendario' },
+            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: Sparkles, color: '#2E7D6B', link: '/consultas/nova' },
+            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: Users, color: '#1D4ED8', link: '/clientes' },
+            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#15803D', link: '/consultas' },
+            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: Moon, color: '#C9A227', link: '/calendario' },
           ].map((kpi, i) => (
             <div key={i} onClick={() => window.location.href = kpi.link} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px',
               boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
               borderTop: `3px solid ${kpi.color}`,
             }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>{kpi.icon}</div>
+              <div style={{ marginBottom: '8px' }}><kpi.icon size={24} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
               <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{kpi.label}</div>
               <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{kpi.desc}</div>
             </div>

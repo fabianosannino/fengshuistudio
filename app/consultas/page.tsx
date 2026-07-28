@@ -7,6 +7,7 @@ import Skeleton from '../components/Skeleton'
 import ConfirmModal from '../components/ConfirmModal'
 import type { Consulta } from '../../src/lib/types'
 import { isProfissional as isProfissionalFn } from '../../src/lib/plano-utils'
+import { ClipboardList, Home as HomeIcon, User as UserIcon, CalendarDays } from 'lucide-react'
 const PAGE_SIZE = 10
 
 export default function Consultas() {
@@ -188,7 +189,7 @@ export default function Consultas() {
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{isProfessional ? '📋' : '🏠'}</div>
+          <div style={{ marginBottom: '16px' }}>{isProfessional ? <ClipboardList size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto' }} aria-hidden="true" /> : <HomeIcon size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto' }} aria-hidden="true" />}</div>
           <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>
             {isProfessional ? 'Nenhuma consulta registrada' : 'Nenhum imóvel cadastrado'}
           </h3>
@@ -228,18 +229,18 @@ export default function Consultas() {
                     const be=consulta.bagua_entrada
                     const finalizada=!!(be?.finalizada_em)
                     const emAndamento=!!(be?.planta_url)&&!finalizada
-                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
-                    if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>☯ Em andamento</span>
+                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
+                    if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>Diagnóstico em andamento</span>
                     return null
                   })()}
                 </div>
                 {isProfessional && consulta.clientes?.nome_completo && (
-                  <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
-                    👤 {consulta.clientes.nome_completo}
+                  <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <UserIcon size={14} strokeWidth={1.75} aria-hidden="true" /> {consulta.clientes.nome_completo}
                   </p>
                 )}
-                <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
-                  📅 {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
+                <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CalendarDays size={14} strokeWidth={1.75} aria-hidden="true" /> {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
                   {consulta.tipo_imovel && ` • ${consulta.tipo_imovel}`}
                   {consulta.area_total_m2 && ` • ${consulta.area_total_m2}m²`}
                 </p>
