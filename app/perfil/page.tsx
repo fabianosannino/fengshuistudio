@@ -195,7 +195,8 @@ export default function Perfil() {
 
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meu Perfil</h1>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Conta</p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Meu Perfil</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
             {isProfessional
               ? 'Seus dados aparecem no relatório PDF enviado ao cliente'
@@ -203,7 +204,7 @@ export default function Perfil() {
           </p>
         </div>
 
-        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '50%',
             background: '#2E7D6B', display: 'flex', alignItems: 'center',
@@ -236,7 +237,7 @@ export default function Perfil() {
 
         <form onSubmit={handleSave}>
           {/* Dados pessoais */}
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '20px' }}>
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados pessoais</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
@@ -263,7 +264,7 @@ export default function Perfil() {
           </div>
 
           {/* Dados profissionais - sempre visivel */}
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '20px' }}>
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados profissionais</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
@@ -284,7 +285,7 @@ export default function Perfil() {
 
           {/* Campos exclusivos para profissionais */}
           {isProfessional && (
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '20px' }}>
               <h3 style={{ color: '#2E7D6B', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Perfil profissional</h3>
               <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
                 Essas informações ficam visíveis na rede de parceiros para usuários pessoais
@@ -327,7 +328,7 @@ export default function Perfil() {
 
           {/* Parceiro visivel toggle — available for all paid plans (Simples + Profissional) */}
           {planoEfetivo(plano) !== 'free' && (
-            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '20px' }}>
               <h3 style={{ color: '#2E7D6B', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Rede de Parceiros</h3>
               <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
                 Apareça na listagem de parceiros para outros usuários da plataforma
@@ -385,7 +386,7 @@ export default function Perfil() {
 
         {/* ── Alterar senha ─────────────────────────────────────────────── */}
         <form onSubmit={handleAlterarSenha} style={{ marginTop: '24px' }}>
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)' }}>
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}><Lock size={16} strokeWidth={1.75} aria-hidden="true" /> Alterar senha</h3>
             <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
               Mínimo de {SENHA_MIN_CARACTERES} caracteres. Você continuará conectado após a troca.

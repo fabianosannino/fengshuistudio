@@ -108,7 +108,8 @@ export default function Parceiros() {
     <AppShell currentPage="parceiros">
 
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Rede</p>
+        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
           Rede de Parceiros
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -137,7 +138,7 @@ export default function Parceiros() {
       {/* Filters */}
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '20px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px',
+        boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '24px',
         display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end'
       }}>
         <div style={{ flex: 1, minWidth: '200px' }}>
@@ -175,7 +176,7 @@ export default function Parceiros() {
       {filtered.length === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+          textAlign: 'center', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)'
         }}>
           <Handshake size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>
@@ -195,7 +196,7 @@ export default function Parceiros() {
             return (
               <div key={parceiro.id} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
                 borderTop: `3px solid ${tipo.cor}`
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>

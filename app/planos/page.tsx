@@ -421,7 +421,7 @@ export default function Planos() {
       })()}
 
       {/* Feature Comparison Table */}
-      <div style={{ background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', maxWidth: '900px', margin: '0 auto 40px' }}>
+      <div style={{ background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', maxWidth: '900px', margin: '0 auto 40px' }}>
         <h3 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>
           Comparação de funcionalidades
         </h3>
@@ -458,7 +458,7 @@ export default function Planos() {
 
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '24px 32px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '900px', margin: '0 auto'
+        boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', textAlign: 'center', maxWidth: '900px', margin: '0 auto'
       }}>
         <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
           Dúvidas sobre os planos? Entre em contato pelo e-mail

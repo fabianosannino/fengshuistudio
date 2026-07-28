@@ -403,7 +403,7 @@ function CurasPageContent() {
   // Shared card style matching Dashboard
   const cardStyle = {
     background: '#ffffff', borderRadius: '12px', padding: '24px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
   }
 
   // Shared sub-card style for items inside sections
@@ -417,7 +417,8 @@ function CurasPageContent() {
 
       {/* ── PAGE HEADER ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Biblioteca</p>
+        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
           Curas & Ativações
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 8px 0' }}>
