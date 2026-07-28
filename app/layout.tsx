@@ -84,22 +84,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="FengShui Studio" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        <style>{`
-          .skip-link {
-            position: absolute;
-            left: -9999px;
-            top: 0;
-            z-index: 9999;
-            padding: 12px 24px;
-            background: #2E7D6B;
-            color: #FBF9F4;
-            font-size: 14px;
-            text-decoration: none;
-          }
-          .skip-link:focus {
-            left: 0;
-          }
-        `}</style>
       </head>
       <body style={{ margin: 0 }}>
         <a href="#main-content" className="skip-link">
