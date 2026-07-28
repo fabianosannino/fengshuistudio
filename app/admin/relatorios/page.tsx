@@ -114,9 +114,9 @@ export default function AdminRelatorios() {
   return (
     <AppShell currentPage="admin/relatorios">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Relatórios Semanais</h1>
+        <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Relatórios Semanais</h1>
         <button onClick={() => generateReport(false)} disabled={generating}
-          style={{ padding: '10px 20px', background: generating ? '#9CA3AF' : '#7C3AED', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: generating ? 'not-allowed' : 'pointer' }}>
+          style={{ padding: '10px 20px', background: generating ? '#9CA3AF' : '#2E7D6B', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: generating ? 'not-allowed' : 'pointer' }}>
           {generating ? 'Gerando...' : 'Gerar Relatório da Semana Anterior'}
         </button>
       </div>
@@ -127,7 +127,7 @@ export default function AdminRelatorios() {
 
       {/* Custom Period */}
       <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Relatório sob demanda</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Relatório sob demanda</h3>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <label style={{ fontSize: '13px', color: '#374151' }}>
             Data início
@@ -140,7 +140,7 @@ export default function AdminRelatorios() {
               style={{ display: 'block', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '8px', marginTop: '4px' }} />
           </label>
           <button onClick={() => generateReport(true)} disabled={generating || !customStart || !customEnd}
-            style={{ padding: '10px 20px', background: (!customStart || !customEnd) ? '#D1D5DB' : '#1E3A5F', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: (!customStart || !customEnd) ? 'not-allowed' : 'pointer' }}>
+            style={{ padding: '10px 20px', background: (!customStart || !customEnd) ? '#D1D5DB' : '#0E1B2C', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: (!customStart || !customEnd) ? 'not-allowed' : 'pointer' }}>
             Gerar
           </button>
         </div>
@@ -150,7 +150,7 @@ export default function AdminRelatorios() {
       {selectedReport && (
         <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', marginBottom: '32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '8px' }}>
-            <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: 0 }}>
+            <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: 0 }}>
               Semana {selectedReport.data.periodo.semana} — {fmtDate(selectedReport.data.periodo.inicio)} a {fmtDate(selectedReport.data.periodo.fim)}
             </h2>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -185,7 +185,7 @@ export default function AdminRelatorios() {
           {/* Plan Distribution */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Distribuição de Planos</h4>
+              <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Distribuição de Planos</h4>
               {Object.entries(selectedReport.data.planos.distribuicao_atual).map(([plan, count]) => (
                 <div key={plan} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
                   <span style={{ color: '#374151', fontSize: '14px', textTransform: 'capitalize' }}>{plan}</span>
@@ -194,7 +194,7 @@ export default function AdminRelatorios() {
               ))}
             </div>
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Financeiro</h4>
+              <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Financeiro</h4>
               {[
                 { label: 'MRR', value: fmt(selectedReport.data.financeiro.mrr_atual) },
                 { label: 'ARR', value: fmt(selectedReport.data.financeiro.arr_atual) },
@@ -212,7 +212,7 @@ export default function AdminRelatorios() {
 
           {/* Usage */}
           <div style={{ marginBottom: '24px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Uso da Plataforma</h4>
+            <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Uso da Plataforma</h4>
             <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               {[
                 { label: 'Análises realizadas', value: selectedReport.data.uso_plataforma.analises_realizadas },
@@ -220,7 +220,7 @@ export default function AdminRelatorios() {
                 { label: 'Clientes cadastrados', value: selectedReport.data.uso_plataforma.clientes_cadastrados },
               ].map((item, i) => (
                 <div key={i} style={{ background: '#F9FAFB', borderRadius: '8px', padding: '12px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7C3AED' }}>{item.value}</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2E7D6B' }}>{item.value}</div>
                   <div style={{ fontSize: '12px', color: '#6B7280' }}>{item.label}</div>
                 </div>
               ))}
@@ -266,7 +266,7 @@ export default function AdminRelatorios() {
                 <td style={{ padding: '12px', textAlign: 'center' }}>
                   <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                     <button onClick={() => setSelectedReport(r)}
-                      style={{ padding: '6px 12px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                      style={{ padding: '6px 12px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
                       Ver
                     </button>
                     <button onClick={() => exportCSV(r.data)}

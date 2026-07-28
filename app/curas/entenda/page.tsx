@@ -6,9 +6,9 @@ const CURE_TYPES = [
   {
     icon: '\u{1F48E}',
     title: 'Cristais e Pedras',
-    color: '#7C3AED',
-    bgColor: '#F5F0FF',
-    borderColor: '#E9D5FF',
+    color: '#2E7D6B',
+    bgColor: '#EAF4F1',
+    borderColor: '#DCEFE9',
     description:
       'Cristais são ferramentas milenares de canalização e purificação energética. Cada pedra possui uma frequência vibratória única que interage com os campos energéticos do ambiente e das pessoas. No Feng Shui, cristais são posicionados estrategicamente para harmonizar, ativar ou proteger setores específicos do Ba Guá.',
     examples: [
@@ -59,7 +59,7 @@ const CURE_TYPES = [
     title: 'Mudras',
     color: '#9333EA',
     bgColor: '#FAF5FF',
-    borderColor: '#E9D5FF',
+    borderColor: '#DCEFE9',
     description:
       'Mudras são gestos sagrados realizados com as mãos que ativam centros energéticos específicos no corpo. No contexto do Feng Shui, cada mudra corresponde a um elemento e setor do Ba Guá, canalizando energia para áreas específicas da vida.',
     examples: [
@@ -146,7 +146,7 @@ export default function EntendaCurasPage() {
     <AppShell currentPage="curas">
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '26px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+        <h1 style={{ color: '#0E1B2C', fontSize: '26px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
           Entenda as Curas e Ativações
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 16px 0', lineHeight: '1.6' }}>
@@ -154,8 +154,8 @@ export default function EntendaCurasPage() {
           Entenda como funcionam, quando aplicar e como potencializar seus resultados.
         </p>
         <div style={{
-          padding: '12px 16px', background: '#F5F0FF', borderRadius: '8px',
-          border: '1px solid #E9D5FF', fontSize: '13px', color: '#7C3AED', lineHeight: '1.5',
+          padding: '12px 16px', background: '#EAF4F1', borderRadius: '8px',
+          border: '1px solid #DCEFE9', fontSize: '13px', color: '#2E7D6B', lineHeight: '1.5',
         }}>
           Cada tipo de cura trabalha com uma dimensão diferente da energia. A combinação de múltiplas abordagens
           (cristais + meditação + aromaterapia, por exemplo) potencializa significativamente os resultados.
@@ -194,7 +194,7 @@ export default function EntendaCurasPage() {
               </p>
 
               {/* Examples */}
-              <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>
                 Exemplos e Aplicações
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', marginBottom: '20px' }}>
@@ -238,7 +238,7 @@ export default function EntendaCurasPage() {
         <a
           href="/curas"
           style={{
-            display: 'inline-block', padding: '12px 28px', background: '#7C3AED',
+            display: 'inline-block', padding: '12px 28px', background: '#2E7D6B',
             color: '#ffffff', borderRadius: '8px', textDecoration: 'none',
             fontWeight: 'bold', fontSize: '14px', transition: 'background 0.2s',
           }}

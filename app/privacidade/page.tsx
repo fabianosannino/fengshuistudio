@@ -10,12 +10,12 @@ export default function PoliticaPrivacidade() {
 
       {/* Header */}
       <div style={{
-        background: 'linear-gradient(165deg, #0f172a, #1E3A5F)',
+        background: 'linear-gradient(165deg, #0f172a, #0E1B2C)',
         padding: '80px 32px 48px', textAlign: 'center',
       }}>
         <a href="/landing" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
           <span style={{ fontSize: '28px' }}>☯</span>
-          <span style={{ fontFamily: "'Playfair Display', serif", color: '#C9A84C', fontSize: '22px', fontWeight: 700 }}>FengShui Studio</span>
+          <span style={{ fontFamily: "'Playfair Display', serif", color: '#C9A227', fontSize: '22px', fontWeight: 700 }}>FengShui Studio</span>
         </a>
         <h1 style={{
           fontFamily: "'Playfair Display', serif", color: '#ffffff',
@@ -82,7 +82,7 @@ export default function PoliticaPrivacidade() {
         ].map((section, i) => (
           <div key={i} style={{ marginBottom: '32px' }}>
             <h2 style={{
-              fontFamily: "'Playfair Display', serif", color: '#1E3A5F',
+              fontFamily: "'Playfair Display', serif", color: '#0E1B2C',
               fontSize: '20px', fontWeight: 700, margin: '0 0 12px 0',
             }}>
               {section.title}
@@ -97,7 +97,7 @@ export default function PoliticaPrivacidade() {
 
         <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '24px', marginTop: '16px' }}>
           <a href="/landing" style={{
-            color: '#7C3AED', fontSize: '14px', fontWeight: 600, textDecoration: 'none',
+            color: '#2E7D6B', fontSize: '14px', fontWeight: 600, textDecoration: 'none',
           }}>← Voltar para a página inicial</a>
         </div>
       </div>

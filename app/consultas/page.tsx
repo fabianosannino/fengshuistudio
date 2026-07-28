@@ -133,7 +133,7 @@ export default function Consultas() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             {isProfessional ? 'Consultas' : 'Meus Imóveis'}
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -141,7 +141,7 @@ export default function Consultas() {
           </p>
         </div>
         <button onClick={() => window.location.href = '/consultas/nova'} style={{
-          background: '#7C3AED', color: '#ffffff', border: 'none',
+          background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer'
         }}>{isProfessional ? '+ Nova consulta' : '+ Novo imóvel'}</button>
@@ -189,7 +189,7 @@ export default function Consultas() {
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>{isProfessional ? '📋' : '🏠'}</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>
             {isProfessional ? 'Nenhuma consulta registrada' : 'Nenhum imóvel cadastrado'}
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>
@@ -198,7 +198,7 @@ export default function Consultas() {
               : 'Cadastre seu imóvel para receber o diagnóstico Feng Shui personalizado'}
           </p>
           <button onClick={() => window.location.href = '/consultas/nova'} style={{
-            background: '#7C3AED', color: '#ffffff', border: 'none',
+            background: '#2E7D6B', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>{isProfessional ? 'Iniciar primeira consulta' : 'Cadastrar meu imóvel'}</button>
@@ -246,13 +246,13 @@ export default function Consultas() {
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => window.location.href = `/consultas/${consulta.id}`} style={{
-                  padding: '8px 20px', background: '#7C3AED', color: '#fff',
+                  padding: '8px 20px', background: '#2E7D6B', color: '#fff',
                   border: 'none', borderRadius: '6px', fontSize: '13px',
                   fontWeight: 'bold', cursor: 'pointer'
                 }}>Abrir</button>
                 {consulta.status === 'finalizada' && (
                   <button onClick={() => window.location.href = `/consultas/${consulta.id}/relatorio`} style={{
-                    padding: '8px 20px', background: '#1E3A5F', color: '#fff',
+                    padding: '8px 20px', background: '#0E1B2C', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
                   }}>Relatório</button>

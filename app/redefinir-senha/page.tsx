@@ -80,9 +80,9 @@ export default function RedefinirSenha() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1E3A5F 0%, #2d5a8e 50%, #1E3A5F 100%)',
+      background: 'linear-gradient(135deg, #0E1B2C 0%, #163A52 50%, #0E1B2C 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif', padding: '20px'
+      fontFamily: 'var(--font-figtree), sans-serif', padding: '20px'
     }}>
       <div style={{
         background: '#ffffff', borderRadius: '16px', padding: '48px 40px',
@@ -97,7 +97,7 @@ export default function RedefinirSenha() {
           <>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <div style={{ fontSize: '48px', marginBottom: '8px' }}>☯</div>
-              <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+              <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
                 {titulo}
               </h1>
               <p style={{ color: '#6B7280', fontSize: '14px', margin: '0' }}>{subtitulo}</p>
@@ -110,7 +110,7 @@ export default function RedefinirSenha() {
                   Agora você pode fazer login com sua nova senha.
                 </p>
                 <button onClick={() => window.location.href = ROTA_LOGIN} style={{
-                  width: '100%', padding: '14px', background: '#7C3AED',
+                  width: '100%', padding: '14px', background: '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'
                 }}>Ir para o login</button>
@@ -122,12 +122,12 @@ export default function RedefinirSenha() {
                   Peça um novo link para continuar.
                 </p>
                 <button onClick={() => window.location.href = ROTA_ESQUECI_SENHA} style={{
-                  width: '100%', padding: '14px', background: '#7C3AED',
+                  width: '100%', padding: '14px', background: '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'
                 }}>Pedir novo link</button>
                 <div style={{ marginTop: '20px' }}>
-                  <a href={ROTA_LOGIN} style={{ color: '#7C3AED', fontSize: '14px', textDecoration: 'none' }}>← Voltar para o login</a>
+                  <a href={ROTA_LOGIN} style={{ color: '#2E7D6B', fontSize: '14px', textDecoration: 'none' }}>← Voltar para o login</a>
                 </div>
               </div>
             ) : (
@@ -146,7 +146,7 @@ export default function RedefinirSenha() {
                 </div>
                 <button type="submit" disabled={loading} style={{
                   width: '100%', padding: '14px',
-                  background: loading ? '#9CA3AF' : '#7C3AED',
+                  background: loading ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '16px', fontWeight: 'bold',
                   cursor: loading ? 'not-allowed' : 'pointer'

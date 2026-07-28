@@ -72,7 +72,7 @@ const RITUAIS_SUGERIDOS: Record<string, { titulo: string; descricao: string }[]>
   ]
 }
 
-const COR_FASE: Record<string, string> = { nova: '#1E3A5F', crescente: '#7C3AED', cheia: '#B8860B', minguante: '#6B7280' }
+const COR_FASE: Record<string, string> = { nova: '#0E1B2C', crescente: '#2E7D6B', cheia: '#C9A227', minguante: '#6B7280' }
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 export default function Calendario() {
@@ -209,12 +209,12 @@ export default function Calendario() {
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>\ud83c\udf19</div>
-            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calendário Lunar</h1>
+            <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>Calendário Lunar</h1>
             <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
               O Calendário Lunar está disponível nos planos Simples e Profissional.
             </p>
             <button onClick={() => window.location.href = '/planos'} style={{
-              padding: '14px 32px', background: '#7C3AED', color: '#fff',
+              padding: '14px 32px', background: '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '10px', fontSize: '16px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Ver planos</button>
@@ -228,7 +228,7 @@ export default function Calendario() {
     <AppShell currentPage="calendario">
 
       <div style={{
-        background: `linear-gradient(135deg, ${COR_FASE[faseSimples]}, #1E3A5F)`,
+        background: `linear-gradient(135deg, ${COR_FASE[faseSimples]}, #0E1B2C)`,
         borderRadius: '16px', padding: '28px 32px', marginBottom: '28px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px'
       }}>
@@ -253,9 +253,9 @@ export default function Calendario() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <button onClick={() => mudarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#7C3AED' }}>◀</button>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{MESES[mesAtual]} {anoAtual}</h3>
-            <button onClick={() => mudarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#7C3AED' }}>▶</button>
+            <button onClick={() => mudarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#2E7D6B' }}>◀</button>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{MESES[mesAtual]} {anoAtual}</h3>
+            <button onClick={() => mudarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#2E7D6B' }}>▶</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center' }}>
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
@@ -270,11 +270,11 @@ export default function Calendario() {
               return (
                 <div key={dia} style={{
                   padding: '4px 2px', borderRadius: '6px', cursor: 'default',
-                  background: isHoje ? '#7C3AED' : 'transparent', position: 'relative'
+                  background: isHoje ? '#2E7D6B' : 'transparent', position: 'relative'
                 }}>
                   <div style={{ color: isHoje ? '#fff' : '#374151', fontSize: '13px', fontWeight: isHoje ? 'bold' : 'normal' }}>{dia}</div>
                   <div style={{ fontSize: '10px' }}>{moonInfo.emoji}</div>
-                  {temRitual && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#B8860B', margin: '2px auto 0' }} />}
+                  {temRitual && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#C9A227', margin: '2px auto 0' }} />}
                 </div>
               )
             })}
@@ -282,7 +282,7 @@ export default function Calendario() {
         </div>
 
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Fases deste mês</h3>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Fases deste mês</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {proximasFases.length === 0 ? (
               <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Nenhuma fase principal neste mês.</p>
@@ -313,7 +313,7 @@ export default function Calendario() {
       {faseSelecionada && (
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '28px', borderTop: `3px solid ${COR_FASE[faseSelecionada]}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Rituais sugeridos para Lua {faseSelecionada === 'nova' ? 'Nova' : faseSelecionada === 'crescente' ? 'Crescente' : faseSelecionada === 'cheia' ? 'Cheia' : 'Minguante'}
             </h3>
             <button onClick={() => setFaseSelecionada(null)} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: '14px' }}>✕ Fechar</button>
@@ -338,12 +338,12 @@ export default function Calendario() {
         <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '3px' }}>
           <button onClick={() => { setVisao('geral'); setFiltroCliente('todos') }} style={{
             padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 'bold',
-            background: visao === 'geral' ? '#7C3AED' : 'transparent',
+            background: visao === 'geral' ? '#2E7D6B' : 'transparent',
             color: visao === 'geral' ? '#fff' : '#6B7280', cursor: 'pointer'
           }}>Visão geral</button>
           <button onClick={() => setVisao('cliente')} style={{
             padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 'bold',
-            background: visao === 'cliente' ? '#7C3AED' : 'transparent',
+            background: visao === 'cliente' ? '#2E7D6B' : 'transparent',
             color: visao === 'cliente' ? '#fff' : '#6B7280', cursor: 'pointer'
           }}>Por cliente</button>
         </div>
@@ -358,11 +358,11 @@ export default function Calendario() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0' }}>
+        <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0' }}>
           Rituais agendados ({filtroCliente !== 'todos' ? rituais.filter(r => r.cliente_id === filtroCliente).length : rituais.length})
         </h2>
         <button onClick={() => { setShowForm(!showForm); setMessage('') }} style={{
-          background: '#7C3AED', color: '#fff', border: 'none',
+          background: '#2E7D6B', color: '#fff', border: 'none',
           padding: '10px 20px', borderRadius: '8px', fontSize: '14px',
           fontWeight: 'bold', cursor: 'pointer'
         }}>{showForm ? 'Cancelar' : '+ Novo ritual'}</button>
@@ -378,8 +378,8 @@ export default function Calendario() {
       )}
 
       {showForm && (
-        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px', borderTop: '3px solid #7C3AED' }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Agendar ritual</h3>
+        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px', borderTop: '3px solid #2E7D6B' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Agendar ritual</h3>
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
@@ -422,7 +422,7 @@ export default function Calendario() {
                 style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
             </div>
             <button type="submit" disabled={saving} style={{
-              padding: '12px 32px', background: saving ? '#9CA3AF' : '#7C3AED',
+              padding: '12px 32px', background: saving ? '#9CA3AF' : '#2E7D6B',
               color: '#fff', border: 'none', borderRadius: '8px',
               fontSize: '14px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
             }}>{saving ? 'Salvando...' : 'Agendar ritual'}</button>

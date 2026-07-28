@@ -94,10 +94,10 @@ export default function FlowLayout({
 
   if (!mounted) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando...</p>
         </div>
       </div>
     )
@@ -191,7 +191,7 @@ export default function FlowLayout({
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                background: '#7C3AED',
+                background: '#2E7D6B',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
@@ -269,9 +269,9 @@ export default function FlowLayout({
   if (showHeader) {
     // Full header bar style (like consultas/[id] and bagua-planta have)
     return (
-      <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'var(--font-figtree), sans-serif' }}>
         <header style={{
-          background: '#1E3A5F',
+          background: '#0E1B2C',
           padding: '0 20px',
           height: '56px',
           display: 'flex',
@@ -281,7 +281,7 @@ export default function FlowLayout({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => { window.location.href = '/dashboard' }}>☯</span>
-            <span style={{ color: '#B8860B', fontSize: '17px', fontWeight: 'bold' }}>FengShui Studio</span>
+            <span style={{ color: '#C9A227', fontSize: '17px', fontWeight: 'bold' }}>FengShui Studio</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {headerExtra}
@@ -358,7 +358,7 @@ export default function FlowLayout({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
                         width: '32px', height: '32px', borderRadius: '50%',
-                        background: '#7C3AED', color: '#fff',
+                        background: '#2E7D6B', color: '#fff',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '14px', fontWeight: 'bold', flexShrink: 0,
                       }}>
@@ -390,7 +390,7 @@ export default function FlowLayout({
         {children}
         <style>{`
           a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-            outline: 2px solid #7C3AED !important;
+            outline: 2px solid #2E7D6B !important;
             outline-offset: 2px !important;
           }
           @media (prefers-reduced-motion: reduce) {
@@ -406,7 +406,7 @@ export default function FlowLayout({
 
   // Light background layout (for form pages like consultas/nova)
   return (
-    <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'var(--font-figtree), sans-serif' }}>
       {/* Floating nav bar */}
       <div style={{
         position: 'sticky',
@@ -422,7 +422,7 @@ export default function FlowLayout({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => { window.location.href = '/dashboard' }}>☯</span>
-          <span style={{ color: '#B8860B', fontSize: '17px', fontWeight: 'bold' }}>FengShui Studio</span>
+          <span style={{ color: '#C9A227', fontSize: '17px', fontWeight: 'bold' }}>FengShui Studio</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {headerExtra}
@@ -435,7 +435,7 @@ export default function FlowLayout({
       </main>
       <style>{`
         a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-          outline: 2px solid #7C3AED !important;
+          outline: 2px solid #2E7D6B !important;
           outline-offset: 2px !important;
         }
         @media (prefers-reduced-motion: reduce) {

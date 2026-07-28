@@ -11,7 +11,7 @@ const PAGE_SIZE = 50
 
 const TIPOS_PROFISSIONAL: Record<string, { label: string; icon: string; cor: string }> = {
   arquiteto: { label: 'Arquiteto(a)', icon: '🏗️', cor: '#1D4ED8' },
-  feng_shui: { label: 'Profissional de Feng Shui', icon: '☯', cor: '#7C3AED' },
+  feng_shui: { label: 'Profissional de Feng Shui', icon: '☯', cor: '#2E7D6B' },
   decorador: { label: 'Decorador(a)', icon: '🎨', cor: '#BE185D' },
   outro_profissional: { label: 'Outro Profissional', icon: '💼', cor: '#6B7280' },
 }
@@ -91,10 +91,10 @@ export default function Parceiros() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando parceiros...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando parceiros...</p>
         </div>
       </div>
     )
@@ -107,7 +107,7 @@ export default function Parceiros() {
     <AppShell currentPage="parceiros">
 
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Rede de Parceiros
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -119,14 +119,14 @@ export default function Parceiros() {
       {_pIsFree && (
         <div style={{
           marginBottom: '20px', padding: '14px 20px', borderRadius: '10px',
-          background: '#F5F0FF', border: '1px solid #E9D5FF', display: 'flex',
+          background: '#EAF4F1', border: '1px solid #DCEFE9', display: 'flex',
           alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
         }}>
           <p style={{ color: '#6B21A8', fontSize: '13px', margin: 0 }}>
             Para aparecer na rede, faça upgrade para o plano Simples ou Profissional.
           </p>
           <a href="/planos" style={{
-            padding: '7px 18px', background: '#7C3AED', color: '#fff',
+            padding: '7px 18px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '6px', fontSize: '12px',
             fontWeight: 'bold', textDecoration: 'none'
           }}>Ver planos</a>
@@ -177,7 +177,7 @@ export default function Parceiros() {
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🤝</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>
             {parceiros.length === 0 ? 'Nenhum parceiro cadastrado ainda' : 'Nenhum parceiro encontrado com esses filtros'}
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>
@@ -216,7 +216,7 @@ export default function Parceiros() {
                       }}>{tipo.label}</span>
                       {planoEfetivo(parceiro.plano) === 'profissional' && (
                         <span style={{
-                          background: 'rgba(124,58,237,0.1)', color: '#7C3AED',
+                          background: 'rgba(124,58,237,0.1)', color: '#2E7D6B',
                           padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold'
                         }}>Profissional</span>
                       )}
@@ -276,7 +276,7 @@ export default function Parceiros() {
       {hasMore && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
           <button onClick={loadMore} style={{
-            padding: '10px 32px', background: '#7C3AED', color: '#fff',
+            padding: '10px 32px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>Carregar mais</button>

@@ -142,8 +142,8 @@ export default function EditorPoligonoTaiJi({
       >
         <polygon
           points={pontos.map(p => `${p.x},${p.y}`).join(' ')}
-          fill={transparente ? 'rgba(124,58,237,0.15)' : '#EDE9FE'}
-          stroke="#7C3AED"
+          fill={transparente ? 'rgba(124,58,237,0.15)' : '#E6F2EF'}
+          stroke="#2E7D6B"
           strokeWidth={larguraTraco * 1.3}
         />
 
@@ -174,7 +174,7 @@ export default function EditorPoligonoTaiJi({
             <circle
               key={`meio-${i}`}
               cx={meio.x} cy={meio.y} r={raioMeio}
-              fill="#fff" stroke="#A78BFA" strokeWidth={larguraTraco}
+              fill="#fff" stroke="#6FB3A3" strokeWidth={larguraTraco}
               style={{ cursor: 'copy' }}
               onPointerDown={adicionarVerticeNaAresta(i)}
               data-testid={`handle-meio-${i}`}
@@ -186,7 +186,7 @@ export default function EditorPoligonoTaiJi({
           <circle
             key={`vertice-${i}`}
             cx={p.x} cy={p.y} r={raioVertice}
-            fill="#7C3AED" stroke="#fff" strokeWidth={larguraTraco}
+            fill="#2E7D6B" stroke="#fff" strokeWidth={larguraTraco}
             style={{ cursor: 'grab' }}
             onPointerDown={iniciarArrastoVertice(i)}
             onDoubleClick={removerVertice(i)}

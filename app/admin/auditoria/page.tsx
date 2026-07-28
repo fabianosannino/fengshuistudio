@@ -10,7 +10,7 @@ const PAGE_SIZE = 30
 
 
 const ACTION_LABELS: Record<string, { label: string; icon: string; color: string }> = {
-  generate_keys:  { label: 'Geração de chaves', icon: '🔑', color: '#7C3AED' },
+  generate_keys:  { label: 'Geração de chaves', icon: '🔑', color: '#2E7D6B' },
   cancel_key:     { label: 'Cancelamento de chave', icon: '🚫', color: '#DC2626' },
   promote_user:   { label: 'Promoção de usuário', icon: '⬆', color: '#15803D' },
   use_key:        { label: 'Uso de chave', icon: '✅', color: '#1D4ED8' },
@@ -54,11 +54,11 @@ export default function AdminAuditoria() {
     <AppShell currentPage="admin/auditoria">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Log de Auditoria</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Log de Auditoria</h1>
           <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>{total} registro{total !== 1 ? 's' : ''}</p>
         </div>
         <a href="/admin/chaves" style={{
-          padding: '8px 16px', background: '#7C3AED', color: '#fff', borderRadius: '8px',
+          padding: '8px 16px', background: '#2E7D6B', color: '#fff', borderRadius: '8px',
           fontSize: '13px', fontWeight: 'bold', textDecoration: 'none',
         }}>← Voltar para Chaves</a>
       </div>

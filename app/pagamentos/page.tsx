@@ -311,11 +311,11 @@ export default function Pagamentos() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Pagamentos</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Pagamentos</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{allCount} pagamento(s) registrado(s)</p>
         </div>
         <button onClick={openNew} style={{
-          background: '#7C3AED', color: '#ffffff', border: 'none',
+          background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer',
         }}>+ Novo pagamento</button>
@@ -343,7 +343,7 @@ export default function Pagamentos() {
           <button key={f} onClick={() => handleFiltroChange(f)} style={{
             padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold',
             cursor: 'pointer', border: 'none',
-            background: filtroStatus === f ? '#1E3A5F' : '#F3F4F6',
+            background: filtroStatus === f ? '#0E1B2C' : '#F3F4F6',
             color: filtroStatus === f ? '#ffffff' : '#6B7280',
           }}>
             {f === 'todos' ? 'Todos' : STATUS_CONFIG[f]?.label || f}
@@ -368,10 +368,10 @@ export default function Pagamentos() {
           textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>💰</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>Nenhum pagamento encontrado</h3>
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum pagamento encontrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>Registre pagamentos para controlar seu financeiro</p>
           <button onClick={openNew} style={{
-            background: '#7C3AED', color: '#ffffff', border: 'none',
+            background: '#2E7D6B', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>Registrar primeiro pagamento</button>
@@ -492,7 +492,7 @@ export default function Pagamentos() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)', zIndex: 101,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
+              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
                 {editingId ? 'Editar Pagamento' : 'Novo Pagamento'}
               </h2>
               <button onClick={() => { setShowModal(false); resetForm() }} style={{
@@ -605,7 +605,7 @@ export default function Pagamentos() {
                 }}>Cancelar</button>
                 <button type="submit" disabled={saving} style={{
                   flex: 1, padding: '14px',
-                  background: saving ? '#9CA3AF' : '#7C3AED',
+                  background: saving ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '15px', fontWeight: 'bold',
                   cursor: saving ? 'not-allowed' : 'pointer',

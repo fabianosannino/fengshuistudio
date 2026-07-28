@@ -50,7 +50,7 @@ export default function NotificationBell() {
           position: 'absolute', top: '100%', right: 0, width: '300px', background: '#fff',
           borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden'
         }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid #E5E7EB', fontSize: '13px', fontWeight: 'bold', color: '#1E3A5F' }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid #E5E7EB', fontSize: '13px', fontWeight: 'bold', color: '#0E1B2C' }}>
             Notificações ({count})
           </div>
           {notifications.map(n => (
@@ -58,7 +58,7 @@ export default function NotificationBell() {
               <div>{n.content}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                 <span style={{ color: '#9CA3AF', fontSize: '10px' }}>{new Date(n.created_at).toLocaleDateString('pt-BR')}</span>
-                <button onClick={() => markRead(n.id)} style={{ background: 'none', border: 'none', color: '#7C3AED', fontSize: '10px', cursor: 'pointer' }}>Marcar como lida</button>
+                <button onClick={() => markRead(n.id)} style={{ background: 'none', border: 'none', color: '#2E7D6B', fontSize: '10px', cursor: 'pointer' }}>Marcar como lida</button>
               </div>
             </div>
           ))}

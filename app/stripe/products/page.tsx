@@ -86,7 +86,7 @@ export default function StripeProducts() {
     return (
       <AppShell currentPage="stripe/products">
         <div style={{ textAlign: 'center', padding: '60px' }}>
-          <p style={{ color: '#7C3AED' }}>Carregando...</p>
+          <p style={{ color: '#2E7D6B' }}>Carregando...</p>
         </div>
       </AppShell>
     )
@@ -97,9 +97,9 @@ export default function StripeProducts() {
       <AppShell currentPage="stripe/products">
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '60px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>💳</div>
-          <h2 style={{ color: '#1E3A5F' }}>Conta Stripe necessária</h2>
+          <h2 style={{ color: '#0E1B2C' }}>Conta Stripe necessária</h2>
           <p style={{ color: '#6B7280' }}>Crie sua conta Stripe primeiro para gerenciar produtos.</p>
-          <a href="/stripe/onboard" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Ir para Onboarding</a>
+          <a href="/stripe/onboard" style={{ color: '#2E7D6B', fontWeight: 'bold' }}>Ir para Onboarding</a>
         </div>
       </AppShell>
     )
@@ -109,9 +109,9 @@ export default function StripeProducts() {
     <AppShell currentPage="stripe/products">
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Meus Produtos</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Meus Produtos</h1>
           <button onClick={() => setShowForm(!showForm)} style={{
-            padding: '10px 20px', background: '#7C3AED', color: '#fff', border: 'none',
+            padding: '10px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
             borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
           }}>{showForm ? 'Cancelar' : '+ Novo Produto'}</button>
         </div>
@@ -129,7 +129,7 @@ export default function StripeProducts() {
           <form onSubmit={handleCreate} style={{
             background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px'
           }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Novo Produto</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Novo Produto</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <label style={{ fontSize: '13px', color: '#374151', fontWeight: 'bold' }}>
                 Nome do produto *
@@ -151,7 +151,7 @@ export default function StripeProducts() {
               </label>
             </div>
             <button type="submit" disabled={saving} style={{
-              marginTop: '16px', padding: '12px 24px', background: saving ? '#9CA3AF' : '#7C3AED', color: '#fff',
+              marginTop: '16px', padding: '12px 24px', background: saving ? '#9CA3AF' : '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
             }}>{saving ? 'Criando...' : 'Criar Produto'}</button>
           </form>
@@ -174,7 +174,7 @@ export default function StripeProducts() {
                   <div style={{ fontWeight: 'bold', color: '#111827', fontSize: '16px' }}>{p.name}</div>
                   {p.description && <div style={{ color: '#6B7280', fontSize: '13px', marginTop: '2px' }}>{p.description}</div>}
                 </div>
-                <div style={{ fontWeight: 'bold', color: '#7C3AED', fontSize: '18px', whiteSpace: 'nowrap' }}>
+                <div style={{ fontWeight: 'bold', color: '#2E7D6B', fontSize: '18px', whiteSpace: 'nowrap' }}>
                   {p.price ? formatPrice(p.price.unit_amount, p.price.currency) : '—'}
                 </div>
               </div>
@@ -184,8 +184,8 @@ export default function StripeProducts() {
 
         {/* Storefront Link */}
         {accountId && products.length > 0 && (
-          <div style={{ marginTop: '24px', background: '#F5F3FF', borderRadius: '12px', padding: '16px 20px', textAlign: 'center' }}>
-            <p style={{ color: '#7C3AED', fontSize: '14px', margin: '0 0 8px 0', fontWeight: 'bold' }}>Link da sua vitrine</p>
+          <div style={{ marginTop: '24px', background: '#EEF6F3', borderRadius: '12px', padding: '16px 20px', textAlign: 'center' }}>
+            <p style={{ color: '#2E7D6B', fontSize: '14px', margin: '0 0 8px 0', fontWeight: 'bold' }}>Link da sua vitrine</p>
             {/* NOTE: In production, use a user-friendly URL instead of the raw account ID */}
             <code style={{ background: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px' }}>
               {typeof window !== 'undefined' ? window.location.origin : ''}/store/{accountId}

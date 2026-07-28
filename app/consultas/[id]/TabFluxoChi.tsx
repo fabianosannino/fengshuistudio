@@ -19,7 +19,7 @@ const CHECKLIST_CHI = [
 
 const CATEGORIAS_CHI: Record<string, { label: string; cor: string }> = {
   entrada: { label: 'Entrada / Boca do Chi', cor: '#1D4ED8' },
-  circulacao: { label: 'Circulação', cor: '#7C3AED' },
+  circulacao: { label: 'Circulação', cor: '#2E7D6B' },
   estrutura: { label: 'Estrutura', cor: '#D97706' },
   elementos: { label: 'Elementos', cor: '#15803D' },
 }
@@ -137,7 +137,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
-            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
               Checklist de Fluxo de Chi
             </h2>
             <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
@@ -235,7 +235,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
         <div style={{ marginTop: '12px', padding: '12px', background: '#F9FAFB', borderRadius: '8px', border: '1px dashed #D1D5DB' }}>
           {!showAddForm ? (
             <button onClick={() => setShowAddForm(true)} style={{
-              background: 'none', border: 'none', color: '#7C3AED', fontSize: '13px',
+              background: 'none', border: 'none', color: '#2E7D6B', fontSize: '13px',
               fontWeight: 'bold', cursor: 'pointer', width: '100%', textAlign: 'center'
             }}>+ Adicionar ponto personalizado</button>
           ) : (
@@ -258,7 +258,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                   try { localStorage.setItem('fengshui-custom-chi-items', JSON.stringify(updated)) } catch {}
                   setNewItemLabel('')
                   setShowAddForm(false)
-                }} style={{ padding: '8px 16px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                }} style={{ padding: '8px 16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Adicionar
                 </button>
                 <button onClick={() => { setShowAddForm(false); setNewItemLabel('') }}
@@ -274,7 +274,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       {/* ── POSIÇÃO DE COMANDO ────────────────────────────────────────── */}
       <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
         <div style={{ marginBottom: '20px' }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             Posição de Comando
           </h2>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
@@ -292,7 +292,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               <button key={comodo.id} onClick={() => setComodoAtivo(comodo.id)} style={{
                 padding: '10px 16px', borderRadius: '8px', border: 'none',
                 cursor: 'pointer', fontSize: '13px', fontWeight: 'bold',
-                background: ativo ? '#1E3A5F' : '#F3F4F6',
+                background: ativo ? '#0E1B2C' : '#F3F4F6',
                 color: ativo ? '#fff' : '#6B7280',
                 display: 'flex', alignItems: 'center', gap: '6px'
               }}>
@@ -343,9 +343,9 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
         {/* Summary across all rooms */}
         <div style={{
           marginTop: '20px', padding: '14px 16px',
-          background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF'
+          background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9'
         }}>
-          <p style={{ color: '#7C3AED', fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
             Resumo da Posição de Comando
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
@@ -357,7 +357,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               return (
                 <div key={comodo.id} style={{
                   textAlign: 'center', padding: '10px', background: '#fff',
-                  borderRadius: '8px', border: '1px solid #E9D5FF'
+                  borderRadius: '8px', border: '1px solid #DCEFE9'
                 }}>
                   <div style={{ fontSize: '20px', marginBottom: '4px' }}>{comodo.icon}</div>
                   <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>{comodo.label}</div>
@@ -377,15 +377,15 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       {/* Save button */}
       <button onClick={onSave} disabled={saving} style={{
         width: '100%', padding: '14px',
-        background: saving ? '#9CA3AF' : '#7C3AED',
+        background: saving ? '#9CA3AF' : '#2E7D6B',
         color: '#ffffff', border: 'none', borderRadius: '8px',
         fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
       }}>{saving ? 'Salvando...' : 'Salvar Fluxo de Chi e Posição de Comando'}</button>
 
       {/* Integrated recommendation */}
       {(checklistChi.length > 0 || Object.values(posicaoComando).some(v => v.length > 0)) && (
-        <div style={{ padding: '16px', background: '#F5F0FF', borderRadius: '10px', border: '1px solid #E9D5FF', marginTop: '16px' }}>
-          <h3 style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+        <div style={{ padding: '16px', background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9', marginTop: '16px' }}>
+          <h3 style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
             📋 Orientação integrada
           </h3>
           {/* Show unchecked items as priority actions */}

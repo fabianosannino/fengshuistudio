@@ -161,7 +161,7 @@ export default function MapaAlinhamento({ imagemUrl, onAceitar }: MapaAlinhament
   return (
     <div style={{ marginTop: '8px' }}>
       {(estado === 'entrada' || estado === 'geocodificando' || estado === 'erro-geocodificacao') && (
-        <div style={{ padding: '8px', background: '#F5F3FF', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
+        <div style={{ padding: '8px', background: '#EEF6F3', borderRadius: '6px', border: '1px solid #CFE6E0' }}>
           <p style={{ margin: '0 0 6px', fontSize: '11px', color: '#374151' }}>Endereço do imóvel (para centralizar o satélite):</p>
           <div style={{ display: 'flex', gap: '5px', marginBottom: '6px' }}>
             <input type="text" value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, número, cidade, estado"
@@ -180,21 +180,21 @@ export default function MapaAlinhamento({ imagemUrl, onAceitar }: MapaAlinhament
             <div ref={mapaDivRef} style={{ position: 'absolute', inset: 0 }} data-testid="mapa-satelite" />
             <OverlayAlinhamentoMapa imagemUrl={imagemUrl} onChange={setTransform} />
           </div>
-          <div style={{ marginTop: '8px', padding: '8px', background: '#F5F3FF', borderRadius: '6px', border: '1px solid #DDD6FE', fontSize: '11px', color: '#374151' }}>
+          <div style={{ marginTop: '8px', padding: '8px', background: '#EEF6F3', borderRadius: '6px', border: '1px solid #CFE6E0', fontSize: '11px', color: '#374151' }}>
             <p style={{ margin: '0 0 5px', fontWeight: 'bold' }}>Qual aresta da foto ORIGINAL (antes de girar) é a fachada?</p>
             <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
               {(['topo', 'direita', 'baixo', 'esquerda'] as ArestaImagem[]).map(a => (
                 <button key={a} type="button" onClick={() => setAresta(a)} style={{
                   flex: 1, padding: '4px 2px', fontSize: '10px', fontWeight: 'bold', borderRadius: '5px', cursor: 'pointer',
-                  border: '1px solid', borderColor: aresta === a ? '#7C3AED' : '#D1D5DB',
-                  background: aresta === a ? '#EDE9FE' : '#fff', color: aresta === a ? '#7C3AED' : '#6B7280',
+                  border: '1px solid', borderColor: aresta === a ? '#2E7D6B' : '#D1D5DB',
+                  background: aresta === a ? '#E6F2EF' : '#fff', color: aresta === a ? '#2E7D6B' : '#6B7280',
                 }}>{ROTULO_ARESTA[a]}</button>
               ))}
             </div>
             <p style={{ margin: '0 0 4px' }}>
               Facing (Norte <strong>verdadeiro</strong>, não magnético): <strong>{facingVerdadeiro.toFixed(1)}°</strong>
             </p>
-            <p style={{ margin: '0 0 6px', color: '#6D28D9' }}>Montanha {montanha.pinyin} {montanha.nome} ({montanha.setor})</p>
+            <p style={{ margin: '0 0 6px', color: '#245F52' }}>Montanha {montanha.pinyin} {montanha.nome} ({montanha.setor})</p>
             <p style={{ margin: '0 0 8px', fontSize: '10px', color: '#9CA3AF' }}>
               Este valor não corrige a declinação magnética (diferença real entre Norte verdadeiro e magnético, ~8–23° no Brasil). Se precisar do valor magnético clássico, confirme com bússola física.
             </p>
@@ -211,7 +211,7 @@ const estiloAviso: CSSProperties = {
   fontSize: '11px', color: '#6B7280', border: '1px solid #E5E7EB',
 }
 const estiloBotaoPrimario: CSSProperties = {
-  padding: '5px 12px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '5px',
+  padding: '5px 12px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '5px',
   fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
 }
 const estiloBotaoSecundario: CSSProperties = {

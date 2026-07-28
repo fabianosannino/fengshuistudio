@@ -320,7 +320,7 @@ export default function Dashboard() {
           data: r.data_ritual,
           horario: r.horario,
           icon: '🌙',
-          cor: '#7C3AED',
+          cor: '#2E7D6B',
         })
       })
 
@@ -431,7 +431,7 @@ export default function Dashboard() {
       {/* Header */}
       <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             Bem-vindo ao FengShui Studio
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -446,7 +446,7 @@ export default function Dashboard() {
 
       {showSettings && (
         <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#1E3A5F' }}>Escolha os módulos visíveis</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#0E1B2C' }}>Escolha os módulos visíveis</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
             {DASHBOARD_MODULES.map(m => (
               <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: 'pointer', background: visibleModules[m.key] ? '#F0FDF4' : '#F9FAFB' }}>
@@ -454,7 +454,7 @@ export default function Dashboard() {
                   const next = { ...visibleModules, [m.key]: e.target.checked }
                   setVisibleModules(next)
                   try { localStorage.setItem('fengshui-dashboard-modules', JSON.stringify(next)) } catch {}
-                }} style={{ accentColor: '#7C3AED' }} />
+                }} style={{ accentColor: '#2E7D6B' }} />
                 <span style={{ fontSize: '13px', color: '#374151' }}>{m.label}</span>
               </label>
             ))}
@@ -470,8 +470,8 @@ export default function Dashboard() {
         {[
           { label: 'Clientes ativos', value: String(totalClientes), icon: '👤', color: '#1D4ED8', link: '/clientes' },
           { label: 'Consultas realizadas', value: String(totalConsultas), icon: '📋', color: '#15803D', link: '/consultas' },
-          { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#7C3AED', link: '/calendario' },
-          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#B8860B', link: '/planos' },
+          { label: 'Rituais pendentes', value: String(totalRituais), icon: '🌙', color: '#2E7D6B', link: '/calendario' },
+          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: '⭐', color: '#C9A227', link: '/planos' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => window.location.href = kpi.link} style={{
             background: '#ffffff', borderRadius: '12px', padding: '24px',
@@ -495,7 +495,7 @@ export default function Dashboard() {
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Status das Consultas
           </h3>
           <StatusPieChart statusData={statusData} />
@@ -509,11 +509,11 @@ export default function Dashboard() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Pagamentos
             </h3>
             <button onClick={() => window.location.href = '/pagamentos'} style={{
-              background: 'none', border: 'none', color: '#7C3AED',
+              background: 'none', border: 'none', color: '#2E7D6B',
               fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
             }}>Ver todos →</button>
           </div>
@@ -552,7 +552,7 @@ export default function Dashboard() {
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Consultas por Mês
           </h3>
           <ConsultasLineChart consultasMesData={consultasMesData} />
@@ -566,7 +566,7 @@ export default function Dashboard() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Próximas Atividades
             </h3>
             <span style={{ color: '#9CA3AF', fontSize: '12px' }}>Próximos 30 dias</span>
@@ -624,7 +624,7 @@ export default function Dashboard() {
           background: '#ffffff', borderRadius: '12px', padding: '24px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
             Novos Clientes por Mês
           </h3>
           <ClientesBarChart clientesMesData={clientesMesData} />
@@ -635,7 +635,7 @@ export default function Dashboard() {
       {/* Análises Baguá recentes */}
       {visibleModules.analises_bagua !== false && analisesBagua.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
             ☯ Análises Ba Gua recentes
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -672,15 +672,15 @@ export default function Dashboard() {
       {/* Ações rápidas */}
       {visibleModules.acoes_rapidas !== false && (
       <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
+        <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
           Ações rápidas
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {[
-            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: '✨', color: '#7C3AED', link: '/consultas/nova' },
+            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: '✨', color: '#2E7D6B', link: '/consultas/nova' },
             { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: '👤', color: '#1D4ED8', link: '/clientes' },
             { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: '📄', color: '#15803D', link: '/consultas' },
-            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: '🌙', color: '#B8860B', link: '/calendario' },
+            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: '🌙', color: '#C9A227', link: '/calendario' },
           ].map((kpi, i) => (
             <div key={i} onClick={() => window.location.href = kpi.link} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px',
@@ -699,7 +699,7 @@ export default function Dashboard() {
       {/* Banner upgrade */}
       {planoUsuario(profile) !== 'profissional' && (
         <div style={{
-          background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
+          background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
           borderRadius: '12px', padding: '24px 32px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: '16px'
@@ -713,7 +713,7 @@ export default function Dashboard() {
             </p>
           </div>
           <button onClick={() => window.location.href = '/planos'} style={{
-            background: '#B8860B', color: '#ffffff', border: 'none',
+            background: '#C9A227', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
           }}>

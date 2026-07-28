@@ -38,36 +38,36 @@ export default function AppShell({
   // Build nav items based on plan
   const buildNav = (): NavItem[] => {
     const items: NavItem[] = [
-      { label: 'Dashboard', icon: '\ud83d\udcca', href: '/dashboard' },
+      { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     ]
     // Clientes: hidden for free, self-only for simples (hidden), full for profissional
     if (podeClientes(plano)) {
-      items.push({ label: 'Clientes', icon: '\ud83d\udc64', href: '/clientes' })
+      items.push({ label: 'Clientes', icon: Users, href: '/clientes' })
     }
-    items.push({ label: isProfessional ? 'Consultas' : 'Minha Casa', icon: isProfessional ? '\ud83d\udccb' : '\ud83c\udfe0', href: '/consultas' })
-    items.push({ label: 'Curas', icon: '\u2728', href: '/curas' })
-    items.push({ label: 'Roda da Vida', icon: '◎', href: '/roda-da-vida' })
+    items.push({ label: isProfessional ? 'Consultas' : 'Minha Casa', icon: isProfessional ? ClipboardList : HomeIcon, href: '/consultas' })
+    items.push({ label: 'Curas', icon: Sparkles, href: '/curas' })
+    items.push({ label: 'Roda da Vida', icon: CircleDot, href: '/roda-da-vida' })
     // Calendário: hidden for free
     if (podeCalendario(plano)) {
-      items.push({ label: 'Calendário', icon: '\ud83c\udf19', href: '/calendario' })
+      items.push({ label: 'Calendário', icon: Moon, href: '/calendario' })
     }
     if (isProfessional) {
-      items.push({ label: 'Pagamentos', icon: '\ud83d\udcb0', href: '/pagamentos' })
+      items.push({ label: 'Pagamentos', icon: Wallet, href: '/pagamentos' })
     }
-    items.push({ label: 'Parceiros', icon: '\ud83e\udd1d', href: '/parceiros' })
-    items.push({ label: 'Produtos', icon: '\ud83d\uded2', href: '/produtos' })
-    items.push({ label: 'Planos', icon: '\u2b50', href: '/planos' })
-    items.push({ label: 'Perfil', icon: '\u2699\ufe0f', href: '/perfil' })
+    items.push({ label: 'Parceiros', icon: Handshake, href: '/parceiros' })
+    items.push({ label: 'Produtos', icon: ShoppingCart, href: '/produtos' })
+    items.push({ label: 'Planos', icon: Star, href: '/planos' })
+    items.push({ label: 'Perfil', icon: Settings, href: '/perfil' })
     return items
   }
   const baseNav = buildNav()
   const navItems: NavItem[] = isAdmin
     ? [
         ...baseNav,
-        { label: 'Admin Chaves', icon: '\ud83d\udd11', href: '/admin/chaves' },
-        { label: 'Admin Pgtos', icon: '\ud83d\udcb3', href: '/admin/pagamentos' },
-        { label: 'Relatórios', icon: '\ud83d\udcca', href: '/admin/relatorios' },
-        { label: 'Auditoria', icon: '\ud83d\udcdd', href: '/admin/auditoria' },
+        { label: 'Admin Chaves', icon: KeyRound, href: '/admin/chaves' },
+        { label: 'Admin Pgtos', icon: CreditCard, href: '/admin/pagamentos' },
+        { label: 'Relatórios', icon: BarChart3, href: '/admin/relatorios' },
+        { label: 'Auditoria', icon: FileText, href: '/admin/auditoria' },
       ]
     : baseNav
 
@@ -134,27 +134,29 @@ export default function AppShell({
   }
 
   const t = {
-    bg: darkMode ? '#0f172a' : '#F9FAFB',
-    card: darkMode ? '#1e293b' : '#ffffff',
-    sidebar: darkMode ? '#1e293b' : '#1E3A5F',
-    text: darkMode ? '#e2e8f0' : '#111827',
-    textSoft: darkMode ? '#94a3b8' : '#6B7280',
-    border: darkMode ? '#334155' : '#E5E7EB',
+    bg: darkMode ? '#0B1524' : '#FBF9F4',
+    card: darkMode ? '#12233A' : '#FFFFFF',
+    sidebar: darkMode ? '#0A1420' : '#0E1B2C',
+    text: darkMode ? '#EAF0F6' : '#12212E',
+    textSoft: darkMode ? '#9CB0C4' : '#5B6B78',
+    border: darkMode ? '#243546' : '#E7E1D6',
   }
+  const accent = '#C9A227'
+  const jade = '#2E7D6B'
 
   if (!mounted) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FBF9F4', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+          <img src="/marketing/logo-fengshui.png" alt="" width={56} height={56} style={{ marginBottom: '16px', display: 'inline-block' }} />
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'Arial, sans-serif', display: 'flex', transition: 'background 0.3s ease' }}>
+    <div style={{ minHeight: '100vh', background: t.bg, fontFamily: 'var(--font-figtree), sans-serif', display: 'flex', transition: 'background 0.3s ease' }}>
 
       {mobileOpen && (
         <div onClick={() => setMobileOpen(false)} role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }} />
@@ -184,9 +186,9 @@ export default function AppShell({
           justifyContent: sidebarOpen ? 'flex-start' : 'center',
           gap: '10px',
         }}>
-          <span style={{ fontSize: '28px', flexShrink: 0 }}>☯</span>
+          <img src="/marketing/logo-fengshui.png" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
           {sidebarOpen && (
-            <span style={{ color: '#B8860B', fontSize: '18px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>FengShui Studio</span>
+            <span style={{ color: accent, fontSize: '17px', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'var(--font-fraunces), serif' }}>FengShui Studio</span>
           )}
         </div>
 
@@ -196,8 +198,8 @@ export default function AppShell({
             padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}>
             <span style={{
-              background: (isProfessional || plano === 'profissional') ? 'rgba(124,58,237,0.2)' : plano === 'simples' ? 'rgba(59,130,246,0.2)' : 'rgba(184,134,11,0.2)',
-              color: (isProfessional || plano === 'profissional') ? '#C4B5FD' : plano === 'simples' ? '#93C5FD' : '#FDE68A',
+              background: (isProfessional || plano === 'profissional') ? 'rgba(46,125,107,0.28)' : plano === 'simples' ? 'rgba(46,125,107,0.18)' : 'rgba(201,162,39,0.2)',
+              color: (isProfessional || plano === 'profissional') ? '#8FD8C4' : plano === 'simples' ? '#8FD8C4' : '#F0D888',
               padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
             }}>
               {isProfessional ? 'Profissional' : planoLabel(profile?.plano)}
@@ -208,19 +210,21 @@ export default function AppShell({
         <nav aria-label="Navegação principal" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map((item) => {
             const active = currentPage === item.href.replace('/', '')
+            const Icon = item.icon
             return (
               <a key={item.href} href={item.href} onClick={() => setMobileOpen(false)} aria-current={active ? 'page' : undefined} aria-label={!sidebarOpen ? item.label : undefined} style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
                 padding: sidebarOpen ? '10px 14px' : '10px 0',
                 justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                borderRadius: '8px',
-                background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-                color: active ? '#ffffff' : 'rgba(255,255,255,0.6)',
+                borderRadius: '10px',
+                background: active ? 'rgba(46,125,107,0.22)' : 'transparent',
+                boxShadow: active ? `inset 3px 0 0 ${accent}` : 'none',
+                color: active ? '#FFFFFF' : 'rgba(255,255,255,0.62)',
                 textDecoration: 'none', fontSize: '14px',
-                fontWeight: active ? 'bold' : 'normal',
+                fontWeight: active ? 600 : 400,
                 transition: 'all 0.2s ease', cursor: 'pointer'
               }}>
-                <span style={{ fontSize: '18px', flexShrink: 0 }} aria-hidden="true">{item.icon}</span>
+                <Icon size={19} strokeWidth={active ? 2.25 : 1.75} color={active ? accent : 'currentColor'} style={{ flexShrink: 0 }} aria-hidden="true" />
                 {sidebarOpen && <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>}
               </a>
             )
@@ -239,7 +243,7 @@ export default function AppShell({
             borderRadius: '8px', background: 'transparent', border: 'none',
             color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', width: '100%'
           }}>
-            <span style={{ fontSize: '18px' }} aria-hidden="true">{darkMode ? '☀️' : '🌙'}</span>
+            {darkMode ? <Sun size={19} strokeWidth={1.75} aria-hidden="true" /> : <Moon size={19} strokeWidth={1.75} aria-hidden="true" />}
             {sidebarOpen && <span>{darkMode ? 'Modo claro' : 'Modo escuro'}</span>}
           </button>
 
@@ -250,7 +254,7 @@ export default function AppShell({
             borderRadius: '8px', background: 'transparent', border: 'none',
             color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', width: '100%'
           }}>
-            <span style={{ fontSize: '18px' }} aria-hidden="true">{sidebarOpen ? '◀' : '▶'}</span>
+            {sidebarOpen ? <PanelLeftClose size={19} strokeWidth={1.75} aria-hidden="true" /> : <PanelLeftOpen size={19} strokeWidth={1.75} aria-hidden="true" />}
             {sidebarOpen && <span>Recolher</span>}
           </button>
 
@@ -261,7 +265,7 @@ export default function AppShell({
             borderRadius: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
             color: '#FCA5A5', cursor: 'pointer', fontSize: '14px', width: '100%', fontWeight: 'bold'
           }}>
-            <span style={{ fontSize: '18px' }} aria-hidden="true">🚪</span>
+            <LogOut size={19} strokeWidth={1.75} aria-hidden="true" />
             {sidebarOpen && <span>Sair da conta</span>}
           </button>
         </div>
@@ -282,7 +286,7 @@ export default function AppShell({
             cursor: 'pointer', padding: '8px',
             display: isMobile ? 'block' : 'none'
           }} aria-expanded={mobileOpen}>
-            <span aria-hidden="true">☰</span>
+            <Menu size={24} strokeWidth={1.75} color={t.text} aria-hidden="true" />
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1, marginLeft: '8px' }}>
@@ -294,7 +298,7 @@ export default function AppShell({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {plano !== 'free' && (
               <span style={{
-                background: plano === 'profissional' ? '#7C3AED' : '#3B82F6',
+                background: plano === 'profissional' ? jade : accent,
                 color: '#fff', padding: '3px 10px',
                 borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
               }}>{plano === 'profissional' ? 'PRO' : 'SIMPLES'}</span>
@@ -305,7 +309,7 @@ export default function AppShell({
               padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
               color: t.textSoft, fontSize: '13px',
             }}>
-              <span aria-hidden="true">🚪</span>
+              <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>Sair</span>
             </button>
           </div>
@@ -329,7 +333,7 @@ export default function AppShell({
         button:hover { opacity: 0.85; }
         /* Focus indicators for keyboard navigation */
         a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-          outline: 2px solid #7C3AED !important;
+          outline: 2px solid #2E7D6B !important;
           outline-offset: 2px !important;
         }
         /* Respect reduced motion preference */

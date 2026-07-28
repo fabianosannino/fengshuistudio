@@ -194,7 +194,7 @@ export default function Perfil() {
 
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meu Perfil</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meu Perfil</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
             {isProfessional
               ? 'Seus dados aparecem no relatório PDF enviado ao cliente'
@@ -205,22 +205,22 @@ export default function Perfil() {
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '50%',
-            background: '#7C3AED', display: 'flex', alignItems: 'center',
+            background: '#2E7D6B', display: 'flex', alignItems: 'center',
             justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '28px'
           }}>
             {form.nome_completo?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div>
-            <p style={{ color: '#1E3A5F', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>{form.nome_completo || 'Seu nome'}</p>
+            <p style={{ color: '#0E1B2C', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>{form.nome_completo || 'Seu nome'}</p>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>{user?.email}</p>
             <span style={{
               background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(124,58,237,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
-              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#7C3AED' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#B8860B',
+              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#2E7D6B' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#C9A227',
               padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
             }}>
               {isProfessional ? 'Profissional' : planoLabel(plano)}
             </span>
-            {form.nome_empresa && <p style={{ color: '#7C3AED', fontSize: '13px', margin: '4px 0 0 0' }}>{form.nome_empresa}</p>}
+            {form.nome_empresa && <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '4px 0 0 0' }}>{form.nome_empresa}</p>}
           </div>
         </div>
 
@@ -236,7 +236,7 @@ export default function Perfil() {
         <form onSubmit={handleSave}>
           {/* Dados pessoais */}
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados pessoais</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados pessoais</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label htmlFor="input-nome-completo" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome completo</label>
@@ -263,7 +263,7 @@ export default function Perfil() {
 
           {/* Dados profissionais - sempre visivel */}
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados profissionais</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px 0' }}>Dados profissionais</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label htmlFor="input-nome-empresa" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Nome da empresa</label>
@@ -284,7 +284,7 @@ export default function Perfil() {
           {/* Campos exclusivos para profissionais */}
           {isProfessional && (
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
-              <h3 style={{ color: '#7C3AED', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Perfil profissional</h3>
+              <h3 style={{ color: '#2E7D6B', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Perfil profissional</h3>
               <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
                 Essas informações ficam visíveis na rede de parceiros para usuários pessoais
               </p>
@@ -327,7 +327,7 @@ export default function Perfil() {
           {/* Parceiro visivel toggle — available for all paid plans (Simples + Profissional) */}
           {planoEfetivo(plano) !== 'free' && (
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
-              <h3 style={{ color: '#7C3AED', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Rede de Parceiros</h3>
+              <h3 style={{ color: '#2E7D6B', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Rede de Parceiros</h3>
               <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
                 Apareça na listagem de parceiros para outros usuários da plataforma
               </p>
@@ -373,7 +373,7 @@ export default function Perfil() {
 
           <button type="submit" disabled={saving} style={{
             width: '100%', padding: '14px',
-            background: saving ? '#9CA3AF' : '#7C3AED',
+            background: saving ? '#9CA3AF' : '#2E7D6B',
             color: '#ffffff', border: 'none', borderRadius: '8px',
             fontSize: '15px', fontWeight: 'bold',
             cursor: saving ? 'not-allowed' : 'pointer'
@@ -385,7 +385,7 @@ export default function Perfil() {
         {/* ── Alterar senha ─────────────────────────────────────────────── */}
         <form onSubmit={handleAlterarSenha} style={{ marginTop: '24px' }}>
           <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>🔒 Alterar senha</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>🔒 Alterar senha</h3>
             <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 20px 0' }}>
               Mínimo de {SENHA_MIN_CARACTERES} caracteres. Você continuará conectado após a troca.
             </p>
@@ -418,7 +418,7 @@ export default function Perfil() {
             )}
             <button type="submit" disabled={senhaSaving} style={{
               padding: '12px 28px',
-              background: senhaSaving ? '#9CA3AF' : '#1E3A5F',
+              background: senhaSaving ? '#9CA3AF' : '#0E1B2C',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '14px', fontWeight: 'bold',
               cursor: senhaSaving ? 'not-allowed' : 'pointer'
