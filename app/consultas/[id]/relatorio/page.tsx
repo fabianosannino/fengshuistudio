@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useState, useRef } from 'react'
+import { CORTE_URGENTE, CORTE_ATENCAO } from '../../../../src/lib/modelos-pontuacao'
 import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import FlowLayout from '../../../components/FlowLayout'
@@ -218,7 +219,7 @@ export default function Relatorio() {
   function getTop3() {
     return setores
       .filter(s => s.score_percentual != null)
-      .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
+      .sort((a, b) => (a.score_percentual ?? Number.POSITIVE_INFINITY) - (b.score_percentual ?? Number.POSITIVE_INFINITY))
       .slice(0, 3)
   }
 
@@ -408,12 +409,12 @@ export default function Relatorio() {
   // Sorted sectors for Ki Flow
   const sortedSetores = [...setores]
     .filter(s => s.score_percentual != null)
-    .sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
+    .sort((a, b) => (a.score_percentual ?? Number.POSITIVE_INFINITY) - (b.score_percentual ?? Number.POSITIVE_INFINITY))
 
   // Urgente / Atenção / Manter groups
-  const urgentes = setores.filter(s => s.score_percentual != null && s.score_percentual < 40)
-  const atencao = setores.filter(s => s.score_percentual != null && s.score_percentual >= 40 && s.score_percentual < 70)
-  const manterSetores = setores.filter(s => s.score_percentual != null && s.score_percentual >= 70)
+  const urgentes = setores.filter(s => s.score_percentual != null && s.score_percentual < CORTE_URGENTE)
+  const atencao = setores.filter(s => s.score_percentual != null && s.score_percentual >= CORTE_URGENTE && s.score_percentual < CORTE_ATENCAO)
+  const manterSetores = setores.filter(s => s.score_percentual != null && s.score_percentual >= CORTE_ATENCAO)
 
   // Summary stats
   const avaliados = setores.filter(s => s.score_percentual != null)
@@ -1129,9 +1130,9 @@ export default function Relatorio() {
           </div>
 
           {[
-            { label: 'URGENTE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', filter: (s: SetorBagua) => (s.score_percentual ?? 100) < 60 },
-            { label: 'ATENÇÃO', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', filter: (s: SetorBagua) => (s.score_percentual ?? 100) >= 60 && (s.score_percentual ?? 100) < 80 },
-            { label: 'MANTER', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', filter: (s: SetorBagua) => (s.score_percentual ?? 100) >= 80 },
+            { label: 'URGENTE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual < CORTE_URGENTE },
+            { label: 'ATENÇÃO', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_URGENTE && s.score_percentual < CORTE_ATENCAO },
+            { label: 'MANTER', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_ATENCAO },
           ].map(group => {
             const groupSetores = sortedSetores.filter(group.filter)
             if (groupSetores.length === 0) return null
@@ -1415,7 +1416,7 @@ export default function Relatorio() {
             <span style={{ fontSize: '20px', color: gold }}>💎</span>
             Curas &amp; Ativações — Detalhamento por Setor
           </div>
-          {setores.filter(s => s.score_percentual != null && s.score_percentual < 80).sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100)).slice(0, 5).map(setor => {
+          {setores.filter(s => s.score_percentual != null && s.score_percentual < CORTE_ATENCAO).sort((a, b) => (a.score_percentual ?? Number.POSITIVE_INFINITY) - (b.score_percentual ?? Number.POSITIVE_INFINITY)).slice(0, 5).map(setor => {
             const meta = AREA_META[setor.nome]
             const lvl = scoreLevelLabel(setor.score_percentual ?? 0)
             return (
@@ -1670,7 +1671,7 @@ export default function Relatorio() {
           </div>
           {(() => {
             // Generate priorities from data
-            const sorted = [...setores].filter(s => s.score_percentual != null).sort((a, b) => (a.score_percentual ?? 100) - (b.score_percentual ?? 100))
+            const sorted = [...setores].filter(s => s.score_percentual != null).sort((a, b) => (a.score_percentual ?? Number.POSITIVE_INFINITY) - (b.score_percentual ?? Number.POSITIVE_INFINITY))
             const priorities = sorted.slice(0, 3)
             const investLevel = (pct: number) => pct < 40 ? 'Alto' : pct < 70 ? 'Médio' : 'Baixo'
             const prazo = (pct: number) => pct < 40 ? 'Imediato' : pct < 70 ? 'Próximas 2 semanas' : 'Próximo mês'
