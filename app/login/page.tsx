@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import { falhaAuth } from '../../src/lib/auth-erros'
+import { MailCheck, Building2, Compass, Palette, Briefcase } from 'lucide-react'
 
 const TIPOS_USUARIO = [
   { id: 'pessoal', label: 'Pessoal', desc: 'Uso para minha residência' },
@@ -180,9 +181,9 @@ function LoginForm() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1E3A5F 0%, #2d5a8e 50%, #1E3A5F 100%)',
+      background: 'linear-gradient(135deg, #0E1B2C 0%, #163a52 55%, #0E1B2C 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif', padding: '20px'
+      fontFamily: 'var(--font-figtree), sans-serif', padding: '20px'
     }}>
       <div style={{
         background: '#ffffff', borderRadius: '16px', padding: '40px 36px',
@@ -191,9 +192,9 @@ function LoginForm() {
         transition: 'max-width 0.3s ease'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '4px' }}>☯</div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '26px', fontWeight: 'bold', margin: '0' }}>FengShui Studio</h1>
-          <p style={{ color: '#7C3AED', fontSize: '13px', margin: '4px 0 0 0' }}>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '8px', display: 'inline-block' }} />
+          <h1 style={{ color: '#0E1B2C', fontSize: '26px', fontWeight: 600, margin: '0', fontFamily: 'var(--font-fraunces), serif' }}>FengShui Studio</h1>
+          <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '4px 0 0 0' }}>
             {isSignUp ? (signUpStep === 2 ? 'Dados profissionais' : 'Crie sua conta') : 'Plataforma para Consultores e Usuários'}
           </p>
         </div>
@@ -203,7 +204,7 @@ function LoginForm() {
             <button onClick={() => { setIsSignUp(false); limparMensagem() }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
-              background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+              background: '#ffffff', color: '#0E1B2C', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
             }}>Entrar</button>
             <button onClick={() => { setIsSignUp(true); limparMensagem(); setSignUpStep(1) }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
@@ -223,7 +224,7 @@ function LoginForm() {
             <button style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px',
               fontSize: '14px', fontWeight: 'bold',
-              background: '#ffffff', color: '#1E3A5F', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+              background: '#ffffff', color: '#0E1B2C', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
             }}>Cadastrar</button>
           </div>
         )}
@@ -231,14 +232,14 @@ function LoginForm() {
         {/* ── SIGN UP DONE ──────────────────────────────────── */}
         {signUpDone ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉️</div>
-            <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+            <MailCheck size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
+            <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
               Verifique seu e-mail
             </h2>
             <p style={{ color: '#374151', fontSize: '14px', marginBottom: '8px' }}>
               Enviamos um link de confirmação para:
             </p>
-            <p style={{ color: '#7C3AED', fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>
+            <p style={{ color: '#2E7D6B', fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>
               {email}
             </p>
             <div style={{
@@ -256,7 +257,7 @@ function LoginForm() {
             </div>
             <button onClick={handleResendConfirmation} disabled={resending} style={{
               width: '100%', padding: '12px',
-              background: resending ? '#9CA3AF' : '#7C3AED',
+              background: resending ? '#9CA3AF' : '#2E7D6B',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '15px', fontWeight: 'bold',
               cursor: resending ? 'not-allowed' : 'pointer', marginBottom: '12px'
@@ -286,11 +287,11 @@ function LoginForm() {
                 placeholder="Sua senha" required style={{ ...inputStyle, padding: '12px 14px', fontSize: '15px' }} />
             </div>
             <div style={{ textAlign: 'right', marginTop: '-16px', marginBottom: '20px' }}>
-              <a href="/esqueci-senha" style={{ color: '#7C3AED', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
+              <a href="/esqueci-senha" style={{ color: '#2E7D6B', fontSize: '13px', textDecoration: 'none' }}>Esqueci minha senha</a>
             </div>
             <button type="submit" disabled={loading} style={{
               width: '100%', padding: '14px',
-              background: loading ? '#9CA3AF' : '#7C3AED',
+              background: loading ? '#9CA3AF' : '#2E7D6B',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '16px', fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer'
@@ -326,17 +327,17 @@ function LoginForm() {
                   <label key={tipo.id} onClick={() => setTipoUsuario(tipo.id)} style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
-                    border: `2px solid ${tipoUsuario === tipo.id ? '#7C3AED' : '#E5E7EB'}`,
-                    background: tipoUsuario === tipo.id ? '#F5F0FF' : '#ffffff',
+                    border: `2px solid ${tipoUsuario === tipo.id ? '#2E7D6B' : '#E5E7EB'}`,
+                    background: tipoUsuario === tipo.id ? '#EAF4F1' : '#ffffff',
                     transition: 'all 0.2s'
                   }}>
                     <div style={{
                       width: '18px', height: '18px', borderRadius: '50%',
-                      border: `2px solid ${tipoUsuario === tipo.id ? '#7C3AED' : '#D1D5DB'}`,
+                      border: `2px solid ${tipoUsuario === tipo.id ? '#2E7D6B' : '#D1D5DB'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                     }}>
                       {tipoUsuario === tipo.id && (
-                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#7C3AED' }} />
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2E7D6B' }} />
                       )}
                     </div>
                     <div>
@@ -350,7 +351,7 @@ function LoginForm() {
 
             <button type="submit" disabled={loading} style={{
               width: '100%', padding: '14px',
-              background: loading ? '#9CA3AF' : '#7C3AED',
+              background: loading ? '#9CA3AF' : '#2E7D6B',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               fontSize: '16px', fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer'
@@ -363,13 +364,14 @@ function LoginForm() {
         ) : (
           <form onSubmit={handleStep2}>
             <div style={{
-              background: '#F5F0FF', borderRadius: '8px', padding: '10px 14px',
+              background: '#EAF4F1', borderRadius: '8px', padding: '10px 14px',
               marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'
             }}>
-              <span style={{ fontSize: '18px' }}>
-                {tipoUsuario === 'arquiteto' ? '🏗️' : tipoUsuario === 'feng_shui' ? '☯' : tipoUsuario === 'decorador' ? '🎨' : '💼'}
-              </span>
-              <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
+              {(() => {
+                const Icon = tipoUsuario === 'arquiteto' ? Building2 : tipoUsuario === 'feng_shui' ? Compass : tipoUsuario === 'decorador' ? Palette : Briefcase
+                return <Icon size={18} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" />
+              })()}
+              <span style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold' }}>
                 {TIPOS_USUARIO.find(t => t.id === tipoUsuario)?.label}
               </span>
             </div>
@@ -418,7 +420,7 @@ function LoginForm() {
               }}>Voltar</button>
               <button type="submit" disabled={loading} style={{
                 flex: 1, padding: '14px',
-                background: loading ? '#9CA3AF' : '#7C3AED',
+                background: loading ? '#9CA3AF' : '#2E7D6B',
                 color: '#ffffff', border: 'none', borderRadius: '8px',
                 fontSize: '16px', fontWeight: 'bold',
                 cursor: loading ? 'not-allowed' : 'pointer'
@@ -455,10 +457,10 @@ function LoginForm() {
 export default function Login() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1E3A5F' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0E1B2C' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#ffffff', fontSize: '16px', fontFamily: 'Arial, sans-serif' }}>Carregando...</p>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
+          <p style={{ color: '#ffffff', fontSize: '16px', fontFamily: 'var(--font-figtree), sans-serif' }}>Carregando...</p>
         </div>
       </div>
     }>

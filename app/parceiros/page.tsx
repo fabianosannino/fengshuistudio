@@ -5,15 +5,16 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import { planoEfetivo } from '../../src/lib/plano-utils'
 import type { Profile } from '../../src/lib/types'
+import { Building2, Compass, Palette, Briefcase, Handshake, MapPin, type LucideIcon } from 'lucide-react'
 
 const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 const PAGE_SIZE = 50
 
-const TIPOS_PROFISSIONAL: Record<string, { label: string; icon: string; cor: string }> = {
-  arquiteto: { label: 'Arquiteto(a)', icon: '🏗️', cor: '#1D4ED8' },
-  feng_shui: { label: 'Profissional de Feng Shui', icon: '☯', cor: '#7C3AED' },
-  decorador: { label: 'Decorador(a)', icon: '🎨', cor: '#BE185D' },
-  outro_profissional: { label: 'Outro Profissional', icon: '💼', cor: '#6B7280' },
+const TIPOS_PROFISSIONAL: Record<string, { label: string; iconComp: LucideIcon; cor: string }> = {
+  arquiteto: { label: 'Arquiteto(a)', iconComp: Building2, cor: '#1D4ED8' },
+  feng_shui: { label: 'Profissional de Feng Shui', iconComp: Compass, cor: '#2E7D6B' },
+  decorador: { label: 'Decorador(a)', iconComp: Palette, cor: '#BE185D' },
+  outro_profissional: { label: 'Outro Profissional', iconComp: Briefcase, cor: '#6B7280' },
 }
 
 export default function Parceiros() {
@@ -91,10 +92,10 @@ export default function Parceiros() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando parceiros...</p>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando parceiros...</p>
         </div>
       </div>
     )
@@ -107,7 +108,8 @@ export default function Parceiros() {
     <AppShell currentPage="parceiros">
 
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Rede</p>
+        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
           Rede de Parceiros
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -119,14 +121,14 @@ export default function Parceiros() {
       {_pIsFree && (
         <div style={{
           marginBottom: '20px', padding: '14px 20px', borderRadius: '10px',
-          background: '#F5F0FF', border: '1px solid #E9D5FF', display: 'flex',
+          background: '#EAF4F1', border: '1px solid #DCEFE9', display: 'flex',
           alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
         }}>
-          <p style={{ color: '#6B21A8', fontSize: '13px', margin: 0 }}>
+          <p style={{ color: '#2E7D6B', fontSize: '13px', margin: 0 }}>
             Para aparecer na rede, faça upgrade para o plano Simples ou Profissional.
           </p>
           <a href="/planos" style={{
-            padding: '7px 18px', background: '#7C3AED', color: '#fff',
+            padding: '7px 18px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '6px', fontSize: '12px',
             fontWeight: 'bold', textDecoration: 'none'
           }}>Ver planos</a>
@@ -136,7 +138,7 @@ export default function Parceiros() {
       {/* Filters */}
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '20px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '24px',
+        boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '24px',
         display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end'
       }}>
         <div style={{ flex: 1, minWidth: '200px' }}>
@@ -174,10 +176,10 @@ export default function Parceiros() {
       {filtered.length === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+          textAlign: 'center', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🤝</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>
+          <Handshake size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>
             {parceiros.length === 0 ? 'Nenhum parceiro cadastrado ainda' : 'Nenhum parceiro encontrado com esses filtros'}
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>
@@ -194,16 +196,16 @@ export default function Parceiros() {
             return (
               <div key={parceiro.id} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
                 borderTop: `3px solid ${tipo.cor}`
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                   <div style={{
                     width: '48px', height: '48px', borderRadius: '50%',
                     background: tipo.cor, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '24px', flexShrink: 0
+                    justifyContent: 'center', flexShrink: 0
                   }}>
-                    {tipo.icon}
+                    <tipo.iconComp size={22} strokeWidth={1.75} color="#ffffff" aria-hidden="true" />
                   </div>
                   <div style={{ flex: 1 }}>
                     <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 2px 0' }}>
@@ -216,7 +218,7 @@ export default function Parceiros() {
                       }}>{tipo.label}</span>
                       {planoEfetivo(parceiro.plano) === 'profissional' && (
                         <span style={{
-                          background: 'rgba(124,58,237,0.1)', color: '#7C3AED',
+                          background: 'rgba(46,125,107,0.12)', color: '#2E7D6B',
                           padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold'
                         }}>Profissional</span>
                       )}
@@ -240,8 +242,8 @@ export default function Parceiros() {
                   </p>
                 )}
                 {(parceiro.cidade || parceiro.estado) && (
-                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '4px 0' }}>
-                    📍 {parceiro.cidade}{parceiro.estado ? ` - ${parceiro.estado}` : ''}
+                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={13} strokeWidth={1.75} aria-hidden="true" /> {parceiro.cidade}{parceiro.estado ? ` - ${parceiro.estado}` : ''}
                   </p>
                 )}
                 {parceiro.bio && (
@@ -276,7 +278,7 @@ export default function Parceiros() {
       {hasMore && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
           <button onClick={loadMore} style={{
-            padding: '10px 32px', background: '#7C3AED', color: '#fff',
+            padding: '10px 32px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>Carregar mais</button>

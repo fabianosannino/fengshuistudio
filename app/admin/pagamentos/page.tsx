@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
+import { X } from 'lucide-react'
 
 interface Metrics {
   mrr: number
@@ -42,7 +43,7 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; color: string }
   past_due: { label: 'Em atraso', bg: '#FFFBEB', color: '#D97706' },
   cancelled: { label: 'Cancelado', bg: '#F3F4F6', color: '#6B7280' },
   gratuidade: { label: 'Gratuidade', bg: '#EFF6FF', color: '#1D4ED8' },
-  trial: { label: 'Trial', bg: '#F5F3FF', color: '#7C3AED' },
+  trial: { label: 'Trial', bg: '#EEF6F3', color: '#2E7D6B' },
   paused: { label: 'Pausado', bg: '#FFF7ED', color: '#EA580C' },
 }
 
@@ -114,7 +115,7 @@ export default function AdminPagamentos() {
   const metricsCards = metrics ? [
     { label: 'MRR', value: fmt(metrics.mrr), sub: 'Receita Mensal', color: '#15803D', bg: '#F0FDF4' },
     { label: 'ARR', value: fmt(metrics.arr), sub: 'Receita Anual', color: '#1D4ED8', bg: '#EFF6FF' },
-    { label: 'Total Assinaturas', value: String(metrics.totalActive), sub: 'Ativas', color: '#7C3AED', bg: '#F5F3FF' },
+    { label: 'Total Assinaturas', value: String(metrics.totalActive), sub: 'Ativas', color: '#2E7D6B', bg: '#EEF6F3' },
     { label: 'Em Atraso', value: String(metrics.pastDue), sub: fmt(metrics.pastDueAmount), color: '#D97706', bg: '#FFFBEB' },
     { label: 'Canceladas', value: String(metrics.cancelledThisMonth), sub: 'este mês', color: '#DC2626', bg: '#FEF2F2' },
     { label: 'Gratuidades', value: String(metrics.gratuidades), sub: 'ativas', color: '#1D4ED8', bg: '#EFF6FF' },
@@ -124,7 +125,7 @@ export default function AdminPagamentos() {
 
   return (
     <AppShell currentPage="admin/pagamentos">
-      <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 24px 0' }}>Gestão de Pagamentos</h1>
+      <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 24px 0' }}>Gestão de Pagamentos</h1>
 
       {message && (
         <div style={{
@@ -218,7 +219,7 @@ export default function AdminPagamentos() {
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     <button onClick={e => { e.stopPropagation(); setSelectedUser(u) }}
-                      style={{ padding: '6px 12px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                      style={{ padding: '6px 12px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
                       Detalhes
                     </button>
                   </td>
@@ -251,8 +252,8 @@ export default function AdminPagamentos() {
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Detalhes do Usuário</h2>
-              <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#9CA3AF' }}>✕</button>
+              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Detalhes do Usuário</h2>
+              <button onClick={() => setSelectedUser(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'inline-flex', alignItems: 'center' }}><X size={20} strokeWidth={2} aria-hidden="true" /></button>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -264,7 +265,7 @@ export default function AdminPagamentos() {
             </div>
 
             {/* Subscription History */}
-            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Assinaturas</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Assinaturas</h3>
             {(selectedUser.subscriptions || []).length === 0 ? (
               <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Nenhuma assinatura registrada</p>
             ) : (
@@ -289,14 +290,14 @@ export default function AdminPagamentos() {
             )}
 
             {/* Admin Actions */}
-            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Ações</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Ações</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <button onClick={() => { setActionModal('gratuidade'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #1D4ED820', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Conceder Gratuidade
               </button>
               <button onClick={() => { setActionModal('change_plan'); setActionForm({}) }}
-                style={{ padding: '10px', background: '#F5F3FF', color: '#7C3AED', border: '1px solid #7C3AED20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                style={{ padding: '10px', background: '#EEF6F3', color: '#2E7D6B', border: '1px solid #2E7D6B20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Alterar Plano
               </button>
               <button onClick={() => { setActionModal('cancel_subscription'); setActionForm({}) }}
@@ -316,7 +317,7 @@ export default function AdminPagamentos() {
       {actionModal === 'gratuidade' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '480px', width: '100%' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
               Conceder Gratuidade — {selectedUser.nome_completo}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -364,7 +365,7 @@ export default function AdminPagamentos() {
       {actionModal === 'change_plan' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '480px', width: '100%' }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
               Alterar Plano — {selectedUser.nome_completo}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -391,7 +392,7 @@ export default function AdminPagamentos() {
                 plan_slug: actionForm.plan_slug,
                 motivo: actionForm.motivo,
               })} style={{
-                padding: '10px 20px', background: (!actionForm.plan_slug || !actionForm.motivo) ? '#D1D5DB' : '#7C3AED', color: '#fff',
+                padding: '10px 20px', background: (!actionForm.plan_slug || !actionForm.motivo) ? '#D1D5DB' : '#2E7D6B', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: (!actionForm.plan_slug || !actionForm.motivo) ? 'not-allowed' : 'pointer', fontWeight: 'bold'
               }}>{actionLoading ? 'Salvando...' : 'Alterar Plano'}</button>
             </div>

@@ -7,6 +7,7 @@ import Skeleton from '../../components/Skeleton'
 import ConfirmModal from '../../components/ConfirmModal'
 import type { ActivationKey } from '../../../src/lib/types'
 import { planoEfetivo, planoLabel } from '../../../src/lib/plano-utils'
+import { ScrollText, KeyRound, CircleCheck, CircleDot, CircleAlert, ClipboardList, Copy, Download, X, ChevronUp, ChevronDown, ArrowLeft, ArrowRight, Zap, ArrowUpCircle } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
@@ -191,13 +192,14 @@ export default function AdminChaves() {
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Gerenciamento de Chaves</h1>
+            <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Gerenciamento de Chaves</h1>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Gere, gerencie e monitore chaves de ativação Pro</p>
           </div>
           <a href="/admin/auditoria" style={{
-            padding: '8px 16px', background: '#1E3A5F', color: '#fff', borderRadius: '8px',
+            padding: '8px 16px', background: '#0E1B2C', color: '#fff', borderRadius: '8px',
             fontSize: '13px', fontWeight: 'bold', textDecoration: 'none',
-          }}>📜 Log de auditoria</a>
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+          }}><ScrollText size={15} strokeWidth={1.75} aria-hidden="true" /> Log de auditoria</a>
         </div>
       </div>
 
@@ -215,16 +217,16 @@ export default function AdminChaves() {
       {/* ═══ SUMMARY CARDS ═══ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         {[
-          { label: 'Total gerado', value: summary.total, color: '#1E3A5F', icon: '🔑' },
-          { label: 'Disponíveis', value: summary.available, color: '#15803D', icon: '🟢' },
-          { label: 'Utilizadas', value: summary.used, color: '#1D4ED8', icon: '🔵' },
-          { label: 'Expiradas', value: summary.expired, color: '#A16207', icon: '🟡' },
+          { label: 'Total gerado', value: summary.total, color: '#0E1B2C', Icon: KeyRound },
+          { label: 'Disponíveis', value: summary.available, color: '#15803D', Icon: CircleCheck },
+          { label: 'Utilizadas', value: summary.used, color: '#1D4ED8', Icon: CircleDot },
+          { label: 'Expiradas', value: summary.expired, color: '#A16207', Icon: CircleAlert },
         ].map(card => (
           <div key={card.label} style={{
             background: '#fff', borderRadius: '12px', padding: '16px 20px',
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderTop: `3px solid ${card.color}`,
           }}>
-            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>{card.icon} {card.label}</div>
+            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}><card.Icon size={13} strokeWidth={1.75} color={card.color} aria-hidden="true" /> {card.label}</div>
             <div style={{ fontSize: '28px', fontWeight: 'bold', color: card.color }}>{card.value}</div>
           </div>
         ))}
@@ -235,7 +237,7 @@ export default function AdminChaves() {
         background: '#fff', borderRadius: '12px', padding: '20px 24px', marginBottom: '24px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB',
       }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>🔑 Gerar novas chaves</h2>
+        <h2 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}><KeyRound size={16} strokeWidth={1.75} aria-hidden="true" /> Gerar novas chaves</h2>
 
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {/* Quick quantity */}
@@ -245,8 +247,8 @@ export default function AdminChaves() {
               {[1, 5, 10, 25].map(n => (
                 <button key={n} onClick={() => setGenQty(n)} style={{
                   padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
-                  background: genQty === n ? '#7C3AED' : '#F3F4F6', color: genQty === n ? '#fff' : '#374151',
-                  border: genQty === n ? '2px solid #7C3AED' : '1px solid #D1D5DB',
+                  background: genQty === n ? '#2E7D6B' : '#F3F4F6', color: genQty === n ? '#fff' : '#374151',
+                  border: genQty === n ? '2px solid #2E7D6B' : '1px solid #D1D5DB',
                 }}>{n}</button>
               ))}
               <input
@@ -303,7 +305,7 @@ export default function AdminChaves() {
           </div>
 
           <button onClick={handleGenerate} disabled={generating} style={{
-            padding: '10px 24px', background: '#7C3AED', color: '#fff', border: 'none',
+            padding: '10px 24px', background: '#2E7D6B', color: '#fff', border: 'none',
             borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: generating ? 'wait' : 'pointer',
             opacity: generating ? 0.6 : 1, whiteSpace: 'nowrap',
           }}>{generating ? 'Gerando...' : `Gerar ${genQty} chave${genQty > 1 ? 's' : ''}`}</button>
@@ -320,8 +322,8 @@ export default function AdminChaves() {
             background: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '500px',
             width: '100%', maxHeight: '80vh', overflowY: 'auto',
           }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '18px', margin: '0 0 16px 0' }}>
-              🔑 {generatedKeys.length} chave{generatedKeys.length > 1 ? 's' : ''} gerada{generatedKeys.length > 1 ? 's' : ''}
+            <h3 style={{ color: '#0E1B2C', fontSize: '18px', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <KeyRound size={18} strokeWidth={1.75} aria-hidden="true" /> {generatedKeys.length} chave{generatedKeys.length > 1 ? 's' : ''} gerada{generatedKeys.length > 1 ? 's' : ''}
             </h3>
             <div style={{
               background: '#F9FAFB', borderRadius: '8px', padding: '12px', marginBottom: '16px',
@@ -331,20 +333,23 @@ export default function AdminChaves() {
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{k}</span>
                   <button onClick={() => copyToClipboard(k)} style={{
-                    background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#6B7280',
-                  }} title="Copiar">📋</button>
+                    background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280',
+                    display: 'inline-flex', alignItems: 'center',
+                  }} title="Copiar" aria-label="Copiar chave"><Copy size={15} strokeWidth={1.75} aria-hidden="true" /></button>
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button onClick={() => copyToClipboard(generatedKeys.join('\n'))} style={{
-                padding: '8px 16px', background: '#7C3AED', color: '#fff', border: 'none',
+                padding: '8px 16px', background: '#2E7D6B', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
-              }}>📋 Copiar todas</button>
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+              }}><Copy size={14} strokeWidth={1.75} aria-hidden="true" /> Copiar todas</button>
               <button onClick={() => downloadKeys(generatedKeys)} style={{
-                padding: '8px 16px', background: '#1E3A5F', color: '#fff', border: 'none',
+                padding: '8px 16px', background: '#0E1B2C', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
-              }}>⬇ Baixar .txt</button>
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+              }}><Download size={14} strokeWidth={1.75} aria-hidden="true" /> Baixar .txt</button>
               <button onClick={() => setShowGenModal(false)} style={{
                 padding: '8px 16px', background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB',
                 borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
@@ -360,7 +365,7 @@ export default function AdminChaves() {
         boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>📋 Chaves existentes</h2>
+          <h2 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={16} strokeWidth={1.75} aria-hidden="true" /> Chaves existentes</h2>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {/* Status filter */}
             <select
@@ -406,7 +411,7 @@ export default function AdminChaves() {
                     <tr key={k.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '8px 6px', fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'nowrap' }}>{k.key}</td>
                       <td style={{ padding: '8px 6px' }}>
-                        <span style={{ background: '#EDE9FE', color: '#7C3AED', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold' }}>
+                        <span style={{ background: '#E6F2EF', color: '#2E7D6B', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold' }}>
                           {k.plan_type.toUpperCase()}
                         </span>
                       </td>
@@ -432,20 +437,20 @@ export default function AdminChaves() {
                       </td>
                       <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <button onClick={() => copyToClipboard(k.key)} title="Copiar chave" style={{
+                          <button onClick={() => copyToClipboard(k.key)} title="Copiar chave" aria-label="Copiar chave" style={{
                             padding: '4px 8px', background: '#F3F4F6', border: '1px solid #D1D5DB',
-                            borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
-                          }}>📋</button>
+                            borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
+                          }}><Copy size={13} strokeWidth={1.75} aria-hidden="true" /></button>
                           {k.status === 'available' && (
-                            <button onClick={() => setCancelTarget(k.id)} title="Cancelar chave" style={{
+                            <button onClick={() => setCancelTarget(k.id)} title="Cancelar chave" aria-label="Cancelar chave" style={{
                               padding: '4px 8px', background: '#FEF2F2', border: '1px solid #FECACA',
-                              borderRadius: '4px', cursor: 'pointer', fontSize: '11px', color: '#DC2626',
-                            }}>✕</button>
+                              borderRadius: '4px', cursor: 'pointer', color: '#DC2626', display: 'inline-flex', alignItems: 'center',
+                            }}><X size={13} strokeWidth={2} aria-hidden="true" /></button>
                           )}
-                          <button onClick={() => setExpandedRow(expanded ? null : k.id)} title="Ver detalhes" style={{
+                          <button onClick={() => setExpandedRow(expanded ? null : k.id)} title="Ver detalhes" aria-label="Ver detalhes" style={{
                             padding: '4px 8px', background: '#F3F4F6', border: '1px solid #D1D5DB',
-                            borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
-                          }}>{expanded ? '▲' : '▼'}</button>
+                            borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
+                          }}>{expanded ? <ChevronUp size={13} strokeWidth={2} aria-hidden="true" /> : <ChevronDown size={13} strokeWidth={2} aria-hidden="true" />}</button>
                         </div>
                         {expanded && (
                           <div style={{
@@ -478,8 +483,9 @@ export default function AdminChaves() {
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
                 background: page === 1 ? '#F9FAFB' : '#fff', color: page === 1 ? '#D1D5DB' : '#374151',
                 cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 'bold',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
               }}
-            >← Anterior</button>
+            ><ArrowLeft size={13} strokeWidth={2} aria-hidden="true" /> Anterior</button>
             <span style={{ color: '#6B7280', fontSize: '12px' }}>Página {page} de {totalPages}</span>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
@@ -487,8 +493,9 @@ export default function AdminChaves() {
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
                 background: page === totalPages ? '#F9FAFB' : '#fff', color: page === totalPages ? '#D1D5DB' : '#374151',
                 cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 'bold',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
               }}
-            >Próximo →</button>
+            >Próximo <ArrowRight size={13} strokeWidth={2} aria-hidden="true" /></button>
           </div>
         )}
       </div>
@@ -498,7 +505,7 @@ export default function AdminChaves() {
         background: '#fff', borderRadius: '12px', padding: '20px 24px', marginBottom: '24px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB',
       }}>
-        <h2 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>⚡ Promoção rápida</h2>
+        <h2 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}><Zap size={16} strokeWidth={1.75} aria-hidden="true" /> Promoção rápida</h2>
         <p style={{ color: '#6B7280', fontSize: '12px', margin: '0 0 16px 0' }}>Promover usuário para Pro sem chave de ativação</p>
 
         <div style={{ position: 'relative', maxWidth: '400px' }}>
@@ -529,8 +536,8 @@ export default function AdminChaves() {
                   <span style={{ color: '#374151' }}>{u.nome_completo}</span>
                   <span style={{
                     padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold',
-                    background: planoEfetivo(u.plano) === 'profissional' ? '#EDE9FE' : '#F3F4F6',
-                    color: planoEfetivo(u.plano) === 'profissional' ? '#7C3AED' : '#6B7280',
+                    background: planoEfetivo(u.plano) === 'profissional' ? '#E6F2EF' : '#F3F4F6',
+                    color: planoEfetivo(u.plano) === 'profissional' ? '#2E7D6B' : '#6B7280',
                   }}>{planoLabel(u.plano)}</span>
                 </button>
               ))}
@@ -551,17 +558,18 @@ export default function AdminChaves() {
               <strong>Plano atual:</strong>{' '}
               <span style={{
                 padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold',
-                background: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#EDE9FE' : '#FEF3C7',
-                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#7C3AED' : '#A16207',
+                background: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#E6F2EF' : '#FEF3C7',
+                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#2E7D6B' : '#A16207',
               }}>{planoLabel(promoteTarget.plano)}</span>
             </div>
             {planoEfetivo(promoteTarget.plano) === 'profissional' ? (
               <div style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>Este usuário já possui o plano Pro.</div>
             ) : (
               <button onClick={() => setShowPromoteModal(true)} style={{
-                padding: '8px 20px', background: '#7C3AED', color: '#fff', border: 'none',
+                padding: '8px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
-              }}>⬆ Promover para Pro</button>
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+              }}><ArrowUpCircle size={14} strokeWidth={1.75} aria-hidden="true" /> Promover para Pro</button>
             )}
           </div>
         )}
@@ -588,7 +596,7 @@ export default function AdminChaves() {
           <div style={{
             background: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '400px', width: '100%',
           }}>
-            <h3 style={{ color: '#1E3A5F', fontSize: '18px', margin: '0 0 12px 0' }}>Confirmar promoção</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '18px', margin: '0 0 12px 0' }}>Confirmar promoção</h3>
             <p style={{ color: '#374151', fontSize: '14px', margin: '0 0 20px 0' }}>
               Promover <strong>{promoteTarget.nome_completo}</strong> para o plano <strong>Pro</strong>?
             </p>
@@ -598,7 +606,7 @@ export default function AdminChaves() {
                 borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
               }}>Cancelar</button>
               <button onClick={handlePromote} disabled={promoting} style={{
-                padding: '8px 20px', background: '#7C3AED', color: '#fff', border: 'none',
+                padding: '8px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 cursor: promoting ? 'wait' : 'pointer', opacity: promoting ? 0.6 : 1,
               }}>{promoting ? 'Promovendo...' : 'Confirmar'}</button>

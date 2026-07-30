@@ -5,6 +5,7 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import type { User } from '@supabase/supabase-js'
 import { AREAS, CATEGORIAS, avg, defaultRespostas } from '../../src/lib/roda-da-vida-constants'
+import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react'
 
 type RodaDaVidaData = {
   respostas?: Record<string, number[]>
@@ -51,7 +52,7 @@ function RadarChart({ respostas }: { respostas: Record<string, number[]> }) {
           <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" fontSize={8} fill={a.cor} fontWeight="bold">{a.label}</text>
         </g>
       })}
-      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#7C3AED" strokeWidth={2} />
+      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={2} />
       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={4} fill={AREAS[i].cor} />)}
       {pts.map((p, i) => <text key={'t'+i} x={p.x} y={p.y - 8} textAnchor="middle" fontSize={8} fill={AREAS[i].cor} fontWeight="bold">{values[i].toFixed(1)}</text>)}
     </svg>
@@ -182,9 +183,9 @@ export default function RodaDaVidaPage() {
   const progress = ((areaAtual + 1) / 12 * 100)
 
   const cardStyle: React.CSSProperties = { background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16, marginBottom: 12 }
-  const btnPrimary = (bg = '#7C3AED'): React.CSSProperties => ({ padding: '10px 20px', borderRadius: 8, background: bg, color: '#fff', border: 'none', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' })
+  const btnPrimary = (bg = '#2E7D6B'): React.CSSProperties => ({ padding: '10px 20px', borderRadius: 8, background: bg, color: '#fff', border: 'none', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' })
 
-  if (loading) return <AppShell currentPage="roda-da-vida"><div style={{ textAlign: 'center', padding: 80 }}><p style={{ color: '#7C3AED' }}>Carregando...</p></div></AppShell>
+  if (loading) return <AppShell currentPage="roda-da-vida"><div style={{ textAlign: 'center', padding: 80 }}><p style={{ color: '#2E7D6B' }}>Carregando...</p></div></AppShell>
 
   return (
     <AppShell currentPage="roda-da-vida">
@@ -194,7 +195,7 @@ export default function RodaDaVidaPage() {
       {step === 'list' && <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
-            <h1 style={{ color: '#1E3A5F', fontSize: 24, fontWeight: 'bold', margin: 0 }}>Roda da Vida</h1>
+            <h1 style={{ color: '#0E1B2C', fontSize: 24, fontWeight: 'bold', margin: 0 }}>Roda da Vida</h1>
             <p style={{ color: '#6B7280', fontSize: 14, margin: '4px 0 0' }}>Questionário com 12 áreas da vida — 60 perguntas</p>
           </div>
           <button onClick={startNew} style={btnPrimary()}>+ Criar Roda da Vida</button>
@@ -202,9 +203,9 @@ export default function RodaDaVidaPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
           {consultas.filter(c => c.roda_da_vida?.respostas).map(c => (
             <div key={c.id} onClick={() => openExisting(c)} style={{ ...cardStyle, cursor: 'pointer' }}>
-              <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1E3A5F' }}>{c.roda_da_vida?.pessoa_nome || c.clientes?.nome_completo || 'Sem nome'}</div>
+              <div style={{ fontSize: 14, fontWeight: 'bold', color: '#0E1B2C' }}>{c.roda_da_vida?.pessoa_nome || c.clientes?.nome_completo || 'Sem nome'}</div>
               <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{c.nome_imovel} — {fmtDate(c.criado_em)}</div>
-              <div style={{ fontSize: 12, color: '#7C3AED', marginTop: 4, fontWeight: 'bold' }}>Média geral: {avg(AREAS.map(a => avg(c.roda_da_vida?.respostas?.[a.key] || [5,5,5,5,5]))).toFixed(1)}</div>
+              <div style={{ fontSize: 12, color: '#2E7D6B', marginTop: 4, fontWeight: 'bold' }}>Média geral: {avg(AREAS.map(a => avg(c.roda_da_vida?.respostas?.[a.key] || [5,5,5,5,5]))).toFixed(1)}</div>
             </div>
           ))}
           {consultas.filter(c => c.roda_da_vida?.respostas).length === 0 && (
@@ -221,7 +222,7 @@ export default function RodaDaVidaPage() {
           ? consultas.filter(c => c.cliente_id === clienteId)
           : []
         return <>
-          <h2 style={{ color: '#1E3A5F', fontSize: 20, marginBottom: 16 }}>Para quem é esta Roda da Vida?</h2>
+          <h2 style={{ color: '#0E1B2C', fontSize: 20, marginBottom: 16 }}>Para quem é esta Roda da Vida?</h2>
 
           {/* Option 1: Select existing client */}
           {clientes.length > 0 && <div style={cardStyle}>
@@ -229,7 +230,7 @@ export default function RodaDaVidaPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {clientes.map(cl => (
                 <button key={cl.id} onClick={() => { setClienteId(cl.id); setPessoaNome(cl.nome_completo); setSelectedConsultaId(null) }}
-                  style={{ padding: '6px 14px', borderRadius: 20, border: clienteId === cl.id ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: clienteId === cl.id ? '#F5F0FF' : '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>
+                  style={{ padding: '6px 14px', borderRadius: 20, border: clienteId === cl.id ? '2px solid #2E7D6B' : '1px solid #D1D5DB', background: clienteId === cl.id ? '#EAF4F1' : '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>
                   {cl.nome_completo}
                 </button>
               ))}
@@ -242,13 +243,13 @@ export default function RodaDaVidaPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {consultasDoCliente.map(c => (
                 <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes((c.roda_da_vida.acoes as unknown as Acao[]) || defaultAcoes()) } }}
-                  style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === c.id ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: selectedConsultaId === c.id ? '#F5F0FF' : '#fff', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1E3A5F' }}>{c.nome_imovel}</div>
-                  <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? '— ◎ Já tem Roda da Vida' : ''}</div>
+                  style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === c.id ? '2px solid #2E7D6B' : '1px solid #D1D5DB', background: selectedConsultaId === c.id ? '#EAF4F1' : '#fff', cursor: 'pointer' }}>
+                  <div style={{ fontSize: 14, fontWeight: 'bold', color: '#0E1B2C' }}>{c.nome_imovel}</div>
+                  <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? <><span aria-hidden="true">—</span><CheckCircle2 size={12} strokeWidth={2} color="#2E7D6B" aria-hidden="true" /> Já tem Roda da Vida</> : ''}</div>
                 </button>
               ))}
               <button onClick={() => setSelectedConsultaId(null)}
-                style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === null ? '2px solid #7C3AED' : '1px dashed #D1D5DB', background: selectedConsultaId === null ? '#F5F0FF' : '#fff', cursor: 'pointer', fontSize: 13, color: '#7C3AED', fontWeight: 'bold' }}>
+                style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === null ? '2px solid #2E7D6B' : '1px dashed #D1D5DB', background: selectedConsultaId === null ? '#EAF4F1' : '#fff', cursor: 'pointer', fontSize: 13, color: '#2E7D6B', fontWeight: 'bold' }}>
                 + Criar nova consulta para este cliente
               </button>
             </div>
@@ -279,11 +280,11 @@ export default function RodaDaVidaPage() {
       {step === 'questionnaire' && area && <>
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 18, color: '#1E3A5F' }}>{areaAtual + 1}/12 — {area.label}</h2>
+            <h2 style={{ margin: 0, fontSize: 18, color: '#0E1B2C' }}>{areaAtual + 1}/12 — {area.label}</h2>
             <span style={{ fontSize: 12, color: area.cor, fontWeight: 'bold', background: area.cor + '18', padding: '4px 10px', borderRadius: 12 }}>{area.categoria}</span>
           </div>
           <div style={{ height: 6, borderRadius: 3, background: '#E5E7EB' }}>
-            <div style={{ height: '100%', borderRadius: 3, background: '#7C3AED', width: `${progress}%`, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', borderRadius: 3, background: '#2E7D6B', width: `${progress}%`, transition: 'width 0.3s' }} />
           </div>
         </div>
         <div style={cardStyle}>
@@ -312,13 +313,13 @@ export default function RodaDaVidaPage() {
       {step === 'results' && <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 20, color: '#1E3A5F' }}>Resultados — {pessoaNome || 'Roda da Vida'}</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#7C3AED' }}>{totalAvg.toFixed(1)}</b></p>
+            <h2 style={{ margin: 0, fontSize: 20, color: '#0E1B2C' }}>Resultados — {pessoaNome || 'Roda da Vida'}</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#2E7D6B' }}>{totalAvg.toFixed(1)}</b></p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { setAreaAtual(0); setStep('questionnaire') }} style={btnPrimary('#6B7280')}>Editar</button>
             <button onClick={salvar} disabled={saving} style={btnPrimary()}>{saving ? 'Salvando...' : 'Salvar'}</button>
-            <button onClick={() => setStep('list')} style={btnPrimary('#1E3A5F')}>Voltar</button>
+            <button onClick={() => setStep('list')} style={btnPrimary('#0E1B2C')}>Voltar</button>
           </div>
         </div>
 
@@ -352,7 +353,7 @@ export default function RodaDaVidaPage() {
 
         {/* Detailed area list with observations */}
         <div style={cardStyle}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#1E3A5F' }}>Detalhamento por Área</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0E1B2C' }}>Detalhamento por Área</h3>
           {AREAS.map(a => {
             const scores = respostas[a.key] || [5,5,5,5,5]
             const areaAvg = avg(scores)
@@ -367,8 +368,8 @@ export default function RodaDaVidaPage() {
                   <span style={{ fontSize: 16, fontWeight: 'bold', color: a.cor }}>{areaAvg.toFixed(1)}</span>
                 </div>
                 <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{a.categoria}</div>
-                <button onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#7C3AED', cursor: 'pointer', padding: 0, fontWeight: 'bold' }}>
-                  {expanded ? '▼' : '▶'} Detalhes das 5 perguntas
+                <button onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#2E7D6B', cursor: 'pointer', padding: 0, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {expanded ? <ChevronDown size={13} strokeWidth={2.5} aria-hidden="true" /> : <ChevronRight size={13} strokeWidth={2.5} aria-hidden="true" />} Detalhes das 5 perguntas
                 </button>
                 {expanded && (
                   <div style={{ marginTop: 6, paddingLeft: 16 }}>
@@ -397,7 +398,7 @@ export default function RodaDaVidaPage() {
           })}
           {/* General observation */}
           <div style={{ marginTop: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#7C3AED', marginBottom: 4 }}>Observação geral do consultor</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#2E7D6B', marginBottom: 4 }}>Observação geral do consultor</label>
             <textarea
               value={observacaoGeral}
               onChange={e => setObservacaoGeral(e.target.value)}
@@ -415,13 +416,13 @@ export default function RodaDaVidaPage() {
         {/* Action Plan */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, color: '#1E3A5F' }}>Plano de Ação</h3>
-            <button onClick={() => setAcoes(prev => [...prev, novaAcao()])} style={{ padding: '6px 16px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 'bold', cursor: 'pointer' }}>+ Nova Ação</button>
+            <h3 style={{ margin: 0, fontSize: 16, color: '#0E1B2C' }}>Plano de Ação</h3>
+            <button onClick={() => setAcoes(prev => [...prev, novaAcao()])} style={{ padding: '6px 16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 'bold', cursor: 'pointer' }}>+ Nova Ação</button>
           </div>
           {acoes.map((a, i) => (
             <div key={i} style={{ padding: 14, marginBottom: 12, borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 'bold', color: '#1E3A5F' }}>Ação {i + 1}</span>
+                <span style={{ fontSize: 13, fontWeight: 'bold', color: '#0E1B2C' }}>Ação {i + 1}</span>
                 {acoes.length > 1 && (
                   <button onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16 }}>×</button>
                 )}

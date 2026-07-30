@@ -7,6 +7,7 @@ import Skeleton from '../components/Skeleton'
 import ConfirmModal from '../components/ConfirmModal'
 import type { Consulta } from '../../src/lib/types'
 import { isProfissional as isProfissionalFn } from '../../src/lib/plano-utils'
+import { ClipboardList, Home as HomeIcon, User as UserIcon, CalendarDays } from 'lucide-react'
 const PAGE_SIZE = 10
 
 export default function Consultas() {
@@ -133,7 +134,8 @@ export default function Consultas() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>{isProfessional ? 'Consultas' : 'Imóveis'}</p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
             {isProfessional ? 'Consultas' : 'Meus Imóveis'}
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -141,7 +143,7 @@ export default function Consultas() {
           </p>
         </div>
         <button onClick={() => window.location.href = '/consultas/nova'} style={{
-          background: '#7C3AED', color: '#ffffff', border: 'none',
+          background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer'
         }}>{isProfessional ? '+ Nova consulta' : '+ Novo imóvel'}</button>
@@ -186,10 +188,10 @@ export default function Consultas() {
       ) : totalCount === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+          textAlign: 'center', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{isProfessional ? '📋' : '🏠'}</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>
+          <div style={{ marginBottom: '16px' }}>{isProfessional ? <ClipboardList size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto' }} aria-hidden="true" /> : <HomeIcon size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto' }} aria-hidden="true" />}</div>
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>
             {isProfessional ? 'Nenhuma consulta registrada' : 'Nenhum imóvel cadastrado'}
           </h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>
@@ -198,7 +200,7 @@ export default function Consultas() {
               : 'Cadastre seu imóvel para receber o diagnóstico Feng Shui personalizado'}
           </p>
           <button onClick={() => window.location.href = '/consultas/nova'} style={{
-            background: '#7C3AED', color: '#ffffff', border: 'none',
+            background: '#2E7D6B', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>{isProfessional ? 'Iniciar primeira consulta' : 'Cadastrar meu imóvel'}</button>
@@ -208,7 +210,7 @@ export default function Consultas() {
           {consultasFiltradas.map(consulta => (
             <div key={consulta.id} style={{
               background: '#ffffff', borderRadius: '12px', padding: '20px 24px',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+              boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
               borderLeft: `4px solid ${statusColor(consulta.status)}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               flexWrap: 'wrap', gap: '12px'
@@ -228,31 +230,31 @@ export default function Consultas() {
                     const be=consulta.bagua_entrada
                     const finalizada=!!(be?.finalizada_em)
                     const emAndamento=!!(be?.planta_url)&&!finalizada
-                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`☯ Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
-                    if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>☯ Em andamento</span>
+                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
+                    if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>Diagnóstico em andamento</span>
                     return null
                   })()}
                 </div>
                 {isProfessional && consulta.clientes?.nome_completo && (
-                  <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
-                    👤 {consulta.clientes.nome_completo}
+                  <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <UserIcon size={14} strokeWidth={1.75} aria-hidden="true" /> {consulta.clientes.nome_completo}
                   </p>
                 )}
-                <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
-                  📅 {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
+                <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CalendarDays size={14} strokeWidth={1.75} aria-hidden="true" /> {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
                   {consulta.tipo_imovel && ` • ${consulta.tipo_imovel}`}
                   {consulta.area_total_m2 && ` • ${consulta.area_total_m2}m²`}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => window.location.href = `/consultas/${consulta.id}`} style={{
-                  padding: '8px 20px', background: '#7C3AED', color: '#fff',
+                  padding: '8px 20px', background: '#2E7D6B', color: '#fff',
                   border: 'none', borderRadius: '6px', fontSize: '13px',
                   fontWeight: 'bold', cursor: 'pointer'
                 }}>Abrir</button>
                 {consulta.status === 'finalizada' && (
                   <button onClick={() => window.location.href = `/consultas/${consulta.id}/relatorio`} style={{
-                    padding: '8px 20px', background: '#1E3A5F', color: '#fff',
+                    padding: '8px 20px', background: '#0E1B2C', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
                   }}>Relatório</button>

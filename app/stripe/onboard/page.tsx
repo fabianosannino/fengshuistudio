@@ -44,7 +44,7 @@ interface AccountStatus {
 
 export default function StripeOnboardPage() {
   return (
-    <Suspense fallback={<AppShell currentPage="stripe/onboard"><div style={{ textAlign: 'center', padding: '60px' }}><p style={{ color: '#7C3AED' }}>Carregando...</p></div></AppShell>}>
+    <Suspense fallback={<AppShell currentPage="stripe/onboard"><div style={{ textAlign: 'center', padding: '60px' }}><p style={{ color: '#2E7D6B' }}>Carregando...</p></div></AppShell>}>
       <StripeOnboard />
     </Suspense>
   )
@@ -158,7 +158,7 @@ function StripeOnboard() {
       <AppShell currentPage="stripe/onboard">
         <div style={{ textAlign: 'center', padding: '60px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED' }}>Carregando...</p>
+          <p style={{ color: '#2E7D6B' }}>Carregando...</p>
         </div>
       </AppShell>
     )
@@ -167,7 +167,7 @@ function StripeOnboard() {
   return (
     <AppShell currentPage="stripe/onboard">
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Pagamentos e Assinatura</h1>
+        <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Pagamentos e Assinatura</h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>Gerencie sua conta Stripe e assinatura da plataforma</p>
 
         {message && (
@@ -182,12 +182,12 @@ function StripeOnboard() {
         {!status?.has_account && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>💳</div>
-            <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Ative pagamentos</h2>
+            <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Ative pagamentos</h2>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px 0' }}>
               Conecte sua conta Stripe para receber pagamentos e assinar um plano.
             </p>
             <button onClick={createAccount} disabled={creating} style={{
-              padding: '14px 32px', background: creating ? '#9CA3AF' : '#7C3AED', color: '#fff',
+              padding: '14px 32px', background: creating ? '#9CA3AF' : '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold',
               cursor: creating ? 'not-allowed' : 'pointer'
             }}>{creating ? 'Criando...' : 'Criar conta Stripe'}</button>
@@ -199,7 +199,7 @@ function StripeOnboard() {
           <>
             {/* Status Card */}
             <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 16px 0' }}>Status da Conta Stripe</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 16px 0' }}>Status da Conta Stripe</h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                 {/* Onboarding Status */}
@@ -230,8 +230,8 @@ function StripeOnboard() {
               </div>
 
               {profile?.store_slug && (
-                <div style={{ marginTop: '12px', padding: '10px 14px', background: '#F5F0FF', borderRadius: '8px', border: '1px solid #E9D5FF' }}>
-                  <div style={{ fontSize: '12px', color: '#7C3AED', fontWeight: 'bold', marginBottom: '4px' }}>Link da sua loja:</div>
+                <div style={{ marginTop: '12px', padding: '10px 14px', background: '#EAF4F1', borderRadius: '8px', border: '1px solid #DCEFE9' }}>
+                  <div style={{ fontSize: '12px', color: '#2E7D6B', fontWeight: 'bold', marginBottom: '4px' }}>Link da sua loja:</div>
                   <div style={{ fontSize: '13px', color: '#374151' }}>
                     {typeof window !== 'undefined' ? window.location.origin : ''}/loja/{profile.store_slug}
                   </div>
@@ -243,7 +243,7 @@ function StripeOnboard() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
               {!status.onboarding_complete && (
                 <button onClick={startOnboarding} style={{
-                  padding: '16px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '12px',
+                  padding: '16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '12px',
                   fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', gridColumn: '1 / -1'
                 }}>
                   {status.requirements_status === 'currently_due' ? 'Completar Onboarding' : 'Continuar Onboarding'}
@@ -258,14 +258,14 @@ function StripeOnboard() {
               </button>
 
               <button onClick={openBillingPortal} style={{
-                padding: '16px', background: '#1E3A5F', color: '#fff', border: 'none', borderRadius: '12px',
+                padding: '16px', background: '#0E1B2C', color: '#fff', border: 'none', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
               }}>
                 Gerenciar Assinatura
               </button>
 
               <button onClick={() => window.location.href = '/stripe/products'} style={{
-                padding: '16px', background: '#fff', color: '#7C3AED', border: '2px solid #7C3AED', borderRadius: '12px',
+                padding: '16px', background: '#fff', color: '#2E7D6B', border: '2px solid #2E7D6B', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
               }}>
                 Gerenciar Produtos
@@ -282,7 +282,7 @@ function StripeOnboard() {
             {/* Sales History */}
             {status?.charges_enabled && (
               <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px' }}>
-                <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+                <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
                   Vendas Recentes
                 </h3>
                 {sales.length === 0 ? (
@@ -299,8 +299,8 @@ function StripeOnboard() {
                         </div>
                         <div style={{ fontSize: '11px', color: '#6B7280' }}>Receita Total</div>
                       </div>
-                      <div style={{ flex: 1, padding: '12px', background: '#F5F0FF', borderRadius: '8px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#7C3AED' }}>{sales.length}</div>
+                      <div style={{ flex: 1, padding: '12px', background: '#EAF4F1', borderRadius: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2E7D6B' }}>{sales.length}</div>
                         <div style={{ fontSize: '11px', color: '#6B7280' }}>Vendas</div>
                       </div>
                     </div>

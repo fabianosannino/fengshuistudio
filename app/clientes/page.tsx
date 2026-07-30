@@ -8,6 +8,7 @@ import Image from 'next/image'
 import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, podeClientes } from '../../src/lib/plano-utils'
+import { Camera, Users, Search, Mail, Phone, MapPin, CheckCircle2, RefreshCw } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -237,7 +238,8 @@ export default function Clientes() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Meus Clientes</h1>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Clientes</p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Meus Clientes</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{totalCount} cliente(s) cadastrado(s)</p>
         </div>
         <button onClick={() => {
@@ -248,7 +250,7 @@ export default function Clientes() {
           }
           setShowForm(!showForm); setMessage('')
         }} style={{
-          background: '#7C3AED', color: '#ffffff', border: 'none',
+          background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer'
         }}>
@@ -257,9 +259,8 @@ export default function Clientes() {
       </div>
 
       {/* Filter / Sort Bar */}
-      <div style={{
-        background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '20px',
+      <div className="panel" style={{
+        padding: '16px 20px', marginBottom: '20px',
         display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center'
       }}>
         <input
@@ -319,7 +320,7 @@ export default function Clientes() {
                   padding: '8px 14px', border: '1px solid #D1D5DB', borderRadius: '6px',
                   fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
                   cursor: 'pointer',
-                  background: isActive ? '#7C3AED' : '#ffffff',
+                  background: isActive ? '#2E7D6B' : '#ffffff',
                   color: isActive ? '#ffffff' : '#374151',
                 }}
               >
@@ -336,7 +337,7 @@ export default function Clientes() {
           background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '13px'
         }}>
           Cadastro de clientes externos disponível no plano Profissional.{' '}
-          <a href="/planos" style={{ color: '#7C3AED', fontWeight: 'bold' }}>Ver planos</a>
+          <a href="/planos" style={{ color: '#2E7D6B', fontWeight: 'bold' }}>Ver planos</a>
         </div>
       )}
 
@@ -351,12 +352,11 @@ export default function Clientes() {
       )}
 
       {showForm && (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '32px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: '32px',
-          borderTop: '3px solid #7C3AED'
+        <div className="panel" style={{
+          padding: '32px', marginBottom: '32px',
+          borderTop: '3px solid #2E7D6B'
         }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', marginBottom: '24px', marginTop: '0' }}>
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '24px', marginTop: '0' }}>
             Novo Cliente
           </h2>
           <form onSubmit={handleSave}>
@@ -370,7 +370,7 @@ export default function Clientes() {
                 {fotoPreview ? (
                   <Image src={fotoPreview} alt="Preview" fill unoptimized style={{ objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
+                  <Camera size={26} strokeWidth={1.5} color="#9CA3AF" aria-hidden="true" />
                 )}
               </div>
               <div>
@@ -408,14 +408,14 @@ export default function Clientes() {
             </div>
 
             {/* Endereço */}
-            <h3 style={{ color: '#1E3A5F', fontSize: '15px', fontWeight: 'bold', margin: '20px 0 12px 0', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>Endereço</h3>
+            <h3 style={{ color: '#0E1B2C', fontSize: '15px', fontWeight: 'bold', margin: '20px 0 12px 0', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>Endereço</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label htmlFor="input-cep" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>CEP *</label>
                 <div style={{ position: 'relative' }}>
                   <input id="input-cep" name="cep" value={form.cep} onChange={handleChange} onBlur={handleCepBlur} required placeholder="00000-000" maxLength={9}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
-                  {cepLoading && <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#7C3AED', fontSize: '12px' }}>Buscando...</span>}
+                  {cepLoading && <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#2E7D6B', fontSize: '12px' }}>Buscando...</span>}
                 </div>
               </div>
               <div>
@@ -469,7 +469,7 @@ export default function Clientes() {
               </div>
             </div>
             <button type="submit" disabled={saving} style={{
-              background: saving ? '#9CA3AF' : '#7C3AED', color: '#ffffff', border: 'none',
+              background: saving ? '#9CA3AF' : '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '12px 32px', borderRadius: '8px', fontSize: '15px',
               fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
             }}>
@@ -482,21 +482,19 @@ export default function Clientes() {
       {loading ? (
         <Skeleton variant="list" rows={4} />
       ) : totalCount === 0 ? (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        <div className="panel" style={{
+          padding: '64px 32px', textAlign: 'center',
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>👤</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>Nenhum cliente cadastrado</h3>
+          <Users size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum cliente cadastrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Clique em &quot;Novo cliente&quot; para comecar</p>
         </div>
       ) : filteredClientes.length === 0 ? (
-        <div style={{
-          background: '#ffffff', borderRadius: '12px', padding: '48px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+        <div className="panel" style={{
+          padding: '48px 32px', textAlign: 'center',
         }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔍</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '16px', marginBottom: '8px' }}>Nenhum cliente encontrado</h3>
+          <Search size={34} strokeWidth={1.5} color="#9CA3AF" style={{ margin: '0 auto 12px' }} aria-hidden="true" />
+          <h3 style={{ color: '#0E1B2C', fontSize: '16px', marginBottom: '8px' }}>Nenhum cliente encontrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Tente ajustar o filtro de busca.</p>
         </div>
       ) : (
@@ -505,14 +503,13 @@ export default function Clientes() {
             const stats = consultaStats[cliente.id]
             const isActive = (cliente as Cliente & { ativo?: boolean }).ativo !== false
             return (
-              <div key={cliente.id} style={{
-                background: '#ffffff', borderRadius: '12px', padding: '20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${isActive ? '#7C3AED' : '#9CA3AF'}`
+              <div key={cliente.id} className="panel panel-interactive" style={{
+                padding: '20px', borderLeft: `4px solid ${isActive ? '#2E7D6B' : '#9CA3AF'}`
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div style={{
                     width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
-                    background: isActive ? '#7C3AED' : '#9CA3AF', display: 'flex', alignItems: 'center',
+                    background: isActive ? '#2E7D6B' : '#9CA3AF', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
                     flexShrink: 0, position: 'relative' as const,
                   }}>
@@ -532,20 +529,24 @@ export default function Clientes() {
                 <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
                   {cliente.nome_completo}
                 </h3>
-                {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>✉ {cliente.email}</p>}
-                {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📱 {cliente.telefone}</p>}
-                {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0' }}>📍 {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
+                {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.email}</p>}
+                {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.telefone}</p>}
+                {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
                 <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
                   <span>{stats?.total || 0} consulta(s)</span>
                   {stats?.lastStatus && (
-                    <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280' }}>
-                      {stats.lastStatus === 'finalizada' ? '✅ Concluída' : stats.lastStatus === 'em_andamento' ? '🔄 Em andamento' : '☯ ' + stats.lastStatus}
+                    <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      {stats.lastStatus === 'finalizada'
+                        ? <><CheckCircle2 size={13} strokeWidth={2} aria-hidden="true" /> Concluída</>
+                        : stats.lastStatus === 'em_andamento'
+                        ? <><RefreshCw size={13} strokeWidth={2} aria-hidden="true" /> Em andamento</>
+                        : stats.lastStatus}
                     </span>
                   )}
                 </div>
                 <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
                   <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
-                    flex: 1, padding: '8px', background: '#7C3AED', color: '#fff',
+                    flex: 1, padding: '8px', background: '#2E7D6B', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
                   }}>Nova consulta</button>

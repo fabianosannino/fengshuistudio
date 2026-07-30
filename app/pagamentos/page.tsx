@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import Skeleton from '../components/Skeleton'
 import type { Pagamento, Cliente, Consulta } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { Wrench, Wallet, User as UserIcon, Home as HomeIcon, Check } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> = {
   pendente: { label: 'Pendente', cor: '#D97706', bg: '#FFFBEB' },
@@ -298,7 +299,7 @@ export default function Pagamentos() {
         background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px',
         padding: '16px 20px', marginBottom: '24px', textAlign: 'center'
       }}>
-        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🚧</div>
+        <Wrench size={22} strokeWidth={1.75} color="#92400E" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
         <p style={{ color: '#92400E', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Pagamentos — Em desenvolvimento
         </p>
@@ -311,11 +312,12 @@ export default function Pagamentos() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Pagamentos</h1>
+          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Financeiro</p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Pagamentos</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{allCount} pagamento(s) registrado(s)</p>
         </div>
         <button onClick={openNew} style={{
-          background: '#7C3AED', color: '#ffffff', border: 'none',
+          background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer',
         }}>+ Novo pagamento</button>
@@ -343,7 +345,7 @@ export default function Pagamentos() {
           <button key={f} onClick={() => handleFiltroChange(f)} style={{
             padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold',
             cursor: 'pointer', border: 'none',
-            background: filtroStatus === f ? '#1E3A5F' : '#F3F4F6',
+            background: filtroStatus === f ? '#0E1B2C' : '#F3F4F6',
             color: filtroStatus === f ? '#ffffff' : '#6B7280',
           }}>
             {f === 'todos' ? 'Todos' : STATUS_CONFIG[f]?.label || f}
@@ -365,13 +367,13 @@ export default function Pagamentos() {
       ) : totalCount === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
-          textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+          textAlign: 'center', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>💰</div>
-          <h3 style={{ color: '#1E3A5F', fontSize: '18px', marginBottom: '8px' }}>Nenhum pagamento encontrado</h3>
+          <Wallet size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
+          <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum pagamento encontrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>Registre pagamentos para controlar seu financeiro</p>
           <button onClick={openNew} style={{
-            background: '#7C3AED', color: '#ffffff', border: 'none',
+            background: '#2E7D6B', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
           }}>Registrar primeiro pagamento</button>
@@ -384,7 +386,7 @@ export default function Pagamentos() {
             return (
               <div key={pag.id} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
                 borderLeft: `4px solid ${vencido ? '#DC2626' : st.cor}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexWrap: 'wrap', gap: '12px',
@@ -402,9 +404,10 @@ export default function Pagamentos() {
                       fontSize: '11px', fontWeight: 'bold',
                     }}>{vencido ? 'Atrasado' : st.label}</span>
                   </div>
-                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '0' }}>
-                    {pag.clientes?.nome_completo && `👤 ${pag.clientes.nome_completo}`}
-                    {pag.consultas?.nome_imovel && ` • 🏠 ${pag.consultas.nome_imovel}`}
+                  <p style={{ color: '#6B7280', fontSize: '13px', margin: '0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    {pag.clientes?.nome_completo && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><UserIcon size={13} strokeWidth={1.75} aria-hidden="true" /> {pag.clientes.nome_completo}</span>}
+                    {pag.clientes?.nome_completo && pag.consultas?.nome_imovel && <span aria-hidden="true">•</span>}
+                    {pag.consultas?.nome_imovel && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><HomeIcon size={13} strokeWidth={1.75} aria-hidden="true" /> {pag.consultas.nome_imovel}</span>}
                   </p>
                   <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>
                     Vence: {formatDate(pag.data_vencimento)}
@@ -427,7 +430,8 @@ export default function Pagamentos() {
                       padding: '6px 14px', background: '#F0FDF4', color: '#15803D',
                       border: '1px solid #BBF7D0', borderRadius: '6px',
                       fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
-                    }}>✓ Pago</button>
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    }}><Check size={13} strokeWidth={2.5} aria-hidden="true" /> Pago</button>
                   )}
                   <button onClick={() => openEdit(pag)} style={{
                     padding: '6px 14px', background: '#F3F4F6', color: '#374151',
@@ -492,7 +496,7 @@ export default function Pagamentos() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)', zIndex: 101,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
+              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
                 {editingId ? 'Editar Pagamento' : 'Novo Pagamento'}
               </h2>
               <button onClick={() => { setShowModal(false); resetForm() }} style={{
@@ -605,7 +609,7 @@ export default function Pagamentos() {
                 }}>Cancelar</button>
                 <button type="submit" disabled={saving} style={{
                   flex: 1, padding: '14px',
-                  background: saving ? '#9CA3AF' : '#7C3AED',
+                  background: saving ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '15px', fontWeight: 'bold',
                   cursor: saving ? 'not-allowed' : 'pointer',

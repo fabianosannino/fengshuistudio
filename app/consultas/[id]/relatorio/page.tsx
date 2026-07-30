@@ -59,7 +59,7 @@ function scoreColor(pct: number | null) {
 
 function scoreLevelLabel(pct: number | null): { label: string; color: string } {
   if (pct === null || pct === undefined) return { label: 'N/A', color: '#9CA3AF' }
-  if (pct >= 80) return { label: 'EXCELENTE', color: '#B8860B' }
+  if (pct >= 80) return { label: 'EXCELENTE', color: '#C9A227' }
   if (pct >= 70) return { label: 'BOM', color: '#16A34A' }
   if (pct >= 40) return { label: 'ATENÇÃO', color: '#D97706' }
   return { label: 'URGENTE', color: '#DC2626' }
@@ -359,10 +359,10 @@ export default function Relatorio() {
 
   if (loading || !consulta) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Gerando relatório...</p>
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Gerando relatório...</p>
         </div>
       </div>
     )
@@ -374,7 +374,7 @@ export default function Relatorio() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF5', fontFamily: "Georgia, 'Times New Roman', serif" }}>
         <div style={{ textAlign: 'center', maxWidth: '400px', padding: '32px' }}>
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>🔒</div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', marginBottom: '12px' }}>
+          <h1 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', marginBottom: '12px' }}>
             Relatório PDF
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', marginBottom: '24px' }}>
@@ -382,7 +382,7 @@ export default function Relatorio() {
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button onClick={() => router.push('/planos')} style={{
-              background: '#7C3AED', color: '#fff', border: 'none', padding: '10px 28px',
+              background: '#2E7D6B', color: '#fff', border: 'none', padding: '10px 28px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
             }}>Ver planos</button>
             <button onClick={() => router.push(`/consultas/${id}`)} style={{
@@ -424,7 +424,7 @@ export default function Relatorio() {
   const highestSetor = sortedSetores[sortedSetores.length - 1]
 
   // ── CSS vars ──
-  const gold = '#B8860B'
+  const gold = '#C9A227'
   const goldLt = '#D4A520'
   const ink = '#1C1C1A'
   const inkLt = '#666'
@@ -449,7 +449,7 @@ export default function Relatorio() {
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <div className="no-print" style={{
-        background: '#1E3A5F', padding: '12px 32px',
+        background: '#0E1B2C', padding: '12px 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -470,7 +470,7 @@ export default function Relatorio() {
           }}>← Voltar</button>
           <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
             background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
-            color: '#b8860b', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
+            color: '#C9A227', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
           }}>Curas</button>
           <button onClick={handlePrint} style={{
             background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
@@ -527,10 +527,10 @@ export default function Relatorio() {
       {/* ── Section Selector ───────────────────────────────────────────── */}
       {showSelector && (
         <div className="no-print" style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', marginBottom: '24px', maxWidth: '600px', margin: '24px auto 24px' }}>
-          <h2 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Montar Relatório</h2>
+          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>Montar Relatório</h2>
           {/* Completude indicator */}
           <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1E3A5F', marginBottom: '6px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#0E1B2C', marginBottom: '6px' }}>
               📋 Completude da consulta
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
@@ -561,8 +561,8 @@ export default function Relatorio() {
                   proximos_passos: val, calendario: val, divergencias: val, conclusao: val,
                 })
               }}
-              style={{ width: '20px', height: '20px', accentColor: '#7C3AED' }} />
-            <span style={{ fontSize: '15px', color: '#1E3A5F', fontWeight: 'bold' }}>Relatório Completo (selecionar todos)</span>
+              style={{ width: '20px', height: '20px', accentColor: '#2E7D6B' }} />
+            <span style={{ fontSize: '15px', color: '#0E1B2C', fontWeight: 'bold' }}>Relatório Completo (selecionar todos)</span>
           </label>
           {[
             { key: 'capa', label: '1. Capa + Dados + KPIs + Planta Baixa' },
@@ -587,12 +587,12 @@ export default function Relatorio() {
                   next.completo = allKeys.every(k => next[k])
                   setSelectedSections(next)
                 }}
-                style={{ width: '18px', height: '18px', accentColor: '#7C3AED' }} />
+                style={{ width: '18px', height: '18px', accentColor: '#2E7D6B' }} />
               <span style={{ fontSize: '13px', color: '#374151' }}>{s.label}</span>
             </label>
           ))}
           <button onClick={() => setShowSelector(false)} style={{
-            width: '100%', marginTop: '16px', padding: '12px', background: '#7C3AED', color: '#fff',
+            width: '100%', marginTop: '16px', padding: '12px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
           }}>Visualizar Relatório</button>
         </div>
@@ -630,7 +630,7 @@ export default function Relatorio() {
         {/* ══════ BRAND HEADER ══════ */}
         <div style={{ textAlign: 'center', marginBottom: '24px', padding: '20px', borderBottom: '2px solid #E5E7EB' }}>
           <div style={{ fontSize: '32px', marginBottom: '8px' }}>☯</div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0' }}>FENG SHUI STUDIO</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0' }}>FENG SHUI STUDIO</h1>
           <p style={{ color: '#6B7280', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
             Relatório elaborado no Feng Shui Studio, sob análise e responsabilidade do Consultor: {profile?.nome_completo || 'Consultor'}
           </p>
@@ -965,7 +965,7 @@ export default function Relatorio() {
                           </g>
                         )
                       })}
-                      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#7C3AED" strokeWidth={1.5} />
+                      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={1.5} />
                       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill={RODA_12_AREAS[i].cor} />)}
                     </svg>
                   </div>
@@ -1024,7 +1024,7 @@ export default function Relatorio() {
                   const hasManualNotes = crits.some((c: DiagnosticoCriterio) => c.notas && c.notas.trim() !== '')
                   const hasCustomRec = Array.isArray(setor.recomendacoes_custom) && setor.recomendacoes_custom.length > 0
                   const origem = hasManualNotes || hasCustomRec ? 'Ajustado pelo consultor' : crits.length > 0 ? 'Com marcações' : 'Automático'
-                  const origemCor = hasManualNotes || hasCustomRec ? '#7C3AED' : crits.length > 0 ? '#1D4ED8' : '#6B7280'
+                  const origemCor = hasManualNotes || hasCustomRec ? '#2E7D6B' : crits.length > 0 ? '#1D4ED8' : '#6B7280'
                   return (
                     <div key={setor.id} style={{
                       display: 'flex', alignItems: 'center', gap: '9px',
@@ -1159,11 +1159,11 @@ export default function Relatorio() {
                         <span style={{ fontSize: '12px', fontWeight: 700, color: group.color }}>{setor.score_percentual}%</span>
                       </div>
                       <div style={{ fontSize: '11px', color: '#374151', lineHeight: 1.5, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                        {hasCustom && <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#7C3AED' }}>★ CONSULTOR</span>}
+                        {hasCustom && <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#2E7D6B' }}>★ CONSULTOR</span>}
                         {mainAction}
                       </div>
                       {hasCustom && (customRecs as { tipo: string; texto: string }[]).length > 1 && (
-                        <div style={{ fontSize: '10px', color: '#7C3AED', lineHeight: 1.4, marginTop: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                        <div style={{ fontSize: '10px', color: '#2E7D6B', lineHeight: 1.4, marginTop: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                           {(customRecs as { tipo: string; texto: string }[]).slice(1, 3).map((cr, ci) => (
                             <div key={ci}>• {cr.texto}</div>
                           ))}
@@ -1421,7 +1421,7 @@ export default function Relatorio() {
             const lvl = scoreLevelLabel(setor.score_percentual ?? 0)
             return (
               <div key={setor.id} style={{ marginBottom: '14px', border: `1px solid ${border}`, borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ background: meta?.bg || '#1E3A5F', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ background: meta?.bg || '#0E1B2C', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: meta?.fg || '#fff', fontSize: '13px', fontWeight: 600, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                     {meta?.zh || ''} {setor.nome} · {meta?.elem || setor.elemento}
                   </span>
@@ -1431,7 +1431,7 @@ export default function Relatorio() {
                   {/* Cristais */}
                   {meta?.crystals && (
                     <div style={{ marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 700, color: '#7C3AED', marginBottom: '3px' }}>💎 Cristais recomendados</div>
+                      <div style={{ fontWeight: 700, color: '#2E7D6B', marginBottom: '3px' }}>💎 Cristais recomendados</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.crystals}</div>
                     </div>
                   )}
@@ -1458,8 +1458,8 @@ export default function Relatorio() {
                   )}
                   {/* Consultant additional recommendation */}
                   {recsAdicionais[setor.id] && (
-                    <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F0FF', borderLeft: '3px solid #7C3AED', borderRadius: '2px' }}>
-                      <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#7C3AED' }}>CONSULTOR</span>
+                    <div style={{ marginTop: '6px', padding: '6px 10px', background: '#EAF4F1', borderLeft: '3px solid #2E7D6B', borderRadius: '2px' }}>
+                      <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#2E7D6B' }}>CONSULTOR</span>
                       <span style={{ color: '#374151' }}>{recsAdicionais[setor.id]}</span>
                     </div>
                   )}
@@ -1605,8 +1605,8 @@ export default function Relatorio() {
                         placeholder={`Recomendações adicionais para ${setor.nome}...`} rows={2}
                         style={{ width: '100%', padding: '6px 8px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif' }} />
                       {recsAdicionais[setor.id] && (
-                        <div className="print-only" style={{ padding: '6px 10px', background: '#F5F0FF', borderLeft: '3px solid #7C3AED', borderRadius: '2px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
-                          <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#7C3AED' }}>CONSULTOR</span>
+                        <div className="print-only" style={{ padding: '6px 10px', background: '#EAF4F1', borderLeft: '3px solid #2E7D6B', borderRadius: '2px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
+                          <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#2E7D6B' }}>CONSULTOR</span>
                           {recsAdicionais[setor.id]}
                         </div>
                       )}
@@ -1683,7 +1683,7 @@ export default function Relatorio() {
               return (
                 <div key={setor.id} style={{ padding: '14px 16px', marginBottom: '10px', borderRadius: '8px', background: i === 0 ? '#FEF2F2' : i === 1 ? '#FFFBEB' : '#F0FDF4', border: `1px solid ${i === 0 ? '#FECACA' : i === 1 ? '#FDE68A' : '#BBF7D0'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1E3A5F' }}>Prioridade {i + 1} — {setor.nome}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#0E1B2C' }}>Prioridade {i + 1} — {setor.nome}</span>
                     <span style={{ fontSize: '11px', fontWeight: 'bold', color: scoreColor(setor.score_percentual ?? 0), background: '#fff', padding: '2px 8px', borderRadius: '10px' }}>{setor.score_percentual}%</span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#374151', marginBottom: '4px' }}><strong>Ação:</strong> {action}</div>
@@ -1697,7 +1697,7 @@ export default function Relatorio() {
             })
           })()}
           {/* Calendário Lunar */}
-          <div style={{ marginTop: '16px', padding: '14px 16px', background: '#1E3A5F', borderRadius: '10px', color: '#fff' }}>
+          <div style={{ marginTop: '16px', padding: '14px 16px', background: '#0E1B2C', borderRadius: '10px', color: '#fff' }}>
             <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px' }}>🌙 Próximas Fases Lunares</div>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {getProximasFasesLunares().map((f, i) => (
@@ -1822,7 +1822,7 @@ export default function Relatorio() {
 
         {/* ══════ ENCERRAMENTO ══════ */}
         {!showSelector && (selectedSections.completo || selectedSections.conclusao) && (
-        <div style={{ padding: '1rem 1.5rem', margin: '0 1.5rem 1rem', background: '#1E3A5F', borderRadius: '10px', color: '#fff' }}>
+        <div style={{ padding: '1rem 1.5rem', margin: '0 1.5rem 1rem', background: '#0E1B2C', borderRadius: '10px', color: '#fff' }}>
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>☯</div>
             <div style={{ fontSize: '11px', lineHeight: 1.6, color: 'rgba(255,255,255,0.7)', maxWidth: '500px', margin: '0 auto' }}>

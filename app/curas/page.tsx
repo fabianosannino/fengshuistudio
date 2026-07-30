@@ -7,6 +7,7 @@ import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import type { SetorBagua } from '../../src/lib/types'
 import { ELEMENTOS } from '../../src/lib/curas'
+import { BookOpen, Gem, Leaf, Amphora, MapPin, Flower2, AudioLines } from 'lucide-react'
 
 interface CuraCustomRef {
   id: string
@@ -191,7 +192,7 @@ function CurasPageContent() {
           onClick={() => setExpandedRefs(prev => ({ ...prev, [key]: !isExpanded }))}
           style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0',
-            fontSize: '12px', color: '#7C3AED', fontWeight: 'bold', display: 'flex',
+            fontSize: '12px', color: '#2E7D6B', fontWeight: 'bold', display: 'flex',
             alignItems: 'center', gap: '6px',
           }}
         >
@@ -234,7 +235,7 @@ function CurasPageContent() {
                         disabled={savingRef}
                         style={{
                           padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                          background: '#7C3AED', color: '#fff', fontSize: '12px', fontWeight: 'bold',
+                          background: '#2E7D6B', color: '#fff', fontSize: '12px', fontWeight: 'bold',
                         }}
                       >
                         {savingRef ? 'Salvando...' : 'Salvar'}
@@ -257,7 +258,7 @@ function CurasPageContent() {
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                         <button
                           onClick={() => { setEditingRef(ref.id); setEditForm({ nome: ref.nome, descricao: ref.descricao || '', como_utilizar: ref.como_utilizar || '' }) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#7C3AED', padding: '2px 4px' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#2E7D6B', padding: '2px 4px' }}
                         >
                           {'\u270F\uFE0F'}
                         </button>
@@ -278,8 +279,8 @@ function CurasPageContent() {
 
             {isAdding ? (
               <div style={{
-                background: '#F5F0FF', borderRadius: '8px', padding: '14px',
-                border: '1px solid #E9D5FF', display: 'flex', flexDirection: 'column', gap: '8px',
+                background: '#EAF4F1', borderRadius: '8px', padding: '14px',
+                border: '1px solid #DCEFE9', display: 'flex', flexDirection: 'column', gap: '8px',
               }}>
                 <input
                   value={refForm.nome}
@@ -307,7 +308,7 @@ function CurasPageContent() {
                     disabled={savingRef || !refForm.nome.trim()}
                     style={{
                       padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                      background: (!refForm.nome.trim() || savingRef) ? '#C4B5FD' : '#7C3AED',
+                      background: (!refForm.nome.trim() || savingRef) ? '#A7D3C9' : '#2E7D6B',
                       color: '#fff', fontSize: '12px', fontWeight: 'bold',
                     }}
                   >
@@ -328,8 +329,8 @@ function CurasPageContent() {
               <button
                 onClick={() => { setShowAddRef(key); setRefForm({ nome: '', descricao: '', como_utilizar: '' }) }}
                 style={{
-                  background: 'none', border: '1px dashed #C4B5FD', borderRadius: '6px',
-                  cursor: 'pointer', padding: '8px 14px', fontSize: '12px', color: '#7C3AED',
+                  background: 'none', border: '1px dashed #A7D3C9', borderRadius: '6px',
+                  cursor: 'pointer', padding: '8px 14px', fontSize: '12px', color: '#2E7D6B',
                   fontWeight: 'bold', width: '100%', textAlign: 'center',
                 }}
               >
@@ -402,7 +403,7 @@ function CurasPageContent() {
   // Shared card style matching Dashboard
   const cardStyle = {
     background: '#ffffff', borderRadius: '12px', padding: '24px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
   }
 
   // Shared sub-card style for items inside sections
@@ -416,14 +417,15 @@ function CurasPageContent() {
 
       {/* ── PAGE HEADER ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Biblioteca</p>
+        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
           Curas & Ativações
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 8px 0' }}>
           Cristais, plantas, objetos, mudras, meditações e mantras organizados por elemento e Guá do Ba Guá
         </p>
-        <a href="/curas/entenda" style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' }}>
-          📚 Entenda mais sobre Curas e Ativações
+        <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <BookOpen size={14} strokeWidth={1.75} aria-hidden="true" /> Entenda mais sobre Curas e Ativações
         </a>
       </div>
 
@@ -431,7 +433,7 @@ function CurasPageContent() {
       {!selectedConsultaId && (
         <div>
           <div style={{ marginBottom: '24px' }}>
-            <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+            <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
               Selecione uma consulta
             </h2>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>
@@ -446,7 +448,7 @@ function CurasPageContent() {
                   cursor: 'pointer', textAlign: 'left', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                   transition: 'all 0.2s'
                 }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', marginBottom: '4px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', marginBottom: '4px' }}>
                   {c.clientes?.nome_completo || 'Sem cliente'}
                 </div>
                 <div style={{ fontSize: '13px', color: '#6B7280' }}>{c.nome_imovel}</div>
@@ -469,10 +471,10 @@ function CurasPageContent() {
 
         {setores.length > 0 && (
           <div style={{
-            marginBottom: '12px', padding: '8px 16px', background: '#F5F0FF',
-            borderRadius: '8px', display: 'inline-block', border: '1px solid #E9D5FF'
+            marginBottom: '12px', padding: '8px 16px', background: '#EAF4F1',
+            borderRadius: '8px', display: 'inline-block', border: '1px solid #DCEFE9'
           }}>
-            <span style={{ color: '#7C3AED', fontSize: '13px', fontWeight: 'bold' }}>
+            <span style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold' }}>
               Consulta selecionada
             </span>
           </div>
@@ -480,7 +482,7 @@ function CurasPageContent() {
 
       {/* ── CONSULTATION CONTEXT ────────────────────────────────────── */}
       {consulta && (
-        <div style={{ background: '#F5F0FF', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#7C3AED' }}>
+        <div style={{ background: '#EAF4F1', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#2E7D6B' }}>
           <strong>Cliente:</strong> {consulta.clientes?.nome_completo} | <strong>Imóvel:</strong> {consulta.nome_imovel} | {new Date(consulta.criado_em).toLocaleDateString('pt-BR')}
         </div>
       )}
@@ -515,9 +517,9 @@ function CurasPageContent() {
             <button key={el.id} onClick={() => scrollTo(el.id)} style={{
               padding: '8px 16px', borderRadius: '20px', cursor: 'pointer',
               fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
-              background: isActive ? '#7C3AED' : '#F3F4F6',
+              background: isActive ? '#2E7D6B' : '#F3F4F6',
               color: isActive ? '#ffffff' : '#374151',
-              border: isPriority ? '2px solid #DC2626' : isActive ? '1px solid #7C3AED' : '1px solid #E5E7EB',
+              border: isPriority ? '2px solid #DC2626' : isActive ? '1px solid #2E7D6B' : '1px solid #E5E7EB',
               transition: 'all 0.2s', whiteSpace: 'nowrap',
               display: 'flex', alignItems: 'center', gap: '6px',
             }}>
@@ -554,8 +556,8 @@ function CurasPageContent() {
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '28px', color: '#7C3AED' }}>{el.trigramo}</span>
-                    <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1E3A5F', margin: 0 }}>
+                    <span style={{ fontSize: '28px', color: '#2E7D6B' }}>{el.trigramo}</span>
+                    <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#0E1B2C', margin: 0 }}>
                       {el.gua}
                     </h2>
                   </div>
@@ -578,8 +580,8 @@ function CurasPageContent() {
               {/* ── CRISTAIS ──────────────────────────────────────────── */}
               {(filtroTipo === 'todos' || filtroTipo === 'cristais') && (
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>💎</span> Cristais
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Gem size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Cristais
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {el.cristais.map(c => (
@@ -605,8 +607,8 @@ function CurasPageContent() {
               {/* ── PLANTAS ───────────────────────────────────────────── */}
               {(filtroTipo === 'todos' || filtroTipo === 'plantas') && (
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🌿</span> Plantas
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Leaf size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Plantas
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
                   {el.plantas.map(p => (
@@ -616,7 +618,7 @@ function CurasPageContent() {
                         <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>{p.nome}</span>
                       </div>
                       <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px 0' }}>{p.dica}</p>
-                      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>📍 {p.posicao}</p>
+                      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={11} strokeWidth={1.75} aria-hidden="true" /> {p.posicao}</p>
                     </div>
                   ))}
                 </div>
@@ -627,8 +629,8 @@ function CurasPageContent() {
               {/* ── OBJETOS ──────────────────────────────────────────── */}
               {(filtroTipo === 'todos' || filtroTipo === 'objetos') && (
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🏺</span> Objetos & Curas
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Amphora size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Objetos & Curas
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {el.objetos.map(o => (
@@ -638,7 +640,7 @@ function CurasPageContent() {
                       <span style={{ fontSize: '22px' }}>{o.icon}</span>
                       <div>
                         <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 2px 0' }}>{o.nome}</p>
-                        <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>📍 {o.posicao}</p>
+                        <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={11} strokeWidth={1.75} aria-hidden="true" /> {o.posicao}</p>
                       </div>
                     </div>
                   ))}
@@ -653,12 +655,12 @@ function CurasPageContent() {
                 {/* Mudra */}
                 {(filtroTipo === 'todos' || filtroTipo === 'mudra') && (
                 <div style={{
-                  background: '#F5F0FF', borderRadius: '12px', padding: '20px',
-                  border: '1px solid #E9D5FF',
+                  background: '#EAF4F1', borderRadius: '12px', padding: '20px',
+                  border: '1px solid #DCEFE9',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                     <span style={{ fontSize: '24px' }}>{el.mudra.icon}</span>
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#7C3AED', margin: 0 }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#2E7D6B', margin: 0 }}>
                       {el.mudra.nome}
                     </h4>
                   </div>
@@ -678,7 +680,7 @@ function CurasPageContent() {
                   border: '1px solid #BBF7D0',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '24px' }}>🧘</span>
+                    <Flower2 size={22} strokeWidth={1.75} color="#15803D" aria-hidden="true" />
                     <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#15803D', margin: 0 }}>
                       {el.meditacao.nome}
                     </h4>
@@ -700,8 +702,8 @@ function CurasPageContent() {
               {/* ── MANTRAS ──────────────────────────────────────────── */}
               {(filtroTipo === 'todos' || filtroTipo === 'mantras') && (
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🕉️</span> Mantras
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AudioLines size={17} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" /> Mantras
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {el.mantras.map((m, i) => (
@@ -709,7 +711,7 @@ function CurasPageContent() {
                       background: '#FFFBEB', borderRadius: '12px', padding: '20px', textAlign: 'center',
                       border: '1px solid #FDE68A',
                     }}>
-                      <p style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '4px' }}>
+                      <p style={{ fontSize: '28px', color: '#0E1B2C', fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '4px' }}>
                         {m.caracteres}
                       </p>
                       <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 4px 0', fontStyle: 'italic' }}>
@@ -732,7 +734,7 @@ function CurasPageContent() {
       {/* ── VOLTAR À CONSULTA ────────────────────────────────────────── */}
       {consultaId && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <a href={`/consultas/${consultaId}`} style={{ display: 'inline-block', padding: '12px 24px', background: '#7C3AED', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>
+          <a href={`/consultas/${consultaId}`} style={{ display: 'inline-block', padding: '12px 24px', background: '#2E7D6B', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>
             ← Voltar à consulta
           </a>
         </div>

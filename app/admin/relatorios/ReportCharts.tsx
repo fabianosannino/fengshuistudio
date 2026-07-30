@@ -10,7 +10,7 @@ interface ReportData {
 const PLAN_COLORS: Record<string, string> = {
   free: '#6B7280',
   simples: '#059669',
-  profissional: '#7C3AED',
+  profissional: '#2E7D6B',
   gratuidade: '#1D4ED8',
 }
 
@@ -30,7 +30,7 @@ export default function ReportCharts({ data }: { data: ReportData }) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
       {/* Daily New Users */}
       <div>
-        <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Novos Usuários por Dia</h4>
+        <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Novos Usuários por Dia</h4>
         {dailyData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={dailyData}>
@@ -38,7 +38,7 @@ export default function ReportCharts({ data }: { data: ReportData }) {
               <XAxis dataKey="dia" tick={{ fontSize: 12, fill: '#6B7280' }} />
               <YAxis tick={{ fontSize: 12, fill: '#6B7280' }} allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="qtd" fill="#7C3AED" name="Novos" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="qtd" fill="#2E7D6B" name="Novos" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
@@ -48,7 +48,7 @@ export default function ReportCharts({ data }: { data: ReportData }) {
 
       {/* Plan Distribution Pie */}
       <div>
-        <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 12px 0' }}>Distribuição de Planos</h4>
+        <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Distribuição de Planos</h4>
         {planData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>

@@ -7,6 +7,7 @@ import AppShell from '../components/AppShell'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo } from '../../src/lib/plano-utils'
+import { Check, X, KeyRound } from 'lucide-react'
 
 const PLANOS = [
   {
@@ -39,7 +40,7 @@ const PLANOS = [
   },
   {
     id: 'profissional', nome: 'Profissional', precoMensal: 49, precoAnual: 411.60,
-    descricao: 'Para consultores profissionais', cor: '#7C3AED', destaque: true,
+    descricao: 'Para consultores profissionais', cor: '#2E7D6B', destaque: true,
     recursos: [
       { nome: 'Cadastro de imóveis', valor: 'Ilimitados', disponivel: true },
       { nome: 'Análise Baguá', valor: 'Múltiplas', disponivel: true },
@@ -206,10 +207,10 @@ export default function Planos() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando...</p>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando...</p>
         </div>
       </div>
     )
@@ -221,7 +222,7 @@ export default function Planos() {
   return (
     <AppShell currentPage="planos">
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Escolha seu plano</h1>
+        <h1 style={{ color: '#0E1B2C', fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Escolha seu plano</h1>
         <p style={{ color: '#6B7280', fontSize: '16px', margin: '0 0 8px 0' }}>
           Seu plano atual: <strong style={{ color: planoAtualCor }}>{planoAtualLabel}</strong>
         </p>
@@ -260,12 +261,12 @@ export default function Planos() {
         <div style={{ display: 'inline-flex', background: '#F3F4F6', borderRadius: '10px', padding: '4px' }}>
           <button onClick={() => setCiclo('monthly')} style={{
             padding: '10px 24px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: 'bold',
-            background: ciclo === 'monthly' ? '#7C3AED' : 'transparent',
+            background: ciclo === 'monthly' ? '#2E7D6B' : 'transparent',
             color: ciclo === 'monthly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
           }}>Mensal</button>
           <button onClick={() => setCiclo('yearly')} style={{
             padding: '10px 24px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: 'bold',
-            background: ciclo === 'yearly' ? '#7C3AED' : 'transparent',
+            background: ciclo === 'yearly' ? '#2E7D6B' : 'transparent',
             color: ciclo === 'yearly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
           }}>
             Anual <span style={{ background: '#15803D', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginLeft: '6px' }}>-30%</span>
@@ -299,13 +300,13 @@ export default function Planos() {
             <div key={plano.id} style={{
               background: '#ffffff', borderRadius: '16px', padding: '32px',
               boxShadow: plano.destaque ? '0 4px 20px rgba(124,58,237,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
-              border: plano.destaque ? '2px solid #7C3AED' : '1px solid #E5E7EB',
+              border: plano.destaque ? '2px solid #2E7D6B' : '1px solid #E5E7EB',
               position: 'relative', overflow: 'hidden'
             }}>
               {plano.destaque && (
                 <div style={{
                   position: 'absolute', top: '12px', right: '-28px',
-                  background: '#7C3AED', color: '#fff', padding: '4px 40px',
+                  background: '#2E7D6B', color: '#fff', padding: '4px 40px',
                   fontSize: '11px', fontWeight: 'bold', transform: 'rotate(45deg)'
                 }}>POPULAR</div>
               )}
@@ -340,8 +341,8 @@ export default function Planos() {
                       background: rec.disponivel ? '#F0FDF4' : '#F3F4F6',
                       color: rec.disponivel ? '#15803D' : '#D1D5DB',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '12px', fontWeight: 'bold', flexShrink: 0
-                    }}>{rec.disponivel ? '✓' : '✕'}</span>
+                      flexShrink: 0
+                    }}>{rec.disponivel ? <Check size={12} strokeWidth={3} aria-hidden="true" /> : <X size={12} strokeWidth={3} aria-hidden="true" />}</span>
                     <span style={{ color: '#374151', fontSize: '14px', flex: 1 }}>{rec.nome}</span>
                     {rec.valor && <span style={{ color: rec.disponivel ? '#111827' : '#D1D5DB', fontSize: '13px', fontWeight: 'bold' }}>{rec.valor}</span>}
                   </div>
@@ -363,9 +364,9 @@ export default function Planos() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <button onClick={() => handleStripeCheckout(plano.id)} disabled={upgrading} style={{
                     width: '100%', padding: '14px',
-                    background: upgrading ? '#9CA3AF' : plano.destaque ? '#7C3AED' : '#ffffff',
-                    color: upgrading ? '#fff' : plano.destaque ? '#ffffff' : '#7C3AED',
-                    border: plano.destaque ? 'none' : '2px solid #7C3AED',
+                    background: upgrading ? '#9CA3AF' : plano.destaque ? '#2E7D6B' : '#ffffff',
+                    color: upgrading ? '#fff' : plano.destaque ? '#ffffff' : '#2E7D6B',
+                    border: plano.destaque ? 'none' : '2px solid #2E7D6B',
                     borderRadius: '10px', fontSize: '15px', fontWeight: 'bold',
                     cursor: upgrading ? 'not-allowed' : 'pointer'
                   }}>{upgrading ? 'Redirecionando...' : `Assinar ${ciclo === 'yearly' ? 'Anual' : 'Mensal'}`}</button>
@@ -384,15 +385,15 @@ export default function Planos() {
       {showKeyInput && (() => {
         const targetPlan = PLANOS.find(p => p.id === selectedPlanId)
         const targetNome = targetPlan?.nome || 'Profissional'
-        const targetCor = targetPlan?.cor || '#7C3AED'
+        const targetCor = targetPlan?.cor || '#2E7D6B'
         return (
           <div style={{
             background: '#ffffff', borderRadius: '12px', padding: '28px 32px',
             boxShadow: `0 4px 20px ${targetCor}25`, border: `2px solid ${targetCor}`,
             maxWidth: '500px', margin: '0 auto 40px', textAlign: 'center'
           }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔑</div>
-            <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+            <KeyRound size={30} strokeWidth={1.75} color={targetCor} style={{ margin: '0 auto 12px' }} aria-hidden="true" />
+            <h3 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
               Ativar Plano {targetNome}
             </h3>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 20px 0' }}>
@@ -420,8 +421,8 @@ export default function Planos() {
       })()}
 
       {/* Feature Comparison Table */}
-      <div style={{ background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', maxWidth: '900px', margin: '0 auto 40px' }}>
-        <h3 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>
+      <div style={{ background: '#ffffff', borderRadius: '16px', padding: '32px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', maxWidth: '900px', margin: '0 auto 40px' }}>
+        <h3 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>
           Comparação de funcionalidades
         </h3>
         <div style={{ overflowX: 'auto' }}>
@@ -430,8 +431,8 @@ export default function Planos() {
               <tr>
                 <th style={{ textAlign: 'left', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280' }}>Funcionalidade</th>
                 <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280' }}>Free</th>
-                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#059669' }}>Simples</th>
-                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#7C3AED' }}>Profissional</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#C9A227' }}>Simples</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', borderBottom: '2px solid #E5E7EB', color: '#2E7D6B' }}>Profissional</th>
               </tr>
             </thead>
             <tbody>
@@ -442,7 +443,7 @@ export default function Planos() {
                     const val = feat[plan]
                     return (
                       <td key={plan} style={{ textAlign: 'center', padding: '10px 8px', borderBottom: '1px solid #F3F4F6' }}>
-                        {val === true ? <span style={{ color: '#15803D', fontWeight: 'bold' }}>✓</span>
+                        {val === true ? <Check size={16} strokeWidth={3} color="#15803D" style={{ display: 'inline-block', verticalAlign: 'middle' }} aria-hidden="true" />
                           : val === false ? <span style={{ color: '#D1D5DB' }}>—</span>
                           : <span style={{ color: '#374151', fontSize: '13px' }}>{val}</span>}
                       </td>
@@ -457,12 +458,12 @@ export default function Planos() {
 
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '24px 32px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '900px', margin: '0 auto'
+        boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', textAlign: 'center', maxWidth: '900px', margin: '0 auto'
       }}>
         <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>
           Dúvidas sobre os planos? Entre em contato pelo e-mail
         </p>
-        <a href="mailto:suporte@fengshuistudio.com.br" style={{ color: '#7C3AED', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none' }}>
+        <a href="mailto:suporte@fengshuistudio.com.br" style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none' }}>
           suporte@fengshuistudio.com.br
         </a>
       </div>

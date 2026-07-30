@@ -5,15 +5,16 @@ import AppShell from '../../components/AppShell'
 import Skeleton from '../../components/Skeleton'
 import type { AuditLogEntry } from '../../../src/lib/types'
 import { dataDeAuditoria } from '../../../src/lib/data-auditoria'
+import { KeyRound, Ban, ArrowUpCircle, CircleCheck, FileText, ArrowLeft, ArrowRight, type LucideIcon } from 'lucide-react'
 
 const PAGE_SIZE = 30
 
 
-const ACTION_LABELS: Record<string, { label: string; icon: string; color: string }> = {
-  generate_keys:  { label: 'Geração de chaves', icon: '🔑', color: '#7C3AED' },
-  cancel_key:     { label: 'Cancelamento de chave', icon: '🚫', color: '#DC2626' },
-  promote_user:   { label: 'Promoção de usuário', icon: '⬆', color: '#15803D' },
-  use_key:        { label: 'Uso de chave', icon: '✅', color: '#1D4ED8' },
+const ACTION_LABELS: Record<string, { label: string; Icon: LucideIcon; color: string }> = {
+  generate_keys:  { label: 'Geração de chaves', Icon: KeyRound, color: '#2E7D6B' },
+  cancel_key:     { label: 'Cancelamento de chave', Icon: Ban, color: '#DC2626' },
+  promote_user:   { label: 'Promoção de usuário', Icon: ArrowUpCircle, color: '#15803D' },
+  use_key:        { label: 'Uso de chave', Icon: CircleCheck, color: '#1D4ED8' },
 }
 
 export default function AdminAuditoria() {
@@ -54,13 +55,14 @@ export default function AdminAuditoria() {
     <AppShell currentPage="admin/auditoria">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Log de Auditoria</h1>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Log de Auditoria</h1>
           <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>{total} registro{total !== 1 ? 's' : ''}</p>
         </div>
         <a href="/admin/chaves" style={{
-          padding: '8px 16px', background: '#7C3AED', color: '#fff', borderRadius: '8px',
+          padding: '8px 16px', background: '#2E7D6B', color: '#fff', borderRadius: '8px',
           fontSize: '13px', fontWeight: 'bold', textDecoration: 'none',
-        }}>← Voltar para Chaves</a>
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+        }}><ArrowLeft size={15} strokeWidth={2} aria-hidden="true" /> Voltar para Chaves</a>
       </div>
 
       <div style={{
@@ -83,7 +85,7 @@ export default function AdminAuditoria() {
               </thead>
               <tbody>
                 {logs.map(log => {
-                  const a = ACTION_LABELS[log.action] || { label: log.action, icon: '📝', color: '#6B7280' }
+                  const a = ACTION_LABELS[log.action] || { label: log.action, Icon: FileText, color: '#6B7280' }
                   return (
                     <tr key={log.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '10px 8px', color: '#6B7280', whiteSpace: 'nowrap', fontSize: '12px' }}>
@@ -95,7 +97,7 @@ export default function AdminAuditoria() {
                           background: a.color + '15', color: a.color,
                           padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold',
                         }}>
-                          {a.icon} {a.label}
+                          <a.Icon size={12} strokeWidth={2} aria-hidden="true" /> {a.label}
                         </span>
                       </td>
                       <td style={{ padding: '10px 8px', color: '#374151', fontSize: '12px' }}>
@@ -132,8 +134,9 @@ export default function AdminAuditoria() {
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
                 background: page === 1 ? '#F9FAFB' : '#fff', color: page === 1 ? '#D1D5DB' : '#374151',
                 cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 'bold',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
               }}
-            >← Anterior</button>
+            ><ArrowLeft size={13} strokeWidth={2} aria-hidden="true" /> Anterior</button>
             <span style={{ color: '#6B7280', fontSize: '12px' }}>Página {page} de {totalPages}</span>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
@@ -141,8 +144,9 @@ export default function AdminAuditoria() {
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
                 background: page === totalPages ? '#F9FAFB' : '#fff', color: page === totalPages ? '#D1D5DB' : '#374151',
                 cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 'bold',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
               }}
-            >Próximo →</button>
+            >Próximo <ArrowRight size={13} strokeWidth={2} aria-hidden="true" /></button>
           </div>
         )}
       </div>

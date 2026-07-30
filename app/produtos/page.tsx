@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
+import { Sparkle, Gem, Droplets, Leaf, Wind, Flame, Lamp, Lightbulb, Search, type LucideIcon } from 'lucide-react'
 
 interface ProdutoAfiliadoRow {
   id?: string
@@ -33,7 +34,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'espelhos',
     nome: 'Espelhos',
-    icon: '🪞',
+    iconComp: Sparkle as LucideIcon,
     cor: '#1D4ED8',
     descricao: 'Espelhos côncavos, convexos e Ba Gua para harmonização',
     produtos: [
@@ -45,8 +46,8 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'cristais',
     nome: 'Cristais e Pedras',
-    icon: '💎',
-    cor: '#7C3AED',
+    iconComp: Gem as LucideIcon,
+    cor: '#2E7D6B',
     descricao: 'Cristais para ativação energética dos setores do Ba Gua',
     produtos: [
       { nome: 'Cristal Multifacetado', desc: 'Cristal de pendurar para dispersar energia estagnada e trazer luz', tag: 'Ativação', preco: 'A partir de R$ 19,90' },
@@ -59,7 +60,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'fontes',
     nome: 'Fontes de Água',
-    icon: '⛲',
+    iconComp: Droplets as LucideIcon,
     cor: '#0EA5E9',
     descricao: 'Fontes para ativar o elemento água e prosperidade',
     produtos: [
@@ -71,7 +72,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'plantas',
     nome: 'Plantas e Vasos',
-    icon: '🌿',
+    iconComp: Leaf as LucideIcon,
     cor: '#15803D',
     descricao: 'Plantas vivas e artificiais para purificação e ativação',
     produtos: [
@@ -83,7 +84,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'sinos',
     nome: 'Sinos de Vento e Mobiles',
-    icon: '🎐',
+    iconComp: Wind as LucideIcon,
     cor: '#B45309',
     descricao: 'Sinos e móbiles metálicos para ativação do elemento metal',
     produtos: [
@@ -95,7 +96,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'velas',
     nome: 'Velas e Incensos',
-    icon: '🕯️',
+    iconComp: Flame as LucideIcon,
     cor: '#DC2626',
     descricao: 'Velas e incensos para ativar o elemento Fogo',
     produtos: [
@@ -107,7 +108,7 @@ const CATEGORIAS_PRODUTOS = [
   {
     id: 'decoracao',
     nome: 'Decoração e Símbolos',
-    icon: '🏮',
+    iconComp: Lamp as LucideIcon,
     cor: '#BE185D',
     descricao: 'Objetos decorativos e símbolos para ativação dos setores',
     produtos: [
@@ -212,10 +213,10 @@ function ProdutosContent() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando produtos...</p>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando produtos...</p>
         </div>
       </div>
     )
@@ -225,7 +226,8 @@ function ProdutosContent() {
     <AppShell currentPage="produtos">
 
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Catálogo</p>
+        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
           Produtos Recomendados
         </h1>
         <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -235,11 +237,11 @@ function ProdutosContent() {
 
       {/* Info banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #7C3AED, #1E3A5F)',
+        background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
         borderRadius: '12px', padding: '16px 24px', marginBottom: '24px',
         display: 'flex', alignItems: 'center', gap: '12px'
       }}>
-        <span style={{ fontSize: '24px' }}>💡</span>
+        <Lightbulb size={22} strokeWidth={1.75} color="#F0D888" style={{ flexShrink: 0 }} aria-hidden="true" />
         <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', margin: '0' }}>
           Os produtos listados são recomendações baseadas em práticas de Feng Shui.
           Ao clicar em &quot;Ver produto&quot;, você será redirecionado para a loja parceira.
@@ -249,7 +251,7 @@ function ProdutosContent() {
       {/* Filter Bar */}
       <div style={{
         background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB',
+        boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
         marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center'
       }}>
         {/* Search by product name */}
@@ -297,7 +299,7 @@ function ProdutosContent() {
           >
             <option value="todos">Todas as categorias</option>
             {CATEGORIAS_PRODUTOS.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.icon} {cat.nome}</option>
+              <option key={cat.id} value={cat.id}>{cat.nome}</option>
             ))}
           </select>
         </div>
@@ -325,13 +327,13 @@ function ProdutosContent() {
             <button key={cat.id} onClick={() => { setCategoriaAtiva(cat.id); setFiltroBusca('') }} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '12px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-              background: categoriaAtiva === cat.id ? '#1E3A5F' : '#ffffff',
+              background: categoriaAtiva === cat.id ? '#0E1B2C' : '#ffffff',
               color: categoriaAtiva === cat.id ? '#ffffff' : '#374151',
               textAlign: 'left', fontSize: '14px', fontWeight: categoriaAtiva === cat.id ? 'bold' : 'normal',
               boxShadow: categoriaAtiva === cat.id ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
               width: '100%'
             }}>
-              <span style={{ fontSize: '20px' }}>{cat.icon}</span>
+              <cat.iconComp size={20} strokeWidth={1.75} color={categoriaAtiva === cat.id ? '#C9A227' : cat.cor} aria-hidden="true" style={{ flexShrink: 0 }} />
               <div>
                 <div>{cat.nome}</div>
                 <div style={{ fontSize: '11px', color: categoriaAtiva === cat.id ? 'rgba(255,255,255,0.7)' : '#9CA3AF' }}>
@@ -346,8 +348,8 @@ function ProdutosContent() {
         <div>
           {categoriaData && (
             <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ color: '#1E3A5F', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-                {categoriaData.icon} {categoriaData.nome}
+              <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <categoriaData.iconComp size={22} strokeWidth={1.75} color={categoriaData.cor} aria-hidden="true" /> {categoriaData.nome}
               </h2>
               <p style={{ color: '#6B7280', fontSize: '14px', margin: '0' }}>{categoriaData.descricao}</p>
             </div>
@@ -355,7 +357,7 @@ function ProdutosContent() {
 
           {filteredProdutos.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px', color: '#9CA3AF' }}>
-              <p style={{ fontSize: '32px', margin: '0 0 8px 0' }}>🔍</p>
+              <Search size={32} strokeWidth={1.5} color="#9CA3AF" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
               <p>Nenhum produto encontrado</p>
             </div>
           ) : (
@@ -363,8 +365,7 @@ function ProdutosContent() {
               {filteredProdutos.map((produto, i) => (
                 <div key={i} style={{
                   background: '#ffffff', borderRadius: '12px', padding: '20px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                  border: '1px solid #E5E7EB',
+                  boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
                   display: 'flex', flexDirection: 'column'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -373,8 +374,8 @@ function ProdutosContent() {
                     </h3>
                     {(produto.tag) && (
                       <span style={{
-                        background: `${categoriaData?.cor || '#7C3AED'}15`,
-                        color: categoriaData?.cor || '#7C3AED',
+                        background: `${categoriaData?.cor || '#2E7D6B'}15`,
+                        color: categoriaData?.cor || '#2E7D6B',
                         padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold',
                         whiteSpace: 'nowrap', marginLeft: '8px'
                       }}>{produto.tag}</span>
@@ -389,7 +390,7 @@ function ProdutosContent() {
                     </span>
                     {produto.link_afiliado ? (
                       <a href={produto.link_afiliado} target="_blank" rel="noopener noreferrer" style={{
-                        padding: '8px 16px', background: '#7C3AED', color: '#fff',
+                        padding: '8px 16px', background: '#2E7D6B', color: '#fff',
                         border: 'none', borderRadius: '6px', fontSize: '13px',
                         fontWeight: 'bold', textDecoration: 'none', cursor: 'pointer'
                       }}>Ver produto</a>
@@ -414,10 +415,10 @@ function ProdutosContent() {
 export default function Produtos() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☯</div>
-          <p style={{ color: '#7C3AED', fontSize: '16px' }}>Carregando produtos...</p>
+          <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '16px', display: 'inline-block' }} />
+          <p style={{ color: '#2E7D6B', fontSize: '16px' }}>Carregando produtos...</p>
         </div>
       </div>
     }>

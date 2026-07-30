@@ -193,7 +193,7 @@ function NovaConsultaContent() {
 
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ color: '#1E3A5F', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
             {isProfessional ? 'Nova Consulta Ba Gua' : 'Novo Diagnóstico do Imóvel'}
           </h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
@@ -214,7 +214,7 @@ function NovaConsultaContent() {
               Para cadastrar mais imóveis, faça upgrade.
             </p>
             <a href="/planos" style={{
-              display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
+              display: 'inline-block', padding: '8px 20px', background: '#2E7D6B',
               color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
               textDecoration: 'none'
             }}>Ver planos</a>
@@ -240,7 +240,7 @@ function NovaConsultaContent() {
                 textDecoration: 'none'
               }}>Arquivar imóvel atual</Link>
               <Link href="/planos" style={{
-                display: 'inline-block', padding: '8px 20px', background: '#7C3AED',
+                display: 'inline-block', padding: '8px 20px', background: '#2E7D6B',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 textDecoration: 'none'
               }}>Ver planos</Link>
@@ -252,7 +252,7 @@ function NovaConsultaContent() {
         {plano === 'free' && !freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#F5F0FF', border: '1px solid #E9D5FF', color: '#6B21A8', fontSize: '13px'
+            background: '#EAF4F1', border: '1px solid #DCEFE9', color: '#6B21A8', fontSize: '13px'
           }}>
             Plano {planoLabel(profile?.plano)}: {totalConsultas}/3 imóveis cadastrados.
           </div>
@@ -285,7 +285,7 @@ function NovaConsultaContent() {
                   <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
                   {clientes.length === 0 ? (
                     <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', color: '#92400E', fontSize: '14px' }}>
-                      Nenhum cliente cadastrado. <span style={{ color: '#7C3AED', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
+                      Nenhum cliente cadastrado. <span style={{ color: '#2E7D6B', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
                     </div>
                   ) : preSelectedClient ? (
                     <input
@@ -357,7 +357,7 @@ function NovaConsultaContent() {
 
               {/* Dados Adicionais do Imóvel */}
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0', paddingTop: '8px', borderTop: '1px solid #E5E7EB' }}>Dados Adicionais do Imóvel</h3>
+                <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0', paddingTop: '8px', borderTop: '1px solid #E5E7EB' }}>Dados Adicionais do Imóvel</h3>
 
                 <div style={{ marginBottom: '16px' }}>
                   <label htmlFor="input-historico-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Histórico relevante do imóvel</label>
@@ -390,7 +390,7 @@ function NovaConsultaContent() {
                   border: 'none', borderRadius: '8px', fontSize: '15px', cursor: 'pointer'
                 }}>Cancelar</button>
                 <button type="submit" disabled={saving || (isProfessional && clientes.length === 0)} style={{
-                  padding: '12px 32px', background: saving ? '#9CA3AF' : '#7C3AED',
+                  padding: '12px 32px', background: saving ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'
                 }}>{saving ? 'Salvando...' : isProfessional ? 'Criar consulta' : 'Iniciar diagnóstico'}</button>

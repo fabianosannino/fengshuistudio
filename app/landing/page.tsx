@@ -71,7 +71,7 @@ export default function LandingPage() {
         .fade-up-d6 { animation-delay: 0.6s; }
 
         .btn-primary {
-          background: linear-gradient(135deg, #7C3AED, #5B21B6);
+          background: linear-gradient(135deg, #2E7D6B, #1D4D43);
           color: #ffffff;
           border: none;
           padding: 16px 40px;
@@ -169,7 +169,7 @@ export default function LandingPage() {
             <span style={{ fontSize: '28px' }}>☯</span>
             <span style={{
               fontFamily: "'Playfair Display', serif",
-              color: '#C9A84C', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em'
+              color: '#C9A227', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em'
             }}>FengShui Studio</span>
           </div>
           <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
@@ -181,7 +181,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => window.location.href = '/login'} className="nav-link hide-mobile">Entrar</button>
             <button onClick={() => window.location.href = '/login'} style={{
-              background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
+              background: 'linear-gradient(135deg, #2E7D6B, #1D4D43)',
               color: '#fff', border: 'none', padding: '10px 24px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 700,
               cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
@@ -196,7 +196,7 @@ export default function LandingPage() {
       {/* HERO */}
       <section style={{
         minHeight: '100vh',
-        background: 'linear-gradient(165deg, #0f172a 0%, #1E3A5F 40%, #1a3352 70%, #162544 100%)',
+        background: 'linear-gradient(165deg, #0f172a 0%, #0E1B2C 40%, #1a3352 70%, #162544 100%)',
         position: 'relative',
         display: 'flex', alignItems: 'center',
         overflow: 'hidden',
@@ -230,7 +230,7 @@ export default function LandingPage() {
                 borderRadius: '100px', padding: '8px 20px', marginBottom: '24px',
               }}>
                 <span style={{ fontSize: '12px' }}>✨</span>
-                <span style={{ color: '#C4B5FD', fontSize: '13px', fontWeight: 600, letterSpacing: '0.05em' }}>
+                <span style={{ color: '#A7D3C9', fontSize: '13px', fontWeight: 600, letterSpacing: '0.05em' }}>
                   PLATAFORMA #1 PARA CONSULTORES
                 </span>
               </div>
@@ -243,7 +243,7 @@ export default function LandingPage() {
               }}>
                 Transforme suas consultas de{' '}
                 <span style={{
-                  background: 'linear-gradient(135deg, #C9A84C, #E8D48B)',
+                  background: 'linear-gradient(135deg, #C9A227, #E8D48B)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>Feng Shui</span>
                 {' '}em uma experiência profissional
@@ -272,7 +272,7 @@ export default function LandingPage() {
                   { num: '4.8★', label: 'Avaliação média' },
                 ].map((stat, i) => (
                   <div key={i}>
-                    <p style={{ color: '#C9A84C', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>{stat.num}</p>
+                    <p style={{ color: '#C9A227', fontSize: '28px', fontWeight: 800, margin: '0 0 4px 0' }}>{stat.num}</p>
                     <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0, fontWeight: 500 }}>{stat.label}</p>
                   </div>
                 ))}
@@ -294,7 +294,7 @@ export default function LandingPage() {
                 {/* Bagua Grid 3x3 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '320px' }}>
                   {[
-                    { nome: 'Prosperidade', cor: '#A78BFA', elemento: 'Madeira', trigram: '☴' },
+                    { nome: 'Prosperidade', cor: '#6FB3A3', elemento: 'Madeira', trigram: '☴' },
                     { nome: 'Fama', cor: '#FF6B6B', elemento: 'Fogo', trigram: '☲' },
                     { nome: 'Amor', cor: '#F9A8D4', elemento: 'Terra', trigram: '☷' },
                     { nome: 'Família', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
@@ -330,7 +330,7 @@ export default function LandingPage() {
                 {/* Title below grid */}
                 <div style={{ textAlign: 'center', marginTop: '16px' }}>
                   <p style={{
-                    color: '#C9A84C', fontSize: '14px', fontWeight: 700,
+                    color: '#C9A227', fontSize: '14px', fontWeight: 700,
                     fontFamily: "'Playfair Display', serif", margin: 0,
                     letterSpacing: '0.1em',
                   }}>✦ MAPA BA GUA ✦</p>
@@ -348,25 +348,25 @@ export default function LandingPage() {
               }}>
                 {/* I Ching Hexagram lines */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '40px' }}>
-                  <div style={{ height: '5px', background: '#1E3A5F', borderRadius: '2px' }} />
-                  <div style={{ height: '5px', background: '#1E3A5F', borderRadius: '2px' }} />
-                  <div style={{ height: '5px', background: '#1E3A5F', borderRadius: '2px' }} />
+                  <div style={{ height: '5px', background: '#0E1B2C', borderRadius: '2px' }} />
+                  <div style={{ height: '5px', background: '#0E1B2C', borderRadius: '2px' }} />
+                  <div style={{ height: '5px', background: '#0E1B2C', borderRadius: '2px' }} />
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} />
-                    <div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} />
+                    <div style={{ flex: 1, height: '5px', background: '#C9A227', borderRadius: '2px' }} />
+                    <div style={{ flex: 1, height: '5px', background: '#C9A227', borderRadius: '2px' }} />
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} />
-                    <div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} />
+                    <div style={{ flex: 1, height: '5px', background: '#C9A227', borderRadius: '2px' }} />
+                    <div style={{ flex: 1, height: '5px', background: '#C9A227', borderRadius: '2px' }} />
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} />
-                    <div style={{ flex: 1, height: '5px', background: '#C9A84C', borderRadius: '2px' }} />
+                    <div style={{ flex: 1, height: '5px', background: '#C9A227', borderRadius: '2px' }} />
+                    <div style={{ flex: 1, height: '5px', background: '#C9A227', borderRadius: '2px' }} />
                   </div>
                 </div>
                 <div>
-                  <p style={{ color: '#1E3A5F', fontWeight: 700, fontSize: '16px', margin: 0, fontFamily: "'Playfair Display', serif" }}>泰 Tai</p>
-                  <p style={{ color: '#7C3AED', fontSize: '13px', margin: '2px 0 0 0', fontWeight: 600 }}>Paz &amp; Harmonia</p>
+                  <p style={{ color: '#0E1B2C', fontWeight: 700, fontSize: '16px', margin: 0, fontFamily: "'Playfair Display', serif" }}>泰 Tai</p>
+                  <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '2px 0 0 0', fontWeight: 600 }}>Paz &amp; Harmonia</p>
                   <p style={{ color: '#94a3b8', fontSize: '11px', margin: '2px 0 0 0' }}>I Ching • Hex. 11</p>
                 </div>
               </div>
@@ -399,7 +399,7 @@ export default function LandingPage() {
                   <span style={{ fontSize: '18px' }}>⛰️</span>
                   <span style={{ fontSize: '18px' }}>🪙</span>
                 </div>
-                <p style={{ color: '#1E3A5F', fontSize: '10px', margin: '4px 0 0 0', textAlign: 'center', fontWeight: 700 }}>5 Elementos</p>
+                <p style={{ color: '#0E1B2C', fontSize: '10px', margin: '4px 0 0 0', textAlign: 'center', fontWeight: 700 }}>5 Elementos</p>
               </div>
             </div>
           </div>
@@ -418,7 +418,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{
-              color: '#7C3AED', fontSize: '13px', fontWeight: 700,
+              color: '#2E7D6B', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               display: 'block', marginBottom: '12px',
             }}>RECURSOS</span>
@@ -436,12 +436,12 @@ export default function LandingPage() {
 
           <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
             {[
-              { icon: '🧭', title: 'Análise Ba Guá Interativa', desc: 'Faça upload da planta do imóvel e avalie os 9 setores do Ba Guá com critérios padronizados e scores automáticos.', color: '#7C3AED' },
+              { icon: '🧭', title: 'Análise Ba Guá Interativa', desc: 'Faça upload da planta do imóvel e avalie os 9 setores do Ba Guá com critérios padronizados e scores automáticos.', color: '#2E7D6B' },
               { icon: '◎', title: 'Roda da Vida Completa', desc: 'Questionário com 12 áreas da vida e 60 perguntas. Gráfico radar, médias por categoria e plano de ação integrado.', color: '#BE185D' },
               { icon: '📊', title: 'Relatórios PDF Personalizados', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
               { icon: '👥', title: 'Gestão de Clientes e Consultas', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
               { icon: '📅', title: 'Calendário Lunar com Rituais', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações, rituais e datas auspiciosas.', color: '#D97706' },
-              { icon: '✨', title: 'Curas e Ativações por Setor', desc: 'Cristais, plantas, objetos, mudras, meditações e mantras para cada setor do Ba Guá.', color: '#C9A84C' },
+              { icon: '✨', title: 'Curas e Ativações por Setor', desc: 'Cristais, plantas, objetos, mudras, meditações e mantras para cada setor do Ba Guá.', color: '#C9A227' },
               { icon: '📱', title: 'PWA — Funciona como App', desc: 'Instale no celular como um app nativo. Funciona em qualquer dispositivo com interface responsiva.', color: '#0891B2' },
               { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#DC2626' },
             ].map((feat, i) => (
@@ -476,7 +476,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{
-              color: '#C9A84C', fontSize: '13px', fontWeight: 700,
+              color: '#C9A227', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               display: 'block', marginBottom: '12px',
             }}>COMO FUNCIONA</span>
@@ -496,12 +496,12 @@ export default function LandingPage() {
             {/* Connecting line */}
             <div className="hide-mobile" style={{
               position: 'absolute', top: '60px', left: '16%', right: '16%',
-              height: '2px', background: 'linear-gradient(90deg, #7C3AED, #C9A84C, #15803D)',
+              height: '2px', background: 'linear-gradient(90deg, #2E7D6B, #C9A227, #15803D)',
               opacity: 0.3,
             }} />
             {[
-              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imóveis a serem analisados.', color: '#7C3AED' },
-              { step: '02', title: 'Realize o diagnóstico', desc: 'Avalie cada setor do Ba Gua com os critérios integrados e gere scores automáticos.', color: '#C9A84C' },
+              { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imóveis a serem analisados.', color: '#2E7D6B' },
+              { step: '02', title: 'Realize o diagnóstico', desc: 'Avalie cada setor do Ba Gua com os critérios integrados e gere scores automáticos.', color: '#C9A227' },
               { step: '03', title: 'Entregue o relatório', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
             ].map((item, i) => (
               <div key={i} style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
@@ -528,7 +528,7 @@ export default function LandingPage() {
 
       {/* PRECOS */}
       <section id="precos" style={{
-        background: 'linear-gradient(165deg, #0f172a, #1E3A5F)',
+        background: 'linear-gradient(165deg, #0f172a, #0E1B2C)',
         padding: '100px 32px', position: 'relative',
       }}>
         <div style={{
@@ -540,7 +540,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{
-              color: '#C4B5FD', fontSize: '13px', fontWeight: 700,
+              color: '#A7D3C9', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               display: 'block', marginBottom: '12px',
             }}>PREÇOS</span>
@@ -665,12 +665,12 @@ export default function LandingPage() {
             }}>
               <div style={{
                 position: 'absolute', top: '16px', right: '16px',
-                background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
+                background: 'linear-gradient(135deg, #2E7D6B, #1D4D43)',
                 borderRadius: '100px', padding: '6px 16px',
               }}>
                 <span style={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}>POPULAR</span>
               </div>
-              <p style={{ color: '#C4B5FD', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>PROFISSIONAL</p>
+              <p style={{ color: '#A7D3C9', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>PROFISSIONAL</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$49</span>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
@@ -689,7 +689,7 @@ export default function LandingPage() {
                   'Suporte prioritário',
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#fff', flexShrink: 0 }}>✓</div>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#2E7D6B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#fff', flexShrink: 0 }}>✓</div>
                     <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '15px' }}>{item}</span>
                   </div>
                 ))}
@@ -707,7 +707,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
             <span style={{
-              color: '#7C3AED', fontSize: '13px', fontWeight: 700,
+              color: '#2E7D6B', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               display: 'block', marginBottom: '12px',
             }}>DEPOIMENTOS</span>
@@ -733,7 +733,7 @@ export default function LandingPage() {
               }}>
                 <div style={{ display: 'flex', marginBottom: '16px' }}>
                   {[1,2,3,4,5].map(s => (
-                    <span key={s} style={{ color: '#C9A84C', fontSize: '18px' }}>★</span>
+                    <span key={s} style={{ color: '#C9A227', fontSize: '18px' }}>★</span>
                   ))}
                 </div>
                 <p style={{
@@ -745,7 +745,7 @@ export default function LandingPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
                     width: '44px', height: '44px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
+                    background: 'linear-gradient(135deg, #2E7D6B, #1D4D43)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: '#fff', fontWeight: 700, fontSize: '18px',
                   }}>{t.avatar}</div>
@@ -765,7 +765,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <span style={{
-              color: '#C9A84C', fontSize: '13px', fontWeight: 700,
+              color: '#C9A227', fontSize: '13px', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               display: 'block', marginBottom: '12px',
             }}>FAQ</span>
@@ -799,7 +799,7 @@ export default function LandingPage() {
                 >
                   <span style={{ color: '#0f172a', fontSize: '16px', fontWeight: 600, textAlign: 'left' }}>{faq.q}</span>
                   <span style={{
-                    color: '#7C3AED', fontSize: '20px', fontWeight: 300,
+                    color: '#2E7D6B', fontSize: '20px', fontWeight: 300,
                     transform: activeFaq === i ? 'rotate(45deg)' : 'none',
                     transition: 'transform 0.3s ease',
                   }}>+</span>
@@ -822,7 +822,7 @@ export default function LandingPage() {
 
       {/* CTA FINAL */}
       <section style={{
-        background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
+        background: 'linear-gradient(135deg, #2E7D6B, #1D4D43)',
         padding: '80px 32px', textAlign: 'center',
         position: 'relative', overflow: 'hidden',
       }}>
@@ -844,7 +844,7 @@ export default function LandingPage() {
             Junte-se a centenas de consultores que já usam o FengShui Studio para elevar a qualidade do seu trabalho.
           </p>
           <button onClick={() => window.location.href = '/login'} style={{
-            background: '#ffffff', color: '#7C3AED', border: 'none',
+            background: '#ffffff', color: '#2E7D6B', border: 'none',
             padding: '16px 48px', borderRadius: '12px', fontSize: '17px',
             fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
             transition: 'all 0.3s ease', boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
@@ -869,7 +869,7 @@ export default function LandingPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                 <span style={{ fontSize: '24px' }}>☯</span>
-                <span style={{ fontFamily: "'Playfair Display', serif", color: '#C9A84C', fontSize: '20px', fontWeight: 700 }}>FengShui Studio</span>
+                <span style={{ fontFamily: "'Playfair Display', serif", color: '#C9A227', fontSize: '20px', fontWeight: 700 }}>FengShui Studio</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', lineHeight: 1.7, maxWidth: '300px' }}>
                 A plataforma completa para consultores de Feng Shui que querem profissionalizar seu trabalho e impressionar seus clientes.
