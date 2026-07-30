@@ -31,6 +31,10 @@ import {
   URL_CALCULADORA_DECLINACAO, type ReferenciaNorte,
 } from '../../src/lib/declinacao-magnetica'
 import type { BaguaEntrada, BaguaMarcacaoJSON } from '../../src/lib/types'
+import {
+  MODELOS, MODELO_PADRAO, PESO_GEO_PADRAO, calcularPontuacao, modeloValido,
+  pontuacaoFisica, NOTA_NEUTRA, type IdModeloPontuacao, type NotaCriterio,
+} from '../../src/lib/modelos-pontuacao'
 
 // ─── DADOS ────────────────────────────────────────────────────────────────────
 
@@ -86,8 +90,9 @@ type Drag   = { tipo:'borda'; lado:'top'|'bottom'|'left'|'right' }
             | { tipo:'marcacao-mover'; id:string; offX:number; offY:number }
             | { tipo:'marcacao-resize'; id:string; canto:'tl'|'tr'|'bl'|'br' }
 type Setor  = {
-  criterios:number[];
-  geo:number;         // 100 base - faltaPct + excessoPct (points)
+  /** Uma posição por critério. `null` = não avaliado (≠ «Neutro»). */
+  criterios:(NotaCriterio|null)[];
+  geo:number;         // 100 - faltaPct - excessoPct (já é uma nota 0–100)
   faltaArea:number;   // falta area in px² for this sector
   excessoArea:number; // excesso area in px² for this sector
   faltaPct:number;    // falta as % of sector area
@@ -180,18 +185,25 @@ function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[
     const excessoPct = sectorArea > 0 ? (excessoArea / sectorArea) * 100 : 0
     const geo = 100 - faltaPct - excessoPct
 
-    return {criterios:Array(8).fill(2),geo,faltaArea,excessoArea,faltaPct,excessoPct,ajusteManual:null,ajusteTipo:null,obs:''}
+    return {criterios:Array(8).fill(null) as (NotaCriterio|null)[],geo,faltaArea,excessoArea,faltaPct,excessoPct,ajusteManual:null,ajusteTipo:null,obs:''}
   })
 }
 
 // ─── NEW SCORING SYSTEM ──────────────────────────────────────────────────────
-// Physical score: 0→-2, 1→-1, 2→0, 3→+1, 4→+2
-const FISICO_MAP=[-2,-1,0,1,2]
-function scoreFisico(c:number[]):number{return c.reduce((s,v)=>s+(FISICO_MAP[v]??0),0)}
+/** Estado físico normalizado 0–100. `null` = nenhum critério avaliado. */
+function scoreFisico(c:readonly (NotaCriterio|null)[]):number|null{return pontuacaoFisica(c)}
 // Effective geo (with manual adjustment if set)
 function geoEfetivo(sc:Setor):number{return sc.ajusteManual!==null?sc.ajusteManual:sc.geo}
-// Total score = geo + physical
-function scoreTotal(sc:Setor):number{return Math.round(geoEfetivo(sc)+scoreFisico(sc.criterios))}
+/**
+ * Nota do setor pelo modelo escolhido na consulta.
+ *
+ * Antes era `geoEfetivo(sc) + scoreFisico(...)`, somando um desvio de −16..+16 a
+ * uma nota que já era 0–100 — daí «tudo neutro = 100%» e valores acima de 100.
+ * Ver `modelos-pontuacao` e a ADR correspondente.
+ */
+function scoreTotal(sc:Setor,modelo:IdModeloPontuacao,pesoGeo:number):number|null{
+  return calcularPontuacao(modelo,{criterios:sc.criterios,geo:geoEfetivo(sc),pesoGeo}).valor
+}
 // Geo color based on sector data: Green (equilibrado), Red (falta), Orange (excesso)
 function corGeo(geo:number, sc?:Setor):string{
   if(Math.abs(geo-100)<0.5) return '#15803D'
@@ -206,10 +218,21 @@ function lblGeo(geo:number, sc?:Setor):string{
   return 'Desequilíbrio'
 }
 // Total score color (quality scale)
-function corTotal(t:number):string{return t>=95?'#15803D':t>=80?'#65A30D':t>=60?'#D97706':t>=40?'#EA580C':'#DC2626'}
-function lblTotal(t:number):string{return t>=95?'Excelente':t>=80?'Bom':t>=60?'Regular':t>=40?'Ruim':'Crítico'}
-// Check if criteria have been evaluated (changed from default 2)
-function criteriosAvaliados(c:number[]):boolean{return c.some(v=>v!==2)}
+/** Cinza quando não há nota: ausência de dado não ganha cor de julgamento. */
+function corTotal(t:number|null):string{
+  if(t===null) return '#9CA3AF'
+  return t>=95?'#15803D':t>=80?'#65A30D':t>=60?'#D97706':t>=40?'#EA580C':'#DC2626'
+}
+function lblTotal(t:number|null):string{
+  if(t===null) return 'Não avaliado'
+  return t>=95?'Excelente':t>=80?'Bom':t>=60?'Regular':t>=40?'Ruim':'Crítico'
+}
+/**
+ * Antes era `c.some(v=>v!==2)` — adivinhava «avaliado» por diferença do default,
+ * então quem marcasse tudo como «Neutro» de propósito aparecia como não
+ * avaliado. Com `null` a pergunta passa a ter resposta exata.
+ */
+function criteriosAvaliados(c:readonly (NotaCriterio|null)[]):boolean{return c.some(v=>v!==null)}
 
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
@@ -267,6 +290,10 @@ function BaguaPlantaContent() {
   const [lv,       setLv]       = useState([1/3,2/3])
   const [modo,     setModo]     = useState<'nenhum'|'bordas'|'marcarFalta'|'marcarExcesso'>('nenhum')
   const [setores,  setSetores]  = useState<Setor[]>([])
+  // Modelo de pontuação escolhido pelo consultor. Gravado NA CONSULTA para que
+  // reabrir uma análise antiga não a repontue sob um padrão novo.
+  const [modeloPontuacao, setModeloPontuacao] = useState<IdModeloPontuacao>(MODELO_PADRAO)
+  const [pesoGeo, setPesoGeo] = useState<number>(PESO_GEO_PADRAO)
   const [ativo,    setAtivo]    = useState<number|null>(null)
   const [msg,      setMsg]      = useState('')
   const [msgTipo,  setMsgTipo]  = useState<'erro'|'sucesso'>('sucesso')
@@ -326,9 +353,13 @@ function BaguaPlantaContent() {
         .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>console.error('Erro ao carregar consultas:',e))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
-        supabase.from('consultas').select('nome_imovel,bagua_entrada').eq('id',consultaId).single()
+        supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo').eq('id',consultaId).single()
           .then(({data})=>{
             if(data) setConsultaNome(data.nome_imovel)
+            // A escolha vive na consulta: reabrir uma análise antiga não a
+            // repontua sob o padrão vigente hoje.
+            if(data?.modelo_pontuacao) setModeloPontuacao(modeloValido(data.modelo_pontuacao))
+            if(data?.peso_geo!==null&&data?.peso_geo!==undefined) setPesoGeo(Number(data.peso_geo))
             if(data?.bagua_entrada){
               const be=data.bagua_entrada as BaguaEntrada
               // Check if there's a saved plant image (in-progress or finalized analysis)
@@ -376,10 +407,12 @@ function BaguaPlantaContent() {
               data.forEach((s:{numero?:number; diagnostico_criterios?:{criterio:string; score:number}[]})=>{
                 const idx=(s.numero||1)-1
                 if(idx<0||idx>8) return
-                const cMap:number[]=Array(8).fill(0)
+                // `null`, não 0: linha ausente significa «não avaliado», e 0
+                // seria «Crítico» — inventaria uma avaliação que ninguém fez.
+                const cMap:(NotaCriterio|null)[]=Array(8).fill(null)
                 s.diagnostico_criterios?.forEach((c:{criterio:string; score:number})=>{
                   const ci=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre'].indexOf(c.criterio)
-                  if(ci>=0) cMap[ci]=c.score
+                  if(ci>=0) cMap[ci]=c.score as NotaCriterio
                 })
                 next[idx]={...next[idx],criterios:cMap}
               })
@@ -448,7 +481,7 @@ function BaguaPlantaContent() {
             const saved=setoresRasc?.[idx]
             return {
               ...n,
-              criterios:saved?.criterios??n.criterios,
+              criterios:(saved?.criterios as (NotaCriterio|null)[]|undefined)??n.criterios,
               ajusteManual:saved?.ajusteManual??null,
               ajusteTipo:(saved?.ajusteTipo??null) as Setor['ajusteTipo'],
               obs:saved?.obs??'',
@@ -1111,7 +1144,9 @@ function BaguaPlantaContent() {
     // O cliente Supabase RESOLVE com {error} em vez de lançar — sem esta checagem o
     // rascunho se perdia em silêncio (RLS, rede, linha inexistente) e o consultor seguia
     // achando que o trabalho estava salvo. Ver CLAUDE.md: nunca engolir falha de escrita.
-    const {error:eRascunho}=await supabase.from('consultas').update({bagua_entrada:draft}).eq('id',consultaId)
+    const {error:eRascunho}=await supabase.from('consultas')
+      .update({bagua_entrada:draft,modelo_pontuacao:modeloPontuacao,peso_geo:pesoGeo})
+      .eq('id',consultaId)
     if(eRascunho){
       logger.error('Falha ao salvar rascunho do Ba Guá',{action:'salvarRascunho',consultaId,erro:eRascunho.message})
       setMsg('⚠ Não foi possível salvar o rascunho. Verifique sua conexão — não feche a página até salvar.')
@@ -1322,12 +1357,15 @@ function BaguaPlantaContent() {
       nome:stDef.nome,
       elemento:stDef.elem,
       posicao_grid:String(orderIdx+1),
-      score_percentual:scoreTotal(sc)
+      score_percentual:scoreTotal(sc,modeloPontuacao,pesoGeo)
     },{onConflict:'consulta_id,numero'}).select('id').single()
     if(e1||!setorRow){setMsg('Erro: '+(e1?.message||JSON.stringify(e1)||'sem retorno'));setMsgTipo('erro');return}
     // salvar criterios
     const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
-    const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
+    const inserts=nomes
+      .map((criterio,ci)=>({setor_id:setorRow.id,criterio,nota:sc.criterios[ci]}))
+      .filter((r):r is {setor_id:string;criterio:string;nota:NotaCriterio}=>r.nota!==null)
+      .map(r=>({setor_id:r.setor_id,criterio:r.criterio,score:r.nota}))
     const {error:eDelC}=await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
     const {error:eInsC}=await supabase.from('diagnostico_criterios').insert(inserts)
     if(eDelC||eInsC){setMsg('Erro ao salvar critérios do diagnóstico: '+((eDelC||eInsC)?.message||''));setMsgTipo('erro');return}
@@ -1348,7 +1386,7 @@ function BaguaPlantaContent() {
     setTimeout(()=>setMsg(''),3000)
   }
 
-  function setCrit(si:number,ci:number,val:number){
+  function setCrit(si:number,ci:number,val:NotaCriterio|null){
     setSetores(p=>p.map((sc,i)=>i!==si?sc:{...sc,criterios:sc.criterios.map((v,j)=>j===ci?val:v)}))
   }
   function setAjusteManual(si:number,val:number|null){
@@ -1375,7 +1413,7 @@ function BaguaPlantaContent() {
       for(let i=0;i<9;i++){
         const stDef=SETORES[order[i]]
         const sc=setores[i]
-        const scorePct=scoreTotal(sc)
+        const scorePct=scoreTotal(sc,modeloPontuacao,pesoGeo)
         const {data:setorRow,error:e1}=await supabase.from('setores_bagua').upsert({
           consulta_id:consultaId,
           numero:i+1,
@@ -1385,14 +1423,17 @@ function BaguaPlantaContent() {
           score_percentual:scorePct
         },{onConflict:'consulta_id,numero'}).select('id').single()
         if(e1||!setorRow) continue
-        const inserts=nomes.map((criterio,ci)=>({setor_id:setorRow.id,criterio,score:sc.criterios[ci]??0}))
+        const inserts=nomes
+      .map((criterio,ci)=>({setor_id:setorRow.id,criterio,nota:sc.criterios[ci]}))
+      .filter((r):r is {setor_id:string;criterio:string;nota:NotaCriterio}=>r.nota!==null)
+      .map(r=>({setor_id:r.setor_id,criterio:r.criterio,score:r.nota}))
         const {error:eDelC}=await supabase.from('diagnostico_criterios').delete().eq('setor_id',setorRow.id)
         const {error:eInsC}=await supabase.from('diagnostico_criterios').insert(inserts)
         if(eDelC||eInsC) throw new Error('Falha ao salvar critérios: '+((eDelC||eInsC)?.message||''))
       }
       // Snapshot para o comparativo antes/depois (1º = inicial; demais = reavaliação).
       // Dedupe: re-finalizar sem mudança de score não gera histórico repetido.
-      const snapshot = montarSnapshot(setores.map((sc,i)=>({numero:i+1,nome:SETORES[order[i]].nome,score:scoreTotal(sc)})))
+      const snapshot = montarSnapshot(setores.map((sc,i)=>({numero:i+1,nome:SETORES[order[i]].nome,score:scoreTotal(sc,modeloPontuacao,pesoGeo)})))
       const {data:snapsExistentes,error:eSnaps}=await supabase
         .from('diagnostico_snapshots').select('scores')
         .eq('consulta_id',consultaId).order('criado_em',{ascending:false}).limit(1)
@@ -1635,6 +1676,43 @@ function BaguaPlantaContent() {
               {step==='resultado'&&(
                 <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#0369A1',fontSize:'11px'}}>
                   💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong> (guá <strong>{guaDaPorta(lado)}</strong>)</>} · Clique num setor para avaliar
+                </div>
+              )}
+
+              {/* ── Modelo de pontuação (escolha do consultor) ── */}
+              {step==='resultado'&&(
+                <div style={{marginBottom:'7px',padding:'8px 10px',background:'#FAFAF9',borderRadius:'6px',border:'1px solid #E5E7EB'}}>
+                  <label style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'6px'}}>
+                    📐 Modelo de pontuação
+                  </label>
+                  <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
+                    {Object.values(MODELOS).map(m=>(
+                      <button key={m.id} onClick={()=>setModeloPontuacao(m.id)} title={m.descricao} style={{
+                        padding:'5px 9px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                        borderColor:modeloPontuacao===m.id?'#2E7D6B':'#D1D5DB',
+                        background:modeloPontuacao===m.id?'#E6F2EF':'#fff',
+                        color:modeloPontuacao===m.id?'#2E7D6B':'#6B7280',
+                      }}>{m.nome}</button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:'9px',color:'#6B7280',marginTop:'5px',lineHeight:'1.4'}}>
+                    {MODELOS[modeloPontuacao].descricao}
+                  </div>
+                  {modeloPontuacao==='composto-ponderado'&&(
+                    <div style={{marginTop:'7px'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px',color:'#6B7280',marginBottom:'2px'}}>
+                        <span>Peso da geometria: {Math.round(pesoGeo*100)}%</span>
+                        <span>Estado físico: {Math.round((1-pesoGeo)*100)}%</span>
+                      </div>
+                      <input type="range" min={0} max={100} step={5}
+                        value={Math.round(pesoGeo*100)}
+                        onChange={e=>setPesoGeo(Number(e.target.value)/100)}
+                        style={{width:'100%'}} />
+                    </div>
+                  )}
+                  <div style={{fontSize:'9px',color:'#9CA3AF',marginTop:'6px',fontStyle:'italic'}}>
+                    A escolha fica gravada nesta consulta e aparece no relatório.
+                  </div>
                 </div>
               )}
 
@@ -2237,7 +2315,7 @@ function BaguaPlantaContent() {
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const sel=ativo===i
                           const gv=geoEfetivo(sc)
-                          const ts=scoreTotal(sc)
+                          const ts=scoreTotal(sc,modeloPontuacao,pesoGeo)
                           const sf=scoreFisico(sc.criterios)
                           return(
                             <div key={i} onClick={()=>setAtivo(i===ativo?null:i)} style={{
@@ -2252,13 +2330,13 @@ function BaguaPlantaContent() {
                                 </div>
                                 <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
                                   <span style={{color:'#6B7280'}}>Físico:</span>
-                                  {criteriosAvaliados(sc.criterios)
-                                    ? <span style={{color:sf>=0?'#15803D':'#DC2626',fontWeight:'bold'}}>{sf>=0?'+':''}{sf} pts</span>
+                                  {sf!==null
+                                    ? <span style={{color:corTotal(sf),fontWeight:'bold'}}>{sf}%</span>
                                     : <span style={{color:'#9CA3AF',fontStyle:'italic'}}>Não avaliado</span>
                                   }
                                 </div>
                               </div>
-                              <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts} pts · {lblTotal(ts)}</div>
+                              <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts===null?lblTotal(ts):`${ts}% · ${lblTotal(ts)}`}</div>
                               {sc.ajusteManual!==null&&<div style={{fontSize:'7px',color:'#2E7D6B',marginTop:'1px'}}>&#x270F; Ajustado</div>}
                             </div>
                           )
@@ -2268,7 +2346,7 @@ function BaguaPlantaContent() {
                   )}
 
                   {/* Balanced banner */}
-                  {setores.length===9&&setores.every(s=>scoreTotal(s)>=90)&&(
+                  {setores.length===9&&setores.every(s=>{const t=scoreTotal(s,modeloPontuacao,pesoGeo);return t!==null&&t>=90})&&(
                     <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'8px',textAlign:'center'}}>
                       <div style={{fontSize:'20px',marginBottom:'4px'}}>☯</div>
                       <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
@@ -2315,7 +2393,7 @@ function BaguaPlantaContent() {
                 {(()=>{
                   const gv=geoEfetivo(scAtivo)
                   const sf=scoreFisico(scAtivo.criterios)
-                  const ts=scoreTotal(scAtivo)
+                  const ts=scoreTotal(scAtivo,modeloPontuacao,pesoGeo)
                   return (
                     <div style={{marginBottom:'10px'}}>
                       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
@@ -2340,14 +2418,14 @@ function BaguaPlantaContent() {
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:'3px solid #6B7280'}}>
                           <span style={{fontSize:'10px',color:'#6B7280'}}>Físico:</span>
                           {criteriosAvaliados(scAtivo.criterios)
-                            ? <span style={{fontSize:'11px',fontWeight:'bold',color:sf>=0?'#15803D':'#DC2626'}}>{sf>=0?'+':''}{sf} pts</span>
+                            ? <span style={{fontSize:'11px',fontWeight:'bold',color:corTotal(sf)}}>{sf}%</span>
                             : <span style={{fontSize:'11px',color:'#9CA3AF',fontStyle:'italic'}}>Não avaliado</span>
                           }
                         </div>
                         {/* Total score */}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:corTotal(ts)+'15',borderRadius:'5px',borderLeft:`3px solid ${corTotal(ts)}`}}>
                           <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>Total:</span>
-                          <span style={{fontSize:'13px',fontWeight:'bold',color:corTotal(ts)}}>{ts} pts · {lblTotal(ts)}</span>
+                          <span style={{fontSize:'13px',fontWeight:'bold',color:corTotal(ts)}}>{ts===null?lblTotal(ts):`${ts}% · ${lblTotal(ts)}`}</span>
                         </div>
                       </div>
                     </div>
@@ -2363,18 +2441,29 @@ function BaguaPlantaContent() {
                   const NOMES=['Crítico','Ruim','Neutro','Bom','Ótimo']
                   const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
                   const BGS=['#FEF2F2','#FFF7ED','#F9FAFB','#F0FDF4','#DCFCE7']
-                  const val=scAtivo.criterios[ci]??2
+                  // `null` = não avaliado. Antes o default era 2 («Neutro»), o
+                  // que impedia distinguir «achei neutro» de «não olhei».
+                  const val=scAtivo.criterios[ci]
                   return (
                   <div key={ci} style={{marginBottom:'9px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:'3px'}}>
                       <span style={{fontSize:'10px',color:'#374151'}}>{crit}</span>
-                      <span style={{fontSize:'10px',fontWeight:'bold',color:CORES[val]}}>
-                        {NOMES[val]}
+                      <span style={{fontSize:'10px',fontWeight:'bold',color:val===null?'#9CA3AF':CORES[val]}}>
+                        {val===null?'Não avaliado':NOMES[val]}
                       </span>
                     </div>
                     <div style={{display:'flex',gap:'3px'}}>
+                      <button
+                        onClick={()=>setCrit(ativo!,ci,null)}
+                        title="Não avaliado"
+                        style={{
+                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                          borderColor:val===null?'#6B7280':'#D1D5DB',
+                          background:val===null?'#F3F4F6':'#fff',
+                          color:val===null?'#374151':'#9CA3AF',
+                        }}>—</button>
                       {[0,1,2,3,4].map(v=>(
-                        <button key={v} onClick={()=>setCrit(ativo!,ci,v)} style={{
+                        <button key={v} onClick={()=>setCrit(ativo!,ci,v as NotaCriterio)} style={{
                           flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
                           borderColor:val===v?CORES[v]:'#D1D5DB',
                           background:val===v?BGS[v]:'#fff',
@@ -2434,11 +2523,16 @@ function BaguaPlantaContent() {
 
                 {/* ── Recomendações dinâmicas (colapsável) ── */}
                 {(()=>{
-                  const rec = criteriosAvaliados(scAtivo.criterios)
+                  const pontos = scoreTotal(scAtivo,modeloPontuacao,pesoGeo)
+                  // Sem nota não há como priorizar: recomendar «urgente» a partir
+                  // de ausência de dado seria inventar diagnóstico.
+                  const rec = (pontos!==null && criteriosAvaliados(scAtivo.criterios))
                     ? gerarRecomendacoes({
                         nomeSetor: stAtivo.nome,
-                        scorePct: scoreTotal(scAtivo),
-                        criterios: scAtivo.criterios,
+                        scorePct: pontos,
+                        // Critério não avaliado entra como neutro DE PROPÓSITO: sem
+                        // observação não se gera recomendação para aquele item.
+                        criterios: scAtivo.criterios.map(v=>v??NOTA_NEUTRA),
                         faltaPct: scAtivo.faltaPct,
                         excessoPct: scAtivo.excessoPct,
                         elemento: stAtivo.elem,

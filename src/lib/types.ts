@@ -103,7 +103,8 @@ export interface BaguaMarcacaoJSON {
 
 /** Per-sector draft data persisted inside bagua_entrada.setores_rascunho */
 export interface BaguaSetorRascunho {
-  criterios?: number[]
+  /** `null` numa posição = critério não avaliado (distinto de «Neutro»). */
+  criterios?: (number | null)[]
   ajusteManual?: number | null
   ajusteTipo?: string | null
   obs?: string | null

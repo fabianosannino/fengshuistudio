@@ -366,7 +366,6 @@ function ProdutosContent() {
                 <div key={i} style={{
                   background: '#ffffff', borderRadius: '12px', padding: '20px',
                   boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
-                  border: '1px solid #E5E7EB',
                   display: 'flex', flexDirection: 'column'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
