@@ -1,0 +1,61 @@
+-- ============================================================================
+-- C8 — fecha os buckets de fotos (LGPD)
+--
+-- ⚠ NÃO aplicar sem rodar o checklist abaixo em staging. Este arquivo está em
+-- `migrations-manuais/` justamente para não entrar num `db push` distraído.
+--
+-- ## O que muda
+--
+-- `imoveis-fotos` e `clientes-fotos` deixam de ser públicos. Hoje, quem tiver a
+-- URL vê o interior da casa de um cliente sem autenticação nenhuma — foi o
+-- achado C8 da auditoria de 2026-07-18 e é o item mais grave que restava.
+--
+-- ## O que já foi preparado (tudo já em produção antes deste passo)
+--
+-- - `GET/POST /api/storage/assinar` — assina em lote, conferindo posse pelo
+--   path (id da consulta / id do usuário) contra o `user.id` da sessão.
+-- - Todas as telas que exibem foto passaram a resolver a URL assinada:
+--   lista e detalhe de cliente, banner da consulta, aba de fotos (foto geral,
+--   cômodos, antes/depois, lightbox), relatório e o canvas do Ba Guá.
+-- - Uploads passaram a gravar o **path**; `caminhoDoObjeto()` aceita também a
+--   URL pública das linhas antigas, então nada quebra sem o backfill.
+-- - O botão "Baixar PDF" fica desabilitado enquanto as assinaturas não chegam,
+--   para a captura não pegar imagem faltando.
+--
+-- As policies de `storage.objects` já amarram cada arquivo ao dono desde
+-- `20260724_hotfix_pos_incidente.sql` — este passo fecha a porta que ficava
+-- aberta *ao lado* delas: a leitura pública, que não passa por policy nenhuma.
+--
+-- ## Checklist em staging (nesta ordem)
+--
+-- 1. Aplicar este arquivo no projeto de staging.
+-- 2. Abrir a lista e o detalhe de um cliente com foto → a foto aparece.
+-- 3. Abrir uma consulta com foto geral e fotos de cômodo → aparecem; o
+--    lightbox abre.
+-- 4. Abrir o Ba Guá de uma consulta com planta salva e usar "Retomar" → a
+--    planta carrega no canvas (é o caminho `crossOrigin` + `new Image()`).
+-- 5. Abrir o relatório e **baixar o PDF** → as fotos aparecem no PDF, não
+--    espaços em branco. Este é o passo que justifica o staging.
+-- 6. Copiar a URL pública de uma foto (do banco, antes do backfill) e abrir
+--    numa aba anônima → deve dar **400/404**. Se ainda abrir, o bucket não
+--    fechou.
+-- 7. Logar como OUTRO consultor e pedir `/api/storage/assinar` com o path de
+--    uma foto alheia → resposta `{ urls: {} }`, sem assinatura.
+--
+-- ## Reversão
+--
+--   update storage.buckets set public = true
+--   where id in ('imoveis-fotos', 'clientes-fotos');
+--
+-- Reverter volta a expor as fotos. Se algo falhar no checklist, o certo é
+-- reverter, corrigir a tela e tentar de novo — não deixar meio caminho.
+-- ============================================================================
+
+update storage.buckets
+set public = false
+where id in ('imoveis-fotos', 'clientes-fotos');
+
+-- Verificação: espera-se `false` nas duas linhas.
+--
+--   select id, public from storage.buckets
+--   where id in ('imoveis-fotos', 'clientes-fotos');

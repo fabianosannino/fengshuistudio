@@ -19,6 +19,8 @@ import { dataSolar } from '../../src/lib/data-solar'
 import { zhengShenLingShen } from '../../src/lib/liu-fa'
 import { calcularMingGua, normalizarGenero } from '../../src/lib/ming-gua'
 import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
+import { urlExibivel } from '../components/useUrlsAssinadas'
+import { BUCKET_IMOVEIS } from '../../src/lib/storage-imagens'
 import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
 import { calcularTaiJi, setoresAusentes, setoresExtensao, type Ponto } from '../../src/lib/poligono'
 import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
@@ -424,7 +426,7 @@ function BaguaPlantaContent() {
   },[router,consultaId])
 
   // Restore saved draft state (loads image from URL and restores all state)
-  function restaurarRascunho(){
+  async function restaurarRascunho(){
     const be=rascunhoRef.current; if(!be?.planta_url) return
     setShowRetomar(false)
     setCarregandoPlanta(true)
@@ -500,7 +502,17 @@ function BaguaPlantaContent() {
       setMsg('Erro ao carregar planta salva. Faça novo upload.'); setMsgTipo('erro')
       setStep('upload')
     }
-    i.src=be.planta_url
+    // Bucket privado: o que está gravado (URL pública legada ou path) precisa
+    // virar URL assinada antes de chegar ao canvas.
+    const src=await urlExibivel(be.planta_url,BUCKET_IMOVEIS)
+    if(!src){
+      setCarregandoPlanta(false)
+      restaurandoRef.current=false
+      setMsg('Não foi possível acessar a planta salva. Faça novo upload.'); setMsgTipo('erro')
+      setStep('upload')
+      return
+    }
+    i.src=src
   }
 
   function recomecarAnalise(){
@@ -1023,12 +1035,14 @@ function BaguaPlantaContent() {
               return r.json()
             })
             .then(d=>{
-              if(d.url){
-                setPlantaUrl(d.url)
-                plantaUrlRef.current=d.url
+              // A rota passou a devolver o path do objeto (bucket privado, C8);
+              // `planta_url` guarda o path e a exibição assina na hora.
+              if(d.path){
+                setPlantaUrl(d.path)
+                plantaUrlRef.current=d.path
                 // Save initial draft state
                 supabase.from('consultas').update({
-                  bagua_entrada:{planta_url:d.url,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'metragem',rotacao:0,lado:'centro'}
+                  bagua_entrada:{planta_url:d.path,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'metragem',rotacao:0,lado:'centro'}
                 }).eq('id',consultaId).then(({error})=>{
                   if(error){
                     logger.error('Falha ao salvar rascunho inicial da planta',{action:'uploadPlanta',consultaId,erro:error.message})
@@ -1036,13 +1050,13 @@ function BaguaPlantaContent() {
                     setMsgTipo('erro')
                   }
                 })
-                return d.url as string
+                return d.path as string
               }
               setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.'); setMsgTipo('erro')
               return null
             })
             .catch(err=>{
-              console.error('Upload planta error:', err)
+              logger.error('Falha no upload da planta',{action:'uploadPlanta',consultaId,erro:String(err)})
               setMsg('Erro ao enviar planta para o servidor. Verifique se o bucket de storage existe no Supabase.'); setMsgTipo('erro')
               return null
             })

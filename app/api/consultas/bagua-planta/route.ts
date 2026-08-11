@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
+import { escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const BUCKET = 'imoveis-fotos'
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
     if (consultaError) {
       logger.error('Consulta query error', { route: '/api/consultas/bagua-planta', error: consultaError.message })
-      return NextResponse.json({ error: 'Erro ao verificar consulta: ' + consultaError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Erro ao verificar consulta.' }, { status: 500 })
     }
 
     if (!consulta) {
@@ -68,8 +69,13 @@ export async function POST(request: Request) {
     }
 
     if (files && files.length > 0) {
-      await supabase.storage.from(BUCKET).remove(
-        files.map(f => `${consultaId}/bagua-planta/${f.name}`)
+      // Best-effort: um arquivo antigo que sobra vaza armazenamento, mas
+      // bloquear o upload da planta nova seria pior para o consultor.
+      await escreverBestEffort(
+        supabase.storage.from(BUCKET).remove(
+          files.map(f => `${consultaId}/bagua-planta/${f.name}`)
+        ),
+        { rota: '/api/consultas/bagua-planta', operacao: 'remove-planta-antiga', userId: user.id }
       )
     }
 
@@ -85,9 +91,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao enviar imagem. Tente novamente.' }, { status: 500 })
     }
 
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
-
-    return NextResponse.json({ url: urlData.publicUrl })
+    // Path, não URL pública — ver comentário em /api/consultas/fotos.
+    return NextResponse.json({ path: filePath })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
     logger.error('bagua-planta route error', { route: '/api/consultas/bagua-planta', error: message })

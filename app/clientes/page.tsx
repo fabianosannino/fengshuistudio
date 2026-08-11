@@ -9,6 +9,8 @@ import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, podeClientes } from '../../src/lib/plano-utils'
 import { Camera, Users, Search, Mail, Phone, MapPin, CheckCircle2, RefreshCw } from 'lucide-react'
+import { useUrlsAssinadas } from '../components/useUrlsAssinadas'
+import { BUCKET_CLIENTES } from '../../src/lib/storage-imagens'
 
 const PAGE_SIZE = 10
 
@@ -217,6 +219,12 @@ export default function Clientes() {
   // Client-side search filter
   const filteredClientes = clientes.filter(c =>
     !search || c.nome_completo.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // Um lote de assinaturas para a página inteira, não uma por card.
+  const { resolver: resolverFoto } = useUrlsAssinadas(
+    clientes.map(c => c.foto_url),
+    BUCKET_CLIENTES
   )
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
@@ -513,8 +521,8 @@ export default function Clientes() {
                     justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
                     flexShrink: 0, position: 'relative' as const,
                   }}>
-                    {cliente.foto_url ? (
-                      <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
+                    {resolverFoto(cliente.foto_url) ? (
+                      <Image src={resolverFoto(cliente.foto_url)!} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
                       cliente.nome_completo.charAt(0).toUpperCase()
                     )}

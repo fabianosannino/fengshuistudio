@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import { logger } from '../../src/lib/logger'
+
+const ORIGEM = 'NotificationBell'
 
 export default function NotificationBell() {
   const [count, setCount] = useState(0)
@@ -12,13 +15,19 @@ export default function NotificationBell() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data, count: total } = await supabase
+      const { data, count: total, error } = await supabase
         .from('payment_notifications')
         .select('*', { count: 'exact' })
         .eq('user_id', user.id)
         .is('read_at', null)
         .order('created_at', { ascending: false })
         .limit(5)
+      if (error) {
+        // Sem isto, uma falha de leitura vira "nenhuma notificação" — o sino
+        // some da tela como se estivesse tudo em dia.
+        logger.error('Falha ao carregar notificações', { route: ORIGEM, error: error.message })
+        return
+      }
       setNotifications(data || [])
       setCount(total || 0)
     }
@@ -26,7 +35,18 @@ export default function NotificationBell() {
   }, [])
 
   async function markRead(id: string) {
-    await supabase.from('payment_notifications').update({ read_at: new Date().toISOString() }).eq('id', id)
+    const { error } = await supabase
+      .from('payment_notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (error) {
+      // Marcar como lida só na tela faria a notificação reaparecer no próximo
+      // carregamento, sem explicação. Melhor ela continuar visível.
+      logger.error('Falha ao marcar notificação como lida', { route: ORIGEM, error: error.message })
+      return
+    }
+
     setNotifications(prev => prev.filter(n => n.id !== id))
     setCount(prev => Math.max(0, prev - 1))
   }

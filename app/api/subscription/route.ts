@@ -9,11 +9,11 @@
 
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
-import { rateLimit } from '../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 
 export async function GET(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success: rateLimitOk } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success: rateLimitOk } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!rateLimitOk) {
     return NextResponse.json({ error: 'Rate limit' }, { status: 429 })
   }

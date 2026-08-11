@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
+import { caminhoDoObjeto } from '../../../../src/lib/storage-imagens'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const BUCKET = 'imoveis-fotos'
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 60, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 60, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const uploadedUrls: string[] = []
+  const caminhos: string[] = []
 
   for (const file of files) {
     // Extensão derivada do MIME já validado acima, nunca de file.name.
@@ -81,16 +82,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Erro ao enviar ${file.name}.` }, { status: 500 })
     }
 
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
-    uploadedUrls.push(urlData.publicUrl)
+    // Devolvemos o **path**, não a URL pública: é o path que a tela manda
+    // assinar. O bucket está de saída para privado (C8) e uma URL pública
+    // gravada hoje seria uma linha a mais para o backfill limpar depois.
+    caminhos.push(filePath)
   }
 
-  return NextResponse.json({ urls: uploadedUrls })
+  return NextResponse.json({ paths: caminhos })
 }
 
 export async function DELETE(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
@@ -128,10 +131,19 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
   }
 
-  // Extract path from URL
-  const pathMatch = url.split(`/${BUCKET}/`)[1]
+  // Aceita path (novo) ou URL pública completa (linhas antigas).
+  const pathMatch = caminhoDoObjeto(url, BUCKET)
   if (pathMatch) {
-    await supabase.storage.from(BUCKET).remove([pathMatch])
+    // A RLS de storage.objects amarra o arquivo ao dono da consulta (primeira
+    // pasta do path). Sem checar o erro, uma remoção recusada pela policy
+    // devolvia `success: true` e a foto continuava lá.
+    const { error: removeError } = await supabase.storage.from(BUCKET).remove([pathMatch])
+    if (removeError) {
+      logger.error('Falha ao remover foto do storage', {
+        route: '/api/consultas/fotos', consultaId: consulta_id, error: removeError.message,
+      })
+      return NextResponse.json({ error: 'Não foi possível remover a foto' }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ success: true })

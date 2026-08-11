@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../src/lib/supabase-admin'
-import { rateLimit } from '../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
 import { planoEfetivo } from '../../../src/lib/plano-utils'
 
@@ -16,8 +16,8 @@ function safeCompare(a: string, b: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 10, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

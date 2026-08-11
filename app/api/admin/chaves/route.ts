@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 
 // Characters without ambiguous glyphs (no 0, O, I, 1)
@@ -36,8 +36,8 @@ async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandle
 
 // GET — list keys with optional filters
 export async function GET(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
@@ -107,8 +107,8 @@ export async function GET(request: Request) {
 
 // POST — generate new keys
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 10, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
@@ -166,8 +166,8 @@ export async function POST(request: Request) {
 
 // PATCH — cancel a key
 export async function PATCH(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()

@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
-import { rateLimit } from '../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
 import { planoEfetivo, podeClientes, isProfissional as isProfissionalFn, planoUsuario } from '../../../src/lib/plano-utils'
 const MAX_CONSULTAS_MES_FREE = 3
 const MAX_IMOVEIS_PESSOAL = 3
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success, remaining } = rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success, remaining } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

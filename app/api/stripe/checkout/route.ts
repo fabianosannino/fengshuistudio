@@ -17,15 +17,15 @@
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { logger } from '../../../../src/lib/logger'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 
 // Percentual que a plataforma retém em cada venda (direct charge).
 const APPLICATION_FEE_PERCENT = 10
 const MAX_QUANTITY = 100
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 15, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 15, windowMs: 60_000 })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
