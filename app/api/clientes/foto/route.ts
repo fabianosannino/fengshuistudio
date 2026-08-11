@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
+import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -52,11 +53,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
   }
 
-  // Delete old photo if exists
+  // Delete old photo if exists. Best-effort declarado: falhar aqui vaza um
+  // arquivo órfão, não corrompe dado — e não deve impedir a troca da foto.
   if (cliente.foto_url) {
     const oldPath = cliente.foto_url.split('/clientes-fotos/')[1]
     if (oldPath) {
-      await supabase.storage.from('clientes-fotos').remove([oldPath])
+      await escreverBestEffort(
+        supabase.storage.from('clientes-fotos').remove([oldPath]),
+        { rota: '/api/clientes/foto', operacao: 'remove-foto-antiga', userId: user.id }
+      )
     }
   }
 
@@ -137,17 +142,31 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
   }
 
+  // Ordem deliberada: primeiro solta a referência, depois apaga o arquivo. O
+  // inverso deixaria o cliente apontando para um arquivo que não existe mais
+  // se o update falhasse — imagem quebrada em vez de foto removida.
+  try {
+    await escreverOuFalhar(
+      supabase
+        .from('clientes')
+        .update({ foto_url: null })
+        .eq('id', cliente_id),
+      { rota: '/api/clientes/foto', operacao: 'limpar-foto-url', userId: user.id }
+    )
+  } catch {
+    // Detalhe já registrado pelo helper.
+    return NextResponse.json({ error: 'Não foi possível remover a foto.' }, { status: 500 })
+  }
+
   if (cliente.foto_url) {
     const oldPath = cliente.foto_url.split('/clientes-fotos/')[1]
     if (oldPath) {
-      await supabase.storage.from('clientes-fotos').remove([oldPath])
+      await escreverBestEffort(
+        supabase.storage.from('clientes-fotos').remove([oldPath]),
+        { rota: '/api/clientes/foto', operacao: 'remove-foto', userId: user.id }
+      )
     }
   }
-
-  await supabase
-    .from('clientes')
-    .update({ foto_url: null })
-    .eq('id', cliente_id)
 
   return NextResponse.json({ success: true })
 }

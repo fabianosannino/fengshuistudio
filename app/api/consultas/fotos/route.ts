@@ -131,7 +131,16 @@ export async function DELETE(request: Request) {
   // Extract path from URL
   const pathMatch = url.split(`/${BUCKET}/`)[1]
   if (pathMatch) {
-    await supabase.storage.from(BUCKET).remove([pathMatch])
+    // A RLS de storage.objects amarra o arquivo ao dono da consulta (primeira
+    // pasta do path). Sem checar o erro, uma remoção recusada pela policy
+    // devolvia `success: true` e a foto continuava lá.
+    const { error: removeError } = await supabase.storage.from(BUCKET).remove([pathMatch])
+    if (removeError) {
+      logger.error('Falha ao remover foto do storage', {
+        route: '/api/consultas/fotos', consultaId: consulta_id, error: removeError.message,
+      })
+      return NextResponse.json({ error: 'Não foi possível remover a foto' }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ success: true })

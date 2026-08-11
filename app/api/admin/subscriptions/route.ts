@@ -2,7 +2,53 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 import stripeClient from '../../../../src/lib/stripe'
+
+const ROUTE = '/api/admin/subscriptions'
+
+type ClienteSupabase = Awaited<ReturnType<typeof createRouteHandlerClient>>
+
+interface EntradaAuditoria {
+  action: string
+  target_type: string
+  target_id: string
+  details: Record<string, unknown>
+}
+
+/**
+ * A trilha de auditoria é best-effort *declarado*: a ação administrativa já
+ * aconteceu quando chegamos aqui, então lançar devolveria "erro" para algo que
+ * foi aplicado. O retorno vira aviso na resposta — o admin fica sabendo que a
+ * ação valeu mas não ficou registrada, em vez de nós escolhermos por ele qual
+ * das duas mentiras contar (ADR 0019/0020).
+ */
+async function registrarAuditoria(
+  supabase: ClienteSupabase,
+  entrada: EntradaAuditoria,
+  adminId: string
+): Promise<boolean> {
+  return escreverBestEffort(
+    supabase.from('admin_audit_log').insert({
+      ...entrada,
+      performed_by: adminId,
+      performed_at: new Date().toISOString(),
+    }),
+    { rota: ROUTE, operacao: `audit-${entrada.action}`, userId: adminId }
+  )
+}
+
+/** Sucesso honesto: se a auditoria não gravou, a mensagem diz. */
+function respostaDeAcao(mensagem: string, auditoriaRegistrada: boolean, extra?: Record<string, unknown>) {
+  return NextResponse.json({
+    success: true,
+    message: auditoriaRegistrada
+      ? mensagem
+      : `${mensagem}. Atenção: a ação foi aplicada, mas não foi registrada na trilha de auditoria`,
+    auditoria_registrada: auditoriaRegistrada,
+    ...extra,
+  })
+}
 
 async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -102,8 +148,8 @@ export async function GET(request: Request) {
 
     const { data: users, count, error } = await query
     if (error) {
-      logger.error('Admin subscriptions list error', { route: '/api/admin/subscriptions', error: error.message })
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      logger.error('Admin subscriptions list error', { route: ROUTE, error: error.message })
+      return NextResponse.json({ error: 'Não foi possível carregar a lista' }, { status: 400 })
     }
 
     // If status filter active, filter client-side (since subscription status is in joined table)
@@ -168,23 +214,27 @@ export async function POST(request: Request) {
         await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
 
         // Create gratuidade subscription
-        const { error: subErr } = await supabase.from('subscriptions').insert({
-          user_id: targetUserId,
-          plan_id: plan.id,
-          billing_cycle: 'monthly',
-          status: 'gratuidade',
-          price_paid: 0,
-          current_period_start: now.toISOString(),
-          current_period_end: periodEnd?.toISOString() || null,
-          gratuidade_motivo: motivo,
-        })
-        if (subErr) throw subErr
+        await escreverOuFalhar(
+          supabase.from('subscriptions').insert({
+            user_id: targetUserId,
+            plan_id: plan.id,
+            billing_cycle: 'monthly',
+            status: 'gratuidade',
+            price_paid: 0,
+            current_period_start: now.toISOString(),
+            current_period_end: periodEnd?.toISOString() || null,
+            gratuidade_motivo: motivo,
+          }),
+          { rota: ROUTE, operacao: 'insert-subscription-gratuidade', userId: targetUserId }
+        )
 
         // Update profile plan
-        await supabase.from('profiles').update({ plano: planSlug }).eq('id', targetUserId)
+        await escreverOuFalhar(
+          supabase.from('profiles').update({ plano: planSlug }).eq('id', targetUserId),
+          { rota: ROUTE, operacao: 'update-profile-plano', userId: targetUserId }
+        )
 
-        // Audit log
-        await supabase.from('admin_audit_log').insert({
+        const auditoriaOk = await registrarAuditoria(supabase, {
           action: 'gratuidade',
           target_type: 'user',
           target_id: targetUserId,
@@ -196,10 +246,9 @@ export async function POST(request: Request) {
             motivo,
             previous_plan: targetProfile.plano,
           },
-          performed_by: admin.user.id,
-        })
+        }, admin.user.id)
 
-        return NextResponse.json({ success: true, message: `Gratuidade ${planSlug} concedida para ${targetProfile.nome_completo}` })
+        return respostaDeAcao(`Gratuidade ${planSlug} concedida para ${targetProfile.nome_completo}`, auditoriaOk)
       }
 
       case 'change_plan': {
@@ -219,28 +268,33 @@ export async function POST(request: Request) {
         if (newPlan !== 'free') {
           const now = new Date()
           // Create new subscription
-          await supabase.from('subscriptions').insert({
-            user_id: targetUserId,
-            plan_id: plan.id,
-            billing_cycle: 'monthly',
-            status: 'active',
-            price_paid: 0,
-            current_period_start: now.toISOString(),
-          })
+          await escreverOuFalhar(
+            supabase.from('subscriptions').insert({
+              user_id: targetUserId,
+              plan_id: plan.id,
+              billing_cycle: 'monthly',
+              status: 'active',
+              price_paid: 0,
+              current_period_start: now.toISOString(),
+            }),
+            { rota: ROUTE, operacao: 'insert-subscription-change-plan', userId: targetUserId }
+          )
         }
 
         // Update profile
-        await supabase.from('profiles').update({ plano: newPlan }).eq('id', targetUserId)
+        await escreverOuFalhar(
+          supabase.from('profiles').update({ plano: newPlan }).eq('id', targetUserId),
+          { rota: ROUTE, operacao: 'update-profile-plano', userId: targetUserId }
+        )
 
-        await supabase.from('admin_audit_log').insert({
+        const auditoriaOk = await registrarAuditoria(supabase, {
           action: 'change_plan',
           target_type: 'user',
           target_id: targetUserId,
           details: { user_nome: targetProfile.nome_completo, previous_plan: previousPlan, new_plan: newPlan, motivo },
-          performed_by: admin.user.id,
-        })
+        }, admin.user.id)
 
-        return NextResponse.json({ success: true, message: `Plano alterado para ${newPlan}` })
+        return respostaDeAcao(`Plano alterado para ${newPlan}`, auditoriaOk)
       }
 
       case 'cancel_subscription': {
@@ -253,7 +307,10 @@ export async function POST(request: Request) {
         if (immediate) {
           // Cancel in Stripe first
           await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
-          await supabase.from('profiles').update({ plano: 'free' }).eq('id', targetUserId)
+          await escreverOuFalhar(
+            supabase.from('profiles').update({ plano: 'free' }).eq('id', targetUserId),
+            { rota: ROUTE, operacao: 'downgrade-profile-free', userId: targetUserId }
+          )
         } else {
           // Cancel at period end — sync with Stripe
           const { data: activeSubs } = await supabase
@@ -277,30 +334,39 @@ export async function POST(request: Request) {
             }
           }
 
-          await supabase.from('subscriptions').update({ cancel_at_period_end: true, updated_at: now.toISOString() })
-            .eq('user_id', targetUserId).in('status', ['active', 'gratuidade'])
+          await escreverOuFalhar(
+            supabase.from('subscriptions')
+              .update({ cancel_at_period_end: true, updated_at: now.toISOString() })
+              .eq('user_id', targetUserId).in('status', ['active', 'gratuidade']),
+            { rota: ROUTE, operacao: 'update-subscription-cancel-at-period-end', userId: targetUserId }
+          )
         }
 
-        await supabase.from('admin_audit_log').insert({
+        const auditoriaOk = await registrarAuditoria(supabase, {
           action: 'cancel_subscription',
           target_type: 'user',
           target_id: targetUserId,
           details: { user_nome: targetProfile.nome_completo, immediate, motivo, previous_plan: targetProfile.plano },
-          performed_by: admin.user.id,
-        })
+        }, admin.user.id)
 
-        // Notify user
-        await supabase.from('payment_notifications').insert({
-          user_id: targetUserId,
-          type: immediate ? 'subscription_cancelled' : 'subscription_cancel_scheduled',
-          channel: 'in_app',
-          sent_at: now.toISOString(),
-          content: immediate
-            ? `Sua assinatura foi cancelada. Motivo: ${motivo}`
-            : `Sua assinatura será cancelada ao final do período atual. Motivo: ${motivo}`,
-        })
+        // Notify user — falhar aqui não desfaz o cancelamento, mas não pode sumir
+        await escreverBestEffort(
+          supabase.from('payment_notifications').insert({
+            user_id: targetUserId,
+            type: immediate ? 'subscription_cancelled' : 'subscription_cancel_scheduled',
+            channel: 'in_app',
+            sent_at: now.toISOString(),
+            content: immediate
+              ? `Sua assinatura foi cancelada. Motivo: ${motivo}`
+              : `Sua assinatura será cancelada ao final do período atual. Motivo: ${motivo}`,
+          }),
+          { rota: ROUTE, operacao: 'insert-notification-cancelamento', userId: targetUserId }
+        )
 
-        return NextResponse.json({ success: true, message: immediate ? 'Assinatura cancelada imediatamente' : 'Assinatura será cancelada ao final do período' })
+        return respostaDeAcao(
+          immediate ? 'Assinatura cancelada imediatamente' : 'Assinatura será cancelada ao final do período',
+          auditoriaOk
+        )
       }
 
       case 'mark_paid': {
@@ -319,31 +385,36 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Fatura já está marcada como paga' }, { status: 400 })
         }
 
-        await supabase.from('invoices').update({
-          status: 'paid',
-          paid_at: paidDate || new Date().toISOString(),
-          amount_paid: invoice.amount,
-          paid_manually: true,
-          paid_method: paidMethod || 'manual',
-          paid_by_admin: admin.user.id,
-          notes: observation || null,
-        }).eq('id', invoiceId)
+        await escreverOuFalhar(
+          supabase.from('invoices').update({
+            status: 'paid',
+            paid_at: paidDate || new Date().toISOString(),
+            amount_paid: invoice.amount,
+            paid_manually: true,
+            paid_method: paidMethod || 'manual',
+            paid_by_admin: admin.user.id,
+            notes: observation || null,
+          }).eq('id', invoiceId),
+          { rota: ROUTE, operacao: 'update-invoice-paid', userId: targetUserId }
+        )
 
         // Reactivate subscription if it was past_due
         if (invoice.subscription_id) {
-          await supabase.from('subscriptions').update({ status: 'active', updated_at: new Date().toISOString() })
-            .eq('id', invoice.subscription_id).eq('status', 'past_due')
+          await escreverOuFalhar(
+            supabase.from('subscriptions').update({ status: 'active', updated_at: new Date().toISOString() })
+              .eq('id', invoice.subscription_id).eq('status', 'past_due'),
+            { rota: ROUTE, operacao: 'reactivate-subscription', userId: targetUserId }
+          )
         }
 
-        await supabase.from('admin_audit_log').insert({
+        const auditoriaOk = await registrarAuditoria(supabase, {
           action: 'mark_paid',
           target_type: 'invoice',
           target_id: invoiceId,
           details: { user_nome: targetProfile.nome_completo, amount: invoice.amount, paid_method: paidMethod, observation },
-          performed_by: admin.user.id,
-        })
+        }, admin.user.id)
 
-        return NextResponse.json({ success: true, message: 'Fatura marcada como paga' })
+        return respostaDeAcao('Fatura marcada como paga', auditoriaOk)
       }
 
       case 'refund': {
@@ -400,32 +471,56 @@ export async function POST(request: Request) {
               error: String(err),
               invoiceId,
             })
+            // Detalhe do erro fica no logger acima — ao cliente vai a
+            // informação acionável, sem eco da mensagem do gateway (ADR 0019).
             return NextResponse.json({
-              error: `Erro ao processar reembolso no Stripe: ${String(err)}. Use "crédito" para registrar sem reembolso real.`,
+              error: 'Não foi possível processar o reembolso no Stripe. ' +
+                'Use "crédito" para registrar sem reembolso real.',
             }, { status: 500 })
           }
         }
 
-        await supabase.from('invoices').update({
-          status: isCredit ? 'paid' : 'refunded',
-          refunded_at: new Date().toISOString(),
-          refund_amount: amount,
-          notes: `${isCredit ? 'Crédito' : 'Reembolso'}: ${motivo}${stripeRefundId ? ` (Stripe: ${stripeRefundId})` : ''}`,
-        }).eq('id', invoiceId)
+        // O dinheiro já saiu do Stripe neste ponto. Se a gravação local falhar,
+        // lançar devolveria "erro" para um reembolso que aconteceu — e o admin
+        // tentaria de novo, reembolsando duas vezes. Por isso aqui é
+        // best-effort com resposta explícita, não exceção.
+        const invoiceGravada = await escreverBestEffort(
+          supabase.from('invoices').update({
+            status: isCredit ? 'paid' : 'refunded',
+            refunded_at: new Date().toISOString(),
+            refund_amount: amount,
+            notes: `${isCredit ? 'Crédito' : 'Reembolso'}: ${motivo}${stripeRefundId ? ` (Stripe: ${stripeRefundId})` : ''}`,
+          }).eq('id', invoiceId),
+          { rota: ROUTE, operacao: 'update-invoice-refunded', userId: targetUserId }
+        )
+
+        if (!invoiceGravada && stripeRefundId) {
+          logger.error('Reembolso processado no Stripe sem registro local', {
+            route: ROUTE, invoiceId, stripeRefundId, userId: targetUserId,
+          })
+          return NextResponse.json({
+            error: `O reembolso FOI processado no Stripe (${stripeRefundId}), mas não foi possível ` +
+              'registrá-lo na fatura. NÃO repita a operação — corrija o registro manualmente.',
+            stripe_refund_id: stripeRefundId,
+          }, { status: 500 })
+        }
 
         // Notify user
-        await supabase.from('payment_notifications').insert({
-          user_id: targetUserId,
-          invoice_id: invoiceId,
-          type: isCredit ? 'credit_applied' : 'refund_processed',
-          channel: 'in_app',
-          sent_at: new Date().toISOString(),
-          content: isCredit
-            ? `Crédito de R$ ${amount.toFixed(2)} aplicado à sua conta. Motivo: ${motivo}`
-            : `Reembolso de R$ ${amount.toFixed(2)} processado. O valor será devolvido ao seu meio de pagamento original.`,
-        })
+        await escreverBestEffort(
+          supabase.from('payment_notifications').insert({
+            user_id: targetUserId,
+            invoice_id: invoiceId,
+            type: isCredit ? 'credit_applied' : 'refund_processed',
+            channel: 'in_app',
+            sent_at: new Date().toISOString(),
+            content: isCredit
+              ? `Crédito de R$ ${amount.toFixed(2)} aplicado à sua conta. Motivo: ${motivo}`
+              : `Reembolso de R$ ${amount.toFixed(2)} processado. O valor será devolvido ao seu meio de pagamento original.`,
+          }),
+          { rota: ROUTE, operacao: 'insert-notification-reembolso', userId: targetUserId }
+        )
 
-        await supabase.from('admin_audit_log').insert({
+        const auditoriaOk = await registrarAuditoria(supabase, {
           action: isCredit ? 'credit' : 'refund',
           target_type: 'invoice',
           target_id: invoiceId,
@@ -436,16 +531,15 @@ export async function POST(request: Request) {
             is_credit: isCredit,
             stripe_refund_id: stripeRefundId,
           },
-          performed_by: admin.user.id,
-        })
+        }, admin.user.id)
 
-        return NextResponse.json({
-          success: true,
-          message: isCredit
+        return respostaDeAcao(
+          isCredit
             ? 'Crédito registrado'
             : `Reembolso de R$ ${amount.toFixed(2)} processado${stripeRefundId ? ' via Stripe' : ''}`,
-          stripe_refund_id: stripeRefundId,
-        })
+          auditoriaOk,
+          { stripe_refund_id: stripeRefundId }
+        )
       }
 
       default:
@@ -488,10 +582,14 @@ async function cancelExistingSubscriptions(
     }
   }
 
-  // Cancel all locally
-  await supabase
-    .from('subscriptions')
-    .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
-    .eq('user_id', userId)
-    .in('status', ['active', 'past_due', 'gratuidade', 'trial'])
+  // Cancel all locally. Falhar aqui deixaria o usuário com assinatura ativa no
+  // banco e cancelada no Stripe — divergência que precisa abortar a ação.
+  await escreverOuFalhar(
+    supabase
+      .from('subscriptions')
+      .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
+      .eq('user_id', userId)
+      .in('status', ['active', 'past_due', 'gratuidade', 'trial']),
+    { rota: ROUTE, operacao: 'cancel-subscriptions-local', userId }
+  )
 }
