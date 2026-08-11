@@ -19,6 +19,21 @@ import { dataSolar } from '../../src/lib/data-solar'
 import { zhengShenLingShen } from '../../src/lib/liu-fa'
 import { calcularMingGua, normalizarGenero } from '../../src/lib/ming-gua'
 import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
+import {
+  calcularSetores,
+  type Bounds,
+  type Marcacao,
+  type Setor,
+} from '../../src/lib/geometria-bagua'
+import {
+  corGeo,
+  corTotal,
+  criteriosAvaliados,
+  geoEfetivo,
+  rotuloGeo as lblGeo,
+  rotuloTotal as lblTotal,
+  scoreTotal,
+} from '../../src/lib/escala-score'
 import { urlExibivel } from '../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../src/lib/storage-imagens'
 import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
@@ -86,25 +101,9 @@ const SETOR_NOMEADO_PARA_COMPASSO: [string, SetorCompasso][] = [
 
 type Step   = 'upload' | 'metragem' | 'configurar' | 'entrada' | 'resultado'
 type Lado   = 'esquerda' | 'centro' | 'direita'
-type Bounds = { x:number; y:number; w:number; h:number }
-type Marcacao = { id:string; tipo:'falta'|'excesso'; x:number; y:number; w:number; h:number }
 type Drag   = { tipo:'borda'; lado:'top'|'bottom'|'left'|'right' }
             | { tipo:'marcacao-mover'; id:string; offX:number; offY:number }
             | { tipo:'marcacao-resize'; id:string; canto:'tl'|'tr'|'bl'|'br' }
-type Setor  = {
-  /** Uma posição por critério. `null` = não avaliado (≠ «Neutro»). */
-  criterios:(NotaCriterio|null)[];
-  geo:number;         // 100 - faltaPct - excessoPct (já é uma nota 0–100)
-  faltaArea:number;   // falta area in px² for this sector
-  excessoArea:number; // excesso area in px² for this sector
-  faltaPct:number;    // falta as % of sector area
-  excessoPct:number;  // excesso as % of sector area
-  /** Manual geo adjustment — fine-tuning (Avançado) */
-  ajusteManual:number|null;
-  ajusteTipo:'equilibrado'|'faltante'|'excedente'|null;
-  obs:string;
-}
-
 const DRAG = 18
 
 // ─── FUNÇÕES PURAS ────────────────────────────────────────────────────────────
@@ -119,123 +118,9 @@ function buildRot(img: HTMLImageElement, deg: number): HTMLCanvasElement {
   return c
 }
 
-// Compute overlap area between two rectangles
-function rectOverlap(r:{x:number;y:number;w:number;h:number}, sx:number,sy:number,sw:number,sh:number):number{
-  const ox=Math.max(0,Math.min(r.x+r.w,sx+sw)-Math.max(r.x,sx))
-  const oy=Math.max(0,Math.min(r.y+r.h,sy+sh)-Math.max(r.y,sy))
-  return ox*oy
-}
-
-// For excesso: compute only the area OUTSIDE the main bounds
-function excessoAreaExterna(m:Marcacao, b:Bounds):number{
-  const totalArea=m.w*m.h
-  const overlapComBounds=rectOverlap(m,b.x,b.y,b.w,b.h)
-  return Math.max(0,totalArea-overlapComBounds)
-}
-
-// New calculation: purely from manual marcacoes, no pixel detection
-function calcularSetores(b:Bounds, lh:number[], lv:number[], marcacoes:Marcacao[]): Setor[] {
-  const boundsArea = b.w * b.h
-  const sectorArea = boundsArea / 9
-
-  // Pre-compute external excesso areas and distribute to nearest sectors
-  const excessoExterno = Array(9).fill(0) as number[]
-  for(const m of marcacoes){
-    if(m.tipo!=='excesso') continue
-    const extArea=excessoAreaExterna(m,b)
-    if(extArea<=0) continue
-    // Distribute external area to the sectors whose edges are closest
-    // Find which sectors the excesso is adjacent to by extending sector boundaries
-    const sectorWeights=Array(9).fill(0) as number[]
-    let totalWeight=0
-    for(let idx=0;idx<9;idx++){
-      const row=Math.floor(idx/3),col=idx%3
-      const sx0=b.x+(col===0?0:b.w*lv[col-1]),sx1=b.x+(col===2?b.w:b.w*lv[col])
-      const sy0=b.y+(row===0?0:b.h*lh[row-1]),sy1=b.y+(row===2?b.h:b.h*lh[row])
-      // Extend sector bounds outward (large extent for edge sectors)
-      const ext=Math.max(b.w,b.h)*2
-      const exX0=col===0?sx0-ext:sx0, exX1=col===2?sx1+ext:sx1
-      const exY0=row===0?sy0-ext:sy0, exY1=row===2?sy1+ext:sy1
-      const overlap=rectOverlap(m,exX0,exY0,exX1-exX0,exY1-exY0)
-      // Subtract overlap with the actual sector (internal part)
-      const internalOverlap=rectOverlap(m,sx0,sy0,sx1-sx0,sy1-sy0)
-      const weight=Math.max(0,overlap-internalOverlap)
-      sectorWeights[idx]=weight
-      totalWeight+=weight
-    }
-    if(totalWeight>0){
-      for(let idx=0;idx<9;idx++){
-        excessoExterno[idx]+=extArea*(sectorWeights[idx]/totalWeight)
-      }
-    }
-  }
-
-  return Array(9).fill(0).map((_,idx)=>{
-    const row=Math.floor(idx/3),col=idx%3
-    const x0=b.x+(col===0?0:b.w*lv[col-1]),x1=b.x+(col===2?b.w:b.w*lv[col])
-    const y0=b.y+(row===0?0:b.h*lh[row-1]),y1=b.y+(row===2?b.h:b.h*lh[row])
-    const sw=x1-x0,sh=y1-y0
-
-    let faltaArea=0
-    for(const m of marcacoes){
-      if(m.tipo!=='falta') continue
-      const overlap=rectOverlap(m,x0,y0,sw,sh)
-      if(overlap>0) faltaArea+=overlap
-    }
-    const excessoArea=excessoExterno[idx]
-    const faltaPct = sectorArea > 0 ? (faltaArea / sectorArea) * 100 : 0
-    const excessoPct = sectorArea > 0 ? (excessoArea / sectorArea) * 100 : 0
-    const geo = 100 - faltaPct - excessoPct
-
-    return {criterios:Array(8).fill(null) as (NotaCriterio|null)[],geo,faltaArea,excessoArea,faltaPct,excessoPct,ajusteManual:null,ajusteTipo:null,obs:''}
-  })
-}
-
 // ─── NEW SCORING SYSTEM ──────────────────────────────────────────────────────
 /** Estado físico normalizado 0–100. `null` = nenhum critério avaliado. */
 function scoreFisico(c:readonly (NotaCriterio|null)[]):number|null{return pontuacaoFisica(c)}
-// Effective geo (with manual adjustment if set)
-function geoEfetivo(sc:Setor):number{return sc.ajusteManual!==null?sc.ajusteManual:sc.geo}
-/**
- * Nota do setor pelo modelo escolhido na consulta.
- *
- * Antes era `geoEfetivo(sc) + scoreFisico(...)`, somando um desvio de −16..+16 a
- * uma nota que já era 0–100 — daí «tudo neutro = 100%» e valores acima de 100.
- * Ver `modelos-pontuacao` e a ADR correspondente.
- */
-function scoreTotal(sc:Setor,modelo:IdModeloPontuacao,pesoGeo:number):number|null{
-  return calcularPontuacao(modelo,{criterios:sc.criterios,geo:geoEfetivo(sc),pesoGeo}).valor
-}
-// Geo color based on sector data: Green (equilibrado), Red (falta), Orange (excesso)
-function corGeo(geo:number, sc?:Setor):string{
-  if(Math.abs(geo-100)<0.5) return '#15803D'
-  if(sc && sc.excessoPct > sc.faltaPct) return '#D97706' // Orange for excesso-dominant
-  return '#DC2626' // Red for falta-dominant
-}
-// Geo label based on sector data
-function lblGeo(geo:number, sc?:Setor):string{
-  if(Math.abs(geo-100)<0.5) return 'Equilibrado'
-  if(sc && sc.excessoPct > sc.faltaPct) return 'Excesso'
-  if(sc && sc.faltaPct > sc.excessoPct) return 'Falta'
-  return 'Desequilíbrio'
-}
-// Total score color (quality scale)
-/** Cinza quando não há nota: ausência de dado não ganha cor de julgamento. */
-function corTotal(t:number|null):string{
-  if(t===null) return '#9CA3AF'
-  return t>=95?'#15803D':t>=80?'#65A30D':t>=60?'#D97706':t>=40?'#EA580C':'#DC2626'
-}
-function lblTotal(t:number|null):string{
-  if(t===null) return 'Não avaliado'
-  return t>=95?'Excelente':t>=80?'Bom':t>=60?'Regular':t>=40?'Ruim':'Crítico'
-}
-/**
- * Antes era `c.some(v=>v!==2)` — adivinhava «avaliado» por diferença do default,
- * então quem marcasse tudo como «Neutro» de propósito aparecia como não
- * avaliado. Com `null` a pergunta passa a ter resposta exata.
- */
-function criteriosAvaliados(c:readonly (NotaCriterio|null)[]):boolean{return c.some(v=>v!==null)}
-
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
 function BaguaPlantaContent() {

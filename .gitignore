@@ -44,3 +44,13 @@ next-env.d.ts
 # supabase cli temp files
 supabase/.temp/
 .corpus-txt/
+
+# Planilhas, documentos e PDFs de trabalho na RAIZ do repo.
+# Eram 12 arquivos (~1,5 MB) versionados com controle de versão por nome
+# (`v3`, `v3.1`… `v3.4`) — o git já faz isso, e binário não faz diff. O lugar
+# deles é um drive compartilhado. O histórico continua tendo cada versão:
+# `git log --all --diff-filter=D --name-only` acha, `git checkout <sha> -- <arquivo>` traz de volta.
+/*.xlsx
+/*.docx
+/*.pdf
+/*.png
