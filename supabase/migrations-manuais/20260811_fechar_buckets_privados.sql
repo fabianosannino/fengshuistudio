@@ -37,8 +37,26 @@
 -- 5. Abrir o relatório e **baixar o PDF** → as fotos aparecem no PDF, não
 --    espaços em branco. Este é o passo que justifica o staging.
 -- 6. Copiar a URL pública de uma foto (do banco, antes do backfill) e abrir
---    numa aba anônima → deve dar **400/404**. Se ainda abrir, o bucket não
---    fechou.
+--    numa aba anônima → deve dar **404 `NoSuchBucket`**.
+--
+--    ⚠ **A URL exata pode continuar devolvendo 200 e isso NÃO significa que o
+--    bucket ficou aberto.** As respostas públicas passam por CDN
+--    (`cache-control: public, max-age=3600`), e o Cloudflare continua servindo
+--    a cópia em cache das URLs já requisitadas — inclusive ignorando
+--    `Cache-Control: no-cache` do cliente. Verificado ao aplicar em produção
+--    em 11/08: a mesma URL devolvia `HTTP 200` + `cf-cache-status: HIT` com o
+--    bucket já `public = false`.
+--
+--    Para ver o origin, acrescente um parâmetro à URL (`?v=<timestamp>`), o
+--    que força MISS no edge:
+--
+--      curl -s "<url-publica>?v=$(date +%s)"
+--      → {"statusCode":"404","error":"Bucket not found","code":"NoSuchBucket"}
+--
+--    A janela residual é de no máximo 1 hora **por edge**, e só para URLs que
+--    alguém já tinha buscado. Um objeto nunca requisitado fecha na hora.
+--    Cuidado com o falso negativo ao contrário: testar a URL sem o parâmetro
+--    logo depois de aplicar sugere que nada mudou, e leva a reverter à toa.
 -- 7. Logar como OUTRO consultor e pedir `/api/storage/assinar` com o path de
 --    uma foto alheia → resposta `{ urls: {} }`, sem assinatura.
 --
