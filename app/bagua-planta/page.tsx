@@ -2259,7 +2259,7 @@ function BaguaPlantaContent() {
                         return (
                           <div style={{marginTop:'8px'}}>
                             <p style={{margin:'0 0 8px',fontSize:'10px',color:'#4C1D95'}}>
-                              Regra 坐凶向吉 ("sentar no mal, olhar para o bem"): o corpo do objeto pode estar num setor
+                              Regra 坐凶向吉 (&ldquo;sentar no mal, olhar para o bem&rdquo;): o corpo do objeto pode estar num setor
                               desfavorável — é onde essas coisas normalmente já estão — mas a direção para a qual ele
                               aponta (boca do fogão, perpendicular à cabeceira da cama, olhar na mesa) deve ser favorável
                               para quem o usa.

@@ -23,8 +23,11 @@ function NovaConsultaContent() {
   const [totalConsultas, setTotalConsultas] = useState(0)
   const [consultasAtivas, setConsultasAtivas] = useState(0)
 
+  // `clienteId` vem da query string e já está disponível no primeiro render:
+  // dá para nascer no estado inicial, em vez de um efeito que corrige logo
+  // depois (o que renderizava uma vez com o campo vazio).
   const [form, setForm] = useState({
-    cliente_id: '',
+    cliente_id: preSelectedClientId ?? '',
     nome_imovel: '',
     tipo_imovel: 'residencial',
     area_total_m2: '',
@@ -36,12 +39,6 @@ function NovaConsultaContent() {
   })
 
   const isProfessional = isProfissionalFn(profile)
-
-  useEffect(() => {
-    if (preSelectedClientId) {
-      setForm(prev => ({ ...prev, cliente_id: preSelectedClientId }))
-    }
-  }, [preSelectedClientId])
 
   useEffect(() => {
     async function load() {

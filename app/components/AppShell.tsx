@@ -8,6 +8,13 @@ import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional 
 import PaymentBanner from './PaymentBanner'
 import NotificationBell from './NotificationBell'
 import {
+  useMontado,
+  useEhMobile,
+  usePreferenciaBooleana,
+  PREFERENCIA_TEMA_ESCURO,
+  PREFERENCIA_SIDEBAR_ABERTA,
+} from './hooks-cliente'
+import {
   LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
   Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard,
   BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu,
@@ -23,13 +30,15 @@ export default function AppShell({
   children: React.ReactNode
   currentPage: string
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [user, setUser] = useState<User | null>(null)
-  const [mounted, setMounted] = useState(false)
+
+  // Vindos do browser, sem efeito de sincronização — ver hooks-cliente.ts.
+  const mounted = useMontado()
+  const isMobile = useEhMobile()
+  const [darkMode, setDarkMode] = usePreferenciaBooleana(PREFERENCIA_TEMA_ESCURO, false)
+  const [sidebarOpen, setSidebarOpen] = usePreferenciaBooleana(PREFERENCIA_SIDEBAR_ABERTA, true)
 
   const isProfessional = isProfissionalFn(profile)
   const isAdmin = profile?.role === 'admin'
@@ -72,22 +81,6 @@ export default function AppShell({
     : baseNav
 
   useEffect(() => {
-    setMounted(true)
-    setIsMobile(window.innerWidth < 768)
-
-    function handleResize() { setIsMobile(window.innerWidth < 768) }
-    window.addEventListener('resize', handleResize)
-
-    try {
-      const saved = localStorage.getItem('fengshui-dark')
-      if (saved === 'true') setDarkMode(true)
-
-      const savedSidebar = localStorage.getItem('fengshui-sidebar')
-      if (savedSidebar === 'false') setSidebarOpen(false)
-    } catch {
-      // localStorage unavailable (private browsing, SSR)
-    }
-
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -112,21 +105,13 @@ export default function AppShell({
       }
     }
     loadProfile()
-
-    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  function toggleDark() {
-    const next = !darkMode
-    setDarkMode(next)
-    try { localStorage.setItem('fengshui-dark', String(next)) } catch { /* ignore */ }
-  }
+  // A persistência agora é do hook: escrever e notificar quem lê a mesma
+  // preferência acontece num lugar só.
+  function toggleDark() { setDarkMode(!darkMode) }
 
-  function toggleSidebar() {
-    const next = !sidebarOpen
-    setSidebarOpen(next)
-    try { localStorage.setItem('fengshui-sidebar', String(next)) } catch { /* ignore */ }
-  }
+  function toggleSidebar() { setSidebarOpen(!sidebarOpen) }
 
   async function handleLogout() {
     await supabase.auth.signOut()

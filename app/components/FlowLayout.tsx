@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import { useMontado, usePreferenciaBooleana, PREFERENCIA_TEMA_ESCURO } from './hooks-cliente'
 
 /**
  * FlowLayout — Layout for Group B pages (flow/process screens)
@@ -32,15 +33,11 @@ export default function FlowLayout({
 }: FlowLayoutProps) {
   const [gearOpen, setGearOpen] = useState(false)
   const [userName, setUserName] = useState('')
-  const [darkMode, setDarkMode] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [darkMode] = usePreferenciaBooleana(PREFERENCIA_TEMA_ESCURO, false)
+  const mounted = useMontado()
   const gearRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setMounted(true)
-    const saved = localStorage.getItem('fengshui-dark')
-    if (saved === 'true') setDarkMode(true)
-
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {

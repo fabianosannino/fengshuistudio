@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { supabase } from '../../src/lib/supabase'
+import { usePreferenciaBooleana, PREFERENCIA_TEMA_ESCURO } from './hooks-cliente'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 
@@ -66,7 +67,7 @@ export async function fetchWithRetry<T>(
 export default function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = usePreferenciaBooleana(PREFERENCIA_TEMA_ESCURO, false)
   const [loading, setLoading] = useState(true)
   const [online, setOnline] = useState(true)
 
@@ -99,13 +100,14 @@ export default function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Dark mode
-    try {
-      const saved = localStorage.getItem('fengshui-dark')
-      if (saved === 'true') setDarkMode(true)
-    } catch { /* ignore */ }
-
     // Auth + profile
+    /*
+     * Carga de dados no cliente: a função liga o spinner de forma síncrona.
+     * Sair deste padrão é migrar para server component / camada de dados —
+     * o débito R1 registrado na auditoria de 2026-07-18 —, não reescrever
+     * este efeito. A supressão é por sítio, e nova violação quebra o CI.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshProfile().finally(() => setLoading(false))
 
     // Online/offline detection
@@ -128,11 +130,9 @@ export default function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshProfile])
 
-  function toggleDarkMode() {
-    const next = !darkMode
-    setDarkMode(next)
-    localStorage.setItem('fengshui-dark', String(next))
-  }
+  // A persistência é do hook — e agora AppShell, FlowLayout e este provider
+  // leem a MESMA preferência: alternar em um atualiza os três na hora.
+  function toggleDarkMode() { setDarkMode(!darkMode) }
 
   return (
     <AppContext.Provider value={{ user, profile, darkMode, loading, online, toggleDarkMode, refreshProfile }}>

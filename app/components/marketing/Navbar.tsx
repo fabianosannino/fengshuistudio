@@ -23,9 +23,14 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
-  useEffect(() => {
+  // Ajuste de estado no render (padrão documentado do React) em vez de efeito:
+  // fechar o menu é consequência direta da navegação, e pelo efeito havia um
+  // render intermediário com o menu ainda aberto na rota nova.
+  const [rotaDoMenu, setRotaDoMenu] = useState(pathname)
+  if (rotaDoMenu !== pathname) {
+    setRotaDoMenu(pathname)
     setOpen(false)
-  }, [pathname])
+  }
 
   const linkCls = (href: string) =>
     `text-sm font-medium transition-colors hover:text-jade ${

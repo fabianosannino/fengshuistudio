@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePreferenciaLista, PREFERENCIA_ITENS_CHI } from '../../components/hooks-cliente'
 
 // ── Chi Flow checklist (11 items) ───────────────────────────────────────
 const CHECKLIST_CHI = [
@@ -72,19 +73,11 @@ interface Props {
 
 export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi, onChangePosicao, onSave, saving }: Props) {
   const [comodoAtivo, setComodoAtivo] = useState('quarto')
-  const [customItems, setCustomItems] = useState<{id: string; label: string; categoria: string}[]>([])
+  const [customItems, setCustomItems] = usePreferenciaLista<{id: string; label: string; categoria: string}>(PREFERENCIA_ITENS_CHI, [])
   const [newItemLabel, setNewItemLabel] = useState('')
   const [newItemCategoria, setNewItemCategoria] = useState('elementos')
   const [showAddForm, setShowAddForm] = useState(false)
   const [hoveredCustomId, setHoveredCustomId] = useState<string | null>(null)
-
-  // Load custom items from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('fengshui-custom-chi-items')
-      if (saved) setCustomItems(JSON.parse(saved))
-    } catch {}
-  }, [])
 
   // All items = standard + custom
   const allItems = [...CHECKLIST_CHI, ...customItems]
@@ -120,7 +113,6 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
   function deleteCustomItem(itemId: string) {
     const updated = customItems.filter(i => i.id !== itemId)
     setCustomItems(updated)
-    try { localStorage.setItem('fengshui-custom-chi-items', JSON.stringify(updated)) } catch {}
     // Also remove from checked list if it was checked
     if (checklistChi.includes(itemId)) {
       onChangeChi(checklistChi.filter(c => c !== itemId))
