@@ -1,7 +1,8 @@
-# ADR 0004 — Content Security Policy com `unsafe-inline` (temporário)
+# ADR 0004 — Content Security Policy com `unsafe-inline`
 
-- **Status:** Aceito com plano de saída
+- **Status:** Aceito — plano de saída revisto em 2026-08-11 (o original não era executável)
 - **Data:** 2026-07-19
+- **Revisão:** 2026-08-11
 
 ## Contexto
 
@@ -24,15 +25,50 @@ Demais diretrizes já estão restritas (`default-src 'self'`,
 `frame-ancestors 'none'`, allowlist explícita de `connect-src`, `img-src`,
 `frame-src` para Stripe/Supabase/fonts).
 
-## Plano de saída (P2)
+## Revisão de 2026-08-11 — o passo 1 não funciona neste app
 
-1. Migrar scripts inline para arquivos/estratégia com **nonce por requisição**
-   (Next.js suporta nonce via middleware + `Content-Security-Policy` dinâmico).
-2. Remover `'unsafe-eval'` (verificar se alguma dependência realmente exige).
-3. Reduzir estilos inline onde viável ou aceitar `style-src 'unsafe-inline'`
-   isoladamente (risco muito menor que em `script-src`).
-4. Validar em staging que Stripe Checkout, Google Tag e a geração de PDF
-   continuam funcionando antes de apertar em produção.
+O plano original abria com «migrar para nonce por requisição». Foi tentado, e
+**não é aplicável enquanto o app for pré-renderizado**. A evidência é direta:
+
+Quase toda rota sai como `○` (estática) no build — `/landing`, `/login`,
+`/dashboard`, `/clientes`, `/bagua-planta`, praticamente tudo fora dos
+segmentos dinâmicos. O nonce, por definição, é sorteado a cada requisição; o
+HTML pré-renderizado é gravado no build. Servindo `/landing` com a CSP de nonce,
+a resposta vem com `x-nextjs-prerender: 1`, **22 tags `<script>` e zero
+atributos `nonce`**. O browser bloquearia todos: a página fica morta — o mesmo
+sintoma do hotfix `dcabc7b` que originou este ADR, por uma causa diferente.
+
+Fazer o nonce valer exige `dynamic = 'force-dynamic'` em todas as páginas, o
+que custa o cache estático do site institucional inteiro. **Isso é uma decisão
+de arquitetura de renderização, não um ajuste de cabeçalho**, e é o que este
+ADR passa a registrar como pré-requisito — em vez de tratar o nonce como uma
+tarefa pendente de meia hora.
+
+### O que foi feito no lugar (2026-08-11)
+
+Sem depender daquela decisão:
+
+1. `'unsafe-eval'` **removido em produção** (fica só em desenvolvimento, onde o
+   React Refresh precisa).
+2. `base-uri 'self'` — sem ela, um `<base>` injetado reescreve o destino de
+   todo caminho relativo da página, inclusive o dos scripts.
+3. `form-action 'self'` — formulário injetado não posta credencial para fora.
+4. `object-src 'none'` — vetor legado que o app não usa.
+
+Verificado no build de produção com browser: `/landing`, `/login`, `/precos`,
+`/termos` e `/para-consultores` carregam com zero violações de CSP no console.
+
+O cabeçalho saiu do meio do `next.config.ts` para `src/lib/csp.ts`, com cada
+liberação justificada e coberta por teste.
+
+### O que continua em aberto
+
+- `script-src 'unsafe-inline'`: depende da decisão de renderização acima.
+- `style-src 'unsafe-inline'`: a UI é `style={{...}}` em milhares de elementos.
+  Sem a diretiva, o app renderiza sem estilo nenhum. Sair disto é migrar a
+  estilização (CSS Modules/Tailwind) — trabalho de porte próprio. O custo de
+  manter é menor: um XSS ainda injetaria estilo (exfiltração via seletor de
+  atributo, por exemplo), mas não executaria script por essa via.
 
 ## Consequências
 

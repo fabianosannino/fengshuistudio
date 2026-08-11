@@ -18,12 +18,25 @@
 > como gate). Lint: 50 → **14 erros** (restam apenas 13 `set-state-in-effect` + 1
 > `immutability`, regras estilísticas do React Compiler).
 >
-> **Pendências (P2):** buckets privados + URLs assinadas (C8 completo — ver plano de
-> migração abaixo), 14 erros de lint restantes (`set-state-in-effect`/`immutability` do
-> React Compiler), rate limit distribuído (A4/A5), CSP sem `unsafe-inline`, terceira
-> cópia divergente de `CRITERIO_DICAS`/dicas de setor em `app/bagua-planta/page.tsx`
-> (motor de recomendações separado, com conteúdo próprio — requer decisão de domínio),
-> extração da lógica de domínio dos componentes, ADRs, schema base no repo (A8/A9).
+> **Atualização de 2026-08-11 — ver `2026-08-11-fechamento-de-pendencias.md`.**
+> Fechados desde então: rate limit compartilhado + IP não spoofável (A4/A5, ADR 0023),
+> lint a zero e bloqueante no CI, `unsafe-eval` fora de produção e as diretivas que
+> faltavam na CSP (ADR 0004 revisto — o plano de nonce **não é executável** enquanto
+> as páginas forem pré-renderizadas), escritas sem checagem de `error` no
+> `/api/admin/subscriptions` e nos demais sítios da triagem de 26/07, follow-up do
+> advisor, motor de recomendação unificado, e a extração de geometria/escala do
+> `bagua-planta` para `src/lib`.
+>
+> **C8 (buckets privados):** o código está pronto e em produção — rota de assinatura
+> com verificação de posse, todas as telas resolvendo URL assinada, uploads gravando
+> path (ADR 0022). Falta **aplicar** `supabase/migrations-manuais/20260811_fechar_buckets_privados.sql`,
+> que exige validação em staging (a geração do PDF usa `html2canvas`). **Até lá as
+> fotos seguem públicas.**
+>
+> **Pendências restantes:** `script-src`/`style-src 'unsafe-inline'` (dependem de
+> decisões de arquitetura, não de ajuste de cabeçalho), carga de dados no cliente
+> (R1 — 6 supressões de lint declaradas), `relatorio/page.tsx` e `consultas/[id]`
+> ainda acima de 1.000 linhas, schema base no repo (A8/A9).
 
 ---
 

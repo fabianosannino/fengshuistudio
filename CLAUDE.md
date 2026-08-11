@@ -18,7 +18,9 @@ npm test        # Vitest (npm test -- <arquivo> para um teste)
 npx tsc --noEmit  # typecheck isolado
 ```
 
-Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
+Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test && npm run lint`.
+O lint **bloqueia o CI** — não há erro tolerado. As poucas supressões existentes
+são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o porquê.
 
 ## Convenções
 
@@ -46,7 +48,16 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
 - **Preço nunca vem do cliente**: checkout lê o `price` da conta conectada.
 - **Uploads**: validar MIME por whitelist e derivar a extensão do MIME
   (`imageExtensionForMime`), nunca de `file.name`.
-- Toda escrita no Supabase deve checar `error` (não engula falha).
+- **Toda escrita no Supabase deve checar `error`.** O client resolve a promise
+  com `{ data, error }` — não rejeita. Um `await` solto engole a falha e o
+  `try/catch` em volta nunca dispara. Use `escreverOuFalhar` (lança) ou
+  `escreverBestEffort` (devolve boolean para você tratar) de
+  `src/lib/supabase-escrita.ts`. Best-effort é decisão declarada, não descuido.
+- **Foto nunca é renderizada a partir do valor cru do banco.** Os buckets estão
+  fechando (ADR 0022): passe o valor por `useUrlsAssinadas`/`urlExibivel`, que
+  aceita tanto URL pública legada quanto path. Upload novo grava **path**.
+- **Rate limit é `await`** e a chave vem de `ipDaRequisicao(request)` — nunca de
+  `x-forwarded-for.split(',')[0]`, que é a ponta que o cliente escreve.
 
 ## Onde vive a lógica
 
@@ -54,6 +65,15 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
   parte ainda está dentro de componentes — ver auditoria).
 - **I/O (Supabase/Stripe)**: rotas `/api` e `src/lib`.
 - **UI**: `app/**` — evite regra de negócio nova dentro de componente.
+
+## Migrations
+
+`supabase/migrations/` é aplicado normalmente. `supabase/migrations-manuais/`
+**não é** — é onde ficam as mudanças outward-facing e difíceis de reverter, cuja
+verificação depende de Supabase real e browser (hoje: fechar os buckets de
+fotos). Cada arquivo traz o próprio checklist de staging. Não mova nada para lá
+sem explicar por que o CI não consegue verificar, e não mova de lá para cá sem
+ter rodado o checklist.
 
 ## Documentação de arquitetura
 
@@ -63,7 +83,7 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test`.
   hierarquia de precedência entre métodos (0013), referência de norte e
   declinação (0014), fronteira de classificação dos remédios (0015),
   questionário de facing (0016), curadoria de evidência com proveniência
-  (0017), Ba Guá fixo no BTB (0018), erro genérico ≠ erro enganoso (0019), lacuna declarada em auditoria (0020), modelos de pontuação escolhidos pelo consultor (0021).
+  (0017), Ba Guá fixo no BTB (0018), erro genérico ≠ erro enganoso (0019), lacuna declarada em auditoria (0020), modelos de pontuação escolhidos pelo consultor (0021), fotos por URL assinada (0022), rate limit com degradação declarada (0023).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
 - `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).
@@ -95,4 +115,6 @@ Ao mexer nisso:
 ## Débitos e histórico
 
 `docs/auditoria/2026-07-18-auditoria-arquitetura-seguranca.md` lista os achados
-e o plano P0/P1/P2. Consulte antes de decisões arquiteturais.
+e o plano P0/P1/P2. `docs/auditoria/2026-08-11-fechamento-de-pendencias.md` diz o
+que foi fechado, o que ficou e por quê — comece por ele. Consulte antes de
+decisões arquiteturais.
