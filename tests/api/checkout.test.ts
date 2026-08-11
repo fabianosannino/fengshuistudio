@@ -19,9 +19,10 @@ vi.mock('../../src/lib/stripe', () => ({
   },
 }))
 
-const rateLimitMock = vi.fn((): { success: boolean } => ({ success: true }))
+const rateLimitMock = vi.fn(async (): Promise<{ success: boolean }> => ({ success: true }))
 vi.mock('../../src/lib/rate-limit', () => ({
   rateLimit: (...a: unknown[]) => rateLimitMock(...(a as [])),
+  ipDaRequisicao: () => '203.0.113.1',
 }))
 
 import { POST } from '../../app/api/stripe/checkout/route'
@@ -38,14 +39,14 @@ const validBody = { account_id: 'acct_123', price_id: 'price_abc' }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  rateLimitMock.mockReturnValue({ success: true })
+  rateLimitMock.mockResolvedValue({ success: true })
   pricesRetrieve.mockResolvedValue({ active: true, unit_amount: 5000 })
   sessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/s', id: 'cs_1' })
 })
 
 describe('POST /api/stripe/checkout', () => {
   it('devolve 429 quando o rate limit estoura', async () => {
-    rateLimitMock.mockReturnValue({ success: false })
+    rateLimitMock.mockResolvedValue({ success: false })
     const res = await POST(req(validBody))
     expect(res.status).toBe(429)
     expect(res.headers.get('Retry-After')).toBe('60')

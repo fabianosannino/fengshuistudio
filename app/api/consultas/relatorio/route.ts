@@ -14,7 +14,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 
 const BUCKET = 'relatorios'
@@ -24,8 +24,8 @@ const SIGNED_URL_TTL = 60 // segundos
 const ROUTE = '/api/consultas/relatorio'
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

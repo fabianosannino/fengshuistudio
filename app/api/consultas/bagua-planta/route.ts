@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
 import { escreverBestEffort } from '../../../../src/lib/supabase-escrita'
@@ -9,8 +9,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const BUCKET = 'imoveis-fotos'
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

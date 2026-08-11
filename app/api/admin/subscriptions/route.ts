@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { rateLimit } from '../../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 import stripeClient from '../../../../src/lib/stripe'
@@ -60,8 +60,8 @@ async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandle
 
 // GET — dashboard metrics + user list with subscriptions
 export async function GET(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
@@ -171,8 +171,8 @@ export async function GET(request: Request) {
 
 // POST — admin actions: gratuidade, change_plan, cancel, mark_paid, refund
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()

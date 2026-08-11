@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
-import { rateLimit } from '../../../src/lib/rate-limit'
+import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
 import { declinacaoAutomatica, explicarFalha } from '../../../src/lib/declinacao-automatica'
 
@@ -25,8 +25,8 @@ function dataDoParam(bruto: string | null): Date | null {
 }
 
 export async function GET(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { success } = rateLimit(ip, { limit: 60, windowMs: 60_000 })
+  const ip = ipDaRequisicao(request)
+  const { success } = await rateLimit(ip, { limit: 60, windowMs: 60_000 })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
