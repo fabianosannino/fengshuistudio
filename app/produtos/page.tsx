@@ -173,17 +173,14 @@ function ProdutosContent() {
     return CATEGORIAS_PRODUTOS.filter(c => c.id === filtroCategoria)
   }, [filtroCategoria])
 
-  // When category filter changes, auto-select first visible category
-  useEffect(() => {
-    if (filtroCategoria !== 'todos') {
-      setCategoriaAtiva(filtroCategoria)
-    }
-  }, [filtroCategoria])
+  // Filtrar por uma categoria específica é o mesmo que selecioná-la: dá para
+  // derivar no render em vez de sincronizar dois estados por efeito.
+  const categoriaSelecionada = filtroCategoria !== 'todos' ? filtroCategoria : categoriaAtiva
 
-  const categoriaData = CATEGORIAS_PRODUTOS.find(c => c.id === categoriaAtiva)
+  const categoriaData = CATEGORIAS_PRODUTOS.find(c => c.id === categoriaSelecionada)
 
   // Merge DB products with defaults
-  const dbProdutosCat = produtosAfiliados.filter(p => p.categoria === categoriaAtiva)
+  const dbProdutosCat = produtosAfiliados.filter(p => p.categoria === categoriaSelecionada)
   const produtosExibir: ProdutoExibir[] = dbProdutosCat.length > 0
     ? dbProdutosCat
     : (categoriaData?.produtos || [])
@@ -327,16 +324,16 @@ function ProdutosContent() {
             <button key={cat.id} onClick={() => { setCategoriaAtiva(cat.id); setFiltroBusca('') }} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '12px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-              background: categoriaAtiva === cat.id ? '#0E1B2C' : '#ffffff',
-              color: categoriaAtiva === cat.id ? '#ffffff' : '#374151',
-              textAlign: 'left', fontSize: '14px', fontWeight: categoriaAtiva === cat.id ? 'bold' : 'normal',
-              boxShadow: categoriaAtiva === cat.id ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+              background: categoriaSelecionada === cat.id ? '#0E1B2C' : '#ffffff',
+              color: categoriaSelecionada === cat.id ? '#ffffff' : '#374151',
+              textAlign: 'left', fontSize: '14px', fontWeight: categoriaSelecionada === cat.id ? 'bold' : 'normal',
+              boxShadow: categoriaSelecionada === cat.id ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
               width: '100%'
             }}>
-              <cat.iconComp size={20} strokeWidth={1.75} color={categoriaAtiva === cat.id ? '#C9A227' : cat.cor} aria-hidden="true" style={{ flexShrink: 0 }} />
+              <cat.iconComp size={20} strokeWidth={1.75} color={categoriaSelecionada === cat.id ? '#C9A227' : cat.cor} aria-hidden="true" style={{ flexShrink: 0 }} />
               <div>
                 <div>{cat.nome}</div>
-                <div style={{ fontSize: '11px', color: categoriaAtiva === cat.id ? 'rgba(255,255,255,0.7)' : '#9CA3AF' }}>
+                <div style={{ fontSize: '11px', color: categoriaSelecionada === cat.id ? 'rgba(255,255,255,0.7)' : '#9CA3AF' }}>
                   {cat.produtos.length} produtos
                 </div>
               </div>

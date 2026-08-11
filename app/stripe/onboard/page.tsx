@@ -14,7 +14,7 @@
 
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
 import { supabase } from '../../../src/lib/supabase'
@@ -55,23 +55,21 @@ function StripeOnboard() {
   const [status, setStatus] = useState<AccountStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(() =>
+    // `refresh=true` já está na URL no primeiro render — nasce no estado, em
+    // vez de um efeito que injeta a mensagem no render seguinte.
+    searchParams.get('refresh') === 'true'
+      ? 'Link de onboarding expirado. Clique em "Continuar Onboarding" para gerar um novo.'
+      : ''
+  )
   const [profile, setProfile] = useState<OnboardProfile | null>(null)
   const [sales, setSales] = useState<StoreOrder[]>([])
   const totalRevenue = sales.reduce((s, o) => s + (o.amount || 0), 0)
 
   // ── Check if returning from Stripe onboarding ──────────────────────────
   const returnAccountId = searchParams.get('accountId')
-  const isRefresh = searchParams.get('refresh') === 'true'
 
-  useEffect(() => {
-    loadStatus()
-    if (isRefresh) {
-      setMessage('Link de onboarding expirado. Clique em "Continuar Onboarding" para gerar um novo.')
-    }
-  }, [])
-
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     setLoading(true)
     const params = returnAccountId ? `?accountId=${returnAccountId}` : ''
     const res = await fetch(`/api/stripe/account${params}`)
@@ -99,7 +97,18 @@ function StripeOnboard() {
     }
 
     setLoading(false)
-  }
+  }, [returnAccountId])
+
+  useEffect(() => {
+    /*
+     * Carga de dados no cliente: a função liga o spinner de forma síncrona.
+     * Sair deste padrão é migrar para server component / camada de dados —
+     * o débito R1 registrado na auditoria de 2026-07-18 —, não reescrever
+     * este efeito. A supressão é por sítio, e nova violação quebra o CI.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadStatus()
+  }, [loadStatus])
 
   async function createAccount() {
     setCreating(true)

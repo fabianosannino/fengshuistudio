@@ -26,8 +26,14 @@ jobs:
       - name: Tests
         run: npm test
 
+      # Passou a bloquear: os erros foram a zero. As poucas exceções que restam
+      # são supressões por sítio, com a razão escrita ao lado — nova violação
+      # quebra o build em vez de virar mais uma linha no relatório.
+      - name: Lint (erros)
+        run: npm run lint
+
   quality:
-    name: Lint & Audit (informativo)
+    name: Audit (informativo)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,12 +45,7 @@ jobs:
 
       - run: npm ci
 
-      # Informativo: reportam débito conhecido sem bloquear o merge.
-      # Ver docs/auditoria/ para o plano de zerar os erros de lint.
-      - name: Lint
-        run: npm run lint
-        continue-on-error: true
-
+      # Informativo: reporta débito conhecido sem bloquear o merge.
       - name: Audit de dependências
         run: npm audit --audit-level=high
         continue-on-error: true

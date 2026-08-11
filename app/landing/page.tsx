@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useMontado } from '../components/hooks-cliente'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
-  const [mounted, setMounted] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
 
+  const mounted = useMontado()
+
   useEffect(() => {
-    setMounted(true)
     const handleScroll = () => setScrollY(window.scrollY)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)

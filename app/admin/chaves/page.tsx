@@ -10,6 +10,8 @@ import { planoEfetivo, planoLabel } from '../../../src/lib/plano-utils'
 import { ScrollText, KeyRound, CircleCheck, CircleDot, CircleAlert, ClipboardList, Copy, Download, X, ChevronUp, ChevronDown, ArrowLeft, ArrowRight, Zap, ArrowUpCircle } from 'lucide-react'
 
 const PAGE_SIZE = 20
+/** Abaixo disto a busca de usuário não dispara — evita varrer a base por uma letra. */
+const BUSCA_MINIMA = 2
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
   available: { bg: '#DCFCE7', color: '#15803D', label: 'Disponível' },
@@ -77,6 +79,13 @@ export default function AdminChaves() {
   }, [page, statusFilter, search, showMsg])
 
   useEffect(() => {
+    /*
+     * Carga de dados no cliente: a função liga o spinner de forma síncrona.
+     * Sair deste padrão é migrar para server component / camada de dados —
+     * o débito R1 registrado na auditoria de 2026-07-18 —, não reescrever
+     * este efeito. A supressão é por sítio, e nova violação quebra o CI.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchKeys()
   }, [fetchKeys])
 
@@ -141,7 +150,10 @@ export default function AdminChaves() {
 
   // Promote user search with debounce
   useEffect(() => {
-    if (promoteSearch.length < 2) { setPromoteResults([]); return }
+    // Busca curta: nada a mostrar. Derivado no render (`resultadosVisiveis`)
+    // em vez de limpar o estado por efeito — o efeito repintava a lista antes
+    // de apagá-la.
+    if (promoteSearch.length < BUSCA_MINIMA) return
     const timer = setTimeout(async () => {
       const res = await fetch(`/api/admin/promover?q=${encodeURIComponent(promoteSearch)}`)
       if (res.ok) {
@@ -151,6 +163,8 @@ export default function AdminChaves() {
     }, 400)
     return () => clearTimeout(timer)
   }, [promoteSearch])
+
+  const resultadosVisiveis = promoteSearch.length < BUSCA_MINIMA ? [] : promoteResults
 
   async function handlePromote() {
     if (!promoteTarget) return
@@ -520,13 +534,13 @@ export default function AdminChaves() {
             }}
           />
           {/* Autocomplete dropdown */}
-          {promoteResults.length > 0 && !promoteTarget && (
+          {resultadosVisiveis.length > 0 && !promoteTarget && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff',
               border: '1px solid #E5E7EB', borderRadius: '8px', marginTop: '4px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: '200px', overflowY: 'auto',
             }}>
-              {promoteResults.map(u => (
+              {resultadosVisiveis.map(u => (
                 <button key={u.id} onClick={() => { setPromoteTarget(u); setPromoteSearch(u.nome_completo); setPromoteResults([]) }}
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%',

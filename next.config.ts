@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { montarCsp } from "./src/lib/csp";
 
 const nextConfig: NextConfig = {
   images: {
@@ -7,6 +8,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
         pathname: '/storage/v1/object/public/**',
+      },
+      {
+        // Buckets privados (C8): as fotos passam a chegar por URL assinada.
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/sign/**',
       },
     ],
   },
@@ -24,18 +31,11 @@ const nextConfig: NextConfig = {
           // (alinhar planta sobre satélite) oferece "usar minha localização atual" para
           // centralizar o mapa. Câmera e microfone seguem totalmente bloqueados.
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+          // Montada em `src/lib/csp.ts`, que documenta cada liberação e é
+          // coberta por teste — o cabeçalho não é lugar de decisão implícita.
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://js.stripe.com https://www.googletagmanager.com https://maps.googleapis.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com data:",
-              "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live wss://ws-us3.pusher.com https://viacep.com.br https://api.stripe.com https://fonts.googleapis.com https://maps.googleapis.com https://maps.gstatic.com",
-              "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://billing.stripe.com",
-              "frame-ancestors 'none'",
-            ].join('; '),
+            value: montarCsp({ desenvolvimento: process.env.NODE_ENV !== 'production' }),
           },
         ],
       },

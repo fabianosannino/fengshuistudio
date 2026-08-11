@@ -34,6 +34,13 @@ export default function AdminAuditoria() {
   }, [page])
 
   useEffect(() => {
+    /*
+     * Carga de dados no cliente: a função liga o spinner de forma síncrona.
+     * Sair deste padrão é migrar para server component / camada de dados —
+     * o débito R1 registrado na auditoria de 2026-07-18 —, não reescrever
+     * este efeito. A supressão é por sítio, e nova violação quebra o CI.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs()
   }, [fetchLogs])
 
