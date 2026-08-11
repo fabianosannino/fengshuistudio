@@ -123,7 +123,13 @@ export async function POST(request: Request) {
   }
 
   const quantidade = Math.min(Math.max(1, body.quantidade || 1), 100)
+  // Whitelist: um `plan_type` fora destes gera chave que não ativa nada —
+  // `/api/planos` compara via planoEfetivo(), e valor desconhecido vira 'free'.
+  const PLANOS_DE_CHAVE = ['pro', 'simples']
   const plan_type = body.plan_type || 'pro'
+  if (!PLANOS_DE_CHAVE.includes(plan_type)) {
+    return NextResponse.json({ error: 'plan_type inválido' }, { status: 400 })
+  }
   const expires_at = body.expires_at || null
   const note = body.note || null
 
