@@ -20,10 +20,31 @@
  * site institucional), não um efeito colateral aceitável de endurecer um
  * cabeçalho. Fica registrado como tal no ADR 0004, não como pendência trivial.
  *
+ * ## Por que `'unsafe-eval'` voltou para produção
+ *
+ * Tirá-la foi uma mudança minha, revertida no mesmo dia depois de quebrar a
+ * aplicação em produção: o DevTools acusou `script-src` bloqueando `eval`, com
+ * a página de relatório inutilizada.
+ *
+ * O que a investigação mostrou, e vale registrar para não se repetir:
+ *
+ * - **Não é o gerador de PDF.** `jspdf` e `html2canvas` não têm uma ocorrência
+ *   de `eval(` ou `new Function` nos bundles, e um teste em Chromium sob esta
+ *   CSP exata gera o PDF sem violação nenhuma.
+ * - O consumidor de `eval` é uma das origens que a própria allowlist libera —
+ *   Google Maps (que exige `eval` de forma documentada), GTM ou o Vercel Live.
+ *   **Qual delas não foi isolado**, e a reversão não depende disso.
+ *
+ * E o ponto que deveria ter pesado antes: enquanto `'unsafe-inline'` continuar
+ * em `script-src` — e ele continua, pelo motivo acima —, **remover
+ * `'unsafe-eval'` compra quase nada**. Quem consegue injetar script inline não
+ * precisa de `eval`. Era endurecimento aparente com custo real de quebra.
+ *
+ * Sair de `'unsafe-eval'` de verdade passa por sair de `'unsafe-inline'`
+ * primeiro, e isso é a decisão de arquitetura registrada no ADR 0004.
+ *
  * ## O que dá para fechar sem essa decisão — e está fechado aqui
  *
- * - `'unsafe-eval'` **só em desenvolvimento**, onde o React Refresh precisa.
- *   Em produção sai, o que corta as cadeias de gadget que dependem de `eval`.
  * - `base-uri 'self'`: sem ela, um `<base>` injetado reescreve o destino de
  *   todo caminho relativo da página, inclusive o dos scripts.
  * - `form-action 'self'`: impede que um formulário injetado poste credenciais
@@ -36,17 +57,21 @@
  * a CSP limita, mas não impede, a execução de script injetado.
  */
 
-export interface OpcoesCsp {
-  /** Em desenvolvimento o React Refresh avalia código em runtime. */
-  desenvolvimento: boolean
-}
-
-export function montarCsp({ desenvolvimento }: OpcoesCsp): string {
+/**
+ * A política é a mesma em desenvolvimento e produção. Já foi parametrizada por
+ * ambiente, quando `'unsafe-eval'` saía em produção; como isso quebrou o app e
+ * foi revertido, um parâmetro que não muda nada só convidaria a supor que as
+ * duas pontas divergem — e a CSP de produção deve ser exatamente a que se testa.
+ */
+export function montarCsp(): string {
   const script = [
     "'self'",
     // Ver a nota no topo: obrigatório enquanto as páginas forem pré-renderizadas.
     "'unsafe-inline'",
-    ...(desenvolvimento ? ["'unsafe-eval'"] : []),
+    // Idem: exigido por uma das origens da allowlist (Maps/GTM/Vercel Live) e
+    // pelo React Refresh em desenvolvimento. Não faz sentido tirar enquanto
+    // 'unsafe-inline' estiver aqui.
+    "'unsafe-eval'",
     'https://vercel.live',
     'https://js.stripe.com',
     'https://www.googletagmanager.com',

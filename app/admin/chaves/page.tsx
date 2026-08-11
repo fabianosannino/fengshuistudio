@@ -35,6 +35,7 @@ export default function AdminChaves() {
 
   // Generator state
   const [genQty, setGenQty] = useState(1)
+  const [genPlano, setGenPlano] = useState<'pro' | 'simples'>('pro')
   const [genExpiry, setGenExpiry] = useState<'none' | 'date'>('none')
   const [genDate, setGenDate] = useState('')
   const [genNote, setGenNote] = useState('')
@@ -96,7 +97,7 @@ export default function AdminChaves() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         quantidade: genQty,
-        plan_type: 'pro',
+        plan_type: genPlano,
         expires_at: genExpiry === 'date' && genDate ? new Date(genDate).toISOString() : null,
         note: genNote || null,
       }),
@@ -276,14 +277,22 @@ export default function AdminChaves() {
             </div>
           </div>
 
-          {/* Plan type (read-only for now) */}
+          {/* Plano da chave — a chave só ativa o plano para o qual foi emitida
+              (`/api/planos` compara `plan_type` com o plano pedido), então um
+              seletor travado em «Pro» tornava o plano Simples inativável. */}
           <div>
-            <label style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Plano</label>
-            <select disabled style={{
-              padding: '7px 12px', borderRadius: '6px', border: '1px solid #D1D5DB',
-              fontSize: '13px', background: '#F9FAFB', color: '#374151',
-            }}>
-              <option>Pro</option>
+            <label htmlFor="select-plano-chave" style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Plano</label>
+            <select
+              id="select-plano-chave"
+              value={genPlano}
+              onChange={e => setGenPlano(e.target.value as 'pro' | 'simples')}
+              style={{
+                padding: '7px 12px', borderRadius: '6px', border: '1px solid #D1D5DB',
+                fontSize: '13px', background: '#fff', color: '#374151',
+              }}
+            >
+              <option value="pro">Profissional</option>
+              <option value="simples">Simples</option>
             </select>
           </div>
 
