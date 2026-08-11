@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
           // coberta por teste — o cabeçalho não é lugar de decisão implícita.
           {
             key: 'Content-Security-Policy',
-            value: montarCsp({ desenvolvimento: process.env.NODE_ENV !== 'production' }),
+            value: montarCsp(),
           },
         ],
       },
