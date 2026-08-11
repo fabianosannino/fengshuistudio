@@ -53,10 +53,29 @@
 --      curl -s "<url-publica>?v=$(date +%s)"
 --      → {"statusCode":"404","error":"Bucket not found","code":"NoSuchBucket"}
 --
---    A janela residual é de no máximo 1 hora **por edge**, e só para URLs que
---    alguém já tinha buscado. Um objeto nunca requisitado fecha na hora.
 --    Cuidado com o falso negativo ao contrário: testar a URL sem o parâmetro
 --    logo depois de aplicar sugere que nada mudou, e leva a reverter à toa.
+--
+-- 6b. **PURGAR O CDN — este passo é obrigatório, não é limpeza.**
+--
+--     O projeto tem Smart CDN. O `max-age=3600` do header governa o browser,
+--     NÃO o edge: com Smart CDN o asset fica cacheado «pelo maior tempo
+--     possível», e a invalidação só dispara quando o **asset** muda (upload,
+--     update, delete). Trocar a visibilidade do bucket não é mudança de asset.
+--     Sem purga, as URLs já cacheadas seguem abrindo por tempo indefinido —
+--     verificado em produção: mais de uma hora depois do fechamento, a mesma
+--     URL ainda devolvia HTTP 200 com `cf-cache-status: HIT`.
+--
+--       curl -X DELETE "https://<ref>.supabase.co/storage/v1/cdn/imoveis-fotos" \
+--         -H "apikey: <SECRET_KEY>"
+--       curl -X DELETE "https://<ref>.supabase.co/storage/v1/cdn/clientes-fotos" \
+--         -H "apikey: <SECRET_KEY>"
+--
+--     Exige a secret key (service_role) e Pro Plan ou acima. Propaga em até
+--     60s. Não alcança o cache do browser de quem já viu a foto — aí sim vale
+--     o `max-age` de 1 hora.
+--
+--     Confirmar depois: a URL SEM cache-buster passa a devolver 404.
 -- 7. Logar como OUTRO consultor e pedir `/api/storage/assinar` com o path de
 --    uma foto alheia → resposta `{ urls: {} }`, sem assinatura.
 --

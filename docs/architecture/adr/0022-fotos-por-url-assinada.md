@@ -1,6 +1,6 @@
 # ADR 0022 — Fotos por URL assinada, com resolução tolerante ao formato gravado
 
-- **Status:** Aceito — código em produção, fechamento do bucket pendente
+- **Status:** Aceito — código em produção; bucket fechado em 11/08, purga do CDN pendente
 - **Data:** 2026-08-11
 - **Severidade:** alta — dado pessoal de cliente acessível sem autenticação (LGPD)
 - **Relaciona-se com:** ADR 0005 (armazenamento de fotos e LGPD), ADR 0006 (leitura pública de perfis)
@@ -63,6 +63,54 @@ com Supabase real e browser real. Enquanto o arquivo não for aplicado, o códig
 está pronto e **a exposição continua aberta**. Está escrito assim no arquivo e
 aqui: um passo preparado não é um problema resolvido.
 
+## O CDN é uma terceira porta — descoberto ao aplicar
+
+O fechamento foi aplicado em produção em 11/08. Os buckets ficaram
+`public = false` e o origin passou a recusar (`404 NoSuchBucket`, tanto para
+objeto existente quanto inexistente — resposta de bucket, não de objeto).
+
+**E a foto continuou abrindo pela URL pública.**
+
+O projeto tem Smart CDN (`x-smart-cdn: true` na resposta). Duas coisas que a
+documentação deixa explícitas e que contrariam a leitura ingênua do header:
+
+1. `cache-control: public, max-age=3600` governa o **browser**, não o edge. Com
+   Smart CDN, «o asset é cacheado no CDN pelo maior tempo possível».
+2. A invalidação é disparada por **mudança no asset** — upload, update, delete —
+   porque o metadado do objeto é sincronizado para o edge. **Trocar a
+   visibilidade do bucket não é uma mudança no asset**, então nada é
+   invalidado: o edge segue servindo a cópia que já tinha.
+
+Ou seja: fechar o bucket fecha a porta para todo mundo que ainda não tinha
+buscado aquela URL, e **não fecha** para as URLs já cacheadas. Não é uma janela
+de uma hora — sem purga, é indefinido.
+
+O fechamento completo tem, portanto, **dois passos**, não um:
+
+```bash
+# 1. bucket privado (migrations-manuais/20260811_fechar_buckets_privados.sql)
+# 2. purga do CDN — exige a secret key, Pro Plan ou acima
+curl -X DELETE "https://<ref>.supabase.co/storage/v1/cdn/imoveis-fotos" \
+  -H "apikey: <secret_key>"
+```
+
+A propagação leva até 60 segundos. A purga **não** alcança o cache do browser
+de quem já viu a foto — para isso só o `max-age` do lado do cliente, que aí sim
+é de uma hora.
+
+### O que isso implica para a URL assinada
+
+O mesmo mecanismo vale para o que passamos a emitir, e a documentação é direta:
+**expirar ou revogar um token não purga a entrada de cache dele.** Cada token é
+uma chave de cache própria; a resposta cacheada continua servível pelo edge
+depois do token vencer.
+
+Na prática, o TTL de uma hora limita quem pode **gerar** acesso, não quem já
+tem a resposta cacheada. O único corte duro é apagar o objeto. Isso enfraquece
+— não anula — o argumento do TTL curto: a URL ainda precisa vazar primeiro, e o
+que vaza continua sendo um link temporário e não um bucket inteiro. Mas fica
+registrado para não ser lido como garantia mais forte do que é.
+
 ## Consequências
 
 - **Positivo:** o fechamento do bucket vira uma linha de SQL reversível, sem
@@ -79,6 +127,8 @@ aqui: um passo preparado não é um problema resolvido.
 - **Negativo:** a URL assinada, uma vez emitida, vale por uma hora para quem a
   tiver. É um afrouxamento em relação ao ideal, e o preço de manter o
   `html2canvas` funcionando: TTL curto demais venceria durante a geração do PDF.
+  E, como a seção sobre o CDN registra, a resposta cacheada de um token pode
+  sobreviver ao próprio token — o TTL limita a emissão, não a cópia no edge.
 
 ## Alternativas consideradas
 
