@@ -4,6 +4,7 @@ import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
 import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
+import { BUCKET_CLIENTES, caminhoDoObjeto } from '../../../../src/lib/storage-imagens'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
   // Delete old photo if exists. Best-effort declarado: falhar aqui vaza um
   // arquivo órfão, não corrompe dado — e não deve impedir a troca da foto.
   if (cliente.foto_url) {
-    const oldPath = cliente.foto_url.split('/clientes-fotos/')[1]
+    const oldPath = caminhoDoObjeto(cliente.foto_url, BUCKET_CLIENTES)
     if (oldPath) {
       await escreverBestEffort(
         supabase.storage.from('clientes-fotos').remove([oldPath]),
@@ -81,12 +82,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao fazer upload da foto.' }, { status: 500 })
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from('clientes-fotos')
-    .getPublicUrl(filePath)
-
-  const foto_url = urlData.publicUrl
+  // A coluna continua se chamando `foto_url`, mas passa a guardar o **path**
+  // do objeto: é ele que a tela manda assinar. As linhas antigas seguem com a
+  // URL pública e funcionam pelo mesmo caminho (`caminhoDoObjeto`).
+  const foto_url = filePath
 
   // Update client record
   const { error: updateError } = await supabase
@@ -159,7 +158,7 @@ export async function DELETE(request: Request) {
   }
 
   if (cliente.foto_url) {
-    const oldPath = cliente.foto_url.split('/clientes-fotos/')[1]
+    const oldPath = caminhoDoObjeto(cliente.foto_url, BUCKET_CLIENTES)
     if (oldPath) {
       await escreverBestEffort(
         supabase.storage.from('clientes-fotos').remove([oldPath]),

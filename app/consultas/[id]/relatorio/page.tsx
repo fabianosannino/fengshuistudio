@@ -18,6 +18,8 @@ import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario
 import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
 import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/lib/sintese-metodos'
 import { gerarRemedios } from '../../../../src/lib/remedios'
+import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
+import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
 import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
 import { AREAS as RODA_12_AREAS, CATEGORIAS as RODA_CATEGORIAS, avg as rodaAvg } from '../../../../src/lib/roda-da-vida-constants'
@@ -357,6 +359,16 @@ export default function Relatorio() {
     setShowConcluirNudge(false)
   }
 
+  // As fotos do relatório num lote só. `assinandoImagens` importa aqui mais que
+  // nas outras telas: capturar o PDF antes das assinaturas chegarem produziria
+  // um relatório com buracos no lugar das fotos.
+  const fotosDoImovel = [
+    consulta?.foto_geral_url ?? null,
+    ...((consulta?.fotos_antes as string[] | undefined) ?? []),
+    ...((consulta?.fotos_depois as string[] | undefined) ?? []),
+  ]
+  const { resolver: resolverFoto, carregando: assinandoImagens } = useUrlsAssinadas(fotosDoImovel, BUCKET_IMOVEIS)
+
   if (loading || !consulta) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
@@ -477,11 +489,11 @@ export default function Relatorio() {
             color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
             cursor: 'pointer', fontSize: '14px'
           }}>Imprimir</button>
-          <button onClick={handleDownloadPDF} disabled={downloading} style={{
-            background: downloading ? '#9CA3AF' : gold, border: 'none',
+          <button onClick={handleDownloadPDF} disabled={downloading || assinandoImagens} style={{
+            background: (downloading || assinandoImagens) ? '#9CA3AF' : gold, border: 'none',
             color: '#ffffff', padding: '6px 20px', borderRadius: '6px',
-            cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
-          }}>{downloading ? 'Gerando PDF...' : 'Baixar PDF'}</button>
+            cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
+          }}>{downloading ? 'Gerando PDF...' : assinandoImagens ? 'Carregando fotos...' : 'Baixar PDF'}</button>
           {savedRelatorioEm && (
             <button
               onClick={baixarVersaoSalva}
@@ -1630,10 +1642,10 @@ export default function Relatorio() {
             Fotos do Imóvel
           </div>
 
-          {consulta?.foto_geral_url && (
+          {resolverFoto(consulta?.foto_geral_url) && (
             <div style={{ marginBottom: '16px', textAlign: 'center' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '6px' }}>Foto Geral</div>
-              <img src={consulta.foto_geral_url} alt="Foto geral" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #E5E7EB' }} />
+              <img src={resolverFoto(consulta?.foto_geral_url)!} alt="Foto geral" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #E5E7EB' }} />
             </div>
           )}
 
@@ -1642,9 +1654,12 @@ export default function Relatorio() {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Antes</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                {(consulta?.fotos_antes as string[] || []).slice(0, 6).map((url: string, i: number) => (
-                  <img key={i} src={url} alt={`Antes ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #E5E7EB' }} />
-                ))}
+                {(consulta?.fotos_antes as string[] || []).slice(0, 6).map((url: string, i: number) => {
+                  const assinada = resolverFoto(url)
+                  return assinada ? (
+                    <img key={i} src={assinada} alt={`Antes ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #E5E7EB' }} />
+                  ) : null
+                })}
               </div>
             </div>
           )}
@@ -1653,9 +1668,12 @@ export default function Relatorio() {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#15803D', marginBottom: '8px' }}>Depois</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                {(consulta?.fotos_depois as string[] || []).slice(0, 6).map((url: string, i: number) => (
-                  <img key={i} src={url} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #BBF7D0' }} />
-                ))}
+                {(consulta?.fotos_depois as string[] || []).slice(0, 6).map((url: string, i: number) => {
+                  const assinada = resolverFoto(url)
+                  return assinada ? (
+                    <img key={i} src={assinada} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #BBF7D0' }} />
+                  ) : null
+                })}
               </div>
             </div>
           )}

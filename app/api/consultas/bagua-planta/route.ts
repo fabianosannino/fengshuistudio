@@ -91,9 +91,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao enviar imagem. Tente novamente.' }, { status: 500 })
     }
 
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
-
-    return NextResponse.json({ url: urlData.publicUrl })
+    // Path, não URL pública — ver comentário em /api/consultas/fotos.
+    return NextResponse.json({ path: filePath })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
     logger.error('bagua-planta route error', { route: '/api/consultas/bagua-planta', error: message })

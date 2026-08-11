@@ -9,6 +9,8 @@ import ConfirmModal from '../../components/ConfirmModal'
 import Skeleton from '../../components/Skeleton'
 import type { Cliente, Consulta } from '../../../src/lib/types'
 import { calcularMingGua } from '../../../src/lib/ming-gua'
+import { useUrlAssinada } from '../../components/useUrlsAssinadas'
+import { BUCKET_CLIENTES } from '../../../src/lib/storage-imagens'
 
 const STATUS_LABELS: Record<string, { icon: string; label: string; bg: string; color: string }> = {
   sem_analise: { icon: '☯', label: 'Sem análise', bg: '#F3F4F6', color: '#6B7280' },
@@ -283,6 +285,9 @@ export default function ClienteDetalhe() {
 
   const consultasVisiveis = consultas.filter(c => c.status !== 'deletada')
 
+  // Antes dos early returns: hook não pode ficar depois de um `return`.
+  const fotoAssinada = useUrlAssinada(cliente?.foto_url, BUCKET_CLIENTES)
+
   if (loading) {
     return (
       <AppShell currentPage="clientes">
@@ -339,8 +344,8 @@ export default function ClienteDetalhe() {
                   justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px',
                   flexShrink: 0, position: 'relative' as const,
                 }}>
-                  {cliente.foto_url ? (
-                    <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
+                  {fotoAssinada ? (
+                    <Image src={fotoAssinada} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
                   ) : (
                     cliente.nome_completo?.charAt(0).toUpperCase()
                   )}
@@ -431,8 +436,8 @@ export default function ClienteDetalhe() {
                 }}>
                   {fotoPreview ? (
                     <Image src={fotoPreview} alt="Preview" fill unoptimized style={{ objectFit: 'cover' }} />
-                  ) : cliente.foto_url ? (
-                    <Image src={cliente.foto_url} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
+                  ) : fotoAssinada ? (
+                    <Image src={fotoAssinada} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
                   ) : (
                     <span style={{ color: '#9CA3AF', fontSize: '28px' }}>📷</span>
                   )}

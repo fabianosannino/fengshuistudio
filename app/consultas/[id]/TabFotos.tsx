@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import type { FotoComodo } from '../../../src/lib/types'
+import { useUrlsAssinadas } from '../../components/useUrlsAssinadas'
+import { BUCKET_IMOVEIS } from '../../../src/lib/storage-imagens'
 
 const COMODOS_PADRAO = [
   'Sala de Estar', 'Sala de Jantar', 'Cozinha', 'Quarto 1',
@@ -36,6 +38,17 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   const [lightbox, setLightbox] = useState<{ url: string; comodo?: string } | null>(null)
   const geralInputRef = useRef<HTMLInputElement>(null)
 
+  // Todas as fotos da aba num pedido só de assinatura. O que o banco guarda
+  // pode ser URL pública legada ou path — `resolver` trata as duas formas e
+  // devolve null enquanto a assinatura não chega.
+  const todasAsFotos = useMemo(() => [
+    fotoGeral,
+    ...fotosComodos.flatMap(c => c.fotos),
+    ...fotosAntes,
+    ...fotosDepois,
+  ], [fotoGeral, fotosComodos, fotosAntes, fotosDepois])
+  const { resolver } = useUrlsAssinadas(todasAsFotos, BUCKET_IMOVEIS)
+
   function validateFiles(files: FileList | File[]): string | null {
     for (const file of Array.from(files)) {
       if (!ALLOWED_TYPES.includes(file.type)) {
@@ -58,7 +71,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
     const res = await fetch('/api/consultas/fotos', { method: 'POST', body: fd })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Erro no upload')
-    return data.urls
+    return data.paths
   }
 
   async function deleteFile(url: string) {
@@ -227,7 +240,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
         {fotoGeral ? (
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <img
-              src={fotoGeral}
+              src={resolver(fotoGeral) ?? ''}
               alt="Foto geral do imóvel"
               onClick={() => setLightbox({ url: fotoGeral })}
               style={{
@@ -416,7 +429,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                           {comodo.fotos.map((url, fi) => (
                             <div key={fi} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', aspectRatio: '1', background: '#F3F4F6' }}>
                               <img
-                                src={url}
+                                src={resolver(url) ?? ''}
                                 alt={`${comodo.comodo} foto ${fi + 1}`}
                                 onClick={() => setLightbox({ url, comodo: comodo.comodo })}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
@@ -484,7 +497,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
               {fotosAntes.map((url, i) => (
                 <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #E5E7EB' }}>
-                  <img src={url} alt={`Antes ${i + 1}`} onClick={() => setLightbox({ url })}
+                  <img src={resolver(url) ?? ''} alt={`Antes ${i + 1}`} onClick={() => setLightbox({ url })}
                     style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
                   <button onClick={() => onUpdateAntes(fotosAntes.filter((_, idx) => idx !== i))} style={{
                     position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff',
@@ -560,7 +573,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
               {fotosDepois.map((url, i) => (
                 <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #BBF7D0' }}>
-                  <img src={url} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })}
+                  <img src={resolver(url) ?? ''} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })}
                     style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
                   <button onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
                     position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff',
@@ -637,7 +650,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               }}>{lightbox.comodo}</div>
             )}
             <img
-              src={lightbox.url}
+              src={resolver(lightbox.url) ?? ''}
               alt="Foto ampliada"
               style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain' }}
             />

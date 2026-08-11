@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
+import { caminhoDoObjeto } from '../../../../src/lib/storage-imagens'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const BUCKET = 'imoveis-fotos'
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const uploadedUrls: string[] = []
+  const caminhos: string[] = []
 
   for (const file of files) {
     // Extensão derivada do MIME já validado acima, nunca de file.name.
@@ -81,11 +82,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Erro ao enviar ${file.name}.` }, { status: 500 })
     }
 
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
-    uploadedUrls.push(urlData.publicUrl)
+    // Devolvemos o **path**, não a URL pública: é o path que a tela manda
+    // assinar. O bucket está de saída para privado (C8) e uma URL pública
+    // gravada hoje seria uma linha a mais para o backfill limpar depois.
+    caminhos.push(filePath)
   }
 
-  return NextResponse.json({ urls: uploadedUrls })
+  return NextResponse.json({ paths: caminhos })
 }
 
 export async function DELETE(request: Request) {
@@ -128,8 +131,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
   }
 
-  // Extract path from URL
-  const pathMatch = url.split(`/${BUCKET}/`)[1]
+  // Aceita path (novo) ou URL pública completa (linhas antigas).
+  const pathMatch = caminhoDoObjeto(url, BUCKET)
   if (pathMatch) {
     // A RLS de storage.objects amarra o arquivo ao dono da consulta (primeira
     // pasta do path). Sem checar o erro, uma remoção recusada pela policy

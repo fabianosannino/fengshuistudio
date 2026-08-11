@@ -12,6 +12,8 @@ import { CRITERIOS } from '../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../src/lib/comodo-setor'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
+import { useUrlAssinada } from '../../components/useUrlsAssinadas'
+import { BUCKET_IMOVEIS } from '../../../src/lib/storage-imagens'
 
 // Cômodo suggestions for multi-select autocomplete
 const COMODO_SUGGESTIONS = [
@@ -551,6 +553,10 @@ export default function ConsultaDetalhe() {
     router.push('/consultas')
   }
 
+  // Antes do early return — o banner é a única imagem desta tela que vem do
+  // bucket; `bagua_imagem` é data: URL e passa direto.
+  const fotoGeralAssinada = useUrlAssinada(fotoGeral, BUCKET_IMOVEIS)
+
   if (loading || !consulta) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
@@ -731,12 +737,12 @@ export default function ConsultaDetalhe() {
       <main style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto' }}>
 
         {/* Foto geral banner */}
-        {fotoGeral && (
+        {fotoGeralAssinada && (
           <div style={{
             marginBottom: '20px', borderRadius: '14px', overflow: 'hidden',
             maxHeight: '220px', position: 'relative',
           }}>
-            <Image src={fotoGeral} alt={consulta.nome_imovel || 'Imóvel'} fill unoptimized style={{
+            <Image src={fotoGeralAssinada} alt={consulta.nome_imovel || 'Imóvel'} fill unoptimized style={{
               objectFit: 'cover',
             }} />
             <div style={{
