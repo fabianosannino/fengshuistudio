@@ -7,6 +7,7 @@ import {
 } from '../../../src/lib/fluxo-chi'
 import { supabase } from '../../../src/lib/supabase'
 import { logger } from '../../../src/lib/logger'
+import { BedDouble, Laptop, CookingPot, Sofa } from 'lucide-react'
 
 // ── Chi Flow checklist (11 items) ───────────────────────────────────────
 const CHECKLIST_CHI = [
@@ -24,18 +25,21 @@ const CHECKLIST_CHI = [
 ]
 
 const CATEGORIAS_CHI: Record<string, { label: string; cor: string }> = {
-  entrada: { label: 'Entrada / Boca do Chi', cor: '#1D4ED8' },
+  entrada: { label: 'Entrada / Boca do Chi', cor: '#2E7D6B' },
   circulacao: { label: 'Circulação', cor: '#2E7D6B' },
-  estrutura: { label: 'Estrutura', cor: '#D97706' },
-  elementos: { label: 'Elementos', cor: '#15803D' },
+  estrutura: { label: 'Estrutura', cor: '#8A6E2F' },
+  elementos: { label: 'Elementos', cor: '#2E7D6B' },
 }
 
 // ── Command Position checklist per room type ───────────────────────────
+// Ícones `lucide`, não emoji: emoji renderiza diferente em cada sistema, muda
+// de tamanho com a fonte e é lido em voz alta pelo leitor de tela como o nome
+// do caractere. Nas telas novas não entra nenhum.
 const COMODOS_POSICAO = [
-  { id: 'quarto', label: 'Quarto Principal', icon: '🛏️' },
-  { id: 'escritorio', label: 'Escritório / Home Office', icon: '💻' },
-  { id: 'cozinha', label: 'Cozinha', icon: '🍳' },
-  { id: 'sala', label: 'Sala de Estar', icon: '🛋️' },
+  { id: 'quarto', label: 'Quarto Principal', Icone: BedDouble },
+  { id: 'escritorio', label: 'Escritório / Home Office', Icone: Laptop },
+  { id: 'cozinha', label: 'Cozinha', Icone: CookingPot },
+  { id: 'sala', label: 'Sala de Estar', Icone: Sofa },
 ]
 
 const CHECKS_POSICAO: Record<string, { id: string; label: string }[]> = {
@@ -71,8 +75,8 @@ const CHECKS_POSICAO: Record<string, { id: string; label: string }[]> = {
 const APARENCIA_DO_ESTADO: Record<EstadoDoItem | 'nao_verificado', {
   fundo: string; borda: string; texto: string; marca: string; rotulo: string
 }> = {
-  conforme:       { fundo: '#F0FDF4', borda: '#BBF7D0', texto: '#15803D', marca: '✓', rotulo: 'Conforme' },
-  problema:       { fundo: '#FEF2F2', borda: '#FECACA', texto: '#B4533A', marca: '!', rotulo: 'Problema' },
+  conforme:       { fundo: '#F0F6F3', borda: '#DCEAE4', texto: '#2E7D6B', marca: '✓', rotulo: 'Conforme' },
+  problema:       { fundo: '#FAEEE9', borda: '#EBD3C7', texto: '#B4533A', marca: '!', rotulo: 'Problema' },
   nao_verificado: { fundo: '#F9FAFB', borda: '#E5E7EB', texto: '#6B7280', marca: '',  rotulo: 'Não verificado' },
 }
 
@@ -221,8 +225,8 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
             pontos seja lido como diagnóstico completo. */}
         {resumo.naoVerificado > 0 && (
           <p style={{
-            fontSize: '12px', color: '#92400E', background: '#FFFBEB',
-            border: '1px solid #FDE68A', borderRadius: '8px',
+            fontSize: '12px', color: '#8A6E2F', background: '#FAF3E0',
+            border: '1px solid #EEDFB4', borderRadius: '8px',
             padding: '8px 12px', margin: '0 0 16px 0'
           }}>
             {resumo.score === null
@@ -247,7 +251,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                 </span>
                 {daCategoria.problema > 0 && (
                   <span style={{
-                    fontSize: '10px', color: '#B4533A', background: '#FEF2F2',
+                    fontSize: '10px', color: '#B4533A', background: '#FAEEE9',
                     padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold'
                   }}>{daCategoria.problema} com problema</span>
                 )}
@@ -298,8 +302,8 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                         <button type="button"
                           onClick={() => deleteCustomItem(item.id)}
                           style={{
-                            background: '#FEE2E2', border: 'none',
-                            color: '#DC2626', fontSize: '14px', fontWeight: 'bold',
+                            background: '#FAEEE9', border: 'none',
+                            color: '#B4533A', fontSize: '14px', fontWeight: 'bold',
                             width: '24px', height: '24px', borderRadius: '50%',
                             cursor: 'pointer', display: 'flex', alignItems: 'center',
                             justifyContent: 'center', lineHeight: 1, padding: 0,
@@ -390,7 +394,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           {COMODOS_POSICAO.map(comodo => {
             const ativo = comodoAtivo === comodo.id
             const score = posicaoScore(comodo.id)
-            const cor = score >= 70 ? '#15803D' : score >= 40 ? '#D97706' : '#DC2626'
+            const cor = score >= 70 ? '#2E7D6B' : score >= 40 ? '#8A6E2F' : '#B4533A'
             return (
               <button type="button" key={comodo.id} onClick={() => setComodoAtivo(comodo.id)} style={{
                 padding: '10px 16px', borderRadius: '8px', border: 'none',
@@ -399,7 +403,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                 color: ativo ? '#fff' : '#6B7280',
                 display: 'flex', alignItems: 'center', gap: '6px'
               }}>
-                <span>{comodo.icon}</span>
+                <comodo.Icone size={16} strokeWidth={1.75} aria-hidden="true" />
                 <span>{comodo.label}</span>
                 {(posicaoComando[comodo.id]?.length || 0) > 0 && (
                   <span style={{
@@ -420,22 +424,22 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               <label key={check.id} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
-                background: isChecked ? '#F0FDF4' : '#F9FAFB',
-                border: `1px solid ${isChecked ? '#BBF7D0' : '#E5E7EB'}`,
+                background: isChecked ? '#F0F6F3' : '#F9FAFB',
+                border: `1px solid ${isChecked ? '#DCEAE4' : '#E5E7EB'}`,
                 transition: 'all 0.15s'
               }}>
                 <input
                   type="checkbox" checked={isChecked}
                   onChange={() => togglePosicao(comodoAtivo, check.id)}
-                  style={{ width: '18px', height: '18px', accentColor: '#15803D', cursor: 'pointer' }}
+                  style={{ width: '18px', height: '18px', accentColor: '#2E7D6B', cursor: 'pointer' }}
                 />
                 <span style={{
-                  fontSize: '13px', color: isChecked ? '#15803D' : '#374151',
+                  fontSize: '13px', color: isChecked ? '#2E7D6B' : '#374151',
                   fontWeight: isChecked ? '600' : 'normal'
                 }}>{check.label}</span>
                 {isChecked && (
                   <span style={{
-                    marginLeft: 'auto', fontSize: '16px', color: '#15803D'
+                    marginLeft: 'auto', fontSize: '16px', color: '#2E7D6B'
                   }}>✓</span>
                 )}
               </label>
@@ -454,7 +458,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {COMODOS_POSICAO.map(comodo => {
               const score = posicaoScore(comodo.id)
-              const cor = score >= 70 ? '#15803D' : score >= 40 ? '#D97706' : score > 0 ? '#DC2626' : '#9CA3AF'
+              const cor = score >= 70 ? '#2E7D6B' : score >= 40 ? '#8A6E2F' : score > 0 ? '#B4533A' : '#9CA3AF'
               const totalChecks = CHECKS_POSICAO[comodo.id]?.length || 0
               const checkedCount = (posicaoComando[comodo.id] || []).length
               return (
@@ -462,7 +466,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                   textAlign: 'center', padding: '10px', background: '#fff',
                   borderRadius: '8px', border: '1px solid #DCEFE9'
                 }}>
-                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{comodo.icon}</div>
+                  <comodo.Icone size={20} strokeWidth={1.75} color={cor} style={{ margin: '0 auto 4px' }} aria-hidden="true" />
                   <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>{comodo.label}</div>
                   <div style={{ fontSize: '18px', fontWeight: 'bold', color: cor }}>
                     {checkedCount > 0 ? `${score}%` : '—'}
@@ -489,7 +493,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       {(resumo.conforme + resumo.problema > 0 || Object.values(posicaoComando).some(v => v.length > 0)) && (
         <div style={{ padding: '16px', background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9', marginTop: '16px' }}>
           <h3 style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
-            📋 Orientação integrada
+            Orientação integrada
           </h3>
           {/* Problema encontrado é pauta. Não verificado é lacuna. Antes os dois
               apareciam juntos como «pontos que requerem atenção», o que dava ao
@@ -500,7 +504,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                 Problemas encontrados ({comProblema.length}):
               </p>
               {comProblema.slice(0, 5).map(item => (
-                <p key={item.id} style={{ fontSize: '12px', color: '#7F1D1D', margin: '0 0 4px 0', paddingLeft: '12px' }}>
+                <p key={item.id} style={{ fontSize: '12px', color: '#8F3F2C', margin: '0 0 4px 0', paddingLeft: '12px' }}>
                   • {item.label}
                 </p>
               ))}
@@ -508,11 +512,11 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           )}
           {naoVerificados.length > 0 && (
             <div style={{ marginBottom: '12px' }}>
-              <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#92400E', margin: '0 0 6px 0' }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#8A6E2F', margin: '0 0 6px 0' }}>
                 Ainda não verificados ({naoVerificados.length}):
               </p>
               {naoVerificados.slice(0, 5).map(item => (
-                <p key={item.id} style={{ fontSize: '12px', color: '#78350F', margin: '0 0 4px 0', paddingLeft: '12px' }}>
+                <p key={item.id} style={{ fontSize: '12px', color: '#6B5424', margin: '0 0 4px 0', paddingLeft: '12px' }}>
                   • {item.label}
                 </p>
               ))}
@@ -520,7 +524,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           )}
           {/* Command position summary */}
           {COMODOS_POSICAO.filter(c => posicaoScore(c.id) < 60 && (posicaoComando[c.id]?.length || 0) > 0).map(comodo => (
-            <p key={comodo.id} style={{ fontSize: '12px', color: '#D97706', margin: '0 0 4px 0' }}>
+            <p key={comodo.id} style={{ fontSize: '12px', color: '#8A6E2F', margin: '0 0 4px 0' }}>
               ⚠ {comodo.label}: posição de comando precisa de ajustes ({posicaoScore(comodo.id)}%)
             </p>
           ))}

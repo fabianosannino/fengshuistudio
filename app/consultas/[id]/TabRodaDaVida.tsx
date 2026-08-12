@@ -122,9 +122,9 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
     const vidaNorm = vidaScore * 10
     const diff = Math.abs(vidaNorm - setorPct)
 
-    if (diff <= 15) return { label: 'Correlação alta', cor: '#15803D' }
-    if (diff <= 35) return { label: 'Correlação moderada', cor: '#D97706' }
-    return { label: 'Divergência — investigar', cor: '#DC2626' }
+    if (diff <= 15) return { label: 'Correlação alta', cor: '#2E7D6B' }
+    if (diff <= 35) return { label: 'Correlação moderada', cor: '#8A6E2F' }
+    return { label: 'Divergência — investigar', cor: '#B4533A' }
   }
 
   function classificarDesvio(areaKey: string): { nivel: string; cor: string; bg: string } {
@@ -468,9 +468,9 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                   Este diagnóstico cruza a <strong>percepção subjetiva</strong> do cliente (Roda da Vida) com a <strong>análise objetiva</strong> do imóvel (Ba Guá):
                 </p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ background: '#F0FDF4', color: '#15803D', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação alta = harmonia entre espaço e vida</span>
-                  <span style={{ background: '#FFFBEB', color: '#D97706', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação moderada = monitorar</span>
-                  <span style={{ background: '#FEF2F2', color: '#DC2626', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Divergência = prioridade de intervenção</span>
+                  <span style={{ background: '#F0F6F3', color: '#2E7D6B', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação alta = harmonia entre espaço e vida</span>
+                  <span style={{ background: '#FAF3E0', color: '#8A6E2F', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação moderada = monitorar</span>
+                  <span style={{ background: '#FAEEE9', color: '#B4533A', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Divergência = prioridade de intervenção</span>
                 </div>
               </div>
 
@@ -499,7 +499,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                         style={{
                           width: '100%', padding: '6px 8px', border: '1px solid #E5E7EB', borderRadius: '6px',
                           fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box',
-                          background: observacoes[a.key] ? '#FFFBEB' : '#F9FAFB'
+                          background: observacoes[a.key] ? '#FAF3E0' : '#F9FAFB'
                         }}
                       />
                     )}
@@ -521,7 +521,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                     style={{
                       width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: '8px',
                       fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box',
-                      background: observacaoGeral ? '#FFFBEB' : '#fff'
+                      background: observacaoGeral ? '#FAF3E0' : '#fff'
                     }}
                   />
                 </div>

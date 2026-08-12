@@ -76,8 +76,8 @@ export default function CamposAnoDoImovel({
 
       {incoerente && (
         <p style={{
-          fontSize: '12px', color: '#B4533A', background: '#FEF2F2',
-          border: '1px solid #FECACA', borderRadius: '8px',
+          fontSize: '12px', color: '#B4533A', background: '#FAEEE9',
+          border: '1px solid #EBD3C7', borderRadius: '8px',
           padding: '8px 12px', margin: '10px 0 0 0',
         }}>
           A reforma está anterior à construção. Os campos podem ter sido trocados —
@@ -98,7 +98,7 @@ export default function CamposAnoDoImovel({
               sozinho não distingue os dois casos — e escolher um em silêncio é
               o que o campo de data fazia. */}
           {periodo.ambiguo && (
-            <span style={{ display: 'block', marginTop: '6px', color: '#92400E' }}>
+            <span style={{ display: 'block', marginTop: '6px', color: '#8A6E2F' }}>
               {periodo.anoUsado} é ano de virada: se a obra foi concluída antes de
               4 de fevereiro, o período é {periodo.periodoAnterior}. Confirme o mês
               antes de usar a carta.

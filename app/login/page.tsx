@@ -229,13 +229,13 @@ function LoginForm() {
               {email}
             </p>
             <div style={{
-              background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px',
+              background: '#FAF3E0', border: '1px solid #EEDFB4', borderRadius: '8px',
               padding: '12px 16px', marginBottom: '20px', textAlign: 'left'
             }}>
-              <p style={{ color: '#92400E', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 'bold' }}>
+              <p style={{ color: '#8A6E2F', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 'bold' }}>
                 Não recebeu o e-mail?
               </p>
-              <ul style={{ color: '#92400E', fontSize: '13px', margin: '0', paddingLeft: '16px' }}>
+              <ul style={{ color: '#8A6E2F', fontSize: '13px', margin: '0', paddingLeft: '16px' }}>
                 <li>Verifique a pasta de <strong>spam/lixo eletrônico</strong></li>
                 <li>Aguarde alguns minutos e tente reenviar</li>
                 <li>Confirme se o e-mail digitado está correto</li>
@@ -386,9 +386,9 @@ function LoginForm() {
           return (
             <div style={{
               marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-              background: isError ? '#FEF2F2' : '#F0FDF4',
-              border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
-              color: isError ? '#DC2626' : '#15803D',
+              background: isError ? '#FAEEE9' : '#F0F6F3',
+              border: `1px solid ${isError ? '#EBD3C7' : '#DCEAE4'}`,
+              color: isError ? '#B4533A' : '#2E7D6B',
               fontSize: '14px', textAlign: 'center'
             }}>
               {message}

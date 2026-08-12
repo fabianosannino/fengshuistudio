@@ -182,8 +182,8 @@ function StripeOnboard() {
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') || message.includes('expirado') ? '#FEF2F2' : '#F0FDF4',
-            color: message.includes('Erro') || message.includes('expirado') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') || message.includes('expirado') ? '#FAEEE9' : '#F0F6F3',
+            color: message.includes('Erro') || message.includes('expirado') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -212,9 +212,9 @@ function StripeOnboard() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                 {/* Onboarding Status */}
-                <div style={{ padding: '16px', borderRadius: '10px', background: status.onboarding_complete ? '#F0FDF4' : '#FFFBEB' }}>
+                <div style={{ padding: '16px', borderRadius: '10px', background: status.onboarding_complete ? '#F0F6F3' : '#FAF3E0' }}>
                   <div style={{ fontSize: '24px', marginBottom: '4px' }}>{status.onboarding_complete ? '✅' : '⏳'}</div>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: status.onboarding_complete ? '#15803D' : '#D97706' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: status.onboarding_complete ? '#2E7D6B' : '#8A6E2F' }}>
                     {status.onboarding_complete ? 'Onboarding completo' : 'Onboarding pendente'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#6B7280' }}>
@@ -223,9 +223,9 @@ function StripeOnboard() {
                 </div>
 
                 {/* Payment Capability */}
-                <div style={{ padding: '16px', borderRadius: '10px', background: status.ready_to_process_payments ? '#F0FDF4' : '#FEF2F2' }}>
+                <div style={{ padding: '16px', borderRadius: '10px', background: status.ready_to_process_payments ? '#F0F6F3' : '#FAEEE9' }}>
                   <div style={{ fontSize: '24px', marginBottom: '4px' }}>{status.ready_to_process_payments ? '💳' : '🔒'}</div>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: status.ready_to_process_payments ? '#15803D' : '#DC2626' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: status.ready_to_process_payments ? '#2E7D6B' : '#B4533A' }}>
                     {status.ready_to_process_payments ? 'Pagamentos ativos' : 'Pagamentos inativos'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#6B7280' }}>
@@ -302,8 +302,8 @@ function StripeOnboard() {
                   <>
                     {/* Revenue summary */}
                     <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                      <div style={{ flex: 1, padding: '12px', background: '#F0FDF4', borderRadius: '8px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#15803D' }}>
+                      <div style={{ flex: 1, padding: '12px', background: '#F0F6F3', borderRadius: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2E7D6B' }}>
                           {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
                         <div style={{ fontSize: '11px', color: '#6B7280' }}>Receita Total</div>
@@ -327,9 +327,9 @@ function StripeOnboard() {
                           <tr key={sale.id}>
                             <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{new Date(sale.created_at).toLocaleDateString('pt-BR')}</td>
                             <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{sale.product_name}</td>
-                            <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#15803D', fontWeight: 'bold' }}>{sale.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                            <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#2E7D6B', fontWeight: 'bold' }}>{sale.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                             <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6' }}>
-                              <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold', background: sale.status === 'completed' ? '#F0FDF4' : '#FFFBEB', color: sale.status === 'completed' ? '#15803D' : '#D97706' }}>
+                              <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold', background: sale.status === 'completed' ? '#F0F6F3' : '#FAF3E0', color: sale.status === 'completed' ? '#2E7D6B' : '#8A6E2F' }}>
                                 {sale.status === 'completed' ? 'Concluída' : sale.status}
                               </span>
                             </td>

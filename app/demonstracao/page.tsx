@@ -136,7 +136,7 @@ export default function Demonstracao() {
             {/* Um setor sem avaliação aparece como «—», não como 0%: são coisas
                 diferentes, e o produto inteiro segue essa regra. */}
             {setores.some(s => s.score === null) && (
-              <p style={{ fontSize: '12px', color: '#8A6E2F', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 12px', margin: '12px 0 0' }}>
+              <p style={{ fontSize: '12px', color: '#8A6E2F', background: '#FAF3E0', border: '1px solid #EEDFB4', borderRadius: '8px', padding: '8px 12px', margin: '12px 0 0' }}>
                 «Pessoas Úteis» aparece como «—» porque não foi avaliado. Não avaliado não
                 é 0% — o relatório declara a lacuna em vez de preenchê-la.
               </p>

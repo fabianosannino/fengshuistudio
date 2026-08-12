@@ -14,9 +14,9 @@ interface ConfirmModalProps {
 }
 
 const VARIANT_STYLES = {
-  danger: { icon: '⚠️', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', btnBg: '#DC2626' },
-  warning: { icon: '⚡', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', btnBg: '#D97706' },
-  info: { icon: 'ℹ️', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE', btnBg: '#1D4ED8' },
+  danger: { icon: '⚠️', color: '#B4533A', bg: '#FAEEE9', border: '#EBD3C7', btnBg: '#B4533A' },
+  warning: { icon: '⚡', color: '#8A6E2F', bg: '#FAF3E0', border: '#EEDFB4', btnBg: '#8A6E2F' },
+  info: { icon: 'ℹ️', color: '#2E7D6B', bg: '#F0F6F3', border: '#DCEAE4', btnBg: '#2E7D6B' },
 }
 
 export default function ConfirmModal({

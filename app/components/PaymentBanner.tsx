@@ -53,9 +53,9 @@ export default function PaymentBanner() {
   if (!info || !info.hasOverdue) return null
 
   const isSuspended = info.isSuspended
-  const bg = isSuspended ? '#FEF2F2' : '#FFFBEB'
-  const border = isSuspended ? '#FECACA' : '#FDE68A'
-  const color = isSuspended ? '#DC2626' : '#D97706'
+  const bg = isSuspended ? '#FAEEE9' : '#FAF3E0'
+  const border = isSuspended ? '#EBD3C7' : '#EEDFB4'
+  const color = isSuspended ? '#B4533A' : '#8A6E2F'
   const icon = isSuspended ? '🔴' : '⚠'
 
   return (

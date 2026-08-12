@@ -131,7 +131,7 @@ export default function AdminRelatorios() {
       </div>
 
       {message && (
-        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '8px', background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4', color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px' }}>{message}</div>
+        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '8px', background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3', color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px' }}>{message}</div>
       )}
 
       {/* Custom Period */}
@@ -177,12 +177,12 @@ export default function AdminRelatorios() {
           {/* Summary Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
             {[
-              { label: 'Novos Usuários', value: `+${selectedReport.data.usuarios.novos_na_semana}`, color: '#15803D' },
-              { label: 'Saídas', value: `-${selectedReport.data.usuarios.saidas_na_semana}`, color: '#DC2626' },
-              { label: 'Saldo', value: `${selectedReport.data.usuarios.saldo_semana >= 0 ? '+' : ''}${selectedReport.data.usuarios.saldo_semana}`, color: selectedReport.data.usuarios.saldo_semana >= 0 ? '#15803D' : '#DC2626' },
-              { label: 'MRR', value: fmt(selectedReport.data.financeiro.mrr_atual), color: '#1D4ED8' },
-              { label: 'Receita Semana', value: fmt(selectedReport.data.financeiro.receita_semana), color: '#15803D' },
-              { label: 'Churn', value: selectedReport.data.retencao.churn_rate_semana, color: '#D97706' },
+              { label: 'Novos Usuários', value: `+${selectedReport.data.usuarios.novos_na_semana}`, color: '#2E7D6B' },
+              { label: 'Saídas', value: `-${selectedReport.data.usuarios.saidas_na_semana}`, color: '#B4533A' },
+              { label: 'Saldo', value: `${selectedReport.data.usuarios.saldo_semana >= 0 ? '+' : ''}${selectedReport.data.usuarios.saldo_semana}`, color: selectedReport.data.usuarios.saldo_semana >= 0 ? '#2E7D6B' : '#B4533A' },
+              { label: 'MRR', value: fmt(selectedReport.data.financeiro.mrr_atual), color: '#2E7D6B' },
+              { label: 'Receita Semana', value: fmt(selectedReport.data.financeiro.receita_semana), color: '#2E7D6B' },
+              { label: 'Churn', value: selectedReport.data.retencao.churn_rate_semana, color: '#8A6E2F' },
             ].map((c, i) => (
               <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
                 <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>{c.label}</div>
@@ -264,11 +264,11 @@ export default function AdminRelatorios() {
               <tr key={r.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                 <td style={{ padding: '12px', fontWeight: 'bold', color: '#374151' }}>Sem. {r.data.periodo?.semana || '—'}</td>
                 <td style={{ padding: '12px', color: '#6B7280' }}>{fmtDate(r.week_start)} — {fmtDate(r.week_end)}</td>
-                <td style={{ padding: '12px', textAlign: 'center', color: '#15803D', fontWeight: 'bold' }}>+{r.data.usuarios?.novos_na_semana || 0}</td>
-                <td style={{ padding: '12px', textAlign: 'center', color: '#DC2626' }}>{r.data.usuarios?.saidas_na_semana || 0}</td>
+                <td style={{ padding: '12px', textAlign: 'center', color: '#2E7D6B', fontWeight: 'bold' }}>+{r.data.usuarios?.novos_na_semana || 0}</td>
+                <td style={{ padding: '12px', textAlign: 'center', color: '#B4533A' }}>{r.data.usuarios?.saidas_na_semana || 0}</td>
                 <td style={{ padding: '12px', textAlign: 'center', color: '#111827', fontWeight: 'bold' }}>{fmt(r.data.financeiro?.mrr_atual || 0)}</td>
                 <td style={{ padding: '12px', textAlign: 'center' }}>
-                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: r.is_manual ? '#FFFBEB' : '#F0FDF4', color: r.is_manual ? '#D97706' : '#15803D' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: r.is_manual ? '#FAF3E0' : '#F0F6F3', color: r.is_manual ? '#8A6E2F' : '#2E7D6B' }}>
                     {r.is_manual ? 'Manual' : 'Automático'}
                   </span>
                 </td>

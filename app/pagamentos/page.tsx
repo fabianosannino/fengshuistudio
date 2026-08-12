@@ -11,9 +11,9 @@ import type { User } from '@supabase/supabase-js'
 import { Wrench, Wallet, User as UserIcon, Home as HomeIcon, Check } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> = {
-  pendente: { label: 'Pendente', cor: '#D97706', bg: '#FFFBEB' },
-  pago: { label: 'Pago', cor: '#15803D', bg: '#F0FDF4' },
-  atrasado: { label: 'Atrasado', cor: '#DC2626', bg: '#FEF2F2' },
+  pendente: { label: 'Pendente', cor: '#8A6E2F', bg: '#FAF3E0' },
+  pago: { label: 'Pago', cor: '#2E7D6B', bg: '#F0F6F3' },
+  atrasado: { label: 'Atrasado', cor: '#B4533A', bg: '#FAEEE9' },
   cancelado: { label: 'Cancelado', cor: '#6B7280', bg: '#F3F4F6' },
 }
 
@@ -297,14 +297,14 @@ export default function Pagamentos() {
     <AppShell currentPage="pagamentos">
       {/* Banner em desenvolvimento */}
       <div style={{
-        background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px',
+        background: '#FAF3E0', border: '1px solid #EEDFB4', borderRadius: '10px',
         padding: '16px 20px', marginBottom: '24px', textAlign: 'center'
       }}>
-        <Wrench size={22} strokeWidth={1.75} color="#92400E" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
-        <p style={{ color: '#92400E', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+        <Wrench size={22} strokeWidth={1.75} color="#8A6E2F" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
+        <p style={{ color: '#8A6E2F', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
           Pagamentos — Em desenvolvimento
         </p>
-        <p style={{ color: '#92400E', fontSize: '12px', margin: 0 }}>
+        <p style={{ color: '#8A6E2F', fontSize: '12px', margin: 0 }}>
           Em breve você poderá gerenciar cobranças e recebimentos diretamente pela plataforma.
           Por enquanto, utilize a seção abaixo para registro manual.
         </p>
@@ -326,17 +326,17 @@ export default function Pagamentos() {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: '#F0FDF4', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #15803D' }}>
+        <div style={{ background: '#F0F6F3', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #2E7D6B' }}>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 4px 0' }}>Total Recebido</p>
-          <p style={{ color: '#15803D', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalRecebido)}</p>
+          <p style={{ color: '#2E7D6B', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalRecebido)}</p>
         </div>
-        <div style={{ background: '#FFFBEB', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #D97706' }}>
+        <div style={{ background: '#FAF3E0', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #8A6E2F' }}>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 4px 0' }}>Total Pendente</p>
-          <p style={{ color: '#D97706', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalPendente)}</p>
+          <p style={{ color: '#8A6E2F', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalPendente)}</p>
         </div>
-        <div style={{ background: '#FEF2F2', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #DC2626' }}>
+        <div style={{ background: '#FAEEE9', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #B4533A' }}>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 4px 0' }}>Total Atrasado</p>
-          <p style={{ color: '#DC2626', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalAtrasado)}</p>
+          <p style={{ color: '#B4533A', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalAtrasado)}</p>
         </div>
       </div>
 
@@ -357,8 +357,8 @@ export default function Pagamentos() {
       {message && (
         <div style={{
           marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-          background: '#FEF2F2', border: '1px solid #FECACA',
-          color: '#DC2626', fontSize: '14px',
+          background: '#FAEEE9', border: '1px solid #EBD3C7',
+          color: '#B4533A', fontSize: '14px',
         }}>{message}</div>
       )}
 
@@ -388,7 +388,7 @@ export default function Pagamentos() {
               <div key={pag.id} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
                 boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
-                borderLeft: `4px solid ${vencido ? '#DC2626' : st.cor}`,
+                borderLeft: `4px solid ${vencido ? '#B4533A' : st.cor}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexWrap: 'wrap', gap: '12px',
               }}>
@@ -399,8 +399,8 @@ export default function Pagamentos() {
                       {pag.descricao}
                     </h3>
                     <span style={{
-                      background: vencido ? '#FEF2F2' : st.bg,
-                      color: vencido ? '#DC2626' : st.cor,
+                      background: vencido ? '#FAEEE9' : st.bg,
+                      color: vencido ? '#B4533A' : st.cor,
                       padding: '2px 10px', borderRadius: '20px',
                       fontSize: '11px', fontWeight: 'bold',
                     }}>{vencido ? 'Atrasado' : st.label}</span>
@@ -419,7 +419,7 @@ export default function Pagamentos() {
 
                 {/* Valor */}
                 <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                  <p style={{ color: pag.status === 'pago' ? '#15803D' : '#111827', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
+                  <p style={{ color: pag.status === 'pago' ? '#2E7D6B' : '#111827', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
                     {formatCurrency(Number(pag.valor))}
                   </p>
                 </div>
@@ -428,8 +428,8 @@ export default function Pagamentos() {
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                   {(pag.status === 'pendente' || pag.status === 'atrasado' || vencido) && (
                     <button type="button" onClick={() => handleMarcarPago(pag)} style={{
-                      padding: '6px 14px', background: '#F0FDF4', color: '#15803D',
-                      border: '1px solid #BBF7D0', borderRadius: '6px',
+                      padding: '6px 14px', background: '#F0F6F3', color: '#2E7D6B',
+                      border: '1px solid #DCEAE4', borderRadius: '6px',
                       fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '4px',
                     }}><Check size={13} strokeWidth={2.5} aria-hidden="true" /> Pago</button>
@@ -440,8 +440,8 @@ export default function Pagamentos() {
                     fontSize: '12px', cursor: 'pointer',
                   }}>Editar</button>
                   <button type="button" onClick={() => setDeleteTarget(pag.id)} style={{
-                    padding: '6px 14px', background: '#FEF2F2', color: '#DC2626',
-                    border: '1px solid #FECACA', borderRadius: '6px',
+                    padding: '6px 14px', background: '#FAEEE9', color: '#B4533A',
+                    border: '1px solid #EBD3C7', borderRadius: '6px',
                     fontSize: '12px', cursor: 'pointer',
                   }}>Excluir</button>
                 </div>
@@ -508,8 +508,8 @@ export default function Pagamentos() {
             {message && (
               <div style={{
                 marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-                background: '#FEF2F2', border: '1px solid #FECACA',
-                color: '#DC2626', fontSize: '14px',
+                background: '#FAEEE9', border: '1px solid #EBD3C7',
+                color: '#B4533A', fontSize: '14px',
               }}>{message}</div>
             )}
 

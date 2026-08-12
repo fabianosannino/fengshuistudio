@@ -89,9 +89,9 @@ export default function EsqueciSenha() {
         {message && (
           <div style={{
             marginTop: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: messageIsError ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${messageIsError ? '#FECACA' : '#BBF7D0'}`,
-            color: messageIsError ? '#DC2626' : '#15803D',
+            background: messageIsError ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${messageIsError ? '#EBD3C7' : '#DCEAE4'}`,
+            color: messageIsError ? '#B4533A' : '#2E7D6B',
             fontSize: '14px', textAlign: 'center'
           }}>{message}</div>
         )}

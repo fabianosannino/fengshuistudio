@@ -159,7 +159,7 @@ export default function EditorPoligonoTaiJi({
               x={bbox.x + c.coluna * larguraCelula} y={bbox.y + c.linha * alturaCelula}
               width={larguraCelula} height={alturaCelula}
               fill={ausente ? 'rgba(220,38,38,0.15)' : 'rgba(217,119,6,0.2)'}
-              stroke={ausente ? '#DC2626' : '#D97706'}
+              stroke={ausente ? '#B4533A' : '#8A6E2F'}
               strokeWidth={larguraTraco} strokeDasharray={`${larguraTraco * 4} ${larguraTraco * 3}`}
               pointerEvents="none"
               data-testid={ausente ? `celula-ausente-${c.linha}-${c.coluna}` : `celula-extensao-${c.linha}-${c.coluna}`}
@@ -197,7 +197,7 @@ export default function EditorPoligonoTaiJi({
         {taiJi && (
           <circle
             cx={taiJi.centro.x} cy={taiJi.centro.y} r={raioTaiJi}
-            fill={taiJi.centroForaDaArea ? '#DC2626' : '#059669'}
+            fill={taiJi.centroForaDaArea ? '#B4533A' : '#059669'}
             stroke="#fff" strokeWidth={larguraTraco}
             data-testid="tai-ji-marcador"
           />
@@ -206,17 +206,17 @@ export default function EditorPoligonoTaiJi({
 
       <div style={{ marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
         {taiJi?.centroForaDaArea && (
-          <p style={{ color: '#DC2626', fontWeight: 'bold', margin: '0 0 4px' }} data-testid="aviso-centro-fora">
+          <p style={{ color: '#B4533A', fontWeight: 'bold', margin: '0 0 4px' }} data-testid="aviso-centro-fora">
             ⚠ O centro (Tai Ji) cai fora da área construída — comum em plantas em L, U ou T. É um diagnóstico em si, não um erro de desenho.
           </p>
         )}
         {ausentes.length > 0 && (
-          <p style={{ color: '#DC2626', margin: '0 0 4px' }} data-testid="resumo-ausentes">
+          <p style={{ color: '#B4533A', margin: '0 0 4px' }} data-testid="resumo-ausentes">
             Setor ausente (área hachurada vermelha): {ausentes.length} célula(s) da grade 3×3.
           </p>
         )}
         {extensoes.length > 0 && (
-          <p style={{ color: '#D97706', margin: '0 0 4px' }} data-testid="resumo-extensoes">
+          <p style={{ color: '#8A6E2F', margin: '0 0 4px' }} data-testid="resumo-extensoes">
             Extensão (área hachurada laranja): {extensoes.length} célula(s) da grade 3×3.
           </p>
         )}

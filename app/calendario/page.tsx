@@ -363,9 +363,9 @@ export default function Calendario() {
       {message && (
         <div style={{
           marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
-          background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-          border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-          color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+          background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+          border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+          color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
         }}>{message}</div>
       )}
 
@@ -450,8 +450,8 @@ export default function Calendario() {
                       textDecoration: r.status === 'concluido' ? 'line-through' : 'none'
                     }}>{r.titulo}</h4>
                     <span style={{
-                      background: r.status === 'concluido' ? '#F0FDF4' : '#FFF7ED',
-                      color: r.status === 'concluido' ? '#15803D' : '#D97706',
+                      background: r.status === 'concluido' ? '#F0F6F3' : '#FAF3E0',
+                      color: r.status === 'concluido' ? '#2E7D6B' : '#8A6E2F',
                       padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
                     }}>{r.status === 'concluido' ? 'Concluído' : 'Pendente'}</span>
                   </div>
@@ -463,12 +463,12 @@ export default function Calendario() {
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button type="button" onClick={() => toggleStatus(r.id, r.status)} style={{
-                    padding: '6px 14px', background: r.status === 'concluido' ? '#FFF7ED' : '#F0FDF4',
-                    color: r.status === 'concluido' ? '#D97706' : '#15803D',
+                    padding: '6px 14px', background: r.status === 'concluido' ? '#FAF3E0' : '#F0F6F3',
+                    color: r.status === 'concluido' ? '#8A6E2F' : '#2E7D6B',
                     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
                   }}>{r.status === 'concluido' ? 'Reabrir' : '✓ Concluir'}</button>
                   <button type="button" onClick={() => deleteRitual(r.id)} style={{
-                    padding: '6px 12px', background: '#FEF2F2', color: '#DC2626',
+                    padding: '6px 12px', background: '#FAEEE9', color: '#B4533A',
                     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
                   }}>🗑️</button>
                 </div>

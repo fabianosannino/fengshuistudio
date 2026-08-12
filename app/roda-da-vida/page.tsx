@@ -24,11 +24,11 @@ const novaAcao = (): Acao => ({ acao: '', categoria: '', data_inicio: '', data_f
 const defaultAcoes = (): Acao[] => [novaAcao()]
 
 function classificar(val: number): { nivel: string; cor: string; bg: string } {
-  if (val >= 8) return { nivel: 'Ótimo', cor: '#15803D', bg: '#F0FDF4' }
-  if (val >= 5) return { nivel: 'Leve', cor: '#2563EB', bg: '#EFF6FF' }
-  if (val >= 3) return { nivel: 'Moderado', cor: '#D97706', bg: '#FFFBEB' }
-  if (val >= 1) return { nivel: 'Acentuado', cor: '#DC2626', bg: '#FEF2F2' }
-  return { nivel: 'Ausente', cor: '#7F1D1D', bg: '#FEF2F2' }
+  if (val >= 8) return { nivel: 'Ótimo', cor: '#2E7D6B', bg: '#F0F6F3' }
+  if (val >= 5) return { nivel: 'Leve', cor: '#2E7D6B', bg: '#F0F6F3' }
+  if (val >= 3) return { nivel: 'Moderado', cor: '#8A6E2F', bg: '#FAF3E0' }
+  if (val >= 1) return { nivel: 'Acentuado', cor: '#B4533A', bg: '#FAEEE9' }
+  return { nivel: 'Ausente', cor: '#8F3F2C', bg: '#FAEEE9' }
 }
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) } catch { return d } }
 
@@ -191,7 +191,7 @@ export default function RodaDaVidaPage() {
 
   return (
     <AppShell currentPage="roda-da-vida">
-      {message && <div style={{ padding: '10px 16px', marginBottom: 16, borderRadius: 8, background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4', color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: 14, fontWeight: 'bold', border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}` }}>{message}</div>}
+      {message && <div style={{ padding: '10px 16px', marginBottom: 16, borderRadius: 8, background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3', color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: 14, fontWeight: 'bold', border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}` }}>{message}</div>}
 
       {/* ── LIST STEP ── */}
       {step === 'list' && <>
@@ -265,7 +265,7 @@ export default function RodaDaVidaPage() {
             <input value={pessoaNome} onChange={e => { setPessoaNome(e.target.value); if (!clientes.find(c => c.nome_completo === e.target.value)) setClienteId(null) }}
               placeholder="Digite o nome..." style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, boxSizing: 'border-box' }} />
             {!clienteId && pessoaNome.trim() && (
-              <p style={{ fontSize: 12, color: '#D97706', marginTop: 6 }}>Um novo cliente será criado automaticamente</p>
+              <p style={{ fontSize: 12, color: '#8A6E2F', marginTop: 6 }}>Um novo cliente será criado automaticamente</p>
             )}
           </div>
 
@@ -306,7 +306,7 @@ export default function RodaDaVidaPage() {
           <button type="button" onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setStep('select_client')} style={btnPrimary('#6B7280')}>Anterior</button>
           {areaAtual < 11
             ? <button type="button" onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
-            : <button type="button" onClick={() => setStep('results')} style={btnPrimary('#15803D')}>Ver Resultados</button>
+            : <button type="button" onClick={() => setStep('results')} style={btnPrimary('#2E7D6B')}>Ver Resultados</button>
           }
         </div>
       </>}
@@ -393,7 +393,7 @@ export default function RodaDaVidaPage() {
                   style={{
                     width: '100%', marginTop: 6, padding: '6px 8px', border: '1px solid #E5E7EB', borderRadius: 6,
                     fontSize: 11, color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const,
-                    background: observacoes[a.key] ? '#FFFBEB' : '#fff'
+                    background: observacoes[a.key] ? '#FAF3E0' : '#fff'
                   }}
                 />
               </div>
@@ -410,7 +410,7 @@ export default function RodaDaVidaPage() {
               style={{
                 width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 8,
                 fontSize: 13, color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const,
-                background: observacaoGeral ? '#FFFBEB' : '#fff'
+                background: observacaoGeral ? '#FAF3E0' : '#fff'
               }}
             />
           </div>
@@ -427,7 +427,7 @@ export default function RodaDaVidaPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 'bold', color: '#0E1B2C' }}>Ação {i + 1}</span>
                 {acoes.length > 1 && (
-                  <button type="button" onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16 }}>×</button>
+                  <button type="button" onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#B4533A', cursor: 'pointer', fontSize: 16 }}>×</button>
                 )}
               </div>
               <div style={{ marginBottom: 8 }}>

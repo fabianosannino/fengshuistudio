@@ -39,12 +39,12 @@ interface UserRow {
 }
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; color: string }> = {
-  active: { label: 'Ativo', bg: '#F0FDF4', color: '#15803D' },
-  past_due: { label: 'Em atraso', bg: '#FFFBEB', color: '#D97706' },
+  active: { label: 'Ativo', bg: '#F0F6F3', color: '#2E7D6B' },
+  past_due: { label: 'Em atraso', bg: '#FAF3E0', color: '#8A6E2F' },
   cancelled: { label: 'Cancelado', bg: '#F3F4F6', color: '#6B7280' },
-  gratuidade: { label: 'Gratuidade', bg: '#EFF6FF', color: '#1D4ED8' },
+  gratuidade: { label: 'Gratuidade', bg: '#F0F6F3', color: '#2E7D6B' },
   trial: { label: 'Trial', bg: '#EEF6F3', color: '#2E7D6B' },
-  paused: { label: 'Pausado', bg: '#FFF7ED', color: '#EA580C' },
+  paused: { label: 'Pausado', bg: '#FAF3E0', color: '#EA580C' },
 }
 
 function fmt(val: number): string {
@@ -122,12 +122,12 @@ export default function AdminPagamentos() {
   }
 
   const metricsCards = metrics ? [
-    { label: 'MRR', value: fmt(metrics.mrr), sub: 'Receita Mensal', color: '#15803D', bg: '#F0FDF4' },
-    { label: 'ARR', value: fmt(metrics.arr), sub: 'Receita Anual', color: '#1D4ED8', bg: '#EFF6FF' },
+    { label: 'MRR', value: fmt(metrics.mrr), sub: 'Receita Mensal', color: '#2E7D6B', bg: '#F0F6F3' },
+    { label: 'ARR', value: fmt(metrics.arr), sub: 'Receita Anual', color: '#2E7D6B', bg: '#F0F6F3' },
     { label: 'Total Assinaturas', value: String(metrics.totalActive), sub: 'Ativas', color: '#2E7D6B', bg: '#EEF6F3' },
-    { label: 'Em Atraso', value: String(metrics.pastDue), sub: fmt(metrics.pastDueAmount), color: '#D97706', bg: '#FFFBEB' },
-    { label: 'Canceladas', value: String(metrics.cancelledThisMonth), sub: 'este mês', color: '#DC2626', bg: '#FEF2F2' },
-    { label: 'Gratuidades', value: String(metrics.gratuidades), sub: 'ativas', color: '#1D4ED8', bg: '#EFF6FF' },
+    { label: 'Em Atraso', value: String(metrics.pastDue), sub: fmt(metrics.pastDueAmount), color: '#8A6E2F', bg: '#FAF3E0' },
+    { label: 'Canceladas', value: String(metrics.cancelledThisMonth), sub: 'este mês', color: '#B4533A', bg: '#FAEEE9' },
+    { label: 'Gratuidades', value: String(metrics.gratuidades), sub: 'ativas', color: '#2E7D6B', bg: '#F0F6F3' },
   ] : []
 
   const pageCount = Math.ceil(total / 20)
@@ -139,8 +139,8 @@ export default function AdminPagamentos() {
       {message && (
         <div style={{
           marginBottom: '16px', padding: '12px', borderRadius: '8px',
-          background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-          color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+          background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+          color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
         }}>{message}</div>
       )}
 
@@ -302,7 +302,7 @@ export default function AdminPagamentos() {
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Ações</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <button type="button" onClick={() => { setActionModal('gratuidade'); setActionForm({}) }}
-                style={{ padding: '10px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #1D4ED820', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                style={{ padding: '10px', background: '#F0F6F3', color: '#2E7D6B', border: '1px solid #2E7D6B20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Conceder Gratuidade
               </button>
               <button type="button" onClick={() => { setActionModal('change_plan'); setActionForm({}) }}
@@ -310,11 +310,11 @@ export default function AdminPagamentos() {
                 Alterar Plano
               </button>
               <button type="button" onClick={() => { setActionModal('cancel_subscription'); setActionForm({}) }}
-                style={{ padding: '10px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #DC262620', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                style={{ padding: '10px', background: '#FAEEE9', color: '#B4533A', border: '1px solid #B4533A20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Cancelar Assinatura
               </button>
               <button type="button" onClick={() => { setActionModal('mark_paid'); setActionForm({}) }}
-                style={{ padding: '10px', background: '#F0FDF4', color: '#15803D', border: '1px solid #15803D20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                style={{ padding: '10px', background: '#F0F6F3', color: '#2E7D6B', border: '1px solid #2E7D6B20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Marcar Fatura Paga
               </button>
             </div>
@@ -363,7 +363,7 @@ export default function AdminPagamentos() {
                 duration_months: actionForm.duration_months ? parseInt(actionForm.duration_months) : null,
                 motivo: actionForm.motivo,
               })} style={{
-                padding: '10px 20px', background: !actionForm.motivo ? '#D1D5DB' : '#1D4ED8', color: '#fff',
+                padding: '10px 20px', background: !actionForm.motivo ? '#D1D5DB' : '#2E7D6B', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: !actionForm.motivo ? 'not-allowed' : 'pointer', fontWeight: 'bold'
               }}>{actionLoading ? 'Salvando...' : 'Conceder Gratuidade'}</button>
             </div>
@@ -412,7 +412,7 @@ export default function AdminPagamentos() {
       {actionModal === 'cancel_subscription' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '480px', width: '100%' }}>
-            <h3 style={{ color: '#DC2626', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+            <h3 style={{ color: '#B4533A', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
               Cancelar Assinatura — {selectedUser.nome_completo}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -445,7 +445,7 @@ export default function AdminPagamentos() {
                   onConfirm: () => { setConfirmModal(null); execAction('cancel_subscription', { immediate: actionForm.immediate !== 'false', motivo: actionForm.motivo }) }
                 })
               }} style={{
-                padding: '10px 20px', background: !actionForm.motivo ? '#D1D5DB' : '#DC2626', color: '#fff',
+                padding: '10px 20px', background: !actionForm.motivo ? '#D1D5DB' : '#B4533A', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: !actionForm.motivo ? 'not-allowed' : 'pointer', fontWeight: 'bold'
               }}>{actionLoading ? 'Cancelando...' : 'Cancelar Assinatura'}</button>
             </div>
@@ -456,7 +456,7 @@ export default function AdminPagamentos() {
       {actionModal === 'mark_paid' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '480px', width: '100%' }}>
-            <h3 style={{ color: '#15803D', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
+            <h3 style={{ color: '#2E7D6B', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
               Marcar Fatura como Paga — {selectedUser.nome_completo}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -494,7 +494,7 @@ export default function AdminPagamentos() {
                 paid_method: actionForm.paid_method || 'pix_manual',
                 observation: actionForm.observation,
               })} style={{
-                padding: '10px 20px', background: '#15803D', color: '#fff',
+                padding: '10px 20px', background: '#2E7D6B', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
               }}>{actionLoading ? 'Salvando...' : 'Confirmar Pagamento'}</button>
             </div>

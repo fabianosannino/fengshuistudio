@@ -227,7 +227,7 @@ function NovaConsultaContent() {
         {freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
-            background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
+            background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '14px'
           }}>
             <p style={{ margin: '0 0 12px 0' }}>
               {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
@@ -244,14 +244,14 @@ function NovaConsultaContent() {
         {simplesLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
-            background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
+            background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '14px'
           }}>
             <p style={{ margin: '0 0 12px 0' }}>
               {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <Link href="/consultas" style={{
-                display: 'inline-block', padding: '8px 20px', background: '#D97706',
+                display: 'inline-block', padding: '8px 20px', background: '#8A6E2F',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 textDecoration: 'none'
               }}>Arquivar imóvel atual</Link>
@@ -281,7 +281,7 @@ function NovaConsultaContent() {
         {plano === 'simples' && !simplesLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontSize: '13px'
+            background: '#F0F6F3', border: '1px solid #DCEAE4', color: '#245F52', fontSize: '13px'
           }}>
             Plano Simples: {consultasAtivas}/{limite ?? '∞'} {limite === 1 ? 'imóvel ativo' : 'imóveis ativos'}.
           </div>
@@ -290,7 +290,7 @@ function NovaConsultaContent() {
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '14px'
+            background: '#FAEEE9', border: '1px solid #EBD3C7', color: '#B4533A', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -303,7 +303,7 @@ function NovaConsultaContent() {
                 <div style={{ marginBottom: '20px' }}>
                   <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
                   {clientes.length === 0 ? (
-                    <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', color: '#92400E', fontSize: '14px' }}>
+                    <div style={{ padding: '12px', background: '#FAF3E0', borderRadius: '8px', color: '#8A6E2F', fontSize: '14px' }}>
                       Nenhum cliente cadastrado. <span style={{ color: '#2E7D6B', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
                     </div>
                   ) : clienteEscolhido ? (
@@ -354,11 +354,11 @@ function NovaConsultaContent() {
               {!isProfessional && (
                 <div style={{
                   marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-                  background: '#F0FDF4', border: '1px solid #BBF7D0',
+                  background: '#F0F6F3', border: '1px solid #DCEAE4',
                   display: 'flex', alignItems: 'center', gap: '10px'
                 }}>
                   <span style={{ fontSize: '20px' }}>🏠</span>
-                  <p style={{ color: '#15803D', fontSize: '13px', margin: '0' }}>
+                  <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '0' }}>
                     Cadastre os dados do seu imóvel para receber o diagnóstico Feng Shui personalizado.
                   </p>
                 </div>

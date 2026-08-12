@@ -37,9 +37,9 @@ const DURACAO_AMOSTRAGEM_MS = 5000
 // Geometria da rosa dos ventos vive em RosaDosVentos.tsx — não duplicar aqui.
 
 const TEXTO_CONFIANCA: Record<'high' | 'medium' | 'low', { rotulo: string; cor: string }> = {
-  high: { rotulo: 'Alta confiança', cor: '#15803D' },
-  medium: { rotulo: 'Confiança média', cor: '#D97706' },
-  low: { rotulo: 'Confiança baixa', cor: '#DC2626' },
+  high: { rotulo: 'Alta confiança', cor: '#2E7D6B' },
+  medium: { rotulo: 'Confiança média', cor: '#8A6E2F' },
+  low: { rotulo: 'Confiança baixa', cor: '#B4533A' },
 }
 
 export interface BussolaDispositivoProps {
@@ -138,12 +138,12 @@ export default function BussolaDispositivo({ onAceitar }: BussolaDispositivoProp
             </>
           )}
           {estado === 'nao-suportado' && (
-            <p style={{ margin: 0, color: '#DC2626' }}>Este navegador/dispositivo não expõe sensor de orientação. Use entrada manual.</p>
+            <p style={{ margin: 0, color: '#B4533A' }}>Este navegador/dispositivo não expõe sensor de orientação. Use entrada manual.</p>
           )}
           {estado === 'solicitando-permissao' && <p style={{ margin: 0 }}>Aguardando permissão de acesso ao sensor de movimento…</p>}
           {estado === 'permissao-negada' && (
             <>
-              <p style={{ margin: '0 0 6px', color: '#DC2626' }}>Permissão negada. Ative o acesso a sensores de movimento nas configurações do navegador para usar a bússola virtual.</p>
+              <p style={{ margin: '0 0 6px', color: '#B4533A' }}>Permissão negada. Ative o acesso a sensores de movimento nas configurações do navegador para usar a bússola virtual.</p>
               <button type="button" onClick={reiniciar} style={estiloBotaoSecundario}>Tentar novamente</button>
             </>
           )}
@@ -161,7 +161,7 @@ export default function BussolaDispositivo({ onAceitar }: BussolaDispositivoProp
           )}
           {estado === 'sem-heading-absoluto' && (
             <>
-              <p style={{ margin: '0 0 6px', color: '#DC2626' }}>
+              <p style={{ margin: '0 0 6px', color: '#B4533A' }}>
                 Este navegador só expõe orientação relativa (sem referência de Norte confiável) — não é seguro usar como bússola. Use entrada manual ou tente em outro navegador/aparelho.
               </p>
               <button type="button" onClick={reiniciar} style={estiloBotaoSecundario}>Tentar novamente</button>
@@ -181,7 +181,7 @@ export default function BussolaDispositivo({ onAceitar }: BussolaDispositivoProp
               </p>
               {resultado.confianca === 'low' ? (
                 <>
-                  <p style={{ margin: '0 0 6px', color: '#DC2626' }}>Desvio alto demais — não é seguro usar esta leitura. Repita, use o assistente de 3 leituras ou meça com um Luo Pan físico.</p>
+                  <p style={{ margin: '0 0 6px', color: '#B4533A' }}>Desvio alto demais — não é seguro usar esta leitura. Repita, use o assistente de 3 leituras ou meça com um Luo Pan físico.</p>
                   <button type="button" onClick={reiniciar} style={estiloBotaoSecundario}>Tentar novamente</button>
                 </>
               ) : (

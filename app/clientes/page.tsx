@@ -479,7 +479,7 @@ export default function Clientes() {
       {!podeClientes(planoEfetivo(profile?.plano)) && (
         <div style={{
           marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
-          background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '13px'
+          background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '13px'
         }}>
           {mensagemLimiteClientes(planoEfetivo(profile?.plano))}{' '}
           <a href="/planos" style={{ color: '#2E7D6B', fontWeight: 'bold' }}>Ver planos</a>
@@ -489,9 +489,9 @@ export default function Clientes() {
       {message && (
         <div style={{
           marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-          background: message.includes('Erro') || message.includes('Limite') ? '#FEF2F2' : '#F0FDF4',
-          border: `1px solid ${message.includes('Erro') || message.includes('Limite') ? '#FECACA' : '#BBF7D0'}`,
-          color: message.includes('Erro') || message.includes('Limite') ? '#DC2626' : '#15803D',
+          background: message.includes('Erro') || message.includes('Limite') ? '#FAEEE9' : '#F0F6F3',
+          border: `1px solid ${message.includes('Erro') || message.includes('Limite') ? '#EBD3C7' : '#DCEAE4'}`,
+          color: message.includes('Erro') || message.includes('Limite') ? '#B4533A' : '#2E7D6B',
           fontSize: '14px'
         }}>{message}</div>
       )}
@@ -525,7 +525,7 @@ export default function Clientes() {
                 <input id="input-foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFotoChange} style={{ display: 'none' }} />
                 {fotoPreview && (
                   <button type="button" onClick={() => { setFotoFile(null); setFotoPreview(null) }} style={{
-                    marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                    marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#B4533A',
                     border: 'none', fontSize: '13px', cursor: 'pointer'
                   }}>Remover</button>
                 )}

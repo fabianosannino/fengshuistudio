@@ -183,9 +183,9 @@ export default function RosaDosVentos({
 
       {/* Agulha */}
       <line x1={CENTRO} y1={CENTRO} x2={ponta.x} y2={ponta.y}
-        stroke="#DC2626" strokeWidth={2.5} data-testid="rosa-agulha" />
+        stroke="#B4533A" strokeWidth={2.5} data-testid="rosa-agulha" />
       {interativo && (
-        <circle cx={ponta.x} cy={ponta.y} r={5} fill="#DC2626" stroke="#fff" strokeWidth={1.5}
+        <circle cx={ponta.x} cy={ponta.y} r={5} fill="#B4533A" stroke="#fff" strokeWidth={1.5}
           style={{ cursor: 'grab' }} data-testid="rosa-alca" />
       )}
       <circle cx={CENTRO} cy={CENTRO} r={3} fill="#374151" />

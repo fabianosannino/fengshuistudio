@@ -60,17 +60,17 @@ const COMODO_LABELS: Record<string, string> = {
 
 function scoreColor(pct: number | null) {
   if (pct === null || pct === undefined) return '#9CA3AF'
-  if (pct >= 70) return '#16A34A'
-  if (pct >= 40) return '#D97706'
-  return '#DC2626'
+  if (pct >= 70) return '#2E7D6B'
+  if (pct >= 40) return '#8A6E2F'
+  return '#B4533A'
 }
 
 function scoreLevelLabel(pct: number | null): { label: string; color: string } {
   if (pct === null || pct === undefined) return { label: 'N/A', color: '#9CA3AF' }
   if (pct >= 80) return { label: 'EXCELENTE', color: '#C9A227' }
-  if (pct >= 70) return { label: 'BOM', color: '#16A34A' }
-  if (pct >= 40) return { label: 'ATENÇÃO', color: '#D97706' }
-  return { label: 'URGENTE', color: '#DC2626' }
+  if (pct >= 70) return { label: 'BOM', color: '#2E7D6B' }
+  if (pct >= 40) return { label: 'ATENÇÃO', color: '#8A6E2F' }
+  return { label: 'URGENTE', color: '#B4533A' }
 }
 
 // Rótulos em português dos campos de proveniência de `Remedio` (Parte IV / ADR 0015).
@@ -88,10 +88,10 @@ const ROTULO_EVIDENCIA: Record<Remedio['forcaEvidencia'], string> = {
 
 function desvioLabel(pct: number | null): { nivel: string; cor: string } {
   if (pct === null || pct === undefined) return { nivel: 'N/A', cor: '#9CA3AF' }
-  if (pct >= 70) return { nivel: 'Leve', cor: '#16A34A' }
-  if (pct >= 40) return { nivel: 'Moderado', cor: '#D97706' }
-  if (pct >= 20) return { nivel: 'Acentuado', cor: '#DC2626' }
-  return { nivel: 'Ausente', cor: '#7F1D1D' }
+  if (pct >= 70) return { nivel: 'Leve', cor: '#2E7D6B' }
+  if (pct >= 40) return { nivel: 'Moderado', cor: '#8A6E2F' }
+  if (pct >= 20) return { nivel: 'Acentuado', cor: '#B4533A' }
+  return { nivel: 'Ausente', cor: '#8F3F2C' }
 }
 
 // ─── COMPONENT ──────────────────────────────────────────────────────────────
@@ -568,9 +568,9 @@ export default function Relatorio() {
         <div className="no-print" style={{
           maxWidth: '980px', margin: '16px auto 0', display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap',
-          background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 20px',
+          background: '#F0F6F3', border: '1px solid #DCEAE4', borderRadius: '10px', padding: '14px 20px',
         }}>
-          <div style={{ fontSize: '14px', color: '#15803D' }}>
+          <div style={{ fontSize: '14px', color: '#2E7D6B' }}>
             <strong>Relatório entregue.</strong> Marcar esta consulta como concluída?
             <span style={{ display: 'block', fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
               Apenas atualiza o status da consulta — o diagnóstico do Ba Guá não é alterado.
@@ -582,7 +582,7 @@ export default function Relatorio() {
               padding: '8px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
             }}>Agora não</button>
             <button type="button" onClick={marcarConsultaConcluida} disabled={concluindo} style={{
-              background: concluindo ? '#9CA3AF' : '#16A34A', border: 'none', color: '#fff',
+              background: concluindo ? '#9CA3AF' : '#2E7D6B', border: 'none', color: '#fff',
               padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 600,
               cursor: concluindo ? 'not-allowed' : 'pointer',
             }}>{concluindo ? 'Concluindo…' : 'Marcar como concluída'}</button>
@@ -610,8 +610,8 @@ export default function Relatorio() {
               ].map((item, i) => (
                 <span key={i} style={{
                   padding: '3px 8px', borderRadius: '10px', fontWeight: 'bold',
-                  background: item.ok ? '#F0FDF4' : '#FEF2F2',
-                  color: item.ok ? '#15803D' : '#DC2626',
+                  background: item.ok ? '#F0F6F3' : '#FAEEE9',
+                  color: item.ok ? '#2E7D6B' : '#B4533A',
                 }}>{item.ok ? '✓' : '✕'} {item.label}</span>
               ))}
             </div>
@@ -808,7 +808,7 @@ export default function Relatorio() {
                 </div>
               </div>
               {compat && (
-                <div style={{ fontSize: '11px', color: compat.compativel ? '#16A34A' : '#D97706', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <div style={{ fontSize: '11px', color: compat.compativel ? '#2E7D6B' : '#8A6E2F', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                   {compat.compativel ? '✓' : '⚠'} {compat.mensagem}
                 </div>
               )}
@@ -849,7 +849,7 @@ export default function Relatorio() {
                       <div style={{ fontSize: '9px', color: inkLt }}>{est.montanha}</div>
                       <div style={{ fontSize: '15px', fontWeight: 700, color: ink }}>{est.periodo}</div>
                       <div style={{ fontSize: '9px', color: inkLt }}>{est.fachada}</div>
-                      {est.temEstrela5 && <div style={{ fontSize: '8px', color: '#DC2626' }}>⚠ Estrela 5</div>}
+                      {est.temEstrela5 && <div style={{ fontSize: '8px', color: '#B4533A' }}>⚠ Estrela 5</div>}
                     </div>
                   )
                 })}
@@ -873,13 +873,13 @@ export default function Relatorio() {
             {[
               { val: `${geral}%`, label: 'Média Geral', color: geralLevel.color },
               null,
-              { val: `${urgentCount}`, label: 'Áreas Urgentes', color: '#DC2626' },
+              { val: `${urgentCount}`, label: 'Áreas Urgentes', color: '#B4533A' },
               null,
-              { val: `${okCount}`, label: 'Equilibradas', color: '#16A34A' },
+              { val: `${okCount}`, label: 'Equilibradas', color: '#2E7D6B' },
               null,
-              { val: lowestSetor?.nome || '—', label: 'Prioridade Máxima', color: '#DC2626', sm: true },
+              { val: lowestSetor?.nome || '—', label: 'Prioridade Máxima', color: '#B4533A', sm: true },
               null,
-              { val: highestSetor?.nome || '—', label: 'Mais Equilibrada', color: '#16A34A', sm: true },
+              { val: highestSetor?.nome || '—', label: 'Mais Equilibrada', color: '#2E7D6B', sm: true },
             ].map((item, idx) =>
               item === null ? (
                 <div key={idx} style={{ width: '1px', background: border, height: '36px', flexShrink: 0 }} />
@@ -919,7 +919,7 @@ export default function Relatorio() {
             Introdução
           </div>
           <textarea className="no-print" value={textoIntroducao} onChange={e => setTextoIntroducao(e.target.value)}
-            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
+            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
           <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoIntroducao}</div>
         </div>
         )}
@@ -1093,14 +1093,14 @@ export default function Relatorio() {
                   const lvl = scoreLevelLabel(pct)
                   const isUrgent = pct < 40
                   const isWarn = pct >= 40 && pct < 70
-                  const bgRow = isUrgent ? '#FEF2F2' : isWarn ? '#FFFBEB' : '#F0FDF4'
-                  const borderCol = isUrgent ? '#EF4444' : isWarn ? '#F59E0B' : '#22C55E'
+                  const bgRow = isUrgent ? '#FAEEE9' : isWarn ? '#FAF3E0' : '#F0F6F3'
+                  const borderCol = isUrgent ? '#B4533A' : isWarn ? '#C9A227' : '#2E7D6B'
                   // Value origin: check if manually adjusted criteria exist
                   const crits = setor.diagnostico_criterios || []
                   const hasManualNotes = crits.some((c: DiagnosticoCriterio) => c.notas && c.notas.trim() !== '')
                   const hasCustomRec = Array.isArray(setor.recomendacoes_custom) && setor.recomendacoes_custom.length > 0
                   const origem = hasManualNotes || hasCustomRec ? 'Ajustado pelo consultor' : crits.length > 0 ? 'Com marcações' : 'Automático'
-                  const origemCor = hasManualNotes || hasCustomRec ? '#2E7D6B' : crits.length > 0 ? '#1D4ED8' : '#6B7280'
+                  const origemCor = hasManualNotes || hasCustomRec ? '#2E7D6B' : crits.length > 0 ? '#2E7D6B' : '#6B7280'
                   return (
                     <div key={setor.id} style={{
                       display: 'flex', alignItems: 'center', gap: '9px',
@@ -1135,7 +1135,7 @@ export default function Relatorio() {
               Fluxo de Chi — Análise de Circulação Energética
             </div>
             <textarea className="no-print" value={textoChi} onChange={e => setTextoChi(e.target.value)}
-              rows={3} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
+              rows={3} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
             <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoChi}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
               {/* Chi checklist */}
@@ -1153,8 +1153,8 @@ export default function Relatorio() {
                   // Três símbolos para três estados. Antes, «✕» dizia ao cliente que
                   // o ponto estava errado quando o consultor apenas não o olhou.
                   const estado = chi[item.id]
-                  const visual = estado === 'conforme' ? { marca: '✓', cor: '#16A34A' }
-                    : estado === 'problema' ? { marca: '✕', cor: '#DC2626' }
+                  const visual = estado === 'conforme' ? { marca: '✓', cor: '#2E7D6B' }
+                    : estado === 'problema' ? { marca: '✕', cor: '#B4533A' }
                     : { marca: '–', cor: '#9CA3AF' }
                   return (
                     <div key={item.id} style={{
@@ -1188,7 +1188,7 @@ export default function Relatorio() {
                   const roomChecks: Record<string, number> = { quarto: 5, escritorio: 5, cozinha: 4, sala: 4 }
                   const total = roomChecks[room] || checks.length
                   const pct = Math.round((checks.length / total) * 100)
-                  const cor = pct >= 70 ? '#16A34A' : pct >= 40 ? '#D97706' : '#DC2626'
+                  const cor = pct >= 70 ? '#2E7D6B' : pct >= 40 ? '#8A6E2F' : '#B4533A'
                   return (
                     <div key={room} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1221,9 +1221,9 @@ export default function Relatorio() {
           </div>
 
           {[
-            { label: 'URGENTE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual < CORTE_URGENTE },
-            { label: 'ATENÇÃO', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_URGENTE && s.score_percentual < CORTE_ATENCAO },
-            { label: 'MANTER', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_ATENCAO },
+            { label: 'URGENTE', color: '#B4533A', bg: '#FAEEE9', border: '#EBD3C7', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual < CORTE_URGENTE },
+            { label: 'ATENÇÃO', color: '#8A6E2F', bg: '#FAF3E0', border: '#EEDFB4', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_URGENTE && s.score_percentual < CORTE_ATENCAO },
+            { label: 'MANTER', color: '#2E7D6B', bg: '#F0F6F3', border: '#DCEAE4', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_ATENCAO },
           ].map(group => {
             const groupSetores = sortedSetores.filter(group.filter)
             if (groupSetores.length === 0) return null
@@ -1347,14 +1347,14 @@ export default function Relatorio() {
                       <tr style={{ pageBreakInside: 'avoid' }}>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink }}>{r.acao}</td>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#15803D' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#2E7D6B' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
                       </tr>
                       {r.contraindicacoes.length > 0 && (
                         <tr style={{ pageBreakInside: 'avoid' }}>
                           <td />
-                          <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#92400E', fontSize: '9.5px', lineHeight: 1.5 }}>
+                          <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#8A6E2F', fontSize: '9.5px', lineHeight: 1.5 }}>
                             {r.contraindicacoes.map((c, i) => (
                               <div key={i} style={{ marginTop: i === 0 ? 0 : '2px' }}>⚠ {c}</div>
                             ))}
@@ -1386,7 +1386,7 @@ export default function Relatorio() {
           const atual = snapshots[snapshots.length - 1]
           const ev = compararSnapshots(inicial.scores, atual.scores)
           const dataFmt = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
-          const deltaCor = (d: number | null) => d == null ? '#9CA3AF' : d > 0 ? '#16A34A' : d < 0 ? '#DC2626' : '#6B7280'
+          const deltaCor = (d: number | null) => d == null ? '#9CA3AF' : d > 0 ? '#2E7D6B' : d < 0 ? '#B4533A' : '#6B7280'
           const deltaTxt = (d: number | null) => d == null ? '—' : d > 0 ? `▲ +${d}` : d < 0 ? `▼ ${d}` : '= 0'
           return (
             <div style={{ padding: '0 1.5rem 1rem' }}>
@@ -1403,9 +1403,9 @@ export default function Relatorio() {
                       <span style={{ fontSize: '18px', color: deltaCor(ev.mediaDepois - ev.mediaAntes), fontWeight: 700 }}>{ev.mediaDepois}%</span>
                     </div>
                     <div style={{ fontSize: '11px', color: inkLt }}>
-                      <span style={{ color: '#16A34A', fontWeight: 700 }}>{ev.melhoraram}</span> melhoraram ·{' '}
+                      <span style={{ color: '#2E7D6B', fontWeight: 700 }}>{ev.melhoraram}</span> melhoraram ·{' '}
                       <span style={{ color: '#6B7280', fontWeight: 700 }}>{ev.estaveis}</span> estáveis ·{' '}
-                      <span style={{ color: '#DC2626', fontWeight: 700 }}>{ev.pioraram}</span> pioraram
+                      <span style={{ color: '#B4533A', fontWeight: 700 }}>{ev.pioraram}</span> pioraram
                     </div>
                   </div>
                 )}
@@ -1437,7 +1437,7 @@ export default function Relatorio() {
               Curas &amp; Ativações Detalhadas por Área
             </div>
             <textarea className="no-print" value={textoCuras} onChange={e => setTextoCuras(e.target.value)}
-              rows={3} style={{ width: '100%', padding: '8px 10px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
+              rows={3} style={{ width: '100%', padding: '8px 10px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
             <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoCuras}</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
               <thead>
@@ -1471,7 +1471,7 @@ export default function Relatorio() {
                         <span style={{
                           display: 'inline-block', padding: '2px 8px', borderRadius: '10px',
                           fontSize: '11px', fontWeight: 700,
-                          background: pct < 40 ? '#FEF2F2' : pct < 70 ? '#FFFBEB' : '#F0FDF4',
+                          background: pct < 40 ? '#FAEEE9' : pct < 70 ? '#FAF3E0' : '#F0F6F3',
                           color: lvl.color
                         }}>{pct}%</span>
                       </td>
@@ -1529,21 +1529,21 @@ export default function Relatorio() {
                   {/* Plantas */}
                   {meta?.plants && (
                     <div style={{ marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 700, color: '#15803D', marginBottom: '3px' }}>🌿 Plantas recomendadas</div>
+                      <div style={{ fontWeight: 700, color: '#2E7D6B', marginBottom: '3px' }}>🌿 Plantas recomendadas</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.plants}</div>
                     </div>
                   )}
                   {/* Cores */}
                   {meta?.colors && (
                     <div style={{ marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 700, color: '#D97706', marginBottom: '3px' }}>🎨 Cores harmônicas</div>
+                      <div style={{ fontWeight: 700, color: '#8A6E2F', marginBottom: '3px' }}>🎨 Cores harmônicas</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.colors}</div>
                     </div>
                   )}
                   {/* Ação principal */}
                   {meta?.action && (
                     <div style={{ marginBottom: '4px' }}>
-                      <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: '3px' }}>⚡ Ação prioritária</div>
+                      <div style={{ fontWeight: 700, color: '#B4533A', marginBottom: '3px' }}>⚡ Ação prioritária</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.action}</div>
                     </div>
                   )}
@@ -1663,13 +1663,13 @@ export default function Relatorio() {
                     {temRec && rec && (
                       <div style={{ marginBottom: cRecs.length > 0 ? '10px' : '0' }}>
                         {rec.urgente.length > 0 && rec.urgente.map((d, i) => (
-                          <div key={`u${i}`} style={{ padding: '5px 10px', background: '#FEF2F2', borderLeft: '3px solid #EF4444', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
+                          <div key={`u${i}`} style={{ padding: '5px 10px', background: '#FAEEE9', borderLeft: '3px solid #B4533A', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
                         ))}
                         {rec.melhoria.length > 0 && rec.melhoria.map((d, i) => (
-                          <div key={`m${i}`} style={{ padding: '5px 10px', background: '#FFFBEB', borderLeft: '3px solid #F59E0B', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
+                          <div key={`m${i}`} style={{ padding: '5px 10px', background: '#FAF3E0', borderLeft: '3px solid #C9A227', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
                         ))}
                         {rec.manutencao.length > 0 && rec.manutencao.map((d, i) => (
-                          <div key={`k${i}`} style={{ padding: '5px 10px', background: '#F0FDF4', borderLeft: '3px solid #22C55E', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
+                          <div key={`k${i}`} style={{ padding: '5px 10px', background: '#F0F6F3', borderLeft: '3px solid #2E7D6B', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
                         ))}
                       </div>
                     )}
@@ -1678,13 +1678,13 @@ export default function Relatorio() {
                     {cRecs.length > 0 && cRecs.map((cr, i) => (
                       <div key={i} style={{
                         padding: '6px 10px', background: paperWarm,
-                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#16A34A'}`,
+                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#B4533A' : cr.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'}`,
                         borderRadius: '2px', marginBottom: '3px', fontSize: '11px',
                         fontFamily: 'Helvetica Neue, Arial, sans-serif'
                       }}>
                         <span style={{
                           fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px',
-                          background: cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#16A34A'
+                          background: cr.tipo === 'urgente' ? '#B4533A' : cr.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'
                         }}>{cr.tipo === 'urgente' ? 'URGENTE' : cr.tipo === 'melhoria' ? 'MELHORIA' : 'MANTER'}</span>
                         {cr.texto}
                       </div>
@@ -1694,7 +1694,7 @@ export default function Relatorio() {
                     <div style={{ marginTop: '6px' }}>
                       <textarea className="no-print" value={recsAdicionais[setor.id] || ''} onChange={e => setRecsAdicionais(prev => ({ ...prev, [setor.id]: e.target.value }))}
                         placeholder={`Recomendações adicionais para ${setor.nome}...`} rows={2}
-                        style={{ width: '100%', padding: '6px 8px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif' }} />
+                        style={{ width: '100%', padding: '6px 8px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif' }} />
                       {recsAdicionais[setor.id] && (
                         <div className="print-only" style={{ padding: '6px 10px', background: '#EAF4F1', borderLeft: '3px solid #2E7D6B', borderRadius: '2px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
                           <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#2E7D6B' }}>CONSULTOR</span>
@@ -1745,12 +1745,12 @@ export default function Relatorio() {
 
           {((consulta?.fotos_depois as string[] | undefined)?.length ?? 0) > 0 && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#15803D', marginBottom: '8px' }}>Depois</div>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#2E7D6B', marginBottom: '8px' }}>Depois</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {(consulta?.fotos_depois as string[] || []).slice(0, 6).map((url: string, i: number) => {
                   const assinada = resolverFoto(url)
                   return assinada ? (
-                    <img key={i} src={assinada} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #BBF7D0' }} />
+                    <img key={i} src={assinada} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #DCEAE4' }} />
                   ) : null
                 })}
               </div>
@@ -1778,7 +1778,7 @@ export default function Relatorio() {
               const customRecs = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom as {texto:string}[] : []
               const action = customRecs[0]?.texto || rec.urgente[0] || rec.melhoria[0] || meta?.action || 'Avaliar e harmonizar este setor'
               return (
-                <div key={setor.id} style={{ padding: '14px 16px', marginBottom: '10px', borderRadius: '8px', background: i === 0 ? '#FEF2F2' : i === 1 ? '#FFFBEB' : '#F0FDF4', border: `1px solid ${i === 0 ? '#FECACA' : i === 1 ? '#FDE68A' : '#BBF7D0'}` }}>
+                <div key={setor.id} style={{ padding: '14px 16px', marginBottom: '10px', borderRadius: '8px', background: i === 0 ? '#FAEEE9' : i === 1 ? '#FAF3E0' : '#F0F6F3', border: `1px solid ${i === 0 ? '#EBD3C7' : i === 1 ? '#EEDFB4' : '#DCEAE4'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#0E1B2C' }}>Prioridade {i + 1} — {setor.nome}</span>
                     <span style={{ fontSize: '11px', fontWeight: 'bold', color: scoreColor(setor.score_percentual ?? 0), background: '#fff', padding: '2px 8px', borderRadius: '10px' }}>{setor.score_percentual}%</span>
@@ -1847,12 +1847,12 @@ export default function Relatorio() {
               </p>
 
               {sintese.perigosos.length > 0 && (
-                <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '4px', padding: '0.8rem', marginBottom: '0.8rem', pageBreakInside: 'avoid' }}>
+                <div style={{ background: '#FAEEE9', border: '1px solid #E0A48E', borderRadius: '4px', padding: '0.8rem', marginBottom: '0.8rem', pageBreakInside: 'avoid' }}>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#991B1B', marginBottom: '5px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                     Setores que exigem cautela ({sintese.perigosos.length})
                   </div>
                   {sintese.perigosos.map(p => (
-                    <div key={p.setor} style={{ fontSize: '11px', color: '#7F1D1D', marginBottom: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                    <div key={p.setor} style={{ fontSize: '11px', color: '#8F3F2C', marginBottom: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                       <strong>{p.setor}</strong> — {p.resolucao.motivoFinal}
                     </div>
                   ))}
@@ -1866,7 +1866,7 @@ export default function Relatorio() {
                       Setor {d.setor}
                     </div>
                     <div style={{ fontSize: '11px', color: ink, marginBottom: '4px' }}>
-                      <span style={{ color: '#15803D', fontWeight: 700 }}>Prevaleceu</span>
+                      <span style={{ color: '#2E7D6B', fontWeight: 700 }}>Prevaleceu</span>
                       {' — '}
                       {d.resolucao.metodoVencedor ? PERFIS_METODOS[d.resolucao.metodoVencedor].nome : '—'}: {d.resolucao.motivoFinal}
                     </div>
@@ -1885,7 +1885,7 @@ export default function Relatorio() {
               )}
 
               {sintese.avisos.map((aviso, i) => (
-                <p key={i} style={{ margin: '0.5rem 0 0', fontSize: '10px', color: '#92400E', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <p key={i} style={{ margin: '0.5rem 0 0', fontSize: '10px', color: '#8A6E2F', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                   ⚠ {aviso}
                 </p>
               ))}
@@ -1912,7 +1912,7 @@ export default function Relatorio() {
             Conclusão
           </div>
           <textarea className="no-print" value={textoConclusao} onChange={e => setTextoConclusao(e.target.value)}
-            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
+            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
           <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoConclusao}</div>
         </div>
         )}

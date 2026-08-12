@@ -271,7 +271,7 @@ function CurasPageContent() {
                         </button>
                         <button type="button"
                           onClick={() => deleteCustomRef(ref.id, elId, tipo)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#DC2626', padding: '2px 4px' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#B4533A', padding: '2px 4px' }}
                         >
                           {'\u{1F5D1}\uFE0F'}
                         </button>
@@ -389,9 +389,9 @@ function CurasPageContent() {
   }
 
   function scoreLevel(score: number): { label: string; cor: string; bg: string } {
-    if (score >= 70) return { label: 'Equilibrado', cor: '#15803D', bg: '#F0FDF4' }
-    if (score >= 40) return { label: 'Atenção', cor: '#D97706', bg: '#FFFBEB' }
-    return { label: 'Urgente', cor: '#DC2626', bg: '#FEF2F2' }
+    if (score >= 70) return { label: 'Equilibrado', cor: '#2E7D6B', bg: '#F0F6F3' }
+    if (score >= 40) return { label: 'Atenção', cor: '#8A6E2F', bg: '#FAF3E0' }
+    return { label: 'Urgente', cor: '#B4533A', bg: '#FAEEE9' }
   }
 
   if (loading) {
@@ -545,7 +545,7 @@ function CurasPageContent() {
               fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
               background: isActive ? '#2E7D6B' : '#F3F4F6',
               color: isActive ? '#ffffff' : '#374151',
-              border: isPriority ? '2px solid #DC2626' : isActive ? '1px solid #2E7D6B' : '1px solid #E5E7EB',
+              border: isPriority ? '2px solid #B4533A' : isActive ? '1px solid #2E7D6B' : '1px solid #E5E7EB',
               transition: 'all 0.2s', whiteSpace: 'nowrap',
               display: 'flex', alignItems: 'center', gap: '6px',
             }}>
@@ -702,12 +702,12 @@ function CurasPageContent() {
                 {/* Meditação */}
                 {(filtroTipo === 'todos' || filtroTipo === 'meditacao') && (
                 <div style={{
-                  background: '#F0FDF4', borderRadius: '12px', padding: '20px',
-                  border: '1px solid #BBF7D0',
+                  background: '#F0F6F3', borderRadius: '12px', padding: '20px',
+                  border: '1px solid #DCEAE4',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                    <Flower2 size={22} strokeWidth={1.75} color="#15803D" aria-hidden="true" />
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#15803D', margin: 0 }}>
+                    <Flower2 size={22} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" />
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#2E7D6B', margin: 0 }}>
                       {el.meditacao.nome}
                     </h4>
                   </div>
@@ -734,8 +734,8 @@ function CurasPageContent() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {el.mantras.map((m, i) => (
                     <div key={i} style={{
-                      background: '#FFFBEB', borderRadius: '12px', padding: '20px', textAlign: 'center',
-                      border: '1px solid #FDE68A',
+                      background: '#FAF3E0', borderRadius: '12px', padding: '20px', textAlign: 'center',
+                      border: '1px solid #EEDFB4',
                     }}>
                       <p style={{ fontSize: '28px', color: '#0E1B2C', fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '4px' }}>
                         {m.caracteres}

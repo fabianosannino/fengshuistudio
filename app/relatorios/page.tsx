@@ -36,8 +36,8 @@ const ClientesBarChart = dynamic(
 
 const CORES_STATUS: Record<string, string> = {
   rascunho: '#94A3B8',
-  em_andamento: '#F59E0B',
-  finalizada: '#15803D',
+  em_andamento: '#C9A227',
+  finalizada: '#2E7D6B',
   arquivada: '#6B7280',
 }
 
@@ -50,9 +50,9 @@ const LABELS_STATUS: Record<string, string> = {
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-const COR_PAGO = '#15803D'
-const COR_PENDENTE = '#F59E0B'
-const COR_ATRASADO = '#DC2626'
+const COR_PAGO = '#2E7D6B'
+const COR_PENDENTE = '#C9A227'
+const COR_ATRASADO = '#B4533A'
 
 const DASHBOARD_MODULES = [
   { key: 'status_consultas', label: 'Status das Consultas' },
@@ -356,7 +356,7 @@ export default function Relatorios() {
           data: c.criado_em?.split('T')[0],
           horario: null,
           icon: 'consulta',
-          cor: '#F59E0B',
+          cor: '#C9A227',
         })
       })
 
@@ -369,7 +369,7 @@ export default function Relatorios() {
           data: p.data_vencimento,
           horario: null,
           icon: p.status === 'atrasado' ? 'atrasado' : 'pagamento',
-          cor: p.status === 'atrasado' ? '#DC2626' : '#15803D',
+          cor: p.status === 'atrasado' ? '#B4533A' : '#2E7D6B',
         })
       })
 
@@ -476,7 +476,7 @@ export default function Relatorios() {
           <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#0E1B2C' }}>Escolha os módulos visíveis</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
             {DASHBOARD_MODULES.map(m => (
-              <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: 'pointer', background: visibleModules[m.key] ? '#F0FDF4' : '#F9FAFB' }}>
+              <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: 'pointer', background: visibleModules[m.key] ? '#F0F6F3' : '#F9FAFB' }}>
                 <input type="checkbox" checked={visibleModules[m.key] !== false} onChange={e => {
                   const next = { ...visibleModules, [m.key]: e.target.checked }
                   setVisibleModules(next)
@@ -551,16 +551,16 @@ export default function Relatorios() {
 
           {/* Mini KPIs */}
           <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ flex: 1, background: '#F0FDF4', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
+            <div style={{ flex: 1, background: '#F0F6F3', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
               <p style={{ color: COR_PAGO, fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalRecebido)}</p>
               <p style={{ color: '#6B7280', fontSize: '11px', margin: '2px 0 0 0' }}>Recebido</p>
             </div>
-            <div style={{ flex: 1, background: '#FFFBEB', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
+            <div style={{ flex: 1, background: '#FAF3E0', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
               <p style={{ color: COR_PENDENTE, fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalPendente)}</p>
               <p style={{ color: '#6B7280', fontSize: '11px', margin: '2px 0 0 0' }}>Pendente</p>
             </div>
             {totalAtrasado > 0 && (
-              <div style={{ flex: 1, background: '#FEF2F2', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
+              <div style={{ flex: 1, background: '#FAEEE9', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
                 <p style={{ color: COR_ATRASADO, fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalAtrasado)}</p>
                 <p style={{ color: '#6B7280', fontSize: '11px', margin: '2px 0 0 0' }}>Atrasado</p>
               </div>
@@ -697,8 +697,8 @@ export default function Relatorios() {
                   </p>
                 </div>
                 <span style={{
-                  background: a.status_bagua==='concluida'?'#F0FDF4':'#FFF7ED',
-                  color: a.status_bagua==='concluida'?'#15803D':'#D97706',
+                  background: a.status_bagua==='concluida'?'#F0F6F3':'#FAF3E0',
+                  color: a.status_bagua==='concluida'?'#2E7D6B':'#8A6E2F',
                   padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
                   display: 'inline-flex', alignItems: 'center', gap: '4px'
                 }}>
@@ -721,8 +721,8 @@ export default function Relatorios() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {[
             { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: Sparkles, color: '#2E7D6B', link: '/consultas/nova' },
-            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: Users, color: '#1D4ED8', link: '/clientes' },
-            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#15803D', link: '/consultas' },
+            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: Users, color: '#2E7D6B', link: '/clientes' },
+            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#2E7D6B', link: '/consultas' },
             { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: Moon, color: '#C9A227', link: '/calendario' },
           ].map((kpi, i) => (
                 <a key={i} href={kpi.link} className="panel panel-interactive" style={{

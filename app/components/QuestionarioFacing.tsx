@@ -81,7 +81,7 @@ export default function QuestionarioFacing({ onAceitar }: QuestionarioFacingProp
             <span style={{ fontSize: '10px', color: '#6B7280' }}>°</span>
             {faces.length > 2 && (
               <button type="button" onClick={() => removerFace(i)} data-testid={`remover-face-${i}`}
-                style={{ padding: '3px 8px', fontSize: '10px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5', borderRadius: '5px', cursor: 'pointer' }}>
+                style={{ padding: '3px 8px', fontSize: '10px', background: '#FAEEE9', color: '#B4533A', border: '1px solid #E0A48E', borderRadius: '5px', cursor: 'pointer' }}>
                 remover
               </button>
             )}
@@ -113,7 +113,7 @@ export default function QuestionarioFacing({ onAceitar }: QuestionarioFacingProp
       {/* ── Resultado ── */}
       <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #E5E7EB' }}>
         {resultado.principal == null ? (
-          <p style={{ margin: 0, fontSize: '11px', color: '#92400E' }} data-testid="facing-sem-resultado">
+          <p style={{ margin: 0, fontSize: '11px', color: '#8A6E2F' }} data-testid="facing-sem-resultado">
             {resultado.avisos[0]}
           </p>
         ) : (
@@ -137,7 +137,7 @@ export default function QuestionarioFacing({ onAceitar }: QuestionarioFacingProp
             )}
 
             {resultado.avisos.map((aviso, i) => (
-              <p key={i} style={{ margin: '0 0 5px', fontSize: '10px', color: '#B45309', background: '#FFFBEB', padding: '5px 7px', borderRadius: '5px', border: '1px solid #FDE68A' }} data-testid={`facing-aviso-${i}`}>
+              <p key={i} style={{ margin: '0 0 5px', fontSize: '10px', color: '#8A6E2F', background: '#FAF3E0', padding: '5px 7px', borderRadius: '5px', border: '1px solid #EEDFB4' }} data-testid={`facing-aviso-${i}`}>
                 ⚠ {aviso}
               </p>
             ))}

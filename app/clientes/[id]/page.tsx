@@ -390,9 +390,9 @@ export default function ClienteDetalhe() {
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+            color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -640,7 +640,7 @@ export default function ClienteDetalhe() {
                       if (fotoPreview) { setFotoFile(null); setFotoPreview(null) }
                       else { handleFotoRemove() }
                     }} disabled={uploadingFoto} style={{
-                      marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                      marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#B4533A',
                       border: 'none', fontSize: '13px', cursor: 'pointer'
                     }}>Remover</button>
                   )}

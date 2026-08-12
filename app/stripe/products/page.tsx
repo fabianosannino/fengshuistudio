@@ -119,8 +119,8 @@ export default function StripeProducts() {
         {message && (
           <div style={{
             marginBottom: '16px', padding: '12px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+            color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 

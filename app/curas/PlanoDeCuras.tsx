@@ -198,7 +198,7 @@ export default function PlanoDeCuras({
     <>
       {erro && (
         <div style={{
-          background: '#FEF2F2', border: '1px solid #FECACA', color: '#B4533A',
+          background: '#FAEEE9', border: '1px solid #EBD3C7', color: '#B4533A',
           borderRadius: '10px', padding: '10px 14px', fontSize: '13px', marginBottom: '14px',
         }}>{erro}</div>
       )}

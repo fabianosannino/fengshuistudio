@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '../../src/lib/logger'
 import { OPCOES_DE_PAPEL, papelDoUsuario, type Papel } from '../../src/lib/papel-do-usuario'
 import { redirecionarParaLogin, SENHA_MIN_CARACTERES } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
@@ -160,16 +161,20 @@ export default function Perfil() {
 
       if (isSchemaError && isProfessional) {
         // Fallback: save only basic fields if professional columns are missing
-        console.error('Perfil: colunas profissionais ausentes no banco, salvando dados básicos.', error.message)
+        logger.warn('Colunas profissionais ausentes no banco; salvando só os dados básicos', {
+          route: '/perfil', error: error.message,
+        })
         const { error: fallbackError } = await supabase.from('profiles').update(basicData).eq('id', user!.id)
         if (fallbackError) {
-          console.error('Perfil fallback error:', fallbackError.message)
+          logger.error('Falha ao salvar o perfil mesmo sem os campos profissionais', {
+            route: '/perfil', error: fallbackError.message,
+          })
           setMessage('Não foi possível salvar as alterações. Tente novamente ou entre em contato com o suporte.')
         } else {
           setMessage('Dados básicos salvos. Os campos profissionais exigem atualização do banco de dados — execute a migration em supabase/migrations/.')
         }
       } else {
-        console.error('Perfil update error:', error.message)
+        logger.error('Falha ao salvar o perfil', { route: '/perfil', error: error.message })
         setMessage('Não foi possível salvar as alterações. Tente novamente ou entre em contato com o suporte.')
       }
     } else {
@@ -224,7 +229,7 @@ export default function Perfil() {
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>{user?.email}</p>
             <span style={{
               background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(201,162,39,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
-              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#2E7D6B' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#C9A227',
+              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#2E7D6B' : planoEfetivo(plano) === 'simples' ? '#2E7D6B' : '#C9A227',
               padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
             }}>
               {isProfessional ? 'Profissional' : planoLabel(plano)}
@@ -236,9 +241,9 @@ export default function Perfil() {
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+            color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -367,8 +372,8 @@ export default function Perfil() {
                 Apareça na listagem de parceiros para outros usuários da plataforma
               </p>
               <div style={{
-                background: form.parceiro_visivel ? '#F0FDF4' : '#F9FAFB',
-                border: `1px solid ${form.parceiro_visivel ? '#BBF7D0' : '#E5E7EB'}`,
+                background: form.parceiro_visivel ? '#F0F6F3' : '#F9FAFB',
+                border: `1px solid ${form.parceiro_visivel ? '#DCEAE4' : '#E5E7EB'}`,
                 borderRadius: '10px', padding: '16px',
                 display: 'flex', alignItems: 'center', gap: '14px'
               }}>
@@ -382,7 +387,7 @@ export default function Perfil() {
                   />
                   <span style={{
                     position: 'absolute', cursor: 'pointer', inset: 0,
-                    background: form.parceiro_visivel ? '#15803D' : '#D1D5DB',
+                    background: form.parceiro_visivel ? '#2E7D6B' : '#D1D5DB',
                     borderRadius: '26px', transition: 'background 0.3s',
                   }}>
                     <span style={{
@@ -447,8 +452,8 @@ export default function Perfil() {
             {senhaMsg && (
               <p style={{
                 margin: '0 0 14px 0', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
-                background: senhaMsg.tipo === 'ok' ? '#F0FDF4' : '#FEF2F2',
-                color: senhaMsg.tipo === 'ok' ? '#15803D' : '#DC2626',
+                background: senhaMsg.tipo === 'ok' ? '#F0F6F3' : '#FAEEE9',
+                color: senhaMsg.tipo === 'ok' ? '#2E7D6B' : '#B4533A',
               }}>{senhaMsg.texto}</p>
             )}
             <button type="submit" disabled={senhaSaving} style={{

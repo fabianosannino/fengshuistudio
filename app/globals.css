@@ -298,3 +298,25 @@
   border-color: rgba(46, 125, 107, 0.25);
   box-shadow: 0 4px 8px rgba(14, 27, 44, 0.05), 0 20px 40px -18px rgba(14, 27, 44, 0.28);
 }
+
+/* ── Alvos de toque ──────────────────────────────────────────────────────────
+ *
+ * Mínimo de 44px de altura em qualquer alvo, no celular. É o piso das WCAG 2.5.5
+ * (nível AAA) e o número que o handoff pede; boa parte dos botões do app tinha
+ * 30–36px, que erra o dedo em tela pequena.
+ *
+ * Só abaixo de 768px: no desktop o ponteiro é preciso e 44px em todo botão
+ * infla as telas densas sem ganho.
+ *
+ * `.alvo-denso` é a saída declarada para os poucos casos em que a altura maior
+ * quebra o layout — quem usar precisa dizer por quê ali mesmo.
+ */
+@media (max-width: 768px) {
+  button:not(.alvo-denso),
+  a[role='button']:not(.alvo-denso),
+  input[type='button']:not(.alvo-denso),
+  input[type='submit']:not(.alvo-denso),
+  select:not(.alvo-denso) {
+    min-height: 44px;
+  }
+}

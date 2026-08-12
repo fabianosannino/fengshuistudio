@@ -298,7 +298,7 @@ export default function AppShell({
           }}>
             <span style={{
               background: (isProfessional || plano === 'profissional') ? 'rgba(46,125,107,0.28)' : plano === 'simples' ? 'rgba(46,125,107,0.18)' : 'rgba(201,162,39,0.2)',
-              color: (isProfessional || plano === 'profissional') ? '#8FD8C4' : plano === 'simples' ? '#8FD8C4' : '#F0D888',
+              color: (isProfessional || plano === 'profissional') ? '#8FD8C4' : plano === 'simples' ? '#8FD8C4' : '#EEDFB4',
               padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
             }}>
               {isProfessional ? 'Profissional' : planoLabel(profile?.plano)}

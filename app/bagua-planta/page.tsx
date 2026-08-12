@@ -67,13 +67,13 @@ import {
 // canônico de recomendações — não são duplicadas aqui.
 const SETORES = [
   { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#2E7D6B' },
-  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626' },
-  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D' },
-  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D' },
-  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#D97706' },
-  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#B45309' },
-  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#92400E' },
-  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1D4ED8' },
+  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#B4533A' },
+  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#A9613C' },
+  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#2E7D6B' },
+  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#8A6E2F' },
+  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#8A6E2F' },
+  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#8A6E2F' },
+  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#2E7D6B' },
   { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280' },
 ]
 
@@ -249,7 +249,7 @@ function BaguaPlantaContent() {
     supabase.auth.getUser().then(({data:{user}})=>{
       if(!user){redirecionarParaLogin();return}
       supabase.from('consultas').select('id,nome_imovel').eq('consultor_id',user.id)
-        .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>console.error('Erro ao carregar consultas:',e))
+        .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>logger.error('Falha ao carregar a lista de consultas',{route:'/bagua-planta',error:e.message}))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
         supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo,ano_construcao,ano_reforma_estrutural').eq('id',consultaId).single()
@@ -301,7 +301,7 @@ function BaguaPlantaContent() {
               // da migration 20260812140000.
               if(be.data_construcao) setAnoConstrucao(atual=>atual||be.data_construcao!.slice(0,4))
             }
-          }).then(null,(e: Error)=>console.error('Erro ao carregar consulta:',e))
+          }).then(null,(e: Error)=>logger.error('Falha ao carregar a consulta',{route:'/bagua-planta',consultaId,error:e.message}))
         supabase.from('setores_bagua')
           .select('numero,score_percentual,diagnostico_criterios(criterio,score)')
           .eq('consulta_id',consultaId).order('numero')
@@ -323,7 +323,7 @@ function BaguaPlantaContent() {
               })
               return next
             })
-          }).then(null,(e: Error)=>console.error('Erro ao carregar setores:',e))
+          }).then(null,(e: Error)=>logger.error('Falha ao carregar os setores da consulta',{route:'/bagua-planta',consultaId,error:e.message}))
       }
     })
   },[router,consultaId])
@@ -553,12 +553,12 @@ function BaguaPlantaContent() {
         const sx2=ex+ax*aStart,sy2=ey+ay*aStart
         const ex2=ex+ax*(aStart+aLen),ey2=ey+ay*(aStart+aLen)
         // Arrow shaft
-        ctx.strokeStyle='#DC2626'; ctx.lineWidth=2.5
+        ctx.strokeStyle='#B4533A'; ctx.lineWidth=2.5
         ctx.beginPath(); ctx.moveTo(sx2,sy2); ctx.lineTo(ex2,ey2); ctx.stroke()
         // Arrowhead
         const headLen=8,headAng=Math.PI/5
         const angle=Math.atan2(ey2-sy2,ex2-sx2)
-        ctx.fillStyle='#DC2626'; ctx.beginPath()
+        ctx.fillStyle='#B4533A'; ctx.beginPath()
         ctx.moveTo(ex2,ey2)
         ctx.lineTo(ex2-headLen*Math.cos(angle-headAng),ey2-headLen*Math.sin(angle-headAng))
         ctx.lineTo(ex2-headLen*Math.cos(angle+headAng),ey2-headLen*Math.sin(angle+headAng))
@@ -567,7 +567,7 @@ function BaguaPlantaContent() {
 
       // Red circle with white border
       ctx.beginPath(); ctx.arc(ex,ey,r2,0,Math.PI*2)
-      ctx.fillStyle='#DC2626'; ctx.fill()
+      ctx.fillStyle='#B4533A'; ctx.fill()
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke()
 
       // "Entrada" label
@@ -589,7 +589,7 @@ function BaguaPlantaContent() {
       const isFalta=m.tipo==='falta'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(mx,my,mw,mh)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
       // Label
       const marcArea=m.w*m.h
@@ -603,13 +603,13 @@ function BaguaPlantaContent() {
       // Resize handles (4 corners)
       const hs=4
       ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
-        ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+        ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
         ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
         ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
       })
       // Delete button (top-right)
       const dx=mx+mw-1,dy=my-1
-      ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+      ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
       ctx.beginPath(); ctx.arc(dx,dy,7,0,Math.PI*2); ctx.fill()
       ctx.fillStyle='#fff'; ctx.font='bold 10px Arial'; ctx.textAlign='center'
       ctx.fillText('✕',dx,dy+3.5)
@@ -621,7 +621,7 @@ function BaguaPlantaContent() {
       const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(px,py,pw,ph)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -732,11 +732,11 @@ function BaguaPlantaContent() {
         const aLen=36, aStart=r2+5
         const sx3=ex2+ax2*aStart,sy3=ey2+ay2*aStart
         const ex3=ex2+ax2*(aStart+aLen),ey3=ey2+ay2*(aStart+aLen)
-        ctx.strokeStyle='#DC2626'; ctx.lineWidth=3
+        ctx.strokeStyle='#B4533A'; ctx.lineWidth=3
         ctx.beginPath(); ctx.moveTo(sx3,sy3); ctx.lineTo(ex3,ey3); ctx.stroke()
         const headLen=10,headAng=Math.PI/5
         const angle=Math.atan2(ey3-sy3,ex3-sx3)
-        ctx.fillStyle='#DC2626'; ctx.beginPath()
+        ctx.fillStyle='#B4533A'; ctx.beginPath()
         ctx.moveTo(ex3,ey3)
         ctx.lineTo(ex3-headLen*Math.cos(angle-headAng),ey3-headLen*Math.sin(angle-headAng))
         ctx.lineTo(ex3-headLen*Math.cos(angle+headAng),ey3-headLen*Math.sin(angle+headAng))
@@ -744,7 +744,7 @@ function BaguaPlantaContent() {
       }
 
       ctx.beginPath(); ctx.arc(ex2,ey2,r2,0,Math.PI*2)
-      ctx.fillStyle='#DC2626'; ctx.fill()
+      ctx.fillStyle='#B4533A'; ctx.fill()
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=2.5; ctx.stroke()
 
       const lbl2='Entrada'
@@ -765,7 +765,7 @@ function BaguaPlantaContent() {
       const isFalta=m.tipo==='falta'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(mx,my,mw,mh)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
       const marcArea2=m.w*m.h
       const boundsArea2=bounds?bounds.w*bounds.h:1
@@ -777,12 +777,12 @@ function BaguaPlantaContent() {
       ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
       const hs=5
       ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
-        ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+        ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
         ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
         ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
       })
       const dx=mx+mw-1,dy=my-1
-      ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+      ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
       ctx.beginPath(); ctx.arc(dx,dy,8,0,Math.PI*2); ctx.fill()
       ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.textAlign='center'
       ctx.fillText('✕',dx,dy+4)
@@ -793,7 +793,7 @@ function BaguaPlantaContent() {
       const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(px,py,pw,ph)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1459,7 +1459,7 @@ function BaguaPlantaContent() {
             <div key={i} style={{display:'flex',alignItems:'center',gap:'5px'}}>
               <div style={{width:'20px',height:'20px',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',
                 fontSize:'10px',fontWeight:'bold',
-                background:i<stepN?'#15803D':i===stepN?'#0E1B2C':'#E5E7EB',
+                background:i<stepN?'#2E7D6B':i===stepN?'#0E1B2C':'#E5E7EB',
                 color:i<=stepN?'#fff':'#9CA3AF'}}>
                 {i<stepN?'✓':i+1}
               </div>
@@ -1493,7 +1493,7 @@ function BaguaPlantaContent() {
             </p>
             <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
               <button type="button" onClick={restaurarRascunho}
-                style={{background:'#15803D',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                 Continuar análise
               </button>
               <button type="button" onClick={()=>{
@@ -1501,7 +1501,7 @@ function BaguaPlantaContent() {
                   recomecarAnalise()
                 }
               }}
-                style={{background:'#fff',color:'#DC2626',border:'2px solid #DC2626',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                style={{background:'#fff',color:'#B4533A',border:'2px solid #B4533A',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                 Recomeçar do zero
               </button>
             </div>
@@ -1556,7 +1556,7 @@ function BaguaPlantaContent() {
               </button>
             </div>
             {metragemReal<=0&&(
-              <p style={{color:'#D97706',fontSize:'10px',textAlign:'center',marginTop:'8px'}}>
+              <p style={{color:'#8A6E2F',fontSize:'10px',textAlign:'center',marginTop:'8px'}}>
                 Informe a metragem para continuar
               </p>
             )}
@@ -1570,23 +1570,23 @@ function BaguaPlantaContent() {
 
               {/* Instrução contextual acima do canvas */}
               {step==='configurar'&&(
-                <div style={{marginBottom:'10px',padding:'14px 16px',background:'#FFFBEB',borderLeft:'4px solid #F59E0B',borderRadius:'8px',color:'#92400E',fontSize:'14px',fontWeight:600}}>
+                <div style={{marginBottom:'10px',padding:'14px 16px',background:'#FAF3E0',borderLeft:'4px solid #C9A227',borderRadius:'8px',color:'#8A6E2F',fontSize:'14px',fontWeight:600}}>
                   <div style={{marginBottom:'10px'}}>
                     🔄 Ajuste a rotação para que a <strong>porta fique na base</strong> da imagem (↓), depois clique em Continuar
                   </div>
                   <div style={{display:'flex',justifyContent:'center'}}>
-                    <div style={{width:'90px',height:'110px',border:'2px solid #D97706',borderRadius:'6px',position:'relative',background:'#FEF3C7',display:'flex',alignItems:'flex-end',justifyContent:'center',paddingBottom:'4px'}}>
-                      <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50)',fontSize:'10px',color:'#92400E',fontWeight:700}}>Planta</div>
+                    <div style={{width:'90px',height:'110px',border:'2px solid #8A6E2F',borderRadius:'6px',position:'relative',background:'#FAF3E0',display:'flex',alignItems:'flex-end',justifyContent:'center',paddingBottom:'4px'}}>
+                      <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50)',fontSize:'10px',color:'#8A6E2F',fontWeight:700}}>Planta</div>
                       <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0px'}}>
-                        <span style={{fontSize:'18px',lineHeight:1,color:'#D97706'}}>↓</span>
-                        <span style={{fontSize:'9px',fontWeight:700,color:'#B45309'}}>Porta aqui</span>
+                        <span style={{fontSize:'18px',lineHeight:1,color:'#8A6E2F'}}>↓</span>
+                        <span style={{fontSize:'9px',fontWeight:700,color:'#8A6E2F'}}>Porta aqui</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
               {step==='entrada'&&(
-                <div style={{marginBottom:'8px',padding:'7px 10px',background:'#EFF6FF',borderRadius:'6px',color:'#1D4ED8',fontSize:'12px'}}>
+                <div style={{marginBottom:'8px',padding:'7px 10px',background:'#F0F6F3',borderRadius:'6px',color:'#2E7D6B',fontSize:'12px'}}>
                   🖱️ <strong>Clique na planta</strong> onde fica a entrada principal
                 </div>
               )}
@@ -1675,9 +1675,9 @@ function BaguaPlantaContent() {
                     )
                     return (
                       <div style={{margin:'6px 0 0',fontSize:'11px',color:'#245F52'}}>
-                        {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#DC2626',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
-                        {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#DC2626'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
-                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#D97706'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
+                        {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#B4533A',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
+                        {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#B4533A'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
+                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#8A6E2F'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
                         {ausentes.length===0&&extensoes.length===0&&<p style={{margin:0}}>Contorno regular — sem setor ausente ou extensão detectados.</p>}
                       </div>
                     )
@@ -1829,12 +1829,12 @@ function BaguaPlantaContent() {
                               </a>
                             </div>
                             {declinacaoErro&&(
-                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#DC2626'}}>{declinacaoErro}</p>
+                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#B4533A'}}>{declinacaoErro}</p>
                             )}
                             {declinacaoAuto&&(
                               // Declarar o modelo e sua validade: o consultor precisa saber
                               // de onde veio o número, e que ele expira.
-                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#15803D'}}>
+                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#2E7D6B'}}>
                                 Calculado por <strong>{declinacaoAuto.modelo}</strong> (NOAA/NGDC) para a sua posição
                                 {declinacaoAuto.validoAte&&<> · modelo válido até {new Date(declinacaoAuto.validoAte).toLocaleDateString('pt-BR')}</>}.
                                 Confira contra o endereço do imóvel se você não estiver nele.
@@ -1843,13 +1843,13 @@ function BaguaPlantaContent() {
                             {(()=>{
                               const bruto=declinacao.trim()
                               if(bruto==='') return (
-                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#92400E'}}>
+                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#8A6E2F'}}>
                                   Sem a declinação não é possível converter entre magnético e verdadeiro. A carta usa o grau exatamente como informado acima.
                                 </p>
                               )
                               const valor=Number(bruto)
                               if(!declinacaoPlausivel(valor)) return (
-                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#DC2626',fontWeight:'bold'}}>
+                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#B4533A',fontWeight:'bold'}}>
                                   Declinação fora da faixa plausível (−60° a 60°) — confira o valor. Não será usada na conversão.
                                 </p>
                               )
@@ -1864,7 +1864,7 @@ function BaguaPlantaContent() {
                                     Equivale a <strong>{convertida.graus.toFixed(1)}°</strong> em Norte {rotuloReferencia(destino)} — Montanha <strong>{mConv.pinyin} {mConv.nome}</strong> ({mConv.setor}).
                                   </p>
                                   {mConv.numero!==mAtual.numero&&(
-                                    <p style={{margin:'3px 0 0',color:'#D97706',fontWeight:'bold'}}>
+                                    <p style={{margin:'3px 0 0',color:'#8A6E2F',fontWeight:'bold'}}>
                                       ⚠ As duas referências caem em Montanhas diferentes ({mAtual.pinyin} vs {mConv.pinyin}). Confirme qual referência sua medição usou antes de fechar a carta.
                                     </p>
                                   )}
@@ -1904,7 +1904,7 @@ function BaguaPlantaContent() {
                                 </div>
                                 {media!==null&&desvio!==null&&(
                                   <div style={{marginTop:'6px'}}>
-                                    <p style={{margin:0,fontSize:'10px',color:desvio>DESVIO_ALERTA_GRAUS?'#DC2626':'#15803D'}}>
+                                    <p style={{margin:0,fontSize:'10px',color:desvio>DESVIO_ALERTA_GRAUS?'#B4533A':'#2E7D6B'}}>
                                       Média circular: <strong>{media.toFixed(1)}°</strong> · desvio: <strong>{desvio.toFixed(1)}°</strong>
                                       {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
                                     </p>
@@ -2004,7 +2004,7 @@ function BaguaPlantaContent() {
                     ← Voltar
                   </button>
                   {entrada&&(
-                    <div style={{padding:'5px 11px',background:'#F0FDF4',borderRadius:'6px',color:'#15803D',fontSize:'12px'}}>
+                    <div style={{padding:'5px 11px',background:'#F0F6F3',borderRadius:'6px',color:'#2E7D6B',fontSize:'12px'}}>
                       ✅ Entrada: <strong>{lado}</strong> — a porta cai no guá <strong>{guaDaPorta(lado)}</strong>
                     </div>
                   )}
@@ -2019,7 +2019,7 @@ function BaguaPlantaContent() {
 
               {/* Instrução explicativa (resultado) — accordion */}
               {step==='resultado'&&(
-                <div style={{marginTop:'10px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:'10px',overflow:'hidden'}}>
+                <div style={{marginTop:'10px',background:'#F0F6F3',border:'1px solid #DCEAE4',borderRadius:'10px',overflow:'hidden'}}>
                   <button type="button" onClick={()=>setInstrucaoAberta(!instrucaoAberta)} style={{
                     width:'100%',padding:'12px 18px',background:'transparent',border:'none',cursor:'pointer',
                     display:'flex',alignItems:'center',justifyContent:'space-between'
@@ -2041,23 +2041,23 @@ function BaguaPlantaContent() {
                             <li>Arraste as alças nos 4 lados até coincidir com as <strong>paredes externas</strong> da área construída — ignore jardins, pátios e calçadas.</li>
                             <li>Clique em <strong>&quot;Recalcular&quot;</strong>.</li>
                           </ol>
-                          <div style={{fontWeight:'bold',color:'#92400E',fontSize:'11px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
+                          <div style={{fontWeight:'bold',color:'#8A6E2F',fontSize:'11px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
                           <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',color:'#374151',lineHeight:'1.5'}}>
-                            <div style={{padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
-                              <strong style={{color:'#DC2626'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
+                            <div style={{padding:'6px 8px',background:'#FAEEE9',borderRadius:'5px',borderLeft:'3px solid #B4533A'}}>
+                              <strong style={{color:'#B4533A'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
                             </div>
-                            <div style={{padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
+                            <div style={{padding:'6px 8px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
                               <strong style={{color:'#EA580C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
                             </div>
-                            <div style={{padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
-                              <strong style={{color:'#15803D'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
+                            <div style={{padding:'6px 8px',background:'#F0F6F3',borderRadius:'5px',borderLeft:'3px solid #2E7D6B'}}>
+                              <strong style={{color:'#2E7D6B'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
                             </div>
                           </div>
                           <p style={{color:'#6B7280',fontSize:'10px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
                         </div>
                       </div>
                       <button type="button" onClick={()=>{setInstrucaoAberta(false);setModo('bordas')}} style={{
-                        width:'100%',padding:'10px',background:'#1D4ED8',color:'#fff',border:'none',
+                        width:'100%',padding:'10px',background:'#2E7D6B',color:'#fff',border:'none',
                         borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
                       }}>Entendido — ajustar bordas</button>
                     </div>
@@ -2070,24 +2070,24 @@ function BaguaPlantaContent() {
                 <>
                   <div style={{marginTop:'9px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
                     <button type="button" onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
-                      style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:modo==='bordas'?'#B4533A':'#8A6E2F',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='bordas'?'🔒 Finalizar':'⬜ Bordas'}
                     </button>
                     <button type="button" onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
-                      style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:modo==='marcarFalta'?'#B4533A':'#B4533A',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarFalta'?'🔒 Finalizar':'▭ Marcar Falta'}
                     </button>
                     <button type="button" onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
-                      style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:modo==='marcarExcesso'?'#B4533A':'#C9A227',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Marcar Excesso'}
                     </button>
                     <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
-                      style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                      style={{background:recalculoPendente?'#EA580C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                         animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                       🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
                     <button type="button" onClick={()=>setFullscreen(true)}
-                      style={{background:'#15803D',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       🔍 Tela cheia
                     </button>
                     <button type="button" onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null);setMarcacoes([])}}
@@ -2095,15 +2095,15 @@ function BaguaPlantaContent() {
                       ↩ Nova planta
                     </button>
                   </div>
-                  {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
-                  {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
-                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
+                  {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#8A6E2F',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
+                  {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAEEE9',borderRadius:'5px',color:'#B4533A',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
+                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
                   {msg&&(()=>{
                     const isError=msgTipo==='erro'
-                    return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FEF2F2':'#F0FDF4',borderRadius:'5px',color:isError?'#DC2626':'#15803D',fontSize:'11px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
+                    return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FAEEE9':'#F0F6F3',borderRadius:'5px',color:isError?'#B4533A':'#2E7D6B',fontSize:'11px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
                   })()}
-                  {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
-                  {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
+                  {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0F6F3',borderRadius:'5px',color:'#2E7D6B',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
+                  {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#8A6E2F',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
 
                   {/* Kua da Casa (Oito Mansões) — só na Escola da Bússola, que tem orientação real */}
                   {escola==='bussola'&&(()=>{
@@ -2132,11 +2132,11 @@ function BaguaPlantaContent() {
                     const gradeAnual=anoSolarAtual!=null?calcularGradeAnual(anoSolarAtual):null
                     const liuFa=zhengShenLingShen(mapa.periodo)
                     return (
-                      <div style={{marginTop:'10px',padding:'9px',background:'#FFFBEB',borderRadius:'7px',border:'1px solid #FDE68A'}}>
-                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#92400E',marginBottom:'6px'}}>
+                      <div style={{marginTop:'10px',padding:'9px',background:'#FAF3E0',borderRadius:'7px',border:'1px solid #EEDFB4'}}>
+                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#8A6E2F',marginBottom:'6px'}}>
                           ⭐ Estrelas Voadoras — Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
                         </div>
-                        <div style={{fontSize:'10px',color:'#92400E',marginBottom:'6px'}}>
+                        <div style={{fontSize:'10px',color:'#8A6E2F',marginBottom:'6px'}}>
                           Período {mapa.periodo} ({faixaDoPeriodo(doImovel.anoUsado).inicio}–{faixaDoPeriodo(doImovel.anoUsado).fim}),
                           {doImovel.daReforma?' pela reforma estrutural de ':' pela construção de '}{doImovel.anoUsado}.
                         </div>
@@ -2144,14 +2144,14 @@ function BaguaPlantaContent() {
                             o ano sozinho não decide, e decidir em silêncio trocaria a
                             carta inteira. */}
                         {doImovel.ambiguo&&(
-                          <div style={{fontSize:'10px',color:'#B4533A',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'5px',padding:'5px 7px',marginBottom:'6px'}}>
+                          <div style={{fontSize:'10px',color:'#B4533A',background:'#FAEEE9',border:'1px solid #EBD3C7',borderRadius:'5px',padding:'5px 7px',marginBottom:'6px'}}>
                             {doImovel.anoUsado} é ano de virada de período. Se a obra foi concluída
                             antes de 4 de fevereiro, a carta correta é a do Período {doImovel.periodoAnterior} —
                             confirme o mês antes de usar este mapa.
                           </div>
                         )}
                         {liuFa&&(
-                          <div style={{fontSize:'10px',color:'#92400E',marginBottom:'6px'}}>
+                          <div style={{fontSize:'10px',color:'#8A6E2F',marginBottom:'6px'}}>
                             Zheng Shen (busque solidez): <strong>{NOME_SETOR[liuFa.zhengShen]}</strong> · Ling Shen (busque água/vazio): <strong>{NOME_SETOR[liuFa.lingShen]}</strong>
                           </div>
                         )}
@@ -2159,17 +2159,17 @@ function BaguaPlantaContent() {
                           {linhas.flat().map(p=>{
                             const est=porPalacio[p]
                             return (
-                              <div key={p} title={`Período: ${nomeElementoDoNumero(est.periodo)}`} style={{background:'#fff',border:'1px solid #FDE68A',borderRadius:'4px',padding:'4px',textAlign:'center'}}>
-                                <div style={{fontSize:'8px',color:'#B45309'}}>{est.montanha}</div>
-                                <div style={{fontSize:'12px',fontWeight:'bold',color:'#78350F'}}>{est.periodo}</div>
-                                <div style={{fontSize:'8px',color:'#B45309'}}>{est.fachada}</div>
+                              <div key={p} title={`Período: ${nomeElementoDoNumero(est.periodo)}`} style={{background:'#fff',border:'1px solid #EEDFB4',borderRadius:'4px',padding:'4px',textAlign:'center'}}>
+                                <div style={{fontSize:'8px',color:'#8A6E2F'}}>{est.montanha}</div>
+                                <div style={{fontSize:'12px',fontWeight:'bold',color:'#6B5424'}}>{est.periodo}</div>
+                                <div style={{fontSize:'8px',color:'#8A6E2F'}}>{est.fachada}</div>
                                 {gradeAnual&&<div style={{fontSize:'8px',color:'#0369A1',marginTop:'1px'}}>Ano {gradeAnual[p]}</div>}
-                                {est.temEstrela5&&<div style={{fontSize:'7px',color:'#DC2626'}}>⚠5</div>}
+                                {est.temEstrela5&&<div style={{fontSize:'7px',color:'#B4533A'}}>⚠5</div>}
                               </div>
                             )
                           })}
                         </div>
-                        <p style={{margin:'6px 0 0',fontSize:'9px',color:'#92400E'}}>
+                        <p style={{margin:'6px 0 0',fontSize:'9px',color:'#8A6E2F'}}>
                           Montanha / Período / Fachada, e (em azul) a Estrela Anual do ano corrente. Base do método
                           (San Yuan Xuan Kong) — não inclui estrela de substituição para fachadas de borda, sobreposição
                           mensal, timeline de anos passados/futuros nem teoria de combinações.
@@ -2237,14 +2237,14 @@ function BaguaPlantaContent() {
                               onChange={e=>setMobiliarioDirecaoGraus(normalizarGraus(Number(e.target.value)||0))}
                               style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',marginBottom:'8px'}}/>
                             {!genero&&mobiliarioGenero&&(
-                              <p style={{margin:'4px 0',fontSize:'10px',color:'#DC2626'}}>Gênero não reconhecido.</p>
+                              <p style={{margin:'4px 0',fontSize:'10px',color:'#B4533A'}}>Gênero não reconhecido.</p>
                             )}
                             {mingGua&&avaliacao&&(
                               <div style={{padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
                                 <p style={{margin:'0 0 4px',fontSize:'10px',color:'#374151'}}>
                                   Ming Gua {mingGua.kua} (grupo {mingGua.grupo==='leste'?'Leste':'Oeste'})
                                 </p>
-                                <p style={{margin:0,fontSize:'11px',fontWeight:'bold',color:avaliacao.direcaoFavoravel?'#15803D':'#DC2626'}}>
+                                <p style={{margin:0,fontSize:'11px',fontWeight:'bold',color:avaliacao.direcaoFavoravel?'#2E7D6B':'#B4533A'}}>
                                   {avaliacao.direcaoFavoravel
                                     ?'✅ Direção favorável — bem posicionado.'
                                     :'⚠ Direção desfavorável — considere reposicionar para uma direção favorável.'}
@@ -2297,10 +2297,10 @@ function BaguaPlantaContent() {
 
                   {/* Balanced banner */}
                   {setores.length===9&&setores.every(s=>{const t=scoreTotal(s,modeloPontuacao,pesoGeo);return t!==null&&t>=90})&&(
-                    <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'8px',textAlign:'center'}}>
+                    <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0F6F3',border:'1px solid #DCEAE4',borderRadius:'8px',textAlign:'center'}}>
                       <div style={{fontSize:'20px',marginBottom:'4px'}}>☯</div>
-                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
-                      <div style={{fontSize:'10px',color:'#16A34A',marginTop:'2px'}}>Todos os setores com score total ≥ 90</div>
+                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#2E7D6B'}}>Planta equilibrada</div>
+                      <div style={{fontSize:'10px',color:'#2E7D6B',marginTop:'2px'}}>Todos os setores com score total ≥ 90</div>
                     </div>
                   )}
 
@@ -2353,10 +2353,10 @@ function BaguaPlantaContent() {
                           <span style={{fontSize:'11px',fontWeight:'bold',color:corGeo(gv,scAtivo)}}>{Math.round(gv)} pts · {lblGeo(gv,scAtivo)}</span>
                         </div>
                         {scAtivo.faltaPct>0&&(
-                          <div style={{fontSize:'9px',color:'#DC2626',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
+                          <div style={{fontSize:'9px',color:'#B4533A',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
                         )}
                         {scAtivo.excessoPct>0&&(
-                          <div style={{fontSize:'9px',color:'#D97706',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
+                          <div style={{fontSize:'9px',color:'#8A6E2F',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
                         )}
                         {scAtivo.ajusteManual!==null&&(
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 8px',background:'#E6F2EF',borderRadius:'4px',borderLeft:'3px solid #2E7D6B'}}>
@@ -2389,8 +2389,8 @@ function BaguaPlantaContent() {
                 {CRITERIOS.map((crit,ci)=>{
                   const LABELS=['-2','-1','0','+1','+2']
                   const NOMES=['Crítico','Ruim','Neutro','Bom','Ótimo']
-                  const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
-                  const BGS=['#FEF2F2','#FFF7ED','#F9FAFB','#F0FDF4','#DCFCE7']
+                  const CORES=['#B4533A','#EA580C','#6B7280','#65A30D','#2E7D6B']
+                  const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#F0F6F3','#F0F6F3']
                   // `null` = não avaliado. Antes o default era 2 («Neutro»), o
                   // que impedia distinguir «achei neutro» de «não olhei».
                   const val=scAtivo.criterios[ci]
@@ -2499,12 +2499,12 @@ function BaguaPlantaContent() {
                       {rec.urgente.length>0&&(
                         <div style={{marginBottom:'8px'}}>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
-                            <span style={{background:'#DC2626',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>URGENTE</span>
+                            <span style={{background:'#B4533A',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>URGENTE</span>
                           </div>
                           {rec.urgente.map((d,i)=>(
-                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
-                              <span style={{color:'#DC2626',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
-                              <span style={{fontSize:'10px',color:'#7F1D1D',lineHeight:'1.45'}}>{d}</span>
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FAEEE9',borderRadius:'5px',borderLeft:'3px solid #B4533A'}}>
+                              <span style={{color:'#B4533A',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#8F3F2C',lineHeight:'1.45'}}>{d}</span>
                             </div>
                           ))}
                         </div>
@@ -2513,12 +2513,12 @@ function BaguaPlantaContent() {
                       {rec.melhoria.length>0&&(
                         <div style={{marginBottom:'8px'}}>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
-                            <span style={{background:'#D97706',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MELHORIA</span>
+                            <span style={{background:'#8A6E2F',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MELHORIA</span>
                           </div>
                           {rec.melhoria.map((d,i)=>(
-                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FFFBEB',borderRadius:'5px',borderLeft:'3px solid #D97706'}}>
-                              <span style={{color:'#D97706',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
-                              <span style={{fontSize:'10px',color:'#78350F',lineHeight:'1.45'}}>{d}</span>
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #8A6E2F'}}>
+                              <span style={{color:'#8A6E2F',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'10px',color:'#6B5424',lineHeight:'1.45'}}>{d}</span>
                             </div>
                           ))}
                         </div>
@@ -2527,11 +2527,11 @@ function BaguaPlantaContent() {
                       {rec.manutencao.length>0&&(
                         <div>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
-                            <span style={{background:'#15803D',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MANUTENÇÃO</span>
+                            <span style={{background:'#2E7D6B',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MANUTENÇÃO</span>
                           </div>
                           {rec.manutencao.map((d,i)=>(
-                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
-                              <span style={{color:'#15803D',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#F0F6F3',borderRadius:'5px',borderLeft:'3px solid #2E7D6B'}}>
+                              <span style={{color:'#2E7D6B',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
                               <span style={{fontSize:'10px',color:'#14532D',lineHeight:'1.45'}}>{d}</span>
                             </div>
                           ))}
@@ -2571,24 +2571,24 @@ function BaguaPlantaContent() {
               </div>
               <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
                 <button type="button" onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
-                  style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:modo==='bordas'?'#B4533A':'#8A6E2F',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='bordas'?'🔒 Finalizar bordas':'⬜ Ajustar bordas'}
                 </button>
                 <button type="button" onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
-                  style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:modo==='marcarFalta'?'#B4533A':'#B4533A',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarFalta'?'🔒 Finalizar':'▭ Falta'}
                 </button>
                 <button type="button" onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
-                  style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:modo==='marcarExcesso'?'#B4533A':'#C9A227',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Excesso'}
                 </button>
                 <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
-                  style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                  style={{background:recalculoPendente?'#EA580C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                     animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                   🔄 Recalcular{recalculoPendente?' (pendente)':''}
                 </button>
                 <button type="button" onClick={()=>{setModo('nenhum');setFullscreen(false)}}
-                  style={{background:'#15803D',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                   ✓ OK — Voltar
                 </button>
               </div>
@@ -2597,19 +2597,19 @@ function BaguaPlantaContent() {
             {/* Instructions */}
             {modo==='bordas'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FEF3C7',borderRadius:'6px',color:'#92400E',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#8A6E2F',fontSize:'12px',zIndex:1}}>
                 Arraste as alças laranja para ajustar os limites da construcao (fronteira Feng Shui)
               </div>
             )}
             {modo==='marcarFalta'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FEF2F2',borderRadius:'6px',color:'#DC2626',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAEEE9',borderRadius:'6px',color:'#B4533A',fontSize:'12px',zIndex:1}}>
                 Clique e arraste para marcar uma area de FALTA
               </div>
             )}
             {modo==='marcarExcesso'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FFF7ED',borderRadius:'6px',color:'#EA580C',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#EA580C',fontSize:'12px',zIndex:1}}>
                 Clique e arraste para marcar uma area de EXCESSO
               </div>
             )}
