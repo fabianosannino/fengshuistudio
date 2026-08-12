@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoUsuario, podeClientes } from '../../../src/lib/plano-utils'
+import { planoUsuario, limiteClientes, mensagemLimiteClientes } from '../../../src/lib/plano-utils'
 import { validateEmail, validatePhone } from '../../../src/lib/validation'
 
-const MAX_CLIENTES_FREE = 5
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -31,20 +30,32 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (!podeClientes(planoUsuario(profile))) {
-    const { count } = await supabase
+  const planoDoUsuario = planoUsuario(profile)
+  const limiteDeClientes = limiteClientes(planoDoUsuario)
+
+  if (limiteDeClientes !== null) {
+    if (limiteDeClientes === 0) {
+      return NextResponse.json({ error: mensagemLimiteClientes(planoDoUsuario) }, { status: 403 })
+    }
+
+    const { count, error: erroContagem } = await supabase
       .from('clientes')
       .select('*', { count: 'exact', head: true })
       .eq('consultor_id', user.id)
       .eq('ativo', true)
 
-    if ((count || 0) >= MAX_CLIENTES_FREE) {
-      return NextResponse.json(
-        { error: 'Limite de 5 clientes no plano Free. Faça upgrade para cadastrar mais.' },
-        { status: 403 }
-      )
+    if (erroContagem) {
+      logger.error('Falha ao contar clientes do consultor', {
+        route: '/api/clientes', userId: user.id, error: erroContagem.message,
+      })
+      return NextResponse.json({ error: 'Não foi possível verificar seu limite de clientes.' }, { status: 500 })
+    }
+
+    if ((count || 0) >= limiteDeClientes) {
+      return NextResponse.json({ error: mensagemLimiteClientes(planoDoUsuario) }, { status: 403 })
     }
   }
+
 
   let body: Record<string, unknown>
   try {

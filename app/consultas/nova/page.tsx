@@ -9,7 +9,7 @@ import FlowLayout from '../../components/FlowLayout'
 import Skeleton from '../../components/Skeleton'
 import type { Profile, Cliente } from '../../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional as isProfissionalFn, planoUsuario, PROF_TYPES } from '../../../src/lib/plano-utils'
+import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional as isProfissionalFn, planoUsuario, PROF_TYPES, mensagemLimiteImoveis } from '../../../src/lib/plano-utils'
 
 function NovaConsultaContent() {
   const searchParams = useSearchParams()
@@ -205,11 +205,8 @@ function NovaConsultaContent() {
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
-            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Limite de 3 imóveis atingido no plano {planoLabel(profile?.plano)}.
-            </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Para cadastrar mais imóveis, faça upgrade.
+              {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
             </p>
             <a href="/planos" style={{
               display: 'inline-block', padding: '8px 20px', background: '#2E7D6B',
@@ -225,11 +222,8 @@ function NovaConsultaContent() {
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
             background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
           }}>
-            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Você já possui 1 imóvel ativo.
-            </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Arquive o imóvel atual para cadastrar um novo, ou faça upgrade para o plano Profissional.
+              {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <Link href="/consultas" style={{

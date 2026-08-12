@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoEfetivo, podeClientes, isProfissional as isProfissionalFn, planoUsuario } from '../../../src/lib/plano-utils'
+import { planoEfetivo, podeClientes, isProfissional as isProfissionalFn, planoUsuario,
+         limiteImoveis, mensagemLimiteImoveis, STATUS_LIBERAM_VAGA } from '../../../src/lib/plano-utils'
 const MAX_CONSULTAS_MES_FREE = 3
-const MAX_IMOVEIS_PESSOAL = 3
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -33,40 +33,29 @@ export async function POST(request: Request) {
   const isProfessional = isProfissionalFn(profile)
   const plano = planoUsuario(profile)
 
-  // Professional users: unlimited (plano is already 'profissional' via planoUsuario)
-  // Simples plan: 1 active consultation at a time
-  // Free plan: 3 total properties
+  // A regra e a mensagem vêm de `plano-utils`, não daqui: quando cada rota
+  // escrevia a sua, a API dizia «limite de 1 imóvel ativo» enquanto a tela
+  // dizia outra coisa e `podeClientes()` dizia uma terceira.
+  const limite = limiteImoveis(plano)
+  if (limite !== null) {
+    const { count, error: erroContagem } = await supabase
+      .from('consultas')
+      .select('*', { count: 'exact', head: true })
+      .eq('consultor_id', user.id)
+      .not('status', 'in', `(${STATUS_LIBERAM_VAGA.join(',')})`)
 
-  if (plano !== 'profissional') {
-    if (plano === 'simples') {
-      // Simples plan: max 1 active (non-archived) consultation
-      const { count } = await supabase
-        .from('consultas')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-        .neq('status', 'arquivado')
+    if (erroContagem) {
+      logger.error('Falha ao contar imóveis do consultor', {
+        route: '/api/consultas', userId: user.id, error: erroContagem.message,
+      })
+      return NextResponse.json({ error: 'Não foi possível verificar seu limite de imóveis.' }, { status: 500 })
+    }
 
-      if ((count || 0) >= 1) {
-        return NextResponse.json(
-          { error: 'Limite de 1 imóvel ativo no plano Simples. Arquive o atual ou faça upgrade.' },
-          { status: 403 }
-        )
-      }
-    } else {
-      // Free plan: max 3 total properties
-      const { count } = await supabase
-        .from('consultas')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-
-      if ((count || 0) >= MAX_IMOVEIS_PESSOAL) {
-        return NextResponse.json(
-          { error: 'Limite de 3 imóveis atingido. Faça upgrade para continuar.' },
-          { status: 403 }
-        )
-      }
+    if ((count || 0) >= limite) {
+      return NextResponse.json({ error: mensagemLimiteImoveis(plano) }, { status: 403 })
     }
   }
+
 
   let body: Record<string, unknown>
   try {

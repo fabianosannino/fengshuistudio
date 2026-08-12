@@ -8,7 +8,7 @@ import Skeleton from '../components/Skeleton'
 import Image from 'next/image'
 import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, podeClientes } from '../../src/lib/plano-utils'
+import { planoEfetivo, podeClientes, mensagemLimiteClientes } from '../../src/lib/plano-utils'
 import { Camera, Users, Search, Mail, Phone, MapPin, CheckCircle2, RefreshCw } from 'lucide-react'
 import { useUrlsAssinadas } from '../components/useUrlsAssinadas'
 import { BUCKET_CLIENTES } from '../../src/lib/storage-imagens'
@@ -254,7 +254,7 @@ export default function Clientes() {
         <button type="button" onClick={() => {
           const p = planoEfetivo(profile?.plano)
           if (!podeClientes(p)) {
-            setMessage('Cadastro de clientes disponível no plano Profissional.')
+            setMessage(mensagemLimiteClientes(p) ?? '')
             return
           }
           setShowForm(!showForm); setMessage('')
@@ -345,7 +345,7 @@ export default function Clientes() {
           marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
           background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '13px'
         }}>
-          Cadastro de clientes externos disponível no plano Profissional.{' '}
+          {mensagemLimiteClientes(planoEfetivo(profile?.plano))}{' '}
           <a href="/planos" style={{ color: '#2E7D6B', fontWeight: 'bold' }}>Ver planos</a>
         </div>
       )}
