@@ -1,5 +1,6 @@
 'use client'
 
+import { mediaDaArea, mediaGeral, notasDaArea } from '../../src/lib/roda-da-vida'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -38,7 +39,7 @@ function polar(cx: number, cy: number, r: number, i: number, total: number) {
 
 function RadarChart({ respostas }: { respostas: Record<string, number[]> }) {
   const cx = 200, cy = 200, R = 160, n = 12
-  const values = AREAS.map(a => avg(respostas[a.key] || [5,5,5,5,5]))
+  const values = AREAS.map(a => mediaDaArea(respostas[a.key]) ?? 0)
   const rings = [2,4,6,8,10]
   const pts = values.map((v, i) => polar(cx, cy, R * v / 10, i, n))
   const poly = pts.map(p => `${p.x},${p.y}`).join(' ')
@@ -179,8 +180,8 @@ export default function RodaDaVidaPage() {
   }
 
   const area = AREAS[areaAtual]
-  const catAvg = (keys: string[]) => { const vals = keys.map(k => avg(respostas[k] || [5,5,5,5,5])); return vals.reduce((s,v)=>s+v,0)/vals.length }
-  const totalAvg = avg(AREAS.map(a => avg(respostas[a.key] || [5,5,5,5,5])))
+  const catAvg = (keys: string[]) => mediaGeral(respostas, keys)
+  const totalAvg = mediaGeral(respostas, AREAS.map(a => a.key))
   const progress = ((areaAtual + 1) / 12 * 100)
 
   const cardStyle: React.CSSProperties = { background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16, marginBottom: 12 }
@@ -206,7 +207,7 @@ export default function RodaDaVidaPage() {
             <div key={c.id} onClick={() => openExisting(c)} style={{ ...cardStyle, cursor: 'pointer' }}>
               <div style={{ fontSize: 14, fontWeight: 'bold', color: '#0E1B2C' }}>{c.roda_da_vida?.pessoa_nome || c.clientes?.nome_completo || 'Sem nome'}</div>
               <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{c.nome_imovel} — {fmtDate(c.criado_em)}</div>
-              <div style={{ fontSize: 12, color: '#2E7D6B', marginTop: 4, fontWeight: 'bold' }}>Média geral: {avg(AREAS.map(a => avg(c.roda_da_vida?.respostas?.[a.key] || [5,5,5,5,5]))).toFixed(1)}</div>
+              <div style={{ fontSize: 12, color: '#2E7D6B', marginTop: 4, fontWeight: 'bold' }}>Média geral: {mediaGeral(c.roda_da_vida?.respostas ?? {}, AREAS.map(a => a.key))?.toFixed(1) ?? '—'}</div>
             </div>
           ))}
           {consultas.filter(c => c.roda_da_vida?.respostas).length === 0 && (
@@ -315,7 +316,7 @@ export default function RodaDaVidaPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 20, color: '#0E1B2C' }}>Resultados — {pessoaNome || 'Roda da Vida'}</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#2E7D6B' }}>{totalAvg.toFixed(1)}</b></p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#2E7D6B' }}>{totalAvg?.toFixed(1) ?? '—'}</b></p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={() => { setAreaAtual(0); setStep('questionnaire') }} style={btnPrimary('#6B7280')}>Editar</button>
@@ -337,14 +338,14 @@ export default function RodaDaVidaPage() {
               <div key={cat.key} style={cardStyle}>
                 <div style={{ fontSize: 13, fontWeight: 'bold', color: cat.cor, marginBottom: 8 }}>{cat.label}</div>
                 <div style={{ height: 8, borderRadius: 4, background: '#E5E7EB' }}>
-                  <div style={{ height: '100%', borderRadius: 4, background: cat.cor, width: `${v*10}%` }} />
+                  <div style={{ height: '100%', borderRadius: 4, background: cat.cor, width: `${(v ?? 0)*10}%` }} />
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 'bold', color: cat.cor, marginTop: 6 }}>{v.toFixed(1)}</div>
+                <div style={{ fontSize: 20, fontWeight: 'bold', color: cat.cor, marginTop: 6 }}>{v?.toFixed(1) ?? '—'}</div>
                 {cat.areas.map(ak => {
                   const a = AREAS.find(x => x.key === ak)!
-                  const av = avg(respostas[ak] || [5,5,5,5,5])
+                  const av = mediaDaArea(respostas[ak])
                   return <div key={ak} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151', marginTop: 4 }}>
-                    <span>{a.label}</span><span style={{ fontWeight: 'bold', color: a.cor }}>{av.toFixed(1)}</span>
+                    <span>{a.label}</span><span style={{ fontWeight: 'bold', color: a.cor }}>{av?.toFixed(1) ?? '—'}</span>
                   </div>
                 })}
               </div>
@@ -356,8 +357,9 @@ export default function RodaDaVidaPage() {
         <div style={cardStyle}>
           <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0E1B2C' }}>Detalhamento por Área</h3>
           {AREAS.map(a => {
-            const scores = respostas[a.key] || [5,5,5,5,5]
-            const areaAvg = avg(scores)
+            const scores = notasDaArea(respostas[a.key])
+            // `null` significa pergunta não respondida — não entra na média.
+            const areaAvg = mediaDaArea(respostas[a.key]) ?? 0
             const cls = classificar(areaAvg)
             const expanded = expandedArea === a.key
             return (
