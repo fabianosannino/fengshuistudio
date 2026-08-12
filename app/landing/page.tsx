@@ -3,6 +3,7 @@
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { useMontado } from '../components/hooks-cliente'
+import { PRECOS_DOS_PLANOS, formatarCentavos } from '../../src/lib/plano-utils'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -616,7 +617,7 @@ export default function LandingPage() {
             }}>
               <p style={{ color: '#93C5FD', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>SIMPLES</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$20</span>
+                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>{formatarCentavos(PRECOS_DOS_PLANOS.simples.mensalCentavos)}</span>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>
@@ -674,7 +675,7 @@ export default function LandingPage() {
               </div>
               <p style={{ color: '#A7D3C9', fontSize: '14px', fontWeight: 600, letterSpacing: '0.05em', margin: '0 0 8px 0' }}>PROFISSIONAL</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>R$49</span>
+                <span style={{ color: '#ffffff', fontSize: '48px', fontWeight: 800 }}>{formatarCentavos(PRECOS_DOS_PLANOS.profissional.mensalCentavos)}</span>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>/mês</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', margin: '0 0 32px 0' }}>

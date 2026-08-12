@@ -15,6 +15,10 @@ import CtaBand from './components/marketing/CtaBand'
 import ChiDivider from './components/marketing/ChiDivider'
 import FaqAccordion from './components/marketing/FaqAccordion'
 import { ASSETS, REGISTER_URL } from './components/marketing/assets'
+import { PRECOS_DOS_PLANOS, formatarCentavos } from '../src/lib/plano-utils'
+
+/** O preço vem de `plano-utils`, que espelha o catálogo do Stripe. */
+const PRECO_PROFISSIONAL = formatarCentavos(PRECOS_DOS_PLANOS.profissional.mensalCentavos)
 
 const bento = [
   {
@@ -74,7 +78,7 @@ const faq = [
   },
   {
     q: 'O investimento compensa para quem atende poucos clientes?',
-    a: 'Uma consultoria de Feng Shui no Brasil custa em média de R$ 350 a R$ 2.000. O plano Profissional custa R$ 49/mês — ou seja, uma única consulta cobre mais de um ano de plataforma, além das horas economizadas em cada relatório.',
+    a: 'Uma consultoria de Feng Shui no Brasil custa em média de R$ 350 a R$ 2.000. O plano Profissional custa ${PRECO_PROFISSIONAL}/mês — ou seja, uma única consulta cobre mais de um ano de plataforma, além das horas economizadas em cada relatório.',
   },
   {
     q: 'Funciona no celular?',
@@ -318,7 +322,7 @@ export default function Home() {
             <FadeUp>
               <p className="eyebrow mb-4">O investimento que se paga</p>
               <h2 className="font-display text-2xl md:text-4xl leading-tight text-paper max-w-2xl text-balance">
-                Uma consultoria média custa R$ 700. O plano Profissional custa R$ 49/mês.
+                Uma consultoria média custa R$ 700. O plano Profissional custa {PRECO_PROFISSIONAL}/mês.
               </h2>
               <p className="mt-4 text-paper/70 max-w-xl">
                 Uma única consulta paga mais de um ano de plataforma — sem contar as horas que você economiza em cada relatório.

@@ -2,7 +2,11 @@
 
 /* Design "Chi": página de preços — toggle mensal/anual, 3 planos (Profissional em destaque),
  * tabela comparativa, banner ROI, selos de confiança, FAQ de compra. */
-import { resumoDoPlano, limiteImoveis, limiteClientes, podePDF, podeCalendario, podeParceiros, type PlanoEfetivo } from '../../src/lib/plano-utils'
+import {
+  resumoDoPlano, limiteImoveis, limiteClientes, podePDF, podeCalendario, podeParceiros,
+  PRECOS_DOS_PLANOS, mensalEquivalenteCentavos, formatarCentavos, descontoAnualPercentual,
+  type PlanoEfetivo,
+} from '../../src/lib/plano-utils'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Check, Minus, Lock, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react'
@@ -33,6 +37,32 @@ function textoPDF(plano: PlanoEfetivo): string | boolean {
   return false
 }
 
+/**
+ * O que exibir por mês, conforme o toggle.
+ *
+ * No anual mostra o **equivalente mensal do que o Stripe cobra**, não uma conta
+ * feita aqui. Esta página presumia «dois meses grátis» (`49 × 10 ÷ 12`) e
+ * anunciava R$ 40,83 no Profissional, enquanto o catálogo cobra R$ 34,30 — a
+ * página vendia caro por não saber o desconto real.
+ */
+function precoPorMes(plano: PlanoEfetivo, anual: boolean): string {
+  const centavos = anual ? mensalEquivalenteCentavos(plano) : PRECOS_DOS_PLANOS[plano].mensalCentavos
+  return formatarCentavos(centavos)
+}
+
+/**
+ * O desconto do anual que vale para qualquer plano pago — o menor dos dois.
+ *
+ * A página dizia «2 meses grátis» em dois lugares, o que descrevia a conta que
+ * ela mesma fazia, não o catálogo. O desconto real é maior; anunciar o menor
+ * dos planos mantém a frase verdadeira seja qual for o que o visitante
+ * escolher.
+ */
+const DESCONTO_ANUAL_MINIMO = Math.min(
+  descontoAnualPercentual('simples') ?? 0,
+  descontoAnualPercentual('profissional') ?? 0,
+)
+
 const planos = (anual: boolean) => [
   {
     nome: 'Free',
@@ -45,7 +75,7 @@ const planos = (anual: boolean) => [
   },
   {
     nome: 'Profissional',
-    preco: anual ? 'R$ 40,83' : 'R$ 49',
+    preco: precoPorMes('profissional', anual),
     sufixo: anual ? '/mês no plano anual' : '/mês',
     desc: 'Para consultores que atendem clientes.',
     destaque: true,
@@ -59,7 +89,7 @@ const planos = (anual: boolean) => [
   },
   {
     nome: 'Simples',
-    preco: anual ? 'R$ 16,67' : 'R$ 20',
+    preco: precoPorMes('simples', anual),
     sufixo: anual ? '/mês no plano anual' : '/mês',
     desc: 'Para uso pessoal, na sua própria casa.',
     destaque: false,
@@ -85,7 +115,7 @@ const comparativo: { label: string; free: string | boolean; pro: string | boolea
 
 const faqCompra = [
   { q: 'Posso cancelar quando quiser?', a: 'Sim. O cancelamento é feito em um clique, sem fidelidade. Você mantém o acesso até o fim do período já pago.' },
-  { q: 'Como funciona o plano anual?', a: 'No plano anual você paga o equivalente a 10 meses e usa 12 — dois meses grátis em relação ao mensal.' },
+  { q: 'Como funciona o plano anual?', a: `No plano anual você paga uma vez e usa doze meses, com ${DESCONTO_ANUAL_MINIMO}% de desconto em relação a pagar mês a mês.` },
   { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de crédito, processado com segurança pela Stripe. Não armazenamos os dados do seu cartão.' },
   { q: 'Posso mudar de plano depois?', a: 'Sim, o upgrade ou downgrade é imediato e o valor é ajustado proporcionalmente.' },
   { q: 'Meus dados estão protegidos?', a: 'Sim. Seguimos a LGPD, com criptografia em trânsito e isolamento de dados por conta.' },
@@ -127,7 +157,7 @@ export default function Precos() {
                   />
                 </button>
                 <span className={anual ? 'font-semibold text-ink' : 'text-ink/60'}>
-                  Anual <span className="text-jade font-semibold">(2 meses grátis)</span>
+                  Anual <span className="text-jade font-semibold">({DESCONTO_ANUAL_MINIMO}% de desconto)</span>
                 </span>
               </div>
             </FadeUp>
@@ -187,7 +217,7 @@ export default function Precos() {
                 Uma única consultoria paga mais de um ano de plataforma
               </h2>
               <p className="mt-3 text-paper/70">
-                Consultorias de Feng Shui no Brasil custam de R$ 350 a R$ 2.000 ou mais. Com o Profissional a R$ 49/mês, o retorno chega já no primeiro cliente.
+                Consultorias de Feng Shui no Brasil custam de R$ 350 a R$ 2.000 ou mais. Com o Profissional a {formatarCentavos(PRECOS_DOS_PLANOS.profissional.mensalCentavos)}/mês, o retorno chega já no primeiro cliente.
               </p>
             </FadeUp>
             <FadeUp delay={100}>

@@ -7,12 +7,14 @@ import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoEfetivo } from '../../src/lib/plano-utils'
+import {
+  planoEfetivo, PRECOS_DOS_PLANOS, mensalEquivalenteCentavos, formatarCentavos,
+} from '../../src/lib/plano-utils'
 import { Check, X, KeyRound } from 'lucide-react'
 
 const PLANOS = [
   {
-    id: 'free', nome: 'Free', precoMensal: 0, precoAnual: 0,
+    id: 'free', nome: 'Free',
     descricao: 'Para conhecer a plataforma', cor: '#6B7280', destaque: false,
     recursos: [
       { nome: 'Cadastro de imóveis', valor: 'Até 3', disponivel: true },
@@ -26,7 +28,7 @@ const PLANOS = [
     ]
   },
   {
-    id: 'simples', nome: 'Simples', precoMensal: 20, precoAnual: 168,
+    id: 'simples', nome: 'Simples',
     descricao: 'Para uso pessoal', cor: '#059669', destaque: false,
     recursos: [
       { nome: 'Cadastro de imóveis', valor: '1 ativo', disponivel: true },
@@ -40,7 +42,7 @@ const PLANOS = [
     ]
   },
   {
-    id: 'profissional', nome: 'Profissional', precoMensal: 49, precoAnual: 411.60,
+    id: 'profissional', nome: 'Profissional',
     descricao: 'Para consultores profissionais', cor: '#2E7D6B', destaque: true,
     recursos: [
       { nome: 'Cadastro de imóveis', valor: 'Ilimitados', disponivel: true },
@@ -291,11 +293,15 @@ export default function Planos() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '48px', maxWidth: '1100px', margin: '0 auto 48px' }}>
         {PLANOS.map(plano => {
           const isAtual = planoAtualEfetivo === plano.id
-          const precoExibir = ciclo === 'yearly' && plano.precoAnual > 0
-            ? plano.precoAnual / 12
-            : plano.precoMensal
-          const totalAnual = plano.precoAnual
-          const economiAnual = (plano.precoMensal * 12) - plano.precoAnual
+          // Preço vem de `plano-utils`, que espelha o catálogo do Stripe. Estava
+          // escrito à mão aqui e em `/precos`, e as três fontes discordavam: o
+          // Profissional era anunciado como R$ 49 e o cartão debitado em R$ 49,90.
+          const preco = PRECOS_DOS_PLANOS[plano.id as keyof typeof PRECOS_DOS_PLANOS]
+          const centavosExibir = ciclo === 'yearly' && preco.anualCentavos > 0
+            ? mensalEquivalenteCentavos(plano.id as keyof typeof PRECOS_DOS_PLANOS)
+            : preco.mensalCentavos
+          const totalAnual = preco.anualCentavos / 100
+          const economiAnual = ((preco.mensalCentavos * 12) - preco.anualCentavos) / 100
 
           return (
             <div key={plano.id} style={{
@@ -316,9 +322,9 @@ export default function Planos() {
                 <p style={{ color: '#9CA3AF', fontSize: '14px', margin: '0 0 16px 0' }}>{plano.descricao}</p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                   <span style={{ color: '#111827', fontSize: '36px', fontWeight: 'bold' }}>
-                    {precoExibir === 0 ? 'R$ 0' : formatCurrency(precoExibir)}
+                    {centavosExibir === 0 ? 'R$ 0' : formatarCentavos(centavosExibir)}
                   </span>
-                  {plano.precoMensal > 0 && <span style={{ color: '#9CA3AF', fontSize: '14px' }}>/mês</span>}
+                  {preco.mensalCentavos > 0 && <span style={{ color: '#9CA3AF', fontSize: '14px' }}>/mês</span>}
                 </div>
                 {ciclo === 'yearly' && totalAnual > 0 && (
                   <div style={{ marginTop: '4px' }}>
