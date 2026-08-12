@@ -119,7 +119,15 @@ export default function Planos() {
   async function handleSelectPlan(planoId: string) {
     if (planoId === planoAtualEfetivo) return
     if (planoId === 'free') {
-      if (!confirm('Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos pagos.')) return
+      // Com assinatura ativa, voltar ao Free agenda o cancelamento e mantém o
+      // acesso até o fim do período pago — a rota decide e responde qual foi o
+      // caso. Prometer «perderá o acesso» aqui, antes de saber, seria assustar
+      // com uma coisa que não vai acontecer.
+      const temAssinatura = Boolean(subscription && subscription.status !== 'cancelled')
+      const aviso = temAssinatura
+        ? 'Deseja cancelar a assinatura? A cobrança para de se repetir e o acesso continua até o fim do período já pago.'
+        : 'Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos pagos.'
+      if (!confirm(aviso)) return
       try {
         const res = await fetch('/api/planos', {
           method: 'POST',
@@ -128,10 +136,17 @@ export default function Planos() {
         })
         const data = await res.json()
         if (!res.ok) { setMessage('Erro: ' + data.error); return }
-        setProfile(prev => prev ? { ...prev, plano: 'free' } : prev)
-        setSubscription(null)
-        setMessage('Plano alterado para Free.')
-        setTimeout(() => setMessage(''), 4000)
+
+        if (data.cancelamento_agendado) {
+          // O plano continua o mesmo: só a renovação foi desligada.
+          setSubscription(prev => prev ? { ...prev, cancel_at_period_end: true } : prev)
+          setMessage(data.mensagem || 'Cancelamento agendado para o fim do período.')
+        } else {
+          setProfile(prev => prev ? { ...prev, plano: 'free' } : prev)
+          setSubscription(null)
+          setMessage('Plano alterado para Free.')
+        }
+        setTimeout(() => setMessage(''), 6000)
       } catch { setMessage('Erro de conexão.') }
       return
     }

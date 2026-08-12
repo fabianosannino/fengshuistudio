@@ -50,6 +50,20 @@ Prefira uma **chave restrita** (`rk_...`) com leitura de produtos e preços: ela
 serve para esta conferência e não cobra nem reembolsa se vazar. A secret key de
 produção também não é revelável depois de criada — o Stripe a mostra uma vez só.
 
+## Contestação de cobrança
+
+`charge.dispute.created`, `.updated` e `.closed` são gravados em
+`disputas_stripe`, com o prazo do Stripe para responder. É por isso que é
+tabela e não log: a pergunta operacional é «quais disputas estão abertas agora
+e até quando posso responder?».
+
+**Nenhuma ação automática sobre o plano**, e é decisão. Disputa aberta não é
+venda perdida — pode ser ganha, e tirar o acesso de quem contestou por engano
+seria punir antes do veredito. Disputa perdida é dinheiro que foi embora e
+rebaixar seria defensável, mas isso é política comercial, não código: o log sai
+em nível de erro para que a decisão seja de gente. Quando a política estiver
+escrita, o gancho é `registrarDisputa`.
+
 ## Reconciliação com o Stripe
 
 Webhook é entrega best-effort: endpoint mal configurado, fora do ar ou segredo

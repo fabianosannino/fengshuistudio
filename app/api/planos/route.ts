@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
 import { planoEfetivo, enumDoPlano } from '../../../src/lib/plano-utils'
+import stripeClient from '../../../src/lib/stripe'
 
 const VALID_PLANOS = ['freemium', 'free', 'simples', 'pro', 'profissional'] as const
 
@@ -134,6 +135,74 @@ export async function POST(request: Request) {
     })
     if (auditError) {
       logger.error('Audit log insert failed', { route: '/api/planos', error: auditError.message })
+    }
+  }
+
+  // ── Ir para o Free com assinatura ativa ────────────────────────────────────
+  //
+  // Antes, escolher Free mudava só a coluna: o app rebaixava o acesso e o
+  // Stripe continuava cobrando todo mês. O cliente perdia o recurso e seguia
+  // pagando por ele.
+  //
+  // Agora o cancelamento é **agendado para o fim do período**, e o plano
+  // **não** muda agora. Quem pagou o mês tem direito ao mês; rebaixar no ato
+  // seria tirar o que já foi comprado. O rebaixamento vem do webhook quando o
+  // período fechar — é a mesma porta por onde entram os outros cancelamentos,
+  // e ter uma porta só é o que impede as duas divergirem.
+  if (planoAlvo === 'free' && planoAtual !== 'free') {
+    const { data: assinatura } = await admin
+      .from('subscriptions')
+      .select('id, gateway_subscription_id, current_period_end, cancel_at_period_end')
+      .eq('user_id', user.id)
+      .in('status', ['active', 'past_due', 'trial'])
+      .maybeSingle()
+
+    if (assinatura?.gateway_subscription_id) {
+      if (assinatura.cancel_at_period_end) {
+        return NextResponse.json({
+          plano: planoAtual,
+          cancelamento_agendado: true,
+          acesso_ate: assinatura.current_period_end,
+          mensagem: 'O cancelamento já estava agendado. O acesso continua até o fim do período pago.',
+        })
+      }
+
+      try {
+        await stripeClient.subscriptions.update(assinatura.gateway_subscription_id, {
+          cancel_at_period_end: true,
+        })
+      } catch (err) {
+        // Falhar aqui e mudar o plano assim mesmo recriaria o defeito: acesso
+        // removido, cobrança de pé. Melhor não mudar nada e dizer.
+        logger.error('Não foi possível agendar o cancelamento no Stripe', {
+          route: '/api/planos',
+          subscriptionId: assinatura.gateway_subscription_id,
+          error: String(err),
+        })
+        return NextResponse.json(
+          { error: 'Não foi possível agendar o cancelamento. Tente novamente.' },
+          { status: 502 }
+        )
+      }
+
+      const { error: erroAoMarcar } = await admin
+        .from('subscriptions')
+        .update({ cancel_at_period_end: true })
+        .eq('id', assinatura.id)
+
+      if (erroAoMarcar) {
+        // O Stripe já aceitou; a coluna é espelho e a reconciliação corrige.
+        logger.error('Cancelamento agendado no Stripe mas não gravado', {
+          route: '/api/planos', subscriptionId: assinatura.id, error: erroAoMarcar.message,
+        })
+      }
+
+      return NextResponse.json({
+        plano: planoAtual,
+        cancelamento_agendado: true,
+        acesso_ate: assinatura.current_period_end,
+        mensagem: 'Cancelamento agendado. O acesso continua até o fim do período já pago.',
+      })
     }
   }
 

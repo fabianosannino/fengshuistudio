@@ -14,10 +14,16 @@ import type Stripe from 'stripe'
 // ── Mock do Stripe ────────────────────────────────────────────────────────────
 const constructEvent = vi.fn()
 const invoicesList = vi.fn()
+const invoicesRetrieve = vi.fn()
+const chargesRetrieve = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
   default: {
     webhooks: { constructEvent: (...a: unknown[]) => constructEvent(...a) },
-    invoices: { list: (...a: unknown[]) => invoicesList(...a) },
+    invoices: {
+      list: (...a: unknown[]) => invoicesList(...a),
+      retrieve: (...a: unknown[]) => invoicesRetrieve(...a),
+    },
+    charges: { retrieve: (...a: unknown[]) => chargesRetrieve(...a) },
   },
 }))
 
@@ -44,6 +50,7 @@ function makeSupabaseMock(handler: Handler) {
       select: () => b,
       insert: (v: Record<string, unknown>) => { q.op = 'insert'; q.values = v; return b },
       update: (v: Record<string, unknown>) => { q.op = 'update'; q.values = v; return b },
+      upsert: (v: Record<string, unknown>) => { q.op = 'insert'; q.values = v; return b },
       eq: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
       in: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
       // `not`, `gt` e `limit` existem para a consulta de ordenação em
@@ -230,5 +237,92 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     const res = await POST(req())
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ received: true })
+  })
+
+  it('invoice_payment.paid busca a fatura e registra igual a invoice.paid', async () => {
+    // A versão de API 2026-03-25 emite `invoice_payment.paid` ao lado de
+    // `invoice.paid`. Escutar só o antigo deixaria a renovação passar em
+    // branco se ele sair — e o objeto do evento novo traz o id da fatura,
+    // não a fatura.
+    invoicesRetrieve.mockResolvedValue({
+      id: 'in_1', customer: 'cus_123', amount_paid: 2000, number: 'A-1', due_date: null,
+    })
+    constructEvent.mockReturnValue({
+      type: 'invoice_payment.paid',
+      id: 'evt_ip',
+      created: 1_786_556_000,
+      data: { object: { id: 'inpay_1', invoice: 'in_1' } },
+    } as unknown as Stripe.Event)
+
+    const res = await POST(req())
+    expect(res.status).toBe(200)
+    expect(invoicesRetrieve).toHaveBeenCalledWith('in_1')
+
+    const fatura = supabaseMock.queries.find(q => q.table === 'invoices' && q.op !== 'select')
+    expect(fatura?.values).toMatchObject({ status: 'paid', amount_paid: 20 })
+  })
+
+  it('invoice_payment.paid sem id de fatura não quebra nem inventa', async () => {
+    constructEvent.mockReturnValue({
+      type: 'invoice_payment.paid',
+      id: 'evt_ip2',
+      created: 1_786_556_000,
+      data: { object: { id: 'inpay_2' } },
+    } as unknown as Stripe.Event)
+
+    const res = await POST(req())
+    expect(res.status).toBe(200)
+    expect(supabaseMock.queries.some(q => q.table === 'invoices')).toBe(false)
+  })
+
+  it('contestação aberta é registrada e NÃO rebaixa o plano', async () => {
+    // Disputa aberta não é venda perdida: pode ser ganha, e tirar o acesso de
+    // quem contestou por engano seria punir antes do veredito.
+    chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123' })
+    constructEvent.mockReturnValue({
+      type: 'charge.dispute.created',
+      id: 'evt_dp',
+      created: 1_786_556_000,
+      data: {
+        object: {
+          id: 'dp_1', charge: 'ch_1', amount: 4990, currency: 'brl',
+          status: 'needs_response', reason: 'fraudulent', created: 1_786_555_000,
+          evidence_details: { due_by: 1_787_000_000 },
+        },
+      },
+    } as unknown as Stripe.Event)
+
+    const res = await POST(req())
+    expect(res.status).toBe(200)
+
+    const disputa = supabaseMock.queries.find(q => q.table === 'disputas_stripe')
+    expect(disputa?.values).toMatchObject({
+      id: 'dp_1', charge_id: 'ch_1', valor: 49.9, status: 'needs_response', desfecho: null,
+    })
+
+    const rebaixamento = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
+    expect(rebaixamento).toBeUndefined()
+  })
+
+  it('contestação perdida registra o desfecho', async () => {
+    chargesRetrieve.mockResolvedValue({ id: 'ch_2', customer: 'cus_123' })
+    constructEvent.mockReturnValue({
+      type: 'charge.dispute.closed',
+      id: 'evt_dp2',
+      created: 1_786_557_000,
+      data: {
+        object: {
+          id: 'dp_2', charge: 'ch_2', amount: 2000, currency: 'brl',
+          status: 'lost', reason: 'product_not_received', created: 1_786_555_000,
+        },
+      },
+    } as unknown as Stripe.Event)
+
+    const res = await POST(req())
+    expect(res.status).toBe(200)
+
+    const disputa = supabaseMock.queries.find(q => q.table === 'disputas_stripe')
+    expect(disputa?.values).toMatchObject({ id: 'dp_2', status: 'lost', desfecho: 'lost' })
+    expect(disputa?.values?.fechada_em).toBeTruthy()
   })
 })
