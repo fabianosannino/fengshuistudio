@@ -22,6 +22,7 @@ import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/l
 import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
 import { normalizarChecklist, resumirChi } from '../../../../src/lib/fluxo-chi'
+import { faseLunar } from '../../../../src/lib/lunar'
 import { logger } from '../../../../src/lib/logger'
 import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
@@ -247,16 +248,13 @@ export default function Relatorio() {
   }
 
   function getProximasFasesLunares() {
+    // O cálculo vem de `src/lib/lunar.ts`. Estava copiado aqui e no calendário,
+    // com a mesma constante de lunação — e duas cópias divergem cedo ou tarde.
     const hoje = new Date()
-    const cycle = 29.53058867
-    const known = new Date(2000, 0, 6, 18, 14)
     const fases: { data: Date; fase: string; emoji: string; sugestao: string }[] = []
     for (let d = 0; d < 30 && fases.length < 3; d++) {
       const date = new Date(hoje.getTime() + d * 86400000)
-      const diff = (date.getTime() - known.getTime()) / 86400000
-      const phase = ((diff % cycle) + cycle) % cycle
-      const nome = phase < 1.85 ? 'Nova' : phase < 7.38 ? 'Crescente' : phase < 9.23 ? 'Quarto Crescente' : phase < 13.69 ? 'Gibosa Crescente' : phase < 16.61 ? 'Cheia' : phase < 20.30 ? 'Gibosa Minguante' : phase < 22.15 ? 'Quarto Minguante' : phase < 27.68 ? 'Minguante' : 'Nova'
-      const emoji = nome.includes('Nova') ? '🌑' : nome.includes('Crescente') ? '🌓' : nome.includes('Cheia') ? '🌕' : '🌗'
+      const { nome, emoji } = faseLunar(date)
       if (['Nova', 'Quarto Crescente', 'Cheia', 'Quarto Minguante'].includes(nome) && (fases.length === 0 || fases[fases.length-1].fase !== nome)) {
         const sugestoes: Record<string, string> = {
           'Nova': 'Ideal para limpeza energética, definição de intenções e novos começos',

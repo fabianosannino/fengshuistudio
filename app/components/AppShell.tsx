@@ -86,6 +86,9 @@ export default function AppShell({
         ...(isProfessional ? [{ label: 'Pagamentos', icon: Wallet, href: '/pagamentos' }] : []),
         { label: 'Parceiros', icon: Handshake, href: '/parceiros' },
         { label: 'Produtos', icon: ShoppingCart, href: '/produtos' },
+        // Os gráficos que ocupavam a home. Continuam valendo como leitura
+        // mensal do negócio — que é o que eles são.
+        { label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
       ],
     },
     {
