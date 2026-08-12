@@ -20,6 +20,7 @@ import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/l
 import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
 import { logger } from '../../../../src/lib/logger'
+import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
 import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
@@ -273,6 +274,17 @@ export default function Relatorio() {
         logging: false,
         imageTimeout: 15000,
         onclone: (clonedDoc) => {
+          // A paleta do app é declarada em oklch(); o Chrome serializa isso
+          // como lab(), e o parser do html2canvas (1.4.1, de 2022) não conhece
+          // nenhuma das duas — a captura inteira falhava. Converte no clone,
+          // deixando a tela do usuário intacta.
+          const trocas = normalizarCores(clonedDoc, criarResolvedorCanvas())
+          if (trocas > 0) {
+            logger.info('Cores normalizadas para a captura', {
+              route: 'relatorio', action: 'normalizar-cores', consultaId: id, trocas,
+            })
+          }
+
           // Remove editable textareas and show their print-only versions
           const textareas = clonedDoc.querySelectorAll('textarea')
           textareas.forEach(ta => {
