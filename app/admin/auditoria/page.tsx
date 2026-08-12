@@ -13,8 +13,8 @@ const PAGE_SIZE = 30
 const ACTION_LABELS: Record<string, { label: string; Icon: LucideIcon; color: string }> = {
   generate_keys:  { label: 'Geração de chaves', Icon: KeyRound, color: '#2E7D6B' },
   cancel_key:     { label: 'Cancelamento de chave', Icon: Ban, color: '#B4533A' },
-  promote_user:   { label: 'Promoção de usuário', Icon: ArrowUpCircle, color: '#2E7D6B' },
-  use_key:        { label: 'Uso de chave', Icon: CircleCheck, color: '#2E7D6B' },
+  promote_user:   { label: 'Promoção de usuário', Icon: ArrowUpCircle, color: '#C9A227' },
+  use_key:        { label: 'Uso de chave', Icon: CircleCheck, color: '#245F52' },
 }
 
 export default function AdminAuditoria() {

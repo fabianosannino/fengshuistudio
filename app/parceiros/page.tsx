@@ -13,7 +13,7 @@ const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS',
 const PAGE_SIZE = 50
 
 const TIPOS_PROFISSIONAL: Record<string, { label: string; iconComp: LucideIcon; cor: string }> = {
-  arquiteto: { label: 'Arquiteto(a)', iconComp: Building2, cor: '#2E7D6B' },
+  arquiteto: { label: 'Arquiteto(a)', iconComp: Building2, cor: '#0E1B2C' },
   feng_shui: { label: 'Profissional de Feng Shui', iconComp: Compass, cor: '#2E7D6B' },
   decorador: { label: 'Decorador(a)', iconComp: Palette, cor: '#A9613C' },
   outro_profissional: { label: 'Outro Profissional', iconComp: Briefcase, cor: '#6B7280' },

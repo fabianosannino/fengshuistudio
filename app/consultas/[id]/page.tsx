@@ -1155,7 +1155,7 @@ export default function ConsultaDetalhe() {
                         <div style={{ display: 'flex', gap: '6px' }}>
                           {[0, 1, 2, 3, 4].map(val => {
                             const LABELS=['-2','-1','0','+1','+2']
-                            const CORES=['#B4533A','#EA580C','#6B7280','#65A30D','#2E7D6B']
+                            const CORES=['#B4533A','#A9613C','#6B7280','#65A30D','#2E7D6B']
                             const cur = criterios[setorAtivoData.id]?.[criterio]
                             return (
                             <button type="button" key={val} onClick={() => {
@@ -1175,7 +1175,7 @@ export default function ConsultaDetalhe() {
                       </div>
                       <div style={{ display: 'flex', gap: '6px', fontSize: '11px', color: '#9CA3AF', marginBottom: '8px', flexWrap: 'wrap' }}>
                         <span style={{ color: '#B4533A' }}>-2 Crítico</span>
-                        <span style={{ color: '#EA580C' }}>-1 Ruim</span>
+                        <span style={{ color: '#A9613C' }}>-1 Ruim</span>
                         <span style={{ color: '#6B7280' }}>0 Neutro</span>
                         <span style={{ color: '#65A30D' }}>+1 Bom</span>
                         <span style={{ color: '#2E7D6B' }}>+2 Ótimo</span>

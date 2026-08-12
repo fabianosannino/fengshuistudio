@@ -60,6 +60,11 @@ export interface AparenciaDoEstado {
   fundo: string
 }
 
+/**
+ * `vence_hoje` e `a_vencer` compartilham o dourado de propósito: são o mesmo
+ * recado («ainda não venceu»), com urgências diferentes que o **rótulo**
+ * distingue. Os outros três precisam de cores próprias e têm.
+ */
 export const APARENCIA: Record<EstadoDoPagamento, AparenciaDoEstado> = {
   pago: { rotulo: 'Pago', cor: '#2E7D6B', fundo: '#F0F6F3' },
   cancelado: { rotulo: 'Cancelado', cor: '#6B7280', fundo: '#F3EEE4' },

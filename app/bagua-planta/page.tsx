@@ -1598,7 +1598,7 @@ function BaguaPlantaContent() {
                 </div>
               )}
               {step==='resultado'&&(
-                <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#0369A1',fontSize:'13px'}}>
+                <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#245F52',fontSize:'13px'}}>
                   💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong> (guá <strong>{guaDaPorta(lado)}</strong>)</>} · Clique num setor para avaliar
                 </div>
               )}
@@ -2053,8 +2053,8 @@ function BaguaPlantaContent() {
                             <div style={{padding:'6px 8px',background:'#FAEEE9',borderRadius:'5px',borderLeft:'3px solid #B4533A'}}>
                               <strong style={{color:'#B4533A'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
                             </div>
-                            <div style={{padding:'6px 8px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
-                              <strong style={{color:'#EA580C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
+                            <div style={{padding:'6px 8px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #A9613C'}}>
+                              <strong style={{color:'#A9613C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
                             </div>
                             <div style={{padding:'6px 8px',background:'#F0F6F3',borderRadius:'5px',borderLeft:'3px solid #2E7D6B'}}>
                               <strong style={{color:'#2E7D6B'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
@@ -2089,7 +2089,7 @@ function BaguaPlantaContent() {
                       {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Marcar Excesso'}
                     </button>
                     <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
-                      style={{background:recalculoPendente?'#EA580C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                      style={{background:recalculoPendente?'#A9613C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                         animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                       🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
@@ -2104,7 +2104,7 @@ function BaguaPlantaContent() {
                   </div>
                   {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#8A6E2F',fontSize:'12px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
                   {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAEEE9',borderRadius:'5px',color:'#B4533A',fontSize:'12px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
-                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#EA580C',fontSize:'12px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
+                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#A9613C',fontSize:'12px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
                   {msg&&(()=>{
                     const isError=msgTipo==='erro'
                     return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FAEEE9':'#F0F6F3',borderRadius:'5px',color:isError?'#B4533A':'#2E7D6B',fontSize:'13px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
@@ -2170,7 +2170,7 @@ function BaguaPlantaContent() {
                                 <div style={{fontSize:'8px',color:'#8A6E2F'}}>{est.montanha}</div>
                                 <div style={{fontSize:'12px',fontWeight:'bold',color:'#6B5424'}}>{est.periodo}</div>
                                 <div style={{fontSize:'8px',color:'#8A6E2F'}}>{est.fachada}</div>
-                                {gradeAnual&&<div style={{fontSize:'8px',color:'#0369A1',marginTop:'1px'}}>Ano {gradeAnual[p]}</div>}
+                                {gradeAnual&&<div style={{fontSize:'8px',color:'#245F52',marginTop:'1px'}}>Ano {gradeAnual[p]}</div>}
                                 {est.temEstrela5&&<div style={{fontSize:'7px',color:'#B4533A'}}>⚠5</div>}
                               </div>
                             )
@@ -2415,7 +2415,7 @@ function BaguaPlantaContent() {
                 {CRITERIOS.map((crit,ci)=>{
                   const LABELS=['-2','-1','0','+1','+2']
                   const NOMES=['Crítico','Ruim','Neutro','Bom','Ótimo']
-                  const CORES=['#B4533A','#EA580C','#6B7280','#65A30D','#2E7D6B']
+                  const CORES=['#B4533A','#A9613C','#6B7280','#65A30D','#2E7D6B']
                   const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#F0F6F3','#F0F6F3']
                   // `null` = não avaliado. Antes o default era 2 («Neutro»), o
                   // que impedia distinguir «achei neutro» de «não olhei».
@@ -2609,7 +2609,7 @@ function BaguaPlantaContent() {
                   {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Excesso'}
                 </button>
                 <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
-                  style={{background:recalculoPendente?'#EA580C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                  style={{background:recalculoPendente?'#A9613C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                     animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                   🔄 Recalcular{recalculoPendente?' (pendente)':''}
                 </button>
@@ -2635,7 +2635,7 @@ function BaguaPlantaContent() {
             )}
             {modo==='marcarExcesso'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#EA580C',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#A9613C',fontSize:'12px',zIndex:1}}>
                 Clique e arraste para marcar uma area de EXCESSO
               </div>
             )}

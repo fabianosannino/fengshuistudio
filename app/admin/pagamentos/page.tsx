@@ -42,9 +42,9 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; color: string }
   active: { label: 'Ativo', bg: '#F0F6F3', color: '#2E7D6B' },
   past_due: { label: 'Em atraso', bg: '#FAF3E0', color: '#8A6E2F' },
   cancelled: { label: 'Cancelado', bg: '#F3F4F6', color: '#6B7280' },
-  gratuidade: { label: 'Gratuidade', bg: '#F0F6F3', color: '#2E7D6B' },
-  trial: { label: 'Trial', bg: '#EEF6F3', color: '#2E7D6B' },
-  paused: { label: 'Pausado', bg: '#FAF3E0', color: '#EA580C' },
+  gratuidade: { label: 'Gratuidade', bg: '#F3EEE4', color: '#0E1B2C' },
+  trial: { label: 'Trial', bg: '#EAF1EE', color: '#245F52' },
+  paused: { label: 'Pausado', bg: '#FAEEE9', color: '#A9613C' },
 }
 
 function fmt(val: number): string {

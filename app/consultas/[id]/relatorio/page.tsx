@@ -563,7 +563,7 @@ export default function Relatorio() {
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {needsWatermark && (
-            <span style={{ color: '#FBBF24', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
+            <span style={{ color: '#C9A227', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
               Plano Simples — PDF com marca d&apos;água
             </span>
           )}

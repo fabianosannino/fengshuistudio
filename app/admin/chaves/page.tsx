@@ -15,8 +15,8 @@ const BUSCA_MINIMA = 2
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
   available: { bg: '#F0F6F3', color: '#2E7D6B', label: 'Disponível' },
-  used:      { bg: '#DBEAFE', color: '#2E7D6B', label: 'Utilizada' },
-  expired:   { bg: '#FEF9C3', color: '#A16207', label: 'Expirada' },
+  used:      { bg: '#EAF1EE', color: '#245F52', label: 'Utilizada' },
+  expired:   { bg: '#FAF3E0', color: '#8A6E2F', label: 'Expirada' },
   cancelled: { bg: '#FAEEE9', color: '#B4533A', label: 'Cancelada' },
 }
 
@@ -235,7 +235,7 @@ export default function AdminChaves() {
           { label: 'Total gerado', value: summary.total, color: '#0E1B2C', Icon: KeyRound },
           { label: 'Disponíveis', value: summary.available, color: '#2E7D6B', Icon: CircleCheck },
           { label: 'Utilizadas', value: summary.used, color: '#2E7D6B', Icon: CircleDot },
-          { label: 'Expiradas', value: summary.expired, color: '#A16207', Icon: CircleAlert },
+          { label: 'Expiradas', value: summary.expired, color: '#8A6E2F', Icon: CircleAlert },
         ].map(card => (
           <div key={card.label} style={{
             background: '#fff', borderRadius: '12px', padding: '16px 20px',
@@ -582,7 +582,7 @@ export default function AdminChaves() {
               <span style={{
                 padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold',
                 background: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#E6F2EF' : '#FAF3E0',
-                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#2E7D6B' : '#A16207',
+                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#2E7D6B' : '#8A6E2F',
               }}>{planoLabel(promoteTarget.plano)}</span>
             </div>
             {planoEfetivo(promoteTarget.plano) === 'profissional' ? (
