@@ -73,7 +73,20 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
 verificação depende de Supabase real e browser (hoje: fechar os buckets de
 fotos). Cada arquivo traz o próprio checklist de staging. Não mova nada para lá
 sem explicar por que o CI não consegue verificar, e não mova de lá para cá sem
-ter rodado o checklist.
+ ter rodado o checklist.
+
+**Nomeie migration nova com timestamp, não com data.** Use
+`YYYYMMDDHHMMSS_descricao.sql`. As 20 já aplicadas usam só a data (8 dígitos), e
+nove dias têm mais de um arquivo — a ordem entre eles sai da ordenação
+alfabética do nome, por sorte, e há dependências reais entre alguns. As antigas
+**não** devem ser renomeadas: o Supabase registra a migration pelo nome, então
+renomear faria reaplicar. É achado A9 da auditoria, resolvido daqui pra frente.
+
+**Schema base:** `supabase/schema/00-schema-base.sql` é um retrato das tabelas e
+tipos, não uma migration — existe porque o schema nasceu fora de migrations
+(achado A8) e um restore em julho o levou junto. Regere depois de qualquer
+mudança estrutural aplicada fora de migration; as consultas estão em
+`scripts/schema/README.md`.
 
 ## Documentação de arquitetura
 
