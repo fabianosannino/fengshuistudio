@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { logger } from '../../../../src/lib/logger'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 // Percentual que a plataforma retém em cada venda (direct charge).
 const APPLICATION_FEE_PERCENT = 10
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     ? body.quantity!
     : 1
 
-  const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const origin = origemDaAplicacao(request)
 
   try {
     // O preço é lido da conta conectada — buscar o price_id lá garante,

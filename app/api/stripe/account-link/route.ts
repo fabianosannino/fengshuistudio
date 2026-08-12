@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { logger } from '../../../../src/lib/logger'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 export async function POST(request: Request) {
   const supabase = await createRouteHandlerClient()
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Nenhuma conta Stripe encontrada. Crie uma conta primeiro.' }, { status: 400 })
   }
 
-  const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const origin = origemDaAplicacao(request)
 
   try {
     // Create a V1 Account Link for onboarding

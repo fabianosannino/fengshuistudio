@@ -114,3 +114,38 @@ export function ehRotaDeMarketing(pathname: string): boolean {
   return (ROTAS_MARKETING as readonly string[]).includes(pathname)
     || pathname.startsWith(PREFIXO_RECURSOS)
 }
+
+/**
+ * A URL pública desta instalação, para montar links de volta do Stripe.
+ *
+ * ## O defeito
+ *
+ * As rotas faziam `process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'`.
+ * A variável não está definida em produção, então o `success_url` de uma compra
+ * real apontou para `localhost:3000` — o cliente pagou com cartão e caiu em
+ * «ERR_CONNECTION_REFUSED». O pagamento acontece do lado do Stripe, então o
+ * dinheiro entra e só a volta quebra: o pior formato possível, porque parece
+ * falha de compra e convida a tentar de novo.
+ *
+ * Um fallback certo em desenvolvimento e catastrófico em produção, escolhido em
+ * silêncio pela ausência de uma variável.
+ *
+ * ## A ordem
+ *
+ * O cabeçalho `origin` da própria requisição vem primeiro: ele é o endereço em
+ * que o usuário realmente está, e não depende de configuração. A variável fica
+ * como segunda opção, para o caso de a chamada não trazer `origin`.
+ * `localhost` só entra em desenvolvimento — em produção, sem nenhum dos dois, é
+ * melhor falhar do que mandar um cliente pagante para lugar nenhum.
+ */
+export function origemDaAplicacao(request: Request): string {
+  const doPedido = request.headers.get('origin')
+  if (doPedido && /^https?:\/\//.test(doPedido)) return doPedido
+
+  const daConfiguracao = process.env.NEXT_PUBLIC_APP_URL
+  if (daConfiguracao) return daConfiguracao.replace(/\/+$/, '')
+
+  if (process.env.NODE_ENV !== 'production') return 'http://localhost:3000'
+
+  throw new Error('Sem origem: defina NEXT_PUBLIC_APP_URL ou envie o cabeçalho origin')
+}
