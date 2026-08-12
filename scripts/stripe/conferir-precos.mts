@@ -3,6 +3,12 @@
  *
  *     STRIPE_SECRET_KEY=sk_... npx vite-node scripts/stripe/conferir-precos.mts
  *
+ * Aceita também uma **chave restrita** (`rk_...`) com leitura de produtos e
+ * preços, e é ela que se deve usar: só lê o catálogo, não cobra nem reembolsa
+ * se vazar. A secret key de produção não é revelável depois de criada — o
+ * Stripe a mostra uma vez só — então conferir com ela exigiria criar outra
+ * chave de acesso total, o que é o oposto do que uma verificação precisa.
+ *
  * ## Por que existe
  *
  * O checkout falha em produção com `No such price` quando o ID configurado
@@ -111,7 +117,11 @@ async function main() {
     process.exit(2)
   }
 
-  const modo = chave.startsWith('sk_live_') ? 'PRODUÇÃO' : chave.startsWith('sk_test_') ? 'TESTE' : 'DESCONHECIDO'
+  // Aceita `rk_` além de `sk_`: uma chave restrita com leitura de produtos e
+  // preços é o suficiente para esta conferência, e é o que se deve usar — ela
+  // não cobra nem reembolsa se vazar. O modo está no meio do prefixo nos dois
+  // formatos (`sk_live_`, `rk_live_`).
+  const modo = /_live_/.test(chave) ? 'PRODUÇÃO' : /_test_/.test(chave) ? 'TESTE' : 'DESCONHECIDO'
   console.log(`Chave em modo: ${modo}`)
   console.log('Os preços abaixo precisam existir NESTE modo — catálogos de teste e produção são separados.\n')
 
