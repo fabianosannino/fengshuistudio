@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoUsuario, podeClientes } from '../../../src/lib/plano-utils'
+import { planoUsuario, limiteClientes, mensagemLimiteClientes } from '../../../src/lib/plano-utils'
 import { validateEmail, validatePhone } from '../../../src/lib/validation'
 
-const MAX_CLIENTES_FREE = 5
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -31,20 +30,32 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (!podeClientes(planoUsuario(profile))) {
-    const { count } = await supabase
+  const planoDoUsuario = planoUsuario(profile)
+  const limiteDeClientes = limiteClientes(planoDoUsuario)
+
+  if (limiteDeClientes !== null) {
+    if (limiteDeClientes === 0) {
+      return NextResponse.json({ error: mensagemLimiteClientes(planoDoUsuario) }, { status: 403 })
+    }
+
+    const { count, error: erroContagem } = await supabase
       .from('clientes')
       .select('*', { count: 'exact', head: true })
       .eq('consultor_id', user.id)
       .eq('ativo', true)
 
-    if ((count || 0) >= MAX_CLIENTES_FREE) {
-      return NextResponse.json(
-        { error: 'Limite de 5 clientes no plano Free. Faça upgrade para cadastrar mais.' },
-        { status: 403 }
-      )
+    if (erroContagem) {
+      logger.error('Falha ao contar clientes do consultor', {
+        route: '/api/clientes', userId: user.id, error: erroContagem.message,
+      })
+      return NextResponse.json({ error: 'Não foi possível verificar seu limite de clientes.' }, { status: 500 })
+    }
+
+    if ((count || 0) >= limiteDeClientes) {
+      return NextResponse.json({ error: mensagemLimiteClientes(planoDoUsuario) }, { status: 403 })
     }
   }
+
 
   let body: Record<string, unknown>
   try {
@@ -53,14 +64,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  const { nome_completo, email, telefone, cep, rua, numero, complemento, bairro, cidade, estado, pais, notas } = body as {
-    nome_completo?: string; email?: string; telefone?: string;
+  const { nome_completo, data_nascimento, genero, email, telefone, cep, rua, numero, complemento, bairro, cidade, estado, pais, notas } = body as {
+    nome_completo?: string; data_nascimento?: string; genero?: string;
+    email?: string; telefone?: string;
     cep?: string; rua?: string; numero?: string; complemento?: string; bairro?: string;
     cidade?: string; estado?: string; pais?: string; notas?: string
   }
 
   if (!nome_completo || typeof nome_completo !== 'string' || nome_completo.trim().length === 0) {
     return NextResponse.json({ error: 'Nome completo é obrigatório' }, { status: 400 })
+  }
+
+  // A coluna é `date`: uma string fora do formato volta como 22007 e vira «Erro
+  // ao cadastrar cliente», que não diz qual campo recusar.
+  if (data_nascimento && !/^\d{4}-\d{2}-\d{2}$/.test(data_nascimento)) {
+    return NextResponse.json({ error: 'Data de nascimento inválida' }, { status: 400 })
+  }
+
+  // Só as duas fórmulas clássicas do Ming Gua existem; vazio é resposta válida
+  // e o relatório omite a seção em vez de escolher uma por conta própria.
+  if (genero && !['feminino', 'masculino'].includes(genero)) {
+    return NextResponse.json({ error: 'Gênero inválido' }, { status: 400 })
   }
 
   if (email && !validateEmail(email)) {
@@ -73,6 +97,8 @@ export async function POST(request: Request) {
 
   const { error, data } = await supabase.from('clientes').insert({
     nome_completo: nome_completo.trim(),
+    data_nascimento: data_nascimento || null,
+    genero: genero || null,
     email: email || null,
     telefone: telefone || null,
     cep: cep || null,

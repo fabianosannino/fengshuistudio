@@ -49,45 +49,174 @@ export function planoLabel(plano?: string | null): string {
   return 'Free'
 }
 
-// ─── LIMITS ────────────────────────────────────────────────────────────────────
+// ─── LIMITES E MENSAGENS — fonte única ─────────────────────────────────────────
+//
+// Antes desta seção a mesma regra existia em três lugares com três respostas.
+// Para clientes: `podeClientes()` dizia "não" a qualquer plano fora do
+// Profissional, `/api/clientes` permitia 5, e a tela dizia "disponível no plano
+// Profissional". Para PDF: a página de preços prometia marca d'água ao Free e
+// `podePDF('free')` devolvia 'bloqueado'. E o plano Simples, pago, permitia
+// MENOS imóveis (1) que o Free (3).
+//
+// ## Decisões de produto tomadas aqui (12/08/2026)
+//
+// 1. **O Simples passa a permitir 10 imóveis ativos.** Um plano pago mais
+//    restrito que o gratuito não se sustenta. 10 mantém o "ilimitado" como
+//    diferencial real do Profissional.
+// 2. **O Free gera PDF com marca d'água.** É o que a página de preços promete e
+//    o que foi vendido; o código é que estava mais restrito que o contrato.
+// 3. **O Free não cadastra cliente externo.** Aqui vale o inverso: é o que a
+//    página de preços vende (clientes só aparecem no Profissional) e o que
+//    `podeClientes()` e a tela já diziam. Os 5 da API eram o ponto fora da
+//    curva. Free é o plano "para minha casa".
+// 4. **A cota conta imóveis ATIVOS, para todos os planos.** Antes o Free
+//    contava total e o Simples contava ativos — duas semânticas na mesma regra.
+//    Consulta arquivada ou deletada não ocupa vaga em nenhum plano.
 
-/** Max simultaneous properties (consultas) */
-export function limiteImoveis(plano: PlanoEfetivo): number | null {
-  if (plano === 'free') return 3
-  if (plano === 'simples') return 1 // 1 active at a time
-  return null // profissional: unlimited
+/**
+ * Status que ocupam vaga na cota de imóveis.
+ *
+ * Arquivada e deletada não entram. Isto também corrige um bug real: a rota
+ * filtrava `status != 'arquivado'`, no masculino, e o enum é `'arquivada'` — o
+ * filtro nunca casava, então arquivar não liberava vaga nenhuma e a mensagem
+ * "arquive o atual ou faça upgrade" mandava o usuário para um beco sem saída.
+ */
+export const STATUS_OCUPAM_VAGA = ['rascunho', 'em_andamento', 'finalizada', 'sem_analise'] as const
+
+/** Status que NÃO ocupam vaga — use com `.not('status','in',...)` no Supabase. */
+export const STATUS_LIBERAM_VAGA = ['arquivada', 'deletada'] as const
+
+export interface RegraDePlano {
+  /** Imóveis ativos simultâneos. `null` = ilimitado. */
+  imoveis: number | null
+  /** Clientes externos ativos. `null` = ilimitado, `0` = recurso não incluído. */
+  clientes: number | null
+  pdf: 'bloqueado' | 'marca_dagua' | 'limpo'
+  calendario: boolean
+  parceiros: 'bloqueado' | 'visualizar' | 'completo'
+  multiplasAnalises: boolean
+  historico: boolean
 }
 
-/** Can register external clients? */
+export const REGRAS_DE_PLANO: Record<PlanoEfetivo, RegraDePlano> = {
+  free: {
+    imoveis: 3,
+    clientes: 0,
+    pdf: 'marca_dagua',
+    calendario: false,
+    parceiros: 'bloqueado',
+    multiplasAnalises: false,
+    historico: false,
+  },
+  simples: {
+    imoveis: 10,
+    clientes: 25,
+    pdf: 'marca_dagua',
+    calendario: true,
+    parceiros: 'visualizar',
+    multiplasAnalises: false,
+    historico: false,
+  },
+  profissional: {
+    imoveis: null,
+    clientes: null,
+    pdf: 'limpo',
+    calendario: true,
+    parceiros: 'completo',
+    multiplasAnalises: true,
+    historico: true,
+  },
+}
+
+/** Max simultaneous properties (consultas). `null` = ilimitado. */
+export function limiteImoveis(plano: PlanoEfetivo): number | null {
+  return REGRAS_DE_PLANO[plano].imoveis
+}
+
+/** Max active external clients. `null` = ilimitado, `0` = não incluído. */
+export function limiteClientes(plano: PlanoEfetivo): number | null {
+  return REGRAS_DE_PLANO[plano].clientes
+}
+
+/** Can register external clients at all? */
 export function podeClientes(plano: PlanoEfetivo): boolean {
-  return plano === 'profissional'
+  const limite = REGRAS_DE_PLANO[plano].clientes
+  return limite === null || limite > 0
 }
 
 /** Can access calendar? */
 export function podeCalendario(plano: PlanoEfetivo): boolean {
-  return plano !== 'free'
+  return REGRAS_DE_PLANO[plano].calendario
 }
 
 /** Can generate PDF? */
 export function podePDF(plano: PlanoEfetivo): 'bloqueado' | 'marca_dagua' | 'limpo' {
-  if (plano === 'free') return 'bloqueado'
-  if (plano === 'simples') return 'marca_dagua'
-  return 'limpo'
+  return REGRAS_DE_PLANO[plano].pdf
 }
 
 /** Can access partner network? */
 export function podeParceiros(plano: PlanoEfetivo): 'bloqueado' | 'visualizar' | 'completo' {
-  if (plano === 'free') return 'bloqueado'
-  if (plano === 'simples') return 'visualizar'
-  return 'completo'
+  return REGRAS_DE_PLANO[plano].parceiros
+}
+
+// ─── MENSAGENS ─────────────────────────────────────────────────────────────────
+//
+// Ficam aqui, e não em cada tela, porque uma mensagem que contradiz a regra é
+// tão ruim quanto uma regra errada: manda o usuário fazer o que não resolve.
+
+/** Mensagem de limite de imóveis atingido. `null` quando não há limite. */
+export function mensagemLimiteImoveis(plano: PlanoEfetivo): string | null {
+  const limite = REGRAS_DE_PLANO[plano].imoveis
+  if (limite === null) return null
+  const plural = limite === 1 ? 'imóvel ativo' : 'imóveis ativos'
+  return `Você chegou ao limite de ${limite} ${plural} do plano ${planoLabel(plano)}. ` +
+    'Arquive um imóvel que já entregou para abrir vaga, ou mude de plano.'
+}
+
+/** Mensagem de limite de clientes. `null` quando não há limite. */
+export function mensagemLimiteClientes(plano: PlanoEfetivo): string | null {
+  const limite = REGRAS_DE_PLANO[plano].clientes
+  if (limite === null) return null
+  if (limite === 0) {
+    return 'O plano Free é para analisar a sua própria casa. Para cadastrar clientes ' +
+      'e atendê-los, mude para o plano Simples ou Profissional.'
+  }
+  return `Você chegou ao limite de ${limite} clientes do plano ${planoLabel(plano)}. ` +
+    'Desative um cliente que não atende mais, ou mude de plano.'
+}
+
+/** Resumo do que o plano inclui — a página de preços é gerada daqui. */
+export function resumoDoPlano(plano: PlanoEfetivo): string[] {
+  const r = REGRAS_DE_PLANO[plano]
+  const linhas: string[] = []
+
+  linhas.push(r.imoveis === null ? 'Imóveis ilimitados' : `Até ${r.imoveis} imóveis ativos`)
+
+  if (r.clientes === null) linhas.push('Clientes ilimitados')
+  else if (r.clientes > 0) linhas.push(`Até ${r.clientes} clientes`)
+  else linhas.push('Para a sua própria casa')
+
+  linhas.push('Análise Ba Guá completa')
+  linhas.push('Roda da Vida e Fluxo do Chi')
+  linhas.push('Curas e ativações')
+
+  if (r.calendario) linhas.push('Calendário lunar')
+
+  if (r.pdf === 'limpo') linhas.push('Relatório PDF com a sua marca')
+  else if (r.pdf === 'marca_dagua') linhas.push("Relatório PDF com marca d'água")
+
+  if (r.parceiros === 'completo') linhas.push('Rede de parceiros completa')
+  else if (r.parceiros === 'visualizar') linhas.push('Rede de parceiros (visualizar)')
+
+  return linhas
 }
 
 /** Can have multiple analyses per property? */
 export function podeMultiplasAnalises(plano: PlanoEfetivo): boolean {
-  return plano === 'profissional'
+  return REGRAS_DE_PLANO[plano].multiplasAnalises
 }
 
 /** Can access analysis history? */
 export function podeHistorico(plano: PlanoEfetivo): boolean {
-  return plano === 'profissional'
+  return REGRAS_DE_PLANO[plano].historico
 }

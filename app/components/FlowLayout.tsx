@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '../../src/lib/logger'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -50,7 +51,11 @@ export default function FlowLayout({
         if (data?.nome_completo) setUserName(data.nome_completo)
         else if (user.user_metadata?.nome_completo) setUserName(user.user_metadata.nome_completo)
         else setUserName(user.email || '')
-        if (error) console.warn('FlowLayout: profiles query failed, using fallback.', error.message)
+        // Degradação declarada: sem o perfil a tela segue com os metadados do
+        // usuário, que são menos completos mas suficientes para o cabeçalho.
+        if (error) logger.warn('Perfil indisponível; usando os metadados do usuário', {
+          route: 'FlowLayout', error: error.message,
+        })
       }
     }
     loadUser()
@@ -249,12 +254,12 @@ export default function FlowLayout({
             padding: '10px 16px',
             background: 'transparent',
             border: 'none',
-            color: '#DC2626',
+            color: '#B4533A',
             fontSize: '14px',
             cursor: 'pointer',
             textAlign: 'left',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = darkMode ? '#334155' : '#FEF2F2' }}
+          onMouseEnter={e => { e.currentTarget.style.background = darkMode ? '#334155' : '#FAEEE9' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
             Sair
@@ -376,8 +381,8 @@ export default function FlowLayout({
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >Planos</a>
                   <div style={{ height: '1px', background: '#E5E7EB' }} />
-                  <button type="button" onClick={handleLogout} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', color: '#DC2626', fontSize: '14px', cursor: 'pointer', textAlign: 'left' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2' }}
+                  <button type="button" onClick={handleLogout} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', color: '#B4533A', fontSize: '14px', cursor: 'pointer', textAlign: 'left' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#FAEEE9' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >Sair</button>
                 </div>

@@ -173,7 +173,19 @@ create table if not exists public.consultas (
   fotos_depois jsonb,
   relatorio_pdf_path text,
   modelo_pontuacao text,
-  peso_geo numeric(3,2)
+  peso_geo numeric(3,2),
+  ano_construcao integer,
+  ano_reforma_estrutural integer,
+  vistoria_notas jsonb
+);
+
+create table if not exists public.consultor_checklist_chi_custom (
+  id uuid default gen_random_uuid() not null,
+  consultor_id uuid not null,
+  item_id text not null,
+  label text not null,
+  categoria text not null,
+  criado_em timestamp with time zone default now() not null
 );
 
 create table if not exists public.consultor_curas_custom (
@@ -346,6 +358,7 @@ create table if not exists public.prescricoes (
   custo_min numeric,
   custo_max numeric,
   prioridade integer not null,
+  aplicada_em timestamp with time zone,
   criado_em timestamp with time zone default now() not null,
   atualizado_em timestamp with time zone default now() not null
 );

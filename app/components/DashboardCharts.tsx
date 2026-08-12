@@ -9,14 +9,14 @@ import type { StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, C
 
 const CORES_STATUS: Record<string, string> = {
   rascunho: '#94A3B8',
-  em_andamento: '#F59E0B',
-  finalizada: '#15803D',
+  em_andamento: '#C9A227',
+  finalizada: '#2E7D6B',
   arquivada: '#6B7280',
 }
 
-const COR_PAGO = '#15803D'
-const COR_PENDENTE = '#F59E0B'
-const COR_ATRASADO = '#DC2626'
+const COR_PAGO = '#2E7D6B'
+const COR_PENDENTE = '#C9A227'
+const COR_ATRASADO = '#B4533A'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -100,9 +100,9 @@ export function ConsultasLineChart({ consultasMesData }: { consultasMesData: Con
           formatter={(value) => [`${value}`, 'Consultas']}
           contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
         />
-        <Line type="monotone" dataKey="consultas" stroke="#15803D" strokeWidth={3}
-          dot={{ fill: '#15803D', r: 5, strokeWidth: 2, stroke: '#ffffff' }}
-          activeDot={{ r: 7, fill: '#15803D', stroke: '#ffffff', strokeWidth: 2 }}
+        <Line type="monotone" dataKey="consultas" stroke="#2E7D6B" strokeWidth={3}
+          dot={{ fill: '#2E7D6B', r: 5, strokeWidth: 2, stroke: '#ffffff' }}
+          activeDot={{ r: 7, fill: '#2E7D6B', stroke: '#ffffff', strokeWidth: 2 }}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -128,7 +128,7 @@ export function ClientesBarChart({ clientesMesData }: { clientesMesData: Cliente
           formatter={(value) => [`${value}`, 'Clientes']}
           contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px' }}
         />
-        <Bar dataKey="clientes" fill="#1D4ED8" radius={[6, 6, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="clientes" fill="#2E7D6B" radius={[6, 6, 0, 0]} maxBarSize={40} />
       </BarChart>
     </ResponsiveContainer>
   )

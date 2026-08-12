@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '../../src/lib/logger'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -12,9 +13,9 @@ const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS',
 const PAGE_SIZE = 50
 
 const TIPOS_PROFISSIONAL: Record<string, { label: string; iconComp: LucideIcon; cor: string }> = {
-  arquiteto: { label: 'Arquiteto(a)', iconComp: Building2, cor: '#1D4ED8' },
+  arquiteto: { label: 'Arquiteto(a)', iconComp: Building2, cor: '#0E1B2C' },
   feng_shui: { label: 'Profissional de Feng Shui', iconComp: Compass, cor: '#2E7D6B' },
-  decorador: { label: 'Decorador(a)', iconComp: Palette, cor: '#BE185D' },
+  decorador: { label: 'Decorador(a)', iconComp: Palette, cor: '#A9613C' },
   outro_profissional: { label: 'Outro Profissional', iconComp: Briefcase, cor: '#6B7280' },
 }
 
@@ -27,6 +28,7 @@ export default function Parceiros() {
   const [userPlano, setUserPlano] = useState<string>('')
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
+  const [falhouAoCarregar, setFalhouAoCarregar] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -45,13 +47,20 @@ export default function Parceiros() {
         .order('nome_completo')
         .range(0, PAGE_SIZE - 1)
 
-      // If parceiro_visivel column doesn't exist yet, query returns 400
-      // Fallback: fetch nothing (column needs to be created via migration)
+      // Falha de consulta **não** é lista vazia. A tela dizia «Nenhum parceiro
+      // cadastrado ainda · Em breve teremos profissionais disponíveis» quando a
+      // query tinha falhado — o usuário lia uma promessa de produto onde havia
+      // um erro, e não tinha por que tentar de novo.
       if (error) {
-        console.warn('parceiro_visivel query failed — run the migration in supabase/migrations/20260316_fix_all_missing_columns.sql')
+        logger.error('Falha ao carregar a rede de parceiros', {
+          route: '/parceiros', error: error.message,
+        })
+        setFalhouAoCarregar(true)
+        setLoading(false)
+        return
       }
 
-      const parceiros = error ? [] : (data || [])
+      const parceiros = data || []
       setParceiros(parceiros)
       setHasMore(parceiros.length === PAGE_SIZE)
       setLoading(false)
@@ -174,7 +183,23 @@ export default function Parceiros() {
       </div>
 
       {/* Results */}
-      {filtered.length === 0 ? (
+      {falhouAoCarregar ? (
+        <div style={{
+          background: '#FAEEE9', border: '1px solid #EBD3C7', borderRadius: '12px',
+          padding: '40px 32px', textAlign: 'center',
+        }}>
+          <h3 style={{ color: '#B4533A', fontSize: '18px', margin: '0 0 8px' }}>
+            Não foi possível carregar a rede de parceiros
+          </h3>
+          <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 16px' }}>
+            É uma falha de conexão com o servidor, não uma lista vazia. Tente novamente.
+          </p>
+          <button type="button" onClick={() => window.location.reload()} style={{
+            background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '9px',
+            padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+          }}>Tentar de novo</button>
+        </div>
+      ) : filtered.length === 0 ? (
         <div style={{
           background: '#ffffff', borderRadius: '12px', padding: '64px 32px',
           textAlign: 'center', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)'

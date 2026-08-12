@@ -8,6 +8,8 @@ import Skeleton from '../components/Skeleton'
 import type { SetorBagua } from '../../src/lib/types'
 import { ELEMENTOS } from '../../src/lib/curas'
 import { BookOpen, Gem, Leaf, Amphora, MapPin, Flower2, AudioLines } from 'lucide-react'
+import PlanoDeCuras from './PlanoDeCuras'
+import { setorCanonico } from '../../src/lib/nome-do-setor'
 
 interface CuraCustomRef {
   id: string
@@ -47,6 +49,12 @@ function CurasPageContent() {
   const [editForm, setEditForm] = useState({ nome: '', descricao: '', como_utilizar: '' })
   const [userId, setUserId] = useState<string | null>(null)
   const [savingRef, setSavingRef] = useState(false)
+  /**
+   * `plano` é o padrão com uma consulta selecionada: a tela deixou de ser um
+   * catálogo e passou a ser a prescrição daquele imóvel. A biblioteca completa
+   * continua a um clique — ela não some, sai da frente.
+   */
+  const [modo, setModo] = useState<'plano' | 'biblioteca'>('plano')
 
   // Load consultation data (setores + consulta) for a given id
   async function loadConsultaData(cId: string) {
@@ -264,7 +272,7 @@ function CurasPageContent() {
                         </button>
                         <button type="button"
                           onClick={() => deleteCustomRef(ref.id, elId, tipo)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#DC2626', padding: '2px 4px' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#B4533A', padding: '2px 4px' }}
                         >
                           {'\u{1F5D1}\uFE0F'}
                         </button>
@@ -365,26 +373,18 @@ function CurasPageContent() {
 
   // Find sector score for a guá name
   function findScore(guaName: string): number | null {
-    const mappings: Record<string, string[]> = {
-      'Carreira': ['Carreira'],
-      'Família / Saúde': ['Família', 'Família/Saúde'],
-      'Prosperidade': ['Prosperidade'],
-      'Fama / Reputação': ['Fama', 'Fama/Reputação'],
-      'Relacionamentos': ['Relacionamentos', 'Amor'],
-      'Criatividade / Filhos': ['Criatividade', 'Filhos'],
-      'Pessoas Úteis': ['Pessoas Úteis', 'Pessoas Uteis', 'Mentores'],
-      'Espiritualidade': ['Espiritualidade', 'Conhecimento', 'Sabedoria'],
-      'Saúde / Centro': ['Centro', 'Centro/Saúde', 'Saúde'],
-    }
-    const names = mappings[guaName] || [guaName]
-    const setor = setores.find(s => names.some(n => s.nome === n))
+    // Esta tabela de apelidos virou `src/lib/nome-do-setor.ts`, que também
+    // resolve acento e caixa e é usada pelas outras telas que leem `nome`.
+    const alvo = setorCanonico(guaName)
+    if (!alvo) return null
+    const setor = setores.find(s => setorCanonico(s.nome) === alvo)
     return setor?.score_percentual ?? null
   }
 
   function scoreLevel(score: number): { label: string; cor: string; bg: string } {
-    if (score >= 70) return { label: 'Equilibrado', cor: '#15803D', bg: '#F0FDF4' }
-    if (score >= 40) return { label: 'Atenção', cor: '#D97706', bg: '#FFFBEB' }
-    return { label: 'Urgente', cor: '#DC2626', bg: '#FEF2F2' }
+    if (score >= 70) return { label: 'Equilibrado', cor: '#2E7D6B', bg: '#F0F6F3' }
+    if (score >= 40) return { label: 'Atenção', cor: '#8A6E2F', bg: '#FAF3E0' }
+    return { label: 'Urgente', cor: '#B4533A', bg: '#FAEEE9' }
   }
 
   if (loading) {
@@ -416,17 +416,30 @@ function CurasPageContent() {
     <AppShell currentPage="curas">
 
       {/* ── PAGE HEADER ──────────────────────────────────────────────── */}
-      <div style={{ marginBottom: '32px' }}>
-        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Biblioteca</p>
-        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
-          Curas & Ativações
-        </h1>
-        <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 8px 0' }}>
-          Cristais, plantas, objetos, mudras, meditações e mantras organizados por elemento e Guá do Ba Guá
-        </p>
-        <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <BookOpen size={14} strokeWidth={1.75} aria-hidden="true" /> Entenda mais sobre Curas e Ativações
-        </a>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ color: '#C9A227', fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 6px 0' }}>
+            {consulta
+              ? `${consulta.nome_imovel}${consulta.clientes?.nome_completo ? ` · ${consulta.clientes.nome_completo}` : ''}`
+              : 'Curas'}
+          </p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '26px', fontWeight: 500, margin: '0 0 6px 0', letterSpacing: '-0.01em', fontFamily: 'var(--font-fraunces), serif' }}>
+            Curas e ativações
+          </h1>
+          <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <BookOpen size={14} strokeWidth={1.75} aria-hidden="true" /> Entenda mais sobre curas e ativações
+          </a>
+        </div>
+        {selectedConsultaId && (
+          <button type="button" onClick={() => setModo(m => m === 'plano' ? 'biblioteca' : 'plano')} style={{
+            border: '1px solid #E7E1D6', background: '#fff', borderRadius: '9px',
+            padding: '10px 14px', fontSize: '13px', color: '#4A5A67', cursor: 'pointer',
+            display: 'flex', gap: '8px', alignItems: 'center',
+          }}>
+            <BookOpen size={15} strokeWidth={1.75} aria-hidden="true" />
+            {modo === 'plano' ? 'Biblioteca completa' : 'Voltar ao plano'}
+          </button>
+        )}
       </div>
 
       {/* ── CONSULTATION SELECTOR ────────────────────────────────────── */}
@@ -487,6 +500,12 @@ function CurasPageContent() {
         </div>
       )}
 
+      {modo === 'plano' && (
+        <PlanoDeCuras consultaId={selectedConsultaId} setores={setores} />
+      )}
+
+      {modo === 'biblioteca' && (
+      <>
       {/* ── FILTER BAR ───────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <select value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
@@ -519,7 +538,7 @@ function CurasPageContent() {
               fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
               background: isActive ? '#2E7D6B' : '#F3F4F6',
               color: isActive ? '#ffffff' : '#374151',
-              border: isPriority ? '2px solid #DC2626' : isActive ? '1px solid #2E7D6B' : '1px solid #E5E7EB',
+              border: isPriority ? '2px solid #B4533A' : isActive ? '1px solid #2E7D6B' : '1px solid #E5E7EB',
               transition: 'all 0.2s', whiteSpace: 'nowrap',
               display: 'flex', alignItems: 'center', gap: '6px',
             }}>
@@ -676,12 +695,12 @@ function CurasPageContent() {
                 {/* Meditação */}
                 {(filtroTipo === 'todos' || filtroTipo === 'meditacao') && (
                 <div style={{
-                  background: '#F0FDF4', borderRadius: '12px', padding: '20px',
-                  border: '1px solid #BBF7D0',
+                  background: '#F0F6F3', borderRadius: '12px', padding: '20px',
+                  border: '1px solid #DCEAE4',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                    <Flower2 size={22} strokeWidth={1.75} color="#15803D" aria-hidden="true" />
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#15803D', margin: 0 }}>
+                    <Flower2 size={22} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" />
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#2E7D6B', margin: 0 }}>
                       {el.meditacao.nome}
                     </h4>
                   </div>
@@ -708,8 +727,8 @@ function CurasPageContent() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {el.mantras.map((m, i) => (
                     <div key={i} style={{
-                      background: '#FFFBEB', borderRadius: '12px', padding: '20px', textAlign: 'center',
-                      border: '1px solid #FDE68A',
+                      background: '#FAF3E0', borderRadius: '12px', padding: '20px', textAlign: 'center',
+                      border: '1px solid #EEDFB4',
                     }}>
                       <p style={{ fontSize: '28px', color: '#0E1B2C', fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '4px' }}>
                         {m.caracteres}
@@ -732,6 +751,9 @@ function CurasPageContent() {
       })}
 
       {/* ── VOLTAR À CONSULTA ────────────────────────────────────────── */}
+      </>
+      )}
+
       {consultaId && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
           <a href={`/consultas/${consultaId}`} style={{ display: 'inline-block', padding: '12px 24px', background: '#2E7D6B', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>

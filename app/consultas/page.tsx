@@ -83,7 +83,7 @@ export default function Consultas() {
   }, [])
 
   function statusColor(status: string) {
-    const map: Record<string, string> = { rascunho: '#6B7280', em_andamento: '#D97706', finalizada: '#15803D', arquivada: '#9CA3AF' }
+    const map: Record<string, string> = { rascunho: '#6B7280', em_andamento: '#8A6E2F', finalizada: '#2E7D6B', arquivada: '#9CA3AF' }
     return map[status] || '#6B7280'
   }
 
@@ -153,8 +153,8 @@ export default function Consultas() {
       {message && (
         <div style={{
           marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-          background: '#FEF2F2', border: '1px solid #FECACA',
-          color: '#DC2626', fontSize: '14px'
+          background: '#FAEEE9', border: '1px solid #EBD3C7',
+          color: '#B4533A', fontSize: '14px'
         }}>{message}</div>
       )}
 
@@ -231,8 +231,8 @@ export default function Consultas() {
                     const be=consulta.bagua_entrada
                     const finalizada=!!(be?.finalizada_em)
                     const emAndamento=!!(be?.planta_url)&&!finalizada
-                    if(finalizada) return <span style={{background:'#F0FDF4',color:'#15803D',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
-                    if(emAndamento) return <span style={{background:'#FFF7ED',color:'#D97706',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>Diagnóstico em andamento</span>
+                    if(finalizada) return <span style={{background:'#F0F6F3',color:'#2E7D6B',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>{`Diagnóstico finalizado ${new Date(be!.finalizada_em!).toLocaleDateString('pt-BR')}`}</span>
+                    if(emAndamento) return <span style={{background:'#FAF3E0',color:'#8A6E2F',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'bold'}}>Diagnóstico em andamento</span>
                     return null
                   })()}
                 </div>
@@ -261,8 +261,8 @@ export default function Consultas() {
                   }}>Relatório</button>
                 )}
                 <button type="button" onClick={() => setDeleteTarget(consulta.id)} style={{
-                  padding: '8px 16px', background: '#FEF2F2', color: '#DC2626',
-                  border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px',
+                  padding: '8px 16px', background: '#FAEEE9', color: '#B4533A',
+                  border: '1px solid #EBD3C7', borderRadius: '6px', fontSize: '13px',
                   cursor: 'pointer'
                 }}>Excluir</button>
               </div>

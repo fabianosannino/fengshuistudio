@@ -170,7 +170,7 @@ export default function MapaAlinhamento({ imagemUrl, onAceitar }: MapaAlinhament
           </div>
           <button type="button" onClick={usarLocalizacaoAtual} disabled={estado === 'geocodificando'} style={estiloBotaoSecundario}>📍 Usar minha localização atual</button>
           {estado === 'geocodificando' && <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#6B7280' }}>Buscando…</p>}
-          {estado === 'erro-geocodificacao' && <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#DC2626' }}>{erro}</p>}
+          {estado === 'erro-geocodificacao' && <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#B4533A' }}>{erro}</p>}
         </div>
       )}
 

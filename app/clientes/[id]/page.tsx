@@ -9,16 +9,15 @@ import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
 import Skeleton from '../../components/Skeleton'
 import type { Cliente, Consulta } from '../../../src/lib/types'
+import Link from 'next/link'
 import { calcularMingGua } from '../../../src/lib/ming-gua'
+import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../src/lib/oito-mansoes'
+import { montanhaDoGrau } from '../../../src/lib/montanhas'
+import { formatarData } from '../../../src/lib/formato'
+import { progressoDoDiagnostico, type ProgressoDoDiagnostico } from '../../../src/lib/etapa-do-diagnostico'
 import { useUrlAssinada } from '../../components/useUrlsAssinadas'
 import { BUCKET_CLIENTES } from '../../../src/lib/storage-imagens'
 
-const STATUS_LABELS: Record<string, { icon: string; label: string; bg: string; color: string }> = {
-  sem_analise: { icon: '☯', label: 'Sem análise', bg: '#F3F4F6', color: '#6B7280' },
-  em_andamento: { icon: '🔄', label: 'Em andamento', bg: '#FFF7ED', color: '#D97706' },
-  finalizada: { icon: '✅', label: 'Concluída', bg: '#F0FDF4', color: '#15803D' },
-  arquivada: { icon: '📦', label: 'Arquivada', bg: '#EEF6F3', color: '#2E7D6B' },
-}
 
 export default function ClienteDetalhe() {
   const params = useParams()
@@ -51,6 +50,10 @@ export default function ClienteDetalhe() {
   const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [uploadingFoto, setUploadingFoto] = useState(false)
+  // Contagens por consulta, para a barra de etapa. Duas consultas para a ficha
+  // inteira — RLS já limita as duas tabelas ao dono.
+  const [setoresPorConsulta, setSetoresPorConsulta] = useState<Record<string, number>>({})
+  const [prescricoesPorConsulta, setPrescricoesPorConsulta] = useState<Record<string, number>>({})
 
   async function loadConsultas() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -62,6 +65,30 @@ export default function ClienteDetalhe() {
       .eq('consultor_id', user.id)
       .order('criado_em', { ascending: false })
     setConsultas(data || [])
+    await carregarContagens((data || []).map(c => c.id))
+  }
+
+  async function carregarContagens(consultaIds: string[]) {
+    if (consultaIds.length === 0) {
+      setSetoresPorConsulta({})
+      setPrescricoesPorConsulta({})
+      return
+    }
+    const [setoresRes, prescricoesRes] = await Promise.all([
+      supabase.from('setores_bagua').select('consulta_id, score_percentual').in('consulta_id', consultaIds),
+      supabase.from('prescricoes').select('consulta_id').in('consulta_id', consultaIds),
+    ])
+    const setores: Record<string, number> = {}
+    for (const s of (setoresRes.data ?? []) as { consulta_id: string; score_percentual: number | null }[]) {
+      if (s.score_percentual == null) continue
+      setores[s.consulta_id] = (setores[s.consulta_id] ?? 0) + 1
+    }
+    const prescricoes: Record<string, number> = {}
+    for (const p of (prescricoesRes.data ?? []) as { consulta_id: string }[]) {
+      prescricoes[p.consulta_id] = (prescricoes[p.consulta_id] ?? 0) + 1
+    }
+    setSetoresPorConsulta(setores)
+    setPrescricoesPorConsulta(prescricoes)
   }
 
   useEffect(() => {
@@ -157,29 +184,12 @@ export default function ClienteDetalhe() {
     setFotoPreview(URL.createObjectURL(file))
   }
 
-  async function handleFotoUpload() {
-    if (!fotoFile || !cliente) return
-    setUploadingFoto(true)
-    const fd = new FormData()
-    fd.append('foto', fotoFile)
-    fd.append('cliente_id', cliente.id)
-    try {
-      const res = await fetch('/api/clientes/foto', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (res.ok) {
-        setCliente({ ...cliente, foto_url: data.foto_url })
-        setFotoFile(null)
-        setFotoPreview(null)
-        setMessage('Foto atualizada com sucesso!')
-        setTimeout(() => setMessage(''), 3000)
-      } else {
-        setMessage(data.error || 'Erro ao enviar foto.')
-      }
-    } catch {
-      setMessage('Erro de conexão ao enviar foto.')
-    }
-    setUploadingFoto(false)
-  }
+  // `handleFotoUpload` (envio imediato ao trocar a foto no cabeçalho) saiu
+  // junto com o cabeçalho antigo. O formulário de edição já envia a foto no
+  // mesmo submit — duas rotas para a mesma escrita davam dois estados possíveis
+  // para o mesmo campo.
+
+
 
   async function handleFotoRemove() {
     if (!cliente) return
@@ -286,13 +296,68 @@ export default function ClienteDetalhe() {
 
   const consultasVisiveis = consultas.filter(c => c.status !== 'deletada')
 
+  const mingGua = calcularMingGua(cliente?.data_nascimento, cliente?.genero)
+
+  /**
+   * A divergência entre o grupo do morador e o da casa é a informação que o
+   * consultor mais usa e que nenhuma tela mostrava. Vale a consulta em curso —
+   * cada imóvel tem a sua fachada, e misturar os dois daria uma leitura que não
+   * corresponde a nenhum deles.
+   */
+  const consultaComFachada = consultasVisiveis.find(c => typeof c.bagua_entrada?.orientacao_graus === 'number')
+  const grausDaCasa = consultaComFachada?.bagua_entrada?.orientacao_graus
+  const divergencia = mingGua && typeof grausDaCasa === 'number'
+    ? compatibilidadeMoradorCasa(mingGua.kua, calcularKuaDaCasa(grausDaCasa).kua)
+    : null
+
+  const progressoPorConsulta: Record<string, ProgressoDoDiagnostico> = {}
+  for (const c of consultasVisiveis) {
+    progressoPorConsulta[c.id] = progressoDoDiagnostico({
+      orientacaoGraus: c.bagua_entrada?.orientacao_graus,
+      baguaFinalizadaEm: c.bagua_entrada?.finalizada_em,
+      setoresComScore: setoresPorConsulta[c.id] ?? 0,
+      prescricoes: prescricoesPorConsulta[c.id] ?? 0,
+      relatorioGeradoEm: c.relatorio_gerado_em,
+    })
+  }
+
+  const endereco = [
+    cliente?.rua && `${cliente.rua}${cliente.numero ? `, ${cliente.numero}` : ''}`,
+    cliente?.complemento,
+    cliente?.bairro,
+    cliente?.cidade && `${cliente.cidade}${cliente.estado ? ` - ${cliente.estado}` : ''}`,
+    cliente?.cep && `CEP ${cliente.cep}`,
+  ].filter(Boolean).join(' · ')
+
+  /**
+   * O histórico sai das datas que as próprias consultas já guardam. Um diário
+   * à parte precisaria ser escrito em todo lugar que muda uma consulta, e o
+   * primeiro esquecido deixaria o histórico mentindo por omissão.
+   */
+  const historico = consultasVisiveis
+    .flatMap(c => {
+      const imovel = c.nome_imovel?.trim() || 'Imóvel'
+      const eventos: { data: string; texto: string }[] = []
+      if (c.criado_em) eventos.push({ data: c.criado_em, texto: `${imovel} · consulta criada` })
+      if (c.bagua_entrada?.finalizada_em) eventos.push({ data: c.bagua_entrada.finalizada_em, texto: `${imovel} · Ba Guá sobreposto à planta` })
+      if (c.finalizada_em) eventos.push({ data: c.finalizada_em, texto: `${imovel} · diagnóstico concluído` })
+      if (c.relatorio_gerado_em) eventos.push({ data: c.relatorio_gerado_em, texto: `${imovel} · relatório entregue` })
+      return eventos
+    })
+    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+    .slice(0, 8)
+    .map(e => ({
+      quando: new Date(e.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', ''),
+      texto: e.texto,
+    }))
+
   // Antes dos early returns: hook não pode ficar depois de um `return`.
   const fotoAssinada = useUrlAssinada(cliente?.foto_url, BUCKET_CLIENTES)
 
   if (loading) {
     return (
       <AppShell currentPage="clientes">
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <Skeleton width="150px" height="14px" />
           <div style={{ marginTop: '24px' }}>
             <Skeleton variant="card" />
@@ -312,7 +377,7 @@ export default function ClienteDetalhe() {
 
   return (
     <AppShell currentPage="clientes">
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
 
         <div style={{ marginBottom: '24px' }}>
           <button type="button" onClick={() => window.location.href = '/clientes'} style={{
@@ -325,99 +390,221 @@ export default function ClienteDetalhe() {
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+            color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 
         {!editing && (
-          <div style={{
-            background: '#ffffff', borderRadius: '12px', padding: '28px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #2E7D6B',
-            marginBottom: '32px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <>
+            {/* ── Cabeçalho ──────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
                 <div style={{
-                  width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
-                  background: '#2E7D6B', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '22px',
+                  width: '76px', height: '76px', borderRadius: '50%', overflow: 'hidden',
+                  background: '#E4F1EC', color: '#2E7D6B', fontSize: '26px', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0, position: 'relative' as const,
                 }}>
-                  {fotoAssinada ? (
-                    <Image src={fotoAssinada} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
+                  {fotoAssinada
+                    ? <Image src={fotoAssinada} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
+                    : cliente.nome_completo?.charAt(0).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h1 style={{
+                    color: '#0E1B2C', fontSize: '26px', fontWeight: 500, margin: '0 0 6px 0',
+                    fontFamily: 'var(--font-fraunces), serif', letterSpacing: '-0.01em',
+                  }}>{cliente.nome_completo}</h1>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ background: '#F0F6F3', color: '#2E7D6B', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>
+                      {consultasVisiveis.length === 0 ? 'Sem consultas'
+                        : `${consultasVisiveis.length} ${consultasVisiveis.length === 1 ? 'imóvel' : 'imóveis'}`}
+                    </span>
+                    {cliente.cidade && (
+                      <span style={{ color: '#6B7280', fontSize: '13px' }}>{cliente.cidade}{cliente.estado ? ` · ${cliente.estado}` : ''}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <Link href={`/consultas/nova?cliente_id=${cliente.id}`} style={{
+                  padding: '10px 18px', background: '#2E7D6B', color: '#fff', borderRadius: '9px',
+                  fontSize: '14px', fontWeight: 700, textDecoration: 'none',
+                }}>Nova consulta</Link>
+                <button type="button" onClick={() => setEditing(true)} style={{
+                  padding: '10px 18px', background: '#fff', color: '#0E1B2C',
+                  border: '1px solid #D8D0C0', borderRadius: '9px', fontSize: '14px', cursor: 'pointer',
+                }}>Editar</button>
+                <button type="button" onClick={() => setDeleteTarget(params.id as string)} style={{
+                  padding: '10px 14px', background: '#fff', color: '#B4533A',
+                  border: '1px solid #EBD3C7', borderRadius: '9px', fontSize: '14px', cursor: 'pointer',
+                }}>Excluir</button>
+              </div>
+            </div>
+
+            <div className="ficha-grade" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '18px', alignItems: 'start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+
+                {/* ── Imóveis ────────────────────────────────────────── */}
+                <div className="panel" style={{ padding: '18px 20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0E1B2C' }}>Imóveis</h2>
+                    <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{consultasVisiveis.length}</span>
+                  </div>
+                  {consultasVisiveis.length === 0 ? (
+                    <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Nenhuma consulta para este cliente ainda.</p>
                   ) : (
-                    cliente.nome_completo?.charAt(0).toUpperCase()
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {consultasVisiveis.map(c => {
+                        const progresso = progressoPorConsulta[c.id]
+                        const graus = c.bagua_entrada?.orientacao_graus
+                        const kuaDaCasa = typeof graus === 'number' ? calcularKuaDaCasa(graus) : null
+                        const temAno = typeof c.ano_construcao === 'number'
+                          || typeof c.ano_reforma_estrutural === 'number'
+                          || typeof c.bagua_entrada?.data_construcao === 'string'
+                        const concluida = c.status === 'finalizada'
+                        return (
+                          <div key={c.id} style={{
+                            border: '1px solid #F1EEE6', borderRadius: '12px', padding: '14px 16px',
+                            opacity: concluida ? 0.85 : 1,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                              <Link href={`/consultas/${c.id}`} style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0E1B2C', textDecoration: 'none' }}>
+                                {c.nome_imovel || 'Imóvel'}{c.area_total_m2 ? ` · ${c.area_total_m2} m²` : ''}
+                              </Link>
+                              <span style={{
+                                fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                                ...(concluida
+                                  ? { background: '#F0F6F3', color: '#2E7D6B' }
+                                  : { background: '#FAF3E0', color: '#8A6E2F' }),
+                              }}>{concluida ? 'Concluída' : 'Em andamento'}</span>
+                            </div>
+
+                            {progresso && (
+                              <div role="img" aria-label={`Etapa: ${progresso.rotulo}`} style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
+                                {progresso.cumpridas.map((cumprida, i) => (
+                                  <span key={i} style={{
+                                    height: '5px', flex: 1, borderRadius: '99px',
+                                    background: cumprida ? '#2E7D6B' : i === progresso.indice ? '#C9A227' : '#EAE5DA',
+                                  }} />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* A linha de método: o que já sustenta e o que falta.
+                                Lacuna aparece como consequência, não como campo vazio. */}
+                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px', color: '#6B7280' }}>
+                              <span>Fachada{' '}
+                                {typeof graus === 'number'
+                                  ? <strong style={{ color: '#0E1B2C' }}>{graus.toFixed(1).replace('.', ',')}° · {montanhaDoGrau(graus).nome}</strong>
+                                  : <strong style={{ color: '#B4533A' }}>não medida</strong>}
+                              </span>
+                              {kuaDaCasa && (
+                                <span>Kua da Casa{' '}
+                                  <strong style={{ color: '#0E1B2C' }}>{kuaDaCasa.kua} · grupo {kuaDaCasa.grupo === 'leste' ? 'Leste' : 'Oeste'}</strong>
+                                </span>
+                              )}
+                              {!temAno && (
+                                <span style={{ color: '#B4533A' }}>Estrelas Voadoras: falta o ano de construção</span>
+                              )}
+                              {c.relatorio_gerado_em && (
+                                <span>Relatório entregue em <strong style={{ color: '#0E1B2C' }}>{formatarData(c.relatorio_gerado_em)}</strong></span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
-                <div>
-                  <h1 style={{ color: '#0E1B2C', fontSize: '22px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{cliente.nome_completo}</h1>
-                  <span style={{
-                    background: '#F0FDF4', color: '#15803D', padding: '2px 10px',
-                    borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                  }}>Ativo</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" onClick={() => setEditing(true)} style={{
-                  padding: '8px 20px', background: '#F3F4F6', color: '#374151',
-                  border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
-                }}>✏️ Editar</button>
-                <button type="button" onClick={() => setDeleteTarget(params.id as string)} style={{
-                  padding: '8px 20px', background: '#FEF2F2', color: '#DC2626',
-                  border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
-                }}>🗑️ Excluir</button>
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {cliente.email && (
-                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>E-mail</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>✉ {cliente.email}</p></div>
-              )}
-              {cliente.telefone && (
-                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Telefone</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>📱 {cliente.telefone}</p></div>
-              )}
-              {(() => {
-                const mg = calcularMingGua(cliente.data_nascimento, cliente.genero)
-                if (!mg) return null
-                return (
-                  <div style={{ gridColumn: '1 / -1', background: '#EAF4F1', border: '1px solid #CFE6E0', borderRadius: '8px', padding: '10px 14px' }}>
-                    <span style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold' }}>☯ Ming Gua {mg.kua} · Grupo {mg.grupo === 'leste' ? 'Leste' : 'Oeste'}</span>
-                    <p style={{ color: '#374151', fontSize: '13px', margin: '4px 0 0 0' }}>
-                      Direções favoráveis — Prosperidade: <strong>{mg.direcoes.shengChi}</strong> · Saúde: <strong>{mg.direcoes.tienYi}</strong> · Relacionamentos: <strong>{mg.direcoes.yenNien}</strong> · Estabilidade: <strong>{mg.direcoes.fuWei}</strong>
+                {/* ── Histórico ──────────────────────────────────────── */}
+                <div className="panel" style={{ padding: '18px 20px' }}>
+                  <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 14px', color: '#0E1B2C' }}>Histórico</h2>
+                  {historico.length === 0 ? (
+                    <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+                      Nada registrado ainda. O histórico é montado a partir das datas que as
+                      próprias consultas já guardam — não há um diário à parte.
                     </p>
-                  </div>
-                )
-              })()}
-              {(cliente.rua || cliente.cidade) && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <span style={{ color: '#9CA3AF', fontSize: '13px' }}>Endereço</span>
-                  <p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>
-                    📍 {[
-                      cliente.rua && `${cliente.rua}${cliente.numero ? `, ${cliente.numero}` : ''}`,
-                      cliente.complemento,
-                      cliente.bairro,
-                      cliente.cidade && `${cliente.cidade}${cliente.estado ? ` - ${cliente.estado}` : ''}`,
-                      cliente.cep && `CEP: ${cliente.cep}`,
-                      cliente.pais && cliente.pais !== 'Brasil' ? cliente.pais : null,
-                    ].filter(Boolean).join(' · ')}
-                  </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {historico.map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: '12px' }}>
+                          <span style={{ fontSize: '12px', color: '#9CA3AF', width: '64px', flexShrink: 0 }}>{item.quando}</span>
+                          <span style={{ fontSize: '13px', color: '#3D4C58' }}>{item.texto}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-              {cliente.notas && (
-                <div><span style={{ color: '#9CA3AF', fontSize: '13px' }}>Observações</span><p style={{ color: '#374151', fontSize: '15px', margin: '4px 0 0 0' }}>{cliente.notas}</p></div>
-              )}
-            </div>
+              </div>
 
-            <div style={{ marginTop: '20px' }}>
-              <button type="button" onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
-                padding: '10px 24px', background: '#2E7D6B', color: '#fff',
-                border: 'none', borderRadius: '8px', fontSize: '14px',
-                fontWeight: 'bold', cursor: 'pointer'
-              }}>+ Nova consulta</button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+
+                {/* ── Dados do método ───────────────────────────────── */}
+                <div style={{ background: '#0E1B2C', borderRadius: '14px', padding: '18px 20px', color: '#fff' }}>
+                  <p style={{ color: '#C9A227', fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+                    Dados do método
+                  </p>
+                  {mingGua ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
+                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>Nascimento</span>
+                        <strong style={{ fontSize: '14px' }}>{formatarData(cliente.data_nascimento)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
+                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>Ming Gua</span>
+                        <strong style={{ fontSize: '14px' }}>{mingGua.kua} · grupo {mingGua.grupo === 'leste' ? 'Leste' : 'Oeste'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
+                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>Direções favoráveis</span>
+                        <strong style={{ fontSize: '14px', textAlign: 'right' }}>
+                          {[mingGua.direcoes.shengChi, mingGua.direcoes.tienYi, mingGua.direcoes.yenNien, mingGua.direcoes.fuWei].join(' · ')}
+                        </strong>
+                      </div>
+                    </div>
+                  ) : (
+                    // Sem data ou sem gênero não há Ming Gua. Dizer qual dos dois
+                    // falta é o que transforma o campo vazio em algo acionável.
+                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5 }}>
+                      Sem {!cliente.data_nascimento ? 'data de nascimento' : 'gênero informado'}, o Ming Gua não
+                      é calculável — e sem ele o relatório sai sem as direções favoráveis do morador.
+                    </p>
+                  )}
+
+                  {divergencia && (
+                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.66)', lineHeight: 1.5 }}>
+                        {divergencia.mensagem}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Contato ────────────────────────────────────────── */}
+                <div className="panel" style={{ padding: '18px 20px' }}>
+                  <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px', color: '#0E1B2C' }}>Contato</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                    <div><span style={{ color: '#9CA3AF' }}>E-mail</span><p style={{ margin: '2px 0 0', color: cliente.email ? '#0E1B2C' : '#9CA3AF' }}>{cliente.email || 'não informado'}</p></div>
+                    <div><span style={{ color: '#9CA3AF' }}>Telefone</span><p style={{ margin: '2px 0 0', color: cliente.telefone ? '#0E1B2C' : '#9CA3AF' }}>{cliente.telefone || 'não informado'}</p></div>
+                    <div>
+                      <span style={{ color: '#9CA3AF' }}>Endereço</span>
+                      <p style={{ margin: '2px 0 0', color: endereco ? '#0E1B2C' : '#9CA3AF' }}>{endereco || 'não informado'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Observações ────────────────────────────────────── */}
+                {cliente.notas && (
+                  <div className="panel" style={{ padding: '18px 20px' }}>
+                    <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 10px', color: '#0E1B2C' }}>Observações</h2>
+                    <p style={{ fontSize: '13px', color: '#3D4C58', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{cliente.notas}</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {editing && (
@@ -453,7 +640,7 @@ export default function ClienteDetalhe() {
                       if (fotoPreview) { setFotoFile(null); setFotoPreview(null) }
                       else { handleFotoRemove() }
                     }} disabled={uploadingFoto} style={{
-                      marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                      marginLeft: '8px', padding: '8px 12px', background: 'transparent', color: '#B4533A',
                       border: 'none', fontSize: '13px', cursor: 'pointer'
                     }}>Remover</button>
                   )}
@@ -589,88 +776,11 @@ export default function ClienteDetalhe() {
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
-            Consultas ({consultasVisiveis.length})
-          </h2>
-          <button type="button" onClick={() => window.location.href = `/consultas/nova?clienteId=${cliente.id}`} style={{
-            padding: '8px 20px', background: '#2E7D6B', color: '#fff',
-            border: 'none', borderRadius: '8px', fontSize: '13px',
-            fontWeight: 'bold', cursor: 'pointer'
-          }}>+ Nova Consulta</button>
-        </div>
-
-        {consultasVisiveis.length === 0 ? (
-          <div style={{
-            background: '#ffffff', borderRadius: '12px', padding: '48px 32px',
-            textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
-          }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📋</div>
-            <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>Nenhuma consulta para este cliente ainda.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {consultasVisiveis.map(c => {
-              const baguaData = c.bagua_entrada
-              const baguaFinalizada = !!(baguaData?.finalizada_em)
-              const baguaEmAndamento = !!(baguaData?.planta_url) && !baguaFinalizada
-              const statusInfo = STATUS_LABELS[c.status] || STATUS_LABELS.sem_analise
-              return (
-                <div key={c.id} style={{
-                  background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                }}>
-                  <div
-                    onClick={() => window.location.href = `/consultas/${c.id}`}
-                    style={{ cursor: 'pointer', flex: 1 }}
-                  >
-                    <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', margin: '0 0 4px 0' }}>{c.nome_imovel || 'Imóvel'}</p>
-                    <p style={{ color: '#9CA3AF', fontSize: '13px', margin: '0' }}>
-                      📅 {new Date(c.criado_em).toLocaleDateString('pt-BR')}
-                      {c.tipo_imovel && ` • ${c.tipo_imovel}`}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{
-                      background: baguaFinalizada ? '#F0FDF4' : baguaEmAndamento ? '#FFF7ED' : '#F3F4F6',
-                      color: baguaFinalizada ? '#15803D' : baguaEmAndamento ? '#D97706' : '#9CA3AF',
-                      padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
-                    }}>{baguaFinalizada
-                        ? `☯ Diagnóstico finalizado em ${new Date(baguaData!.finalizada_em!).toLocaleDateString('pt-BR')}`
-                        : baguaEmAndamento ? '☯ Em andamento' : '☯ Sem análise'
-                    }</span>
-                    <span style={{
-                      background: statusInfo.bg,
-                      color: statusInfo.color,
-                      padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                    }}>{statusInfo.icon} {statusInfo.label}</span>
-                    {c.status === 'em_andamento' && (
-                      <button type="button"
-                        onClick={(e) => { e.stopPropagation(); setFinalizarConsultaId(c.id) }}
-                        title="Concluir consulta"
-                        style={{
-                          padding: '4px 10px', background: '#F0FDF4', color: '#15803D',
-                          border: '1px solid #BBF7D0', borderRadius: '6px', fontSize: '12px',
-                          fontWeight: 'bold', cursor: 'pointer'
-                        }}
-                      >✅ Concluir</button>
-                    )}
-                    <button type="button"
-                      onClick={(e) => { e.stopPropagation(); setDeleteConsultaId(c.id) }}
-                      title="Deletar consulta"
-                      style={{
-                        padding: '4px 8px', background: '#FEF2F2', color: '#DC2626',
-                        border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px',
-                        cursor: 'pointer', lineHeight: 1
-                      }}
-                    >🗑️</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <style>{`
+          @media (max-width: 900px) {
+            .ficha-grade { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
 
       </div>
 

@@ -134,7 +134,7 @@ export default function RosaDosVentos({
 
       {/* Faixa da Montanha corrente (15°) */}
       {destacarMontanha && (
-        <path d={arcoMontanha(montanha.faixaInicio)} fill="rgba(124,58,237,0.35)" data-testid="rosa-montanha-atual" />
+        <path d={arcoMontanha(montanha.faixaInicio)} fill="rgba(201,162,39,0.35)" data-testid="rosa-montanha-atual" />
       )}
 
       {/* Anel das 24 Montanhas: um tique por faixa de 15°, maiores nos 45° */}
@@ -183,9 +183,9 @@ export default function RosaDosVentos({
 
       {/* Agulha */}
       <line x1={CENTRO} y1={CENTRO} x2={ponta.x} y2={ponta.y}
-        stroke="#DC2626" strokeWidth={2.5} data-testid="rosa-agulha" />
+        stroke="#B4533A" strokeWidth={2.5} data-testid="rosa-agulha" />
       {interativo && (
-        <circle cx={ponta.x} cy={ponta.y} r={5} fill="#DC2626" stroke="#fff" strokeWidth={1.5}
+        <circle cx={ponta.x} cy={ponta.y} r={5} fill="#B4533A" stroke="#fff" strokeWidth={1.5}
           style={{ cursor: 'grab' }} data-testid="rosa-alca" />
       )}
       <circle cx={CENTRO} cy={CENTRO} r={3} fill="#374151" />

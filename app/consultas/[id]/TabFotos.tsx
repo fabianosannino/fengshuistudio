@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '../../../src/lib/logger'
 import { useState, useRef, useMemo } from 'react'
 import type { FotoComodo } from '../../../src/lib/types'
 import { useUrlsAssinadas } from '../../components/useUrlsAssinadas'
@@ -179,7 +180,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   function handleRemoveComodo(idx: number) {
     // Delete all photos in the room (fire-and-forget with error logging)
     const comodo = fotosComodos[idx]
-    Promise.all(comodo.fotos.map(url => deleteFile(url).catch(e => console.error('Erro ao excluir foto:', url, e))))
+    Promise.all(comodo.fotos.map(url => deleteFile(url).catch((e: Error) => logger.error('Falha ao excluir foto do cômodo', { route: 'TabFotos', error: e.message }))))
     const updated = fotosComodos
       .filter((_, i) => i !== idx)
       .map((c, i) => ({ ...c, ordem: i }))
@@ -218,9 +219,9 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
       {message && (
         <div style={{
           marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-          background: message.includes('Erro') || message.includes('inválido') || message.includes('grande') ? '#FEF2F2' : '#F0FDF4',
-          border: `1px solid ${message.includes('Erro') || message.includes('inválido') || message.includes('grande') ? '#FECACA' : '#BBF7D0'}`,
-          color: message.includes('Erro') || message.includes('inválido') || message.includes('grande') ? '#DC2626' : '#15803D',
+          background: message.includes('Erro') || message.includes('inválido') || message.includes('grande') ? '#FAEEE9' : '#F0F6F3',
+          border: `1px solid ${message.includes('Erro') || message.includes('inválido') || message.includes('grande') ? '#EBD3C7' : '#DCEAE4'}`,
+          color: message.includes('Erro') || message.includes('inválido') || message.includes('grande') ? '#B4533A' : '#2E7D6B',
           fontSize: '14px',
         }}>{message}</div>
       )}
@@ -260,7 +261,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                   onChange={handleGeralUpload} disabled={uploading} style={{ display: 'none' }} />
               </label>
               <button type="button" onClick={handleGeralRemove} disabled={uploading} style={{
-                padding: '8px 12px', background: 'transparent', color: '#DC2626',
+                padding: '8px 12px', background: 'transparent', color: '#B4533A',
                 border: 'none', fontSize: '13px', cursor: 'pointer',
               }}>Remover</button>
             </div>
@@ -408,7 +409,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                         onClick={e => { e.stopPropagation(); handleRemoveComodo(idx) }}
                         title="Remover cômodo"
                         style={{
-                          background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                          background: '#FAEEE9', color: '#B4533A', border: '1px solid #EBD3C7',
                           borderRadius: '6px', padding: '4px 8px', cursor: 'pointer',
                           fontSize: '12px',
                         }}
@@ -572,7 +573,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
               {fotosDepois.map((url, i) => (
-                <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #BBF7D0' }}>
+                <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #DCEAE4' }}>
                   <img src={resolver(url) ?? ''} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })}
                     style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
                   <button type="button" onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
@@ -584,7 +585,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
             </div>
             <label style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
-              background: '#F0FDF4', color: '#15803D', borderRadius: '6px', fontSize: '13px',
+              background: '#F0F6F3', color: '#2E7D6B', borderRadius: '6px', fontSize: '13px',
               cursor: 'pointer', fontWeight: 'bold',
             }}>
               + Adicionar mais fotos
@@ -605,12 +606,12 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
           <label style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', padding: '40px', borderRadius: '10px',
-            border: '2px dashed #BBF7D0', background: '#F0FDF4',
+            border: '2px dashed #DCEAE4', background: '#F0F6F3',
             cursor: uploading ? 'not-allowed' : 'pointer',
             transition: 'border-color 0.2s',
           }}>
             <span style={{ fontSize: '40px', marginBottom: '8px' }}>📸</span>
-            <span style={{ color: '#15803D', fontSize: '14px', fontWeight: 'bold' }}>
+            <span style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold' }}>
               {uploading ? 'Enviando...' : 'Clique para adicionar fotos do depois'}
             </span>
             <span style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>

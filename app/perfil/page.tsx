@@ -1,5 +1,7 @@
 'use client'
 
+import { logger } from '../../src/lib/logger'
+import { OPCOES_DE_PAPEL, papelDoUsuario, type Papel } from '../../src/lib/papel-do-usuario'
 import { redirecionarParaLogin, SENHA_MIN_CARACTERES } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -20,6 +22,7 @@ export default function Perfil() {
   const [form, setForm] = useState({
     nome_completo: '', nome_empresa: '', telefone: '',
     cidade: '', estado: '', bio: '', site: '',
+    papel: 'consultor' as Papel,
     profissao: '', area_atuacao: '', registro_profissional: '',
     linkedin: '', instagram: '', parceiro_visivel: false,
     store_slug: '',
@@ -87,6 +90,7 @@ export default function Perfil() {
           estado: (p.estado || '') as string,
           bio: (p.bio || '') as string,
           site: (p.site || '') as string,
+          papel: papelDoUsuario(p),
           profissao: (p.profissao || '') as string,
           area_atuacao: (p.area_atuacao || '') as string,
           registro_profissional: (p.registro_profissional || '') as string,
@@ -99,6 +103,7 @@ export default function Perfil() {
         // Fallback to user metadata
         const meta = user.user_metadata || {}
         setTipoUsuario(meta.tipo_usuario || '')
+        setForm(f => ({ ...f, papel: papelDoUsuario(meta) }))
       }
       setLoading(false)
     }
@@ -120,6 +125,9 @@ export default function Perfil() {
     setMessage('')
 
     const basicData: Record<string, string | boolean | null> = {
+      // Só `tipo_usuario`: `role` é protegida por trigger e exige service_role.
+      // `papelDoUsuario` lê `tipo_usuario` primeiro, então isto basta.
+      tipo_usuario: form.papel,
       nome_completo: form.nome_completo,
       nome_empresa: form.nome_empresa,
       telefone: form.telefone,
@@ -153,16 +161,20 @@ export default function Perfil() {
 
       if (isSchemaError && isProfessional) {
         // Fallback: save only basic fields if professional columns are missing
-        console.error('Perfil: colunas profissionais ausentes no banco, salvando dados básicos.', error.message)
+        logger.warn('Colunas profissionais ausentes no banco; salvando só os dados básicos', {
+          route: '/perfil', error: error.message,
+        })
         const { error: fallbackError } = await supabase.from('profiles').update(basicData).eq('id', user!.id)
         if (fallbackError) {
-          console.error('Perfil fallback error:', fallbackError.message)
+          logger.error('Falha ao salvar o perfil mesmo sem os campos profissionais', {
+            route: '/perfil', error: fallbackError.message,
+          })
           setMessage('Não foi possível salvar as alterações. Tente novamente ou entre em contato com o suporte.')
         } else {
           setMessage('Dados básicos salvos. Os campos profissionais exigem atualização do banco de dados — execute a migration em supabase/migrations/.')
         }
       } else {
-        console.error('Perfil update error:', error.message)
+        logger.error('Falha ao salvar o perfil', { route: '/perfil', error: error.message })
         setMessage('Não foi possível salvar as alterações. Tente novamente ou entre em contato com o suporte.')
       }
     } else {
@@ -216,8 +228,8 @@ export default function Perfil() {
             <p style={{ color: '#0E1B2C', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>{form.nome_completo || 'Seu nome'}</p>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>{user?.email}</p>
             <span style={{
-              background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(124,58,237,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
-              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#2E7D6B' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#C9A227',
+              background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(201,162,39,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
+              color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#2E7D6B' : planoEfetivo(plano) === 'simples' ? '#2E7D6B' : '#C9A227',
               padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
             }}>
               {isProfessional ? 'Profissional' : planoLabel(plano)}
@@ -229,9 +241,9 @@ export default function Perfil() {
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+            color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -260,6 +272,32 @@ export default function Perfil() {
                   {ESTADOS_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                 </select>
               </div>
+            </div>
+          </div>
+
+          {/* Papel: define a tela inicial e o menu. É a única pergunta que o
+              cadastro faz depois de nome/e-mail/senha, e precisa ser reversível
+              — quem escolhe errado ficaria preso na home errada. */}
+          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)', marginBottom: '20px' }}>
+            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Como você usa o FengShui Studio</h3>
+            <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
+              Define sua tela inicial e o menu. Nada é apagado ao trocar.
+            </p>
+            <div role="radiogroup" aria-label="Como você usa o FengShui Studio" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {OPCOES_DE_PAPEL.map(opcao => {
+                const escolhido = form.papel === opcao.id
+                return (
+                  <button type="button" key={opcao.id} role="radio" aria-checked={escolhido}
+                    onClick={() => setForm(f => ({ ...f, papel: opcao.id }))} style={{
+                      textAlign: 'left', cursor: 'pointer', padding: '14px 16px', borderRadius: '12px',
+                      background: escolhido ? '#FAF3E0' : '#ffffff',
+                      border: escolhido ? '2px solid #C9A227' : '1px solid #E7E1D6',
+                    }}>
+                    <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0E1B2C', marginBottom: '4px' }}>{opcao.titulo}</span>
+                    <span style={{ display: 'block', fontSize: '12px', color: '#6B7280', lineHeight: 1.5 }}>{opcao.descricao}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -334,8 +372,8 @@ export default function Perfil() {
                 Apareça na listagem de parceiros para outros usuários da plataforma
               </p>
               <div style={{
-                background: form.parceiro_visivel ? '#F0FDF4' : '#F9FAFB',
-                border: `1px solid ${form.parceiro_visivel ? '#BBF7D0' : '#E5E7EB'}`,
+                background: form.parceiro_visivel ? '#F0F6F3' : '#F9FAFB',
+                border: `1px solid ${form.parceiro_visivel ? '#DCEAE4' : '#E5E7EB'}`,
                 borderRadius: '10px', padding: '16px',
                 display: 'flex', alignItems: 'center', gap: '14px'
               }}>
@@ -349,7 +387,7 @@ export default function Perfil() {
                   />
                   <span style={{
                     position: 'absolute', cursor: 'pointer', inset: 0,
-                    background: form.parceiro_visivel ? '#15803D' : '#D1D5DB',
+                    background: form.parceiro_visivel ? '#2E7D6B' : '#D1D5DB',
                     borderRadius: '26px', transition: 'background 0.3s',
                   }}>
                     <span style={{
@@ -414,8 +452,8 @@ export default function Perfil() {
             {senhaMsg && (
               <p style={{
                 margin: '0 0 14px 0', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
-                background: senhaMsg.tipo === 'ok' ? '#F0FDF4' : '#FEF2F2',
-                color: senhaMsg.tipo === 'ok' ? '#15803D' : '#DC2626',
+                background: senhaMsg.tipo === 'ok' ? '#F0F6F3' : '#FAEEE9',
+                color: senhaMsg.tipo === 'ok' ? '#2E7D6B' : '#B4533A',
               }}>{senhaMsg.texto}</p>
             )}
             <button type="submit" disabled={senhaSaving} style={{

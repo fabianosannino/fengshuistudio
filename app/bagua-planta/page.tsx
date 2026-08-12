@@ -12,7 +12,10 @@ import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/l
 import { calcularGridOrder, guaDaPorta } from '../../src/lib/bagua-grid'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
 import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
-import { periodoDaConstrucao, calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
+import { calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
+import { periodoDoImovel, reformaIncoerente, faixaDoPeriodo, ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../src/lib/periodo-do-imovel'
+import { RESSALVA_XUAN_KONG } from '../../src/lib/sustentacao-do-diagnostico'
+import SustentacaoDoDiagnostico from '../components/SustentacaoDoDiagnostico'
 import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/graus'
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
@@ -43,6 +46,12 @@ import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
 import QuestionarioFacing from '../components/QuestionarioFacing'
+
+/** Campo vazio vira `null` na coluna — string vazia viraria 0 e 0 não é um ano. */
+function anoParaBanco(valor:string):number|null{
+  const n=Number(valor)
+  return valor.trim()!==''&&Number.isInteger(n)?n:null
+}
 import RosaDosVentos from '../components/RosaDosVentos'
 import {
   converterLeitura, declinacaoPlausivel, rotuloReferencia,
@@ -58,15 +67,25 @@ import {
 
 // As dicas de cada setor vêm de SETOR_DICAS (src/lib/constants) via o motor
 // canônico de recomendações — não são duplicadas aqui.
+/**
+ * A cor de cada setor não é decoração: ela segue o **elemento**, e a
+ * correspondência elemento→cor é doutrina, não escolha de interface.
+ *
+ * Madeira é verde (jade), Fogo é vermelho (terracota), Terra é ocre/amarelo
+ * (dourado), Metal é neutro (cinza/tinta) e Água é escura/azul (azul-petróleo).
+ * Setores do mesmo elemento usam tons **diferentes** da mesma família — os nove
+ * precisam ser distinguíveis na grade 3×3, onde a cor é o que identifica a
+ * célula.
+ */
 const SETORES = [
   { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#2E7D6B' },
-  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#DC2626' },
-  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#BE185D' },
-  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#15803D' },
-  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#D97706' },
-  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#B45309' },
-  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#92400E' },
-  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1D4ED8' },
+  { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#B4533A' },
+  { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#A9613C' },
+  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#245F52' },
+  { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#8A6E2F' },
+  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#0E1B2C' },
+  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#C9A227' },
+  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1C3A52' },
   { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280' },
 ]
 
@@ -150,7 +169,14 @@ function BaguaPlantaContent() {
   const [declinacaoAuto, setDeclinacaoAuto] = useState<{modelo:string;validoAte:string}|null>(null)
   const [declinacaoCarregando, setDeclinacaoCarregando] = useState(false)
   const [declinacaoErro, setDeclinacaoErro] = useState<string>('')
-  const [dataConstrucao, setDataConstrucao] = useState<string>('')
+  // Ano, não data: o dia da obra é o dado que ninguém tem, e o 01/01 que o campo
+  // de data obrigava a inventar jogava o imóvel para o período anterior (o ano
+  // solar vira no Li Chun). Ver src/lib/periodo-do-imovel.ts.
+  const [anoConstrucao, setAnoConstrucao] = useState<string>('')
+  const [anoReforma, setAnoReforma] = useState<string>('')
+  // Nascimento e gênero do cliente decidem se o Ming Gua entra no diagnóstico —
+  // é o que o painel «o que já sustenta» precisa saber.
+  const [clienteDaConsulta, setClienteDaConsulta] = useState<{ data_nascimento: string | null; genero: string | null } | null>(null)
   // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
   const [leiturasAbertas, setLeiturasAbertas] = useState(false)
@@ -238,12 +264,18 @@ function BaguaPlantaContent() {
     supabase.auth.getUser().then(({data:{user}})=>{
       if(!user){redirecionarParaLogin();return}
       supabase.from('consultas').select('id,nome_imovel').eq('consultor_id',user.id)
-        .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>console.error('Erro ao carregar consultas:',e))
+        .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>logger.error('Falha ao carregar a lista de consultas',{route:'/bagua-planta',error:e.message}))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
-        supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo').eq('id',consultaId).single()
+        supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo,ano_construcao,ano_reforma_estrutural,clientes(data_nascimento,genero)').eq('id',consultaId).single()
           .then(({data})=>{
             if(data) setConsultaNome(data.nome_imovel)
+            // Colunas primeiro; o `be.data_construcao` abaixo é o fallback das
+            // consultas anteriores à migration 20260812140000.
+            if(typeof data?.ano_construcao==='number') setAnoConstrucao(String(data.ano_construcao))
+            if(typeof data?.ano_reforma_estrutural==='number') setAnoReforma(String(data.ano_reforma_estrutural))
+            const cli = data?.clientes as unknown as { data_nascimento: string | null; genero: string | null } | null
+            if(cli) setClienteDaConsulta({ data_nascimento: cli.data_nascimento ?? null, genero: cli.genero ?? null })
             // A escolha vive na consulta: reabrir uma análise antiga não a
             // repontua sob o padrão vigente hoje.
             if(data?.modelo_pontuacao) setModeloPontuacao(modeloValido(data.modelo_pontuacao))
@@ -282,9 +314,11 @@ function BaguaPlantaContent() {
                 setDeclinacaoAuto(null)
               }
               if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
-              if(be.data_construcao) setDataConstrucao(be.data_construcao)
+              // Fallback do campo legado: só o ano, pelo mesmo motivo do backfill
+              // da migration 20260812140000.
+              if(be.data_construcao) setAnoConstrucao(atual=>atual||be.data_construcao!.slice(0,4))
             }
-          }).then(null,(e: Error)=>console.error('Erro ao carregar consulta:',e))
+          }).then(null,(e: Error)=>logger.error('Falha ao carregar a consulta',{route:'/bagua-planta',consultaId,error:e.message}))
         supabase.from('setores_bagua')
           .select('numero,score_percentual,diagnostico_criterios(criterio,score)')
           .eq('consulta_id',consultaId).order('numero')
@@ -306,7 +340,7 @@ function BaguaPlantaContent() {
               })
               return next
             })
-          }).then(null,(e: Error)=>console.error('Erro ao carregar setores:',e))
+          }).then(null,(e: Error)=>logger.error('Falha ao carregar os setores da consulta',{route:'/bagua-planta',consultaId,error:e.message}))
       }
     })
   },[router,consultaId])
@@ -331,7 +365,7 @@ function BaguaPlantaContent() {
       setOrientacaoReferencia(be.orientacao_referencia==='verdadeiro'?'verdadeiro':'magnetico')
       setDeclinacao(typeof be.declinacao_magnetica==='number'?String(be.declinacao_magnetica):'')
       setDeclinacaoAuto(null) // ver nota no outro ponto de restauração
-      setDataConstrucao(be.data_construcao||'')
+      setAnoConstrucao(atual=>atual||(be.data_construcao?be.data_construcao.slice(0,4):''))
       if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
       // Defer bounds/setores restoration after image+rotation effect runs
       setTimeout(()=>{
@@ -536,12 +570,12 @@ function BaguaPlantaContent() {
         const sx2=ex+ax*aStart,sy2=ey+ay*aStart
         const ex2=ex+ax*(aStart+aLen),ey2=ey+ay*(aStart+aLen)
         // Arrow shaft
-        ctx.strokeStyle='#DC2626'; ctx.lineWidth=2.5
+        ctx.strokeStyle='#B4533A'; ctx.lineWidth=2.5
         ctx.beginPath(); ctx.moveTo(sx2,sy2); ctx.lineTo(ex2,ey2); ctx.stroke()
         // Arrowhead
         const headLen=8,headAng=Math.PI/5
         const angle=Math.atan2(ey2-sy2,ex2-sx2)
-        ctx.fillStyle='#DC2626'; ctx.beginPath()
+        ctx.fillStyle='#B4533A'; ctx.beginPath()
         ctx.moveTo(ex2,ey2)
         ctx.lineTo(ex2-headLen*Math.cos(angle-headAng),ey2-headLen*Math.sin(angle-headAng))
         ctx.lineTo(ex2-headLen*Math.cos(angle+headAng),ey2-headLen*Math.sin(angle+headAng))
@@ -550,7 +584,7 @@ function BaguaPlantaContent() {
 
       // Red circle with white border
       ctx.beginPath(); ctx.arc(ex,ey,r2,0,Math.PI*2)
-      ctx.fillStyle='#DC2626'; ctx.fill()
+      ctx.fillStyle='#B4533A'; ctx.fill()
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke()
 
       // "Entrada" label
@@ -572,7 +606,7 @@ function BaguaPlantaContent() {
       const isFalta=m.tipo==='falta'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(mx,my,mw,mh)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
       // Label
       const marcArea=m.w*m.h
@@ -586,13 +620,13 @@ function BaguaPlantaContent() {
       // Resize handles (4 corners)
       const hs=4
       ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
-        ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+        ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
         ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
         ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
       })
       // Delete button (top-right)
       const dx=mx+mw-1,dy=my-1
-      ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+      ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
       ctx.beginPath(); ctx.arc(dx,dy,7,0,Math.PI*2); ctx.fill()
       ctx.fillStyle='#fff'; ctx.font='bold 10px Arial'; ctx.textAlign='center'
       ctx.fillText('✕',dx,dy+3.5)
@@ -604,7 +638,7 @@ function BaguaPlantaContent() {
       const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(px,py,pw,ph)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -715,11 +749,11 @@ function BaguaPlantaContent() {
         const aLen=36, aStart=r2+5
         const sx3=ex2+ax2*aStart,sy3=ey2+ay2*aStart
         const ex3=ex2+ax2*(aStart+aLen),ey3=ey2+ay2*(aStart+aLen)
-        ctx.strokeStyle='#DC2626'; ctx.lineWidth=3
+        ctx.strokeStyle='#B4533A'; ctx.lineWidth=3
         ctx.beginPath(); ctx.moveTo(sx3,sy3); ctx.lineTo(ex3,ey3); ctx.stroke()
         const headLen=10,headAng=Math.PI/5
         const angle=Math.atan2(ey3-sy3,ex3-sx3)
-        ctx.fillStyle='#DC2626'; ctx.beginPath()
+        ctx.fillStyle='#B4533A'; ctx.beginPath()
         ctx.moveTo(ex3,ey3)
         ctx.lineTo(ex3-headLen*Math.cos(angle-headAng),ey3-headLen*Math.sin(angle-headAng))
         ctx.lineTo(ex3-headLen*Math.cos(angle+headAng),ey3-headLen*Math.sin(angle+headAng))
@@ -727,7 +761,7 @@ function BaguaPlantaContent() {
       }
 
       ctx.beginPath(); ctx.arc(ex2,ey2,r2,0,Math.PI*2)
-      ctx.fillStyle='#DC2626'; ctx.fill()
+      ctx.fillStyle='#B4533A'; ctx.fill()
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=2.5; ctx.stroke()
 
       const lbl2='Entrada'
@@ -748,7 +782,7 @@ function BaguaPlantaContent() {
       const isFalta=m.tipo==='falta'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(mx,my,mw,mh)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
       const marcArea2=m.w*m.h
       const boundsArea2=bounds?bounds.w*bounds.h:1
@@ -760,12 +794,12 @@ function BaguaPlantaContent() {
       ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
       const hs=5
       ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
-        ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+        ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
         ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
         ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
       })
       const dx=mx+mw-1,dy=my-1
-      ctx.fillStyle=isFalta?'#DC2626':'#F59E0B'
+      ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
       ctx.beginPath(); ctx.arc(dx,dy,8,0,Math.PI*2); ctx.fill()
       ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.textAlign='center'
       ctx.fillText('✕',dx,dy+4)
@@ -776,7 +810,7 @@ function BaguaPlantaContent() {
       const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
       ctx.fillRect(px,py,pw,ph)
-      ctx.strokeStyle=isFalta?'#DC2626':'#F59E0B'; ctx.lineWidth=2; ctx.setLineDash([6,4])
+      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1015,7 +1049,6 @@ function BaguaPlantaContent() {
       orientacao_graus:orientacaoGraus,
       orientacao_referencia:orientacaoReferencia,
       declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
-      data_construcao:dataConstrucao||undefined,
       metragem_real:metragemRef.current||undefined,
     }
     if(overrides?.entradaV??entrada){
@@ -1045,7 +1078,7 @@ function BaguaPlantaContent() {
     // rascunho se perdia em silêncio (RLS, rede, linha inexistente) e o consultor seguia
     // achando que o trabalho estava salvo. Ver CLAUDE.md: nunca engolir falha de escrita.
     const {error:eRascunho}=await supabase.from('consultas')
-      .update({bagua_entrada:draft,modelo_pontuacao:modeloPontuacao,peso_geo:pesoGeo})
+      .update({bagua_entrada:draft,modelo_pontuacao:modeloPontuacao,peso_geo:pesoGeo,ano_construcao:anoParaBanco(anoConstrucao),ano_reforma_estrutural:anoParaBanco(anoReforma)})
       .eq('id',consultaId)
     if(eRascunho){
       logger.error('Falha ao salvar rascunho do Ba Guá',{action:'salvarRascunho',consultaId,erro:eRascunho.message})
@@ -1355,8 +1388,7 @@ function BaguaPlantaContent() {
         escola, orientacao_graus:orientacaoGraus,
         orientacao_referencia:orientacaoReferencia,
         declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
-        data_construcao:dataConstrucao||undefined,
-        bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
+          bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         tai_ji_poligono:poligonoTaiJiRef.current,
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
@@ -1384,6 +1416,8 @@ function BaguaPlantaContent() {
       const {error:eFinal}=await supabase.from('consultas').update({
         bagua_imagem:dataUrl,
         bagua_entrada:finalizacao,
+        ano_construcao:anoParaBanco(anoConstrucao),
+        ano_reforma_estrutural:anoParaBanco(anoReforma),
         status:'em_andamento',
       }).eq('id',consultaId)
       if(eFinal){
@@ -1441,13 +1475,13 @@ function BaguaPlantaContent() {
           {['Upload','Metragem','Configurar','Entrada','Resultado'].map((s,i)=>(
             <div key={i} style={{display:'flex',alignItems:'center',gap:'5px'}}>
               <div style={{width:'20px',height:'20px',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',
-                fontSize:'10px',fontWeight:'bold',
-                background:i<stepN?'#15803D':i===stepN?'#0E1B2C':'#E5E7EB',
+                fontSize:'12px',fontWeight:'bold',
+                background:i<stepN?'#2E7D6B':i===stepN?'#0E1B2C':'#E5E7EB',
                 color:i<=stepN?'#fff':'#9CA3AF'}}>
                 {i<stepN?'✓':i+1}
               </div>
               <span style={{color:'#374151',fontSize:'12px'}}>{s}</span>
-              {i<4&&<span style={{color:'#D1D5DB',fontSize:'10px'}}>→</span>}
+              {i<4&&<span style={{color:'#D1D5DB',fontSize:'12px'}}>→</span>}
             </div>
           ))}
         </div>
@@ -1476,7 +1510,7 @@ function BaguaPlantaContent() {
             </p>
             <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
               <button type="button" onClick={restaurarRascunho}
-                style={{background:'#15803D',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                 Continuar análise
               </button>
               <button type="button" onClick={()=>{
@@ -1484,7 +1518,7 @@ function BaguaPlantaContent() {
                   recomecarAnalise()
                 }
               }}
-                style={{background:'#fff',color:'#DC2626',border:'2px solid #DC2626',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
+                style={{background:'#fff',color:'#B4533A',border:'2px solid #B4533A',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                 Recomeçar do zero
               </button>
             </div>
@@ -1523,7 +1557,7 @@ function BaguaPlantaContent() {
                 onChange={e=>{const v=Number(e.target.value); setMetragemReal(v); metragemRef.current=v}}
                 style={{width:'100%',padding:'10px 14px',borderRadius:'8px',border:'2px solid #D1D5DB',fontSize:'16px',boxSizing:'border-box',textAlign:'center'}}
               />
-              <p style={{color:'#9CA3AF',fontSize:'10px',marginTop:'4px',textAlign:'center'}}>
+              <p style={{color:'#9CA3AF',fontSize:'12px',marginTop:'4px',textAlign:'center'}}>
                 Área construída total conforme planta baixa
               </p>
             </div>
@@ -1539,7 +1573,7 @@ function BaguaPlantaContent() {
               </button>
             </div>
             {metragemReal<=0&&(
-              <p style={{color:'#D97706',fontSize:'10px',textAlign:'center',marginTop:'8px'}}>
+              <p style={{color:'#8A6E2F',fontSize:'12px',textAlign:'center',marginTop:'8px'}}>
                 Informe a metragem para continuar
               </p>
             )}
@@ -1553,28 +1587,28 @@ function BaguaPlantaContent() {
 
               {/* Instrução contextual acima do canvas */}
               {step==='configurar'&&(
-                <div style={{marginBottom:'10px',padding:'14px 16px',background:'#FFFBEB',borderLeft:'4px solid #F59E0B',borderRadius:'8px',color:'#92400E',fontSize:'14px',fontWeight:600}}>
+                <div style={{marginBottom:'10px',padding:'14px 16px',background:'#FAF3E0',borderLeft:'4px solid #C9A227',borderRadius:'8px',color:'#8A6E2F',fontSize:'14px',fontWeight:600}}>
                   <div style={{marginBottom:'10px'}}>
                     🔄 Ajuste a rotação para que a <strong>porta fique na base</strong> da imagem (↓), depois clique em Continuar
                   </div>
                   <div style={{display:'flex',justifyContent:'center'}}>
-                    <div style={{width:'90px',height:'110px',border:'2px solid #D97706',borderRadius:'6px',position:'relative',background:'#FEF3C7',display:'flex',alignItems:'flex-end',justifyContent:'center',paddingBottom:'4px'}}>
-                      <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50)',fontSize:'10px',color:'#92400E',fontWeight:700}}>Planta</div>
+                    <div style={{width:'90px',height:'110px',border:'2px solid #8A6E2F',borderRadius:'6px',position:'relative',background:'#FAF3E0',display:'flex',alignItems:'flex-end',justifyContent:'center',paddingBottom:'4px'}}>
+                      <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50)',fontSize:'12px',color:'#8A6E2F',fontWeight:700}}>Planta</div>
                       <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0px'}}>
-                        <span style={{fontSize:'18px',lineHeight:1,color:'#D97706'}}>↓</span>
-                        <span style={{fontSize:'9px',fontWeight:700,color:'#B45309'}}>Porta aqui</span>
+                        <span style={{fontSize:'18px',lineHeight:1,color:'#8A6E2F'}}>↓</span>
+                        <span style={{fontSize:'9px',fontWeight:700,color:'#8A6E2F'}}>Porta aqui</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
               {step==='entrada'&&(
-                <div style={{marginBottom:'8px',padding:'7px 10px',background:'#EFF6FF',borderRadius:'6px',color:'#1D4ED8',fontSize:'12px'}}>
+                <div style={{marginBottom:'8px',padding:'7px 10px',background:'#F0F6F3',borderRadius:'6px',color:'#2E7D6B',fontSize:'12px'}}>
                   🖱️ <strong>Clique na planta</strong> onde fica a entrada principal
                 </div>
               )}
               {step==='resultado'&&(
-                <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#0369A1',fontSize:'11px'}}>
+                <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#245F52',fontSize:'13px'}}>
                   💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong> (guá <strong>{guaDaPorta(lado)}</strong>)</>} · Clique num setor para avaliar
                 </div>
               )}
@@ -1582,13 +1616,13 @@ function BaguaPlantaContent() {
               {/* ── Modelo de pontuação (escolha do consultor) ── */}
               {step==='resultado'&&(
                 <div style={{marginBottom:'7px',padding:'8px 10px',background:'#FAFAF9',borderRadius:'6px',border:'1px solid #E5E7EB'}}>
-                  <label style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'6px'}}>
+                  <label style={{display:'block',color:'#374151',fontSize:'13px',fontWeight:'bold',marginBottom:'6px'}}>
                     📐 Modelo de pontuação
                   </label>
                   <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
                     {Object.values(MODELOS).map(m=>(
                       <button type="button" key={m.id} onClick={()=>setModeloPontuacao(m.id)} title={m.descricao} style={{
-                        padding:'5px 9px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                        padding:'5px 9px',borderRadius:'5px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
                         borderColor:modeloPontuacao===m.id?'#2E7D6B':'#D1D5DB',
                         background:modeloPontuacao===m.id?'#E6F2EF':'#fff',
                         color:modeloPontuacao===m.id?'#2E7D6B':'#6B7280',
@@ -1620,7 +1654,7 @@ function BaguaPlantaContent() {
               {step==='resultado'&&bounds&&(
                 <div style={{marginBottom:'8px',padding:'8px 10px',background:'#EEF6F3',borderRadius:'6px',border:'1px solid #CFE6E0'}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',flexWrap:'wrap'}}>
-                    <span style={{fontSize:'11px',color:'#1D4D43',fontWeight:600}}>
+                    <span style={{fontSize:'13px',color:'#1D4D43',fontWeight:600}}>
                       🔷 Tai Ji real (contorno do imóvel) — avançado, opcional
                     </span>
                     <button
@@ -1638,7 +1672,7 @@ function BaguaPlantaContent() {
                         if(editandoPoligono) salvarRascunho()
                         setEditandoPoligono(v=>!v)
                       }}
-                      style={{padding:'4px 10px',fontSize:'11px',fontWeight:'bold',background:editandoPoligono?'#2E7D6B':'#fff',color:editandoPoligono?'#fff':'#2E7D6B',border:'1px solid #2E7D6B',borderRadius:'6px',cursor:'pointer'}}
+                      style={{padding:'4px 10px',fontSize:'13px',fontWeight:'bold',background:editandoPoligono?'#2E7D6B':'#fff',color:editandoPoligono?'#fff':'#2E7D6B',border:'1px solid #2E7D6B',borderRadius:'6px',cursor:'pointer'}}
                     >
                       {editandoPoligono?'✓ Concluir edição':(poligonoTaiJi?'✏️ Editar contorno':'✏️ Desenhar contorno real')}
                     </button>
@@ -1652,15 +1686,15 @@ function BaguaPlantaContent() {
                     const ausentes=setoresAusentes(pontosResumo)
                     const extensoes=setoresExtensao(pontosResumo)
                     if(!poligonoTaiJi) return (
-                      <p style={{margin:'6px 0 0',fontSize:'11px',color:'#245F52'}}>
+                      <p style={{margin:'6px 0 0',fontSize:'13px',color:'#245F52'}}>
                         Ainda usando o retângulo das bordas como contorno (sem ganho sobre o bounding box). Desenhe o contorno real para detectar setor ausente/extensão.
                       </p>
                     )
                     return (
-                      <div style={{margin:'6px 0 0',fontSize:'11px',color:'#245F52'}}>
-                        {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#DC2626',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
-                        {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#DC2626'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
-                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#D97706'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
+                      <div style={{margin:'6px 0 0',fontSize:'13px',color:'#245F52'}}>
+                        {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#B4533A',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
+                        {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#B4533A'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
+                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#8A6E2F'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
                         {ausentes.length===0&&extensoes.length===0&&<p style={{margin:0}}>Contorno regular — sem setor ausente ou extensão detectados.</p>}
                       </div>
                     )
@@ -1738,19 +1772,19 @@ function BaguaPlantaContent() {
                               flex:1,padding:'7px 4px',borderRadius:'7px',border:'2px solid',fontSize:'12px',fontWeight:'bold',
                               cursor:m.disponivel?'pointer':'not-allowed',opacity:m.disponivel?1:0.4,
                               borderColor:escola===m.id?'#2E7D6B':'#D1D5DB',background:escola===m.id?'#E6F2EF':'#fff',color:escola===m.id?'#2E7D6B':'#6B7280',
-                            }}>{m.icone} {m.nomeCurto}<br/><span style={{fontWeight:'normal',fontSize:'10px'}}>{m.descricaoCurta}</span></button>
+                            }}>{m.icone} {m.nomeCurto}<br/><span style={{fontWeight:'normal',fontSize:'12px'}}>{m.descricaoCurta}</span></button>
                         ))}
                       </div>
                       {escola==='bussola'&&(
                         <div style={{marginTop:'8px',padding:'8px',background:'#EEF6F3',borderRadius:'6px',border:'1px solid #CFE6E0'}}>
-                          <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',marginBottom:'5px'}}>
+                          <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'13px',fontWeight:'bold',marginBottom:'5px'}}>
                             🧭 Fachada voltada para <span style={{color:'#2E7D6B'}}>{orientacaoGraus.toFixed(1)}°</span>
                             {' '}<span style={{fontWeight:'normal',color:'#6B7280'}}>(Norte {rotuloReferencia(orientacaoReferencia)})</span>
                           </label>
                           <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
                             {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
                               <button type="button" key={lbl} onClick={()=>setOrientacaoGraus(g as number)} style={{
-                                padding:'3px 7px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                                padding:'3px 7px',borderRadius:'5px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
                                 borderColor:orientacaoGraus===g?'#2E7D6B':'#D1D5DB',background:orientacaoGraus===g?'#2E7D6B':'#fff',color:orientacaoGraus===g?'#fff':'#6B7280',
                               }}>{lbl}</button>
                             ))}
@@ -1770,8 +1804,8 @@ function BaguaPlantaContent() {
                               <input id="input-orientacao" type="number" min={0} max={359.9} step={0.1}
                                 value={arredondarGrau(orientacaoGraus)}
                                 onChange={e=>setOrientacaoGraus(normalizarGraus(Number(e.target.value)||0))}
-                                style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
-                              <p style={{margin:'4px 0 0',fontSize:'10px',color:'#6B7280'}}>
+                                style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
+                              <p style={{margin:'4px 0 0',fontSize:'12px',color:'#6B7280'}}>
                                 Direção que a porta/fachada principal encara. Arraste a agulha na bússola ou digite o grau.
                               </p>
                             </div>
@@ -1780,44 +1814,44 @@ function BaguaPlantaContent() {
                           {/* Referência de Norte + declinação — sem isto o grau acima é ambíguo
                               (Luo Pan lê magnético; o Modo C deriva verdadeiro do satélite). */}
                           <div style={{marginTop:'7px',padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
-                            <span style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                            <span style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
                               Referência de Norte desta leitura
                             </span>
                             <div style={{display:'flex',gap:'4px',marginBottom:'5px'}}>
                               {([['magnetico','Magnético (Luo Pan)'],['verdadeiro','Verdadeiro (mapa)']] as [ReferenciaNorte,string][]).map(([id,lbl])=>(
                                 <button key={id} type="button" onClick={()=>setOrientacaoReferencia(id)} style={{
-                                  flex:1,padding:'4px 2px',fontSize:'10px',fontWeight:'bold',borderRadius:'5px',cursor:'pointer',border:'1px solid',
+                                  flex:1,padding:'4px 2px',fontSize:'12px',fontWeight:'bold',borderRadius:'5px',cursor:'pointer',border:'1px solid',
                                   borderColor:orientacaoReferencia===id?'#2E7D6B':'#D1D5DB',
                                   background:orientacaoReferencia===id?'#E6F2EF':'#fff',
                                   color:orientacaoReferencia===id?'#2E7D6B':'#6B7280',
                                 }}>{lbl}</button>
                               ))}
                             </div>
-                            <label htmlFor="input-declinacao" style={{display:'block',fontSize:'10px',color:'#374151',marginBottom:'3px'}}>
+                            <label htmlFor="input-declinacao" style={{display:'block',fontSize:'12px',color:'#374151',marginBottom:'3px'}}>
                               Declinação magnética do local <span style={{color:'#6B7280'}}>(graus, Leste positivo — no Brasil é negativa)</span>
                             </label>
                             <div style={{display:'flex',gap:'5px',alignItems:'center',flexWrap:'wrap'}}>
                               <input id="input-declinacao" type="number" step={0.1} value={declinacao} placeholder="ex.: -21.5"
                                 onChange={e=>{setDeclinacao(e.target.value);setDeclinacaoAuto(null)}}
-                                style={{width:'80px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                                style={{width:'80px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
                               <button type="button" onClick={calcularDeclinacaoAqui} disabled={declinacaoCarregando}
-                                style={{padding:'4px 9px',border:'1px solid #2E7D6B',borderRadius:'5px',fontSize:'10px',
+                                style={{padding:'4px 9px',border:'1px solid #2E7D6B',borderRadius:'5px',fontSize:'12px',
                                   background:'#E6F2EF',color:'#2E7D6B',fontWeight:'bold',
                                   cursor:declinacaoCarregando?'wait':'pointer'}}>
                                 {declinacaoCarregando?'Calculando…':'📍 Calcular pela minha localização'}
                               </button>
                               <a href={URL_CALCULADORA_DECLINACAO} target="_blank" rel="noopener noreferrer"
-                                style={{fontSize:'10px',color:'#2E7D6B',fontWeight:'bold'}}>
+                                style={{fontSize:'12px',color:'#2E7D6B',fontWeight:'bold'}}>
                                 Calculadora oficial (NOAA) ↗
                               </a>
                             </div>
                             {declinacaoErro&&(
-                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#DC2626'}}>{declinacaoErro}</p>
+                              <p style={{margin:'5px 0 0',fontSize:'12px',color:'#B4533A'}}>{declinacaoErro}</p>
                             )}
                             {declinacaoAuto&&(
                               // Declarar o modelo e sua validade: o consultor precisa saber
                               // de onde veio o número, e que ele expira.
-                              <p style={{margin:'5px 0 0',fontSize:'10px',color:'#15803D'}}>
+                              <p style={{margin:'5px 0 0',fontSize:'12px',color:'#2E7D6B'}}>
                                 Calculado por <strong>{declinacaoAuto.modelo}</strong> (NOAA/NGDC) para a sua posição
                                 {declinacaoAuto.validoAte&&<> · modelo válido até {new Date(declinacaoAuto.validoAte).toLocaleDateString('pt-BR')}</>}.
                                 Confira contra o endereço do imóvel se você não estiver nele.
@@ -1826,13 +1860,13 @@ function BaguaPlantaContent() {
                             {(()=>{
                               const bruto=declinacao.trim()
                               if(bruto==='') return (
-                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#92400E'}}>
+                                <p style={{margin:'5px 0 0',fontSize:'12px',color:'#8A6E2F'}}>
                                   Sem a declinação não é possível converter entre magnético e verdadeiro. A carta usa o grau exatamente como informado acima.
                                 </p>
                               )
                               const valor=Number(bruto)
                               if(!declinacaoPlausivel(valor)) return (
-                                <p style={{margin:'5px 0 0',fontSize:'10px',color:'#DC2626',fontWeight:'bold'}}>
+                                <p style={{margin:'5px 0 0',fontSize:'12px',color:'#B4533A',fontWeight:'bold'}}>
                                   Declinação fora da faixa plausível (−60° a 60°) — confira o valor. Não será usada na conversão.
                                 </p>
                               )
@@ -1842,17 +1876,17 @@ function BaguaPlantaContent() {
                               const mConv=montanhaDoGrau(convertida.graus)
                               const mAtual=montanhaDoGrau(orientacaoGraus)
                               return (
-                                <div style={{margin:'5px 0 0',fontSize:'10px',color:'#374151'}}>
+                                <div style={{margin:'5px 0 0',fontSize:'12px',color:'#374151'}}>
                                   <p style={{margin:0}}>
                                     Equivale a <strong>{convertida.graus.toFixed(1)}°</strong> em Norte {rotuloReferencia(destino)} — Montanha <strong>{mConv.pinyin} {mConv.nome}</strong> ({mConv.setor}).
                                   </p>
                                   {mConv.numero!==mAtual.numero&&(
-                                    <p style={{margin:'3px 0 0',color:'#D97706',fontWeight:'bold'}}>
+                                    <p style={{margin:'3px 0 0',color:'#8A6E2F',fontWeight:'bold'}}>
                                       ⚠ As duas referências caem em Montanhas diferentes ({mAtual.pinyin} vs {mConv.pinyin}). Confirme qual referência sua medição usou antes de fechar a carta.
                                     </p>
                                   )}
                                   <button type="button" onClick={()=>{setOrientacaoGraus(convertida.graus);setOrientacaoReferencia(destino)}}
-                                    style={{marginTop:'4px',padding:'3px 9px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
+                                    style={{marginTop:'4px',padding:'3px 9px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                                     Converter para Norte {rotuloReferencia(destino)}
                                   </button>
                                 </div>
@@ -1862,13 +1896,13 @@ function BaguaPlantaContent() {
                           {(()=>{
                             const m=montanhaDoGrau(orientacaoGraus)
                             return (
-                              <p style={{margin:'4px 0 0',fontSize:'10px',color:'#245F52'}}>
+                              <p style={{margin:'4px 0 0',fontSize:'12px',color:'#245F52'}}>
                                 Montanha <strong>{m.pinyin} {m.nome}</strong> ({m.setor} · Yuan Long {NOME_YUAN_LONG[m.yuanLong]} · {m.polaridade==='yang'?'Yang':'Yin'})
                               </p>
                             )
                           })()}
                           <button type="button" onClick={()=>setLeiturasAbertas(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline'}}>
                             {leiturasAbertas?'▾':'▸'} Assistente de 3 leituras (bússola/Luo Pan físico)
                           </button>
                           {leiturasAbertas&&(()=>{
@@ -1877,22 +1911,22 @@ function BaguaPlantaContent() {
                             const desvio=numeros.length===3?desvioCircular(numeros):null
                             return (
                               <div style={{marginTop:'6px',padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
-                                <p style={{margin:'0 0 5px',fontSize:'10px',color:'#6B7280'}}>Informe 3 leituras feitas em pontos distintos da fachada com a bússola/Luo Pan.</p>
+                                <p style={{margin:'0 0 5px',fontSize:'12px',color:'#6B7280'}}>Informe 3 leituras feitas em pontos distintos da fachada com a bússola/Luo Pan.</p>
                                 <div style={{display:'flex',gap:'5px'}}>
                                   {leituras.map((l,i)=>(
                                     <input key={i} type="number" min={0} max={359.9} step={0.1} value={l} placeholder={`Leitura ${i+1}`}
                                       onChange={e=>setLeituras(prev=>{const next=[...prev] as [string,string,string]; next[i]=e.target.value; return next})}
-                                      style={{width:'62px',padding:'4px 6px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                                      style={{width:'62px',padding:'4px 6px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
                                   ))}
                                 </div>
                                 {media!==null&&desvio!==null&&(
                                   <div style={{marginTop:'6px'}}>
-                                    <p style={{margin:0,fontSize:'10px',color:desvio>DESVIO_ALERTA_GRAUS?'#DC2626':'#15803D'}}>
+                                    <p style={{margin:0,fontSize:'12px',color:desvio>DESVIO_ALERTA_GRAUS?'#B4533A':'#2E7D6B'}}>
                                       Média circular: <strong>{media.toFixed(1)}°</strong> · desvio: <strong>{desvio.toFixed(1)}°</strong>
                                       {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
                                     </p>
                                     <button type="button" onClick={()=>setOrientacaoGraus(arredondarGrau(media))}
-                                      style={{marginTop:'4px',padding:'4px 10px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'10px',fontWeight:'bold',cursor:'pointer'}}>
+                                      style={{marginTop:'4px',padding:'4px 10px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                                       Usar esta média
                                     </button>
                                   </div>
@@ -1901,7 +1935,7 @@ function BaguaPlantaContent() {
                             )
                           })()}
                           <button type="button" onClick={()=>setBussolaVirtualAberta(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {bussolaVirtualAberta?'▾':'▸'} Bússola virtual (sensor do celular, experimental)
                           </button>
                           {/* Magnetômetro do dispositivo lê Norte MAGNÉTICO, como o Luo Pan. */}
@@ -1909,7 +1943,7 @@ function BaguaPlantaContent() {
                             <BussolaDispositivo onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('magnetico');setBussolaVirtualAberta(false)}}/>
                           )}
                           <button type="button" onClick={()=>setMapaAberto(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {mapaAberto?'▾':'▸'} Alinhar sobre mapa/satélite (Modo C)
                           </button>
                           {/* O mapa (Web Mercator) deriva Norte VERDADEIRO — daí a referência ser marcada aqui. */}
@@ -1917,7 +1951,7 @@ function BaguaPlantaContent() {
                             <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('verdadeiro');setMapaAberto(false)}}/>
                           )}
                           <button type="button" onClick={()=>setFacingAberto(v=>!v)}
-                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'10px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
+                            style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {facingAberto?'▾':'▸'} Qual face é a fachada? (questionário de facing)
                           </button>
                           {/* Não mexe na referência de Norte: o questionário decide QUAL face é a frente,
@@ -1926,12 +1960,30 @@ function BaguaPlantaContent() {
                           {facingAberto&&(
                             <QuestionarioFacing onAceitar={g=>{setOrientacaoGraus(g);setFacingAberto(false)}}/>
                           )}
-                          <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
-                            📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
+                          <label htmlFor="input-ano-construcao" style={{display:'block',color:'#374151',fontSize:'13px',fontWeight:'bold',margin:'8px 0 5px'}}>
+                            📅 Idade do imóvel <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
                           </label>
-                          <input id="input-data-construcao" type="date" value={dataConstrucao}
-                            onChange={e=>setDataConstrucao(e.target.value)}
-                            style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                            <div>
+                              <label htmlFor="input-ano-construcao" style={{display:'block',color:'#6B7280',fontSize:'12px',marginBottom:'3px'}}>Ano de construção</label>
+                              <input id="input-ano-construcao" type="number" inputMode="numeric"
+                                min={ANO_MINIMO_CONSTRUCAO} max={ANO_MAXIMO_CONSTRUCAO}
+                                value={anoConstrucao} onChange={e=>setAnoConstrucao(e.target.value)} placeholder="1998"
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px',width:'82px'}}/>
+                            </div>
+                            <div>
+                              <label htmlFor="input-ano-reforma" style={{display:'block',color:'#6B7280',fontSize:'12px',marginBottom:'3px'}}>Reforma estrutural</label>
+                              <input id="input-ano-reforma" type="number" inputMode="numeric"
+                                min={ANO_MINIMO_CONSTRUCAO} max={ANO_MAXIMO_CONSTRUCAO}
+                                value={anoReforma} onChange={e=>setAnoReforma(e.target.value)} placeholder="2015"
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px',width:'82px'}}/>
+                            </div>
+                          </div>
+                          {reformaIncoerente({anoConstrucao:anoParaBanco(anoConstrucao),anoReformaEstrutural:anoParaBanco(anoReforma)})&&(
+                            <p style={{fontSize:'12px',color:'#B4533A',margin:'5px 0 0'}}>
+                              Reforma anterior à construção — os campos podem estar trocados. O período segue a construção.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1947,7 +1999,7 @@ function BaguaPlantaContent() {
                       <div style={{display:'flex',gap:'4px'}}>
                         {[0,90,180,270].map(r=>(
                           <button type="button" key={r} onClick={()=>setRot(r)} style={{
-                            flex:1,padding:'3px 0',fontSize:'11px',border:'1px solid',borderRadius:'4px',cursor:'pointer',
+                            flex:1,padding:'3px 0',fontSize:'13px',border:'1px solid',borderRadius:'4px',cursor:'pointer',
                             borderColor:rot===r?'#2E7D6B':'#D1D5DB',background:rot===r?'#E6F2EF':'#fff',color:rot===r?'#2E7D6B':'#6B7280',
                           }}>{r}°</button>
                         ))}
@@ -1969,7 +2021,7 @@ function BaguaPlantaContent() {
                     ← Voltar
                   </button>
                   {entrada&&(
-                    <div style={{padding:'5px 11px',background:'#F0FDF4',borderRadius:'6px',color:'#15803D',fontSize:'12px'}}>
+                    <div style={{padding:'5px 11px',background:'#F0F6F3',borderRadius:'6px',color:'#2E7D6B',fontSize:'12px'}}>
                       ✅ Entrada: <strong>{lado}</strong> — a porta cai no guá <strong>{guaDaPorta(lado)}</strong>
                     </div>
                   )}
@@ -1984,7 +2036,7 @@ function BaguaPlantaContent() {
 
               {/* Instrução explicativa (resultado) — accordion */}
               {step==='resultado'&&(
-                <div style={{marginTop:'10px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:'10px',overflow:'hidden'}}>
+                <div style={{marginTop:'10px',background:'#F0F6F3',border:'1px solid #DCEAE4',borderRadius:'10px',overflow:'hidden'}}>
                   <button type="button" onClick={()=>setInstrucaoAberta(!instrucaoAberta)} style={{
                     width:'100%',padding:'12px 18px',background:'transparent',border:'none',cursor:'pointer',
                     display:'flex',alignItems:'center',justifyContent:'space-between'
@@ -1998,31 +2050,31 @@ function BaguaPlantaContent() {
                         <span style={{fontSize:'20px',flexShrink:0}}>ℹ️</span>
                         <div>
                           <div style={{fontWeight:'bold',color:'#0E1B2C',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
-                          <p style={{color:'#374151',fontSize:'11px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
+                          <p style={{color:'#374151',fontSize:'13px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
                             A análise automática considera o retângulo envolvente detectado na imagem. Para resultados precisos:
                           </p>
-                          <ol style={{color:'#374151',fontSize:'11px',lineHeight:'1.7',margin:'0 0 10px 0',paddingLeft:'16px'}}>
+                          <ol style={{color:'#374151',fontSize:'13px',lineHeight:'1.7',margin:'0 0 10px 0',paddingLeft:'16px'}}>
                             <li>Clique em <strong>&quot;Bordas&quot;</strong>.</li>
                             <li>Arraste as alças nos 4 lados até coincidir com as <strong>paredes externas</strong> da área construída — ignore jardins, pátios e calçadas.</li>
                             <li>Clique em <strong>&quot;Recalcular&quot;</strong>.</li>
                           </ol>
-                          <div style={{fontWeight:'bold',color:'#92400E',fontSize:'11px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
-                          <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',color:'#374151',lineHeight:'1.5'}}>
-                            <div style={{padding:'6px 8px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
-                              <strong style={{color:'#DC2626'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
+                          <div style={{fontWeight:'bold',color:'#8A6E2F',fontSize:'13px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
+                          <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'12px',color:'#374151',lineHeight:'1.5'}}>
+                            <div style={{padding:'6px 8px',background:'#FAEEE9',borderRadius:'5px',borderLeft:'3px solid #B4533A'}}>
+                              <strong style={{color:'#B4533A'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
                             </div>
-                            <div style={{padding:'6px 8px',background:'#FFF7ED',borderRadius:'5px',borderLeft:'3px solid #EA580C'}}>
-                              <strong style={{color:'#EA580C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
+                            <div style={{padding:'6px 8px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #A9613C'}}>
+                              <strong style={{color:'#A9613C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
                             </div>
-                            <div style={{padding:'6px 8px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
-                              <strong style={{color:'#15803D'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
+                            <div style={{padding:'6px 8px',background:'#F0F6F3',borderRadius:'5px',borderLeft:'3px solid #2E7D6B'}}>
+                              <strong style={{color:'#2E7D6B'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
                             </div>
                           </div>
-                          <p style={{color:'#6B7280',fontSize:'10px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
+                          <p style={{color:'#6B7280',fontSize:'12px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
                         </div>
                       </div>
                       <button type="button" onClick={()=>{setInstrucaoAberta(false);setModo('bordas')}} style={{
-                        width:'100%',padding:'10px',background:'#1D4ED8',color:'#fff',border:'none',
+                        width:'100%',padding:'10px',background:'#2E7D6B',color:'#fff',border:'none',
                         borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
                       }}>Entendido — ajustar bordas</button>
                     </div>
@@ -2035,50 +2087,50 @@ function BaguaPlantaContent() {
                 <>
                   <div style={{marginTop:'9px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
                     <button type="button" onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
-                      style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:modo==='bordas'?'#B4533A':'#8A6E2F',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='bordas'?'🔒 Finalizar':'⬜ Bordas'}
                     </button>
                     <button type="button" onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
-                      style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:modo==='marcarFalta'?'#B4533A':'#B4533A',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarFalta'?'🔒 Finalizar':'▭ Marcar Falta'}
                     </button>
                     <button type="button" onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
-                      style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:modo==='marcarExcesso'?'#B4533A':'#C9A227',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Marcar Excesso'}
                     </button>
                     <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
-                      style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                      style={{background:recalculoPendente?'#A9613C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                         animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                       🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
                     <button type="button" onClick={()=>setFullscreen(true)}
-                      style={{background:'#15803D',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
+                      style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       🔍 Tela cheia
                     </button>
                     <button type="button" onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null);setMarcacoes([])}}
-                      style={{background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>
+                      style={{background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',cursor:'pointer'}}>
                       ↩ Nova planta
                     </button>
                   </div>
-                  {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
-                  {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF2F2',borderRadius:'5px',color:'#DC2626',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
-                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FFF7ED',borderRadius:'5px',color:'#EA580C',fontSize:'10px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
+                  {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#8A6E2F',fontSize:'12px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
+                  {modo==='marcarFalta'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAEEE9',borderRadius:'5px',color:'#B4533A',fontSize:'12px'}}>Clique e arraste na planta para marcar uma área de FALTA (vazio interno)</div>}
+                  {modo==='marcarExcesso'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#A9613C',fontSize:'12px'}}>Clique e arraste na planta para marcar uma área de EXCESSO (construção além das bordas)</div>}
                   {msg&&(()=>{
                     const isError=msgTipo==='erro'
-                    return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FEF2F2':'#F0FDF4',borderRadius:'5px',color:isError?'#DC2626':'#15803D',fontSize:'11px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
+                    return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FAEEE9':'#F0F6F3',borderRadius:'5px',color:isError?'#B4533A':'#2E7D6B',fontSize:'13px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
                   })()}
-                  {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0FDF4',borderRadius:'5px',color:'#15803D',fontSize:'10px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
-                  {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FEF3C7',borderRadius:'5px',color:'#92400E',fontSize:'10px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
+                  {ultimoRecalculo&&!bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#F0F6F3',borderRadius:'5px',color:'#2E7D6B',fontSize:'12px'}}>✓ Atualizado às {ultimoRecalculo}</div>}
+                  {bordaModificada&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#8A6E2F',fontSize:'12px'}}>⚠ Bordas alteradas — clique em &quot;Recalcular&quot; para atualizar os valores</div>}
 
                   {/* Kua da Casa (Oito Mansões) — só na Escola da Bússola, que tem orientação real */}
                   {escola==='bussola'&&(()=>{
                     const casa=calcularKuaDaCasa(orientacaoGraus)
                     return (
                       <div style={{marginTop:'12px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
-                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#245F52',marginBottom:'4px'}}>
+                        <div style={{fontSize:'13px',fontWeight:'bold',color:'#245F52',marginBottom:'4px'}}>
                           🏠 Kua da Casa: {casa.kua} · Grupo {casa.grupo==='leste'?'Leste':'Oeste'}
                         </div>
-                        <div style={{fontSize:'10px',color:'#4C1D95'}}>
+                        <div style={{fontSize:'12px',color:'#4C1D95'}}>
                           Prosperidade <strong>{casa.direcoes.shengChi}</strong> · Saúde <strong>{casa.direcoes.tienYi}</strong> · Relacionamentos <strong>{casa.direcoes.yenNien}</strong> · Estabilidade <strong>{casa.direcoes.fuWei}</strong>
                         </div>
                       </div>
@@ -2086,9 +2138,10 @@ function BaguaPlantaContent() {
                   })()}
 
                   {/* Estrelas Voadoras — só na Bússola com data de construção informada */}
-                  {escola==='bussola'&&dataConstrucao&&(()=>{
-                    const periodo=periodoDaConstrucao(dataConstrucao)
-                    const mapa=periodo?calcularEstrelasVoadoras({facingGraus:orientacaoGraus,periodo}):null
+                  {escola==='bussola'&&(()=>{
+                    const doImovel=periodoDoImovel({anoConstrucao:anoParaBanco(anoConstrucao),anoReformaEstrutural:anoParaBanco(anoReforma)})
+                    if(!doImovel) return null
+                    const mapa=calcularEstrelasVoadoras({facingGraus:orientacaoGraus,periodo:doImovel.periodo})
                     if(!mapa) return null
                     const porPalacio=Object.fromEntries(mapa.palacios.map(p=>[p.palacio,p]))
                     const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
@@ -2096,12 +2149,26 @@ function BaguaPlantaContent() {
                     const gradeAnual=anoSolarAtual!=null?calcularGradeAnual(anoSolarAtual):null
                     const liuFa=zhengShenLingShen(mapa.periodo)
                     return (
-                      <div style={{marginTop:'10px',padding:'9px',background:'#FFFBEB',borderRadius:'7px',border:'1px solid #FDE68A'}}>
-                        <div style={{fontSize:'11px',fontWeight:'bold',color:'#92400E',marginBottom:'6px'}}>
+                      <div style={{marginTop:'10px',padding:'9px',background:'#FAF3E0',borderRadius:'7px',border:'1px solid #EEDFB4'}}>
+                        <div style={{fontSize:'13px',fontWeight:'bold',color:'#8A6E2F',marginBottom:'6px'}}>
                           ⭐ Estrelas Voadoras — Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
                         </div>
+                        <div style={{fontSize:'12px',color:'#8A6E2F',marginBottom:'6px'}}>
+                          Período {mapa.periodo} ({faixaDoPeriodo(doImovel.anoUsado).inicio}–{faixaDoPeriodo(doImovel.anoUsado).fim}),
+                          {doImovel.daReforma?' pela reforma estrutural de ':' pela construção de '}{doImovel.anoUsado}.
+                        </div>
+                        {/* A virada do período é o Li Chun (~4/fev), não 1º de janeiro:
+                            o ano sozinho não decide, e decidir em silêncio trocaria a
+                            carta inteira. */}
+                        {doImovel.ambiguo&&(
+                          <div style={{fontSize:'12px',color:'#B4533A',background:'#FAEEE9',border:'1px solid #EBD3C7',borderRadius:'5px',padding:'5px 7px',marginBottom:'6px'}}>
+                            {doImovel.anoUsado} é ano de virada de período. Se a obra foi concluída
+                            antes de 4 de fevereiro, a carta correta é a do Período {doImovel.periodoAnterior} —
+                            confirme o mês antes de usar este mapa.
+                          </div>
+                        )}
                         {liuFa&&(
-                          <div style={{fontSize:'10px',color:'#92400E',marginBottom:'6px'}}>
+                          <div style={{fontSize:'12px',color:'#8A6E2F',marginBottom:'6px'}}>
                             Zheng Shen (busque solidez): <strong>{NOME_SETOR[liuFa.zhengShen]}</strong> · Ling Shen (busque água/vazio): <strong>{NOME_SETOR[liuFa.lingShen]}</strong>
                           </div>
                         )}
@@ -2109,31 +2176,50 @@ function BaguaPlantaContent() {
                           {linhas.flat().map(p=>{
                             const est=porPalacio[p]
                             return (
-                              <div key={p} title={`Período: ${nomeElementoDoNumero(est.periodo)}`} style={{background:'#fff',border:'1px solid #FDE68A',borderRadius:'4px',padding:'4px',textAlign:'center'}}>
-                                <div style={{fontSize:'8px',color:'#B45309'}}>{est.montanha}</div>
-                                <div style={{fontSize:'12px',fontWeight:'bold',color:'#78350F'}}>{est.periodo}</div>
-                                <div style={{fontSize:'8px',color:'#B45309'}}>{est.fachada}</div>
-                                {gradeAnual&&<div style={{fontSize:'8px',color:'#0369A1',marginTop:'1px'}}>Ano {gradeAnual[p]}</div>}
-                                {est.temEstrela5&&<div style={{fontSize:'7px',color:'#DC2626'}}>⚠5</div>}
+                              <div key={p} title={`Período: ${nomeElementoDoNumero(est.periodo)}`} style={{background:'#fff',border:'1px solid #EEDFB4',borderRadius:'4px',padding:'4px',textAlign:'center'}}>
+                                <div style={{fontSize:'8px',color:'#8A6E2F'}}>{est.montanha}</div>
+                                <div style={{fontSize:'12px',fontWeight:'bold',color:'#6B5424'}}>{est.periodo}</div>
+                                <div style={{fontSize:'8px',color:'#8A6E2F'}}>{est.fachada}</div>
+                                {gradeAnual&&<div style={{fontSize:'8px',color:'#245F52',marginTop:'1px'}}>Ano {gradeAnual[p]}</div>}
+                                {est.temEstrela5&&<div style={{fontSize:'7px',color:'#B4533A'}}>⚠5</div>}
                               </div>
                             )
                           })}
                         </div>
-                        <p style={{margin:'6px 0 0',fontSize:'9px',color:'#92400E'}}>
-                          Montanha / Período / Fachada, e (em azul) a Estrela Anual do ano corrente. Base do método
-                          (San Yuan Xuan Kong) — não inclui estrela de substituição para fachadas de borda, sobreposição
-                          mensal, timeline de anos passados/futuros nem teoria de combinações.
-                          Recomendado validar com um consultor formado em Xuan Kong antes de uso com clientes.
+                        <p style={{margin:'6px 0 0',fontSize:'12px',color:'#8A6E2F'}}>
+                          Montanha / Período / Fachada, e a Estrela Anual do ano corrente.
                         </p>
+                        {/* Caixa, não rodapé de 9px: a ressalva limita o que a carta
+                            afirma, e limitação em corpo ilegível não limita nada. */}
+                        <div style={{marginTop:'8px',padding:'11px',background:'#FFFDF6',borderRadius:'8px',border:'1px solid #EEDFB4'}}>
+                          <p style={{margin:0,fontSize:'12px',color:'#6B5220',lineHeight:1.55}}>{RESSALVA_XUAN_KONG}</p>
+                        </div>
                       </div>
                     )
                   })()}
+
+                  {/* O que o diagnóstico já sustenta — e o que falta para o
+                      resto. Ver src/lib/sustentacao-do-diagnostico.ts. */}
+                  <div style={{marginTop:'10px',padding:'13px',background:'#fff',borderRadius:'10px',border:'1px solid #E7E1D6'}}>
+                    <SustentacaoDoDiagnostico
+                      mostrarRessalva={false}
+                      dados={{
+                        orientacaoGraus,
+                        setoresComScore: setores.filter(sc => sc.criterios.some(c => c !== null)).length,
+                        anoDoImovel: anoParaBanco(anoConstrucao) ?? anoParaBanco(anoReforma),
+                        nascimentoDoCliente: clienteDaConsulta?.data_nascimento ?? null,
+                        generoDoCliente: clienteDaConsulta?.genero ?? null,
+                        temPoligonoTaiJi: !!poligonoTaiJi,
+                        escola,
+                      }}
+                    />
+                  </div>
 
                   {/* Posicionamento de Mobiliário (Ba Zhai) — calculadora "sentar no mal, olhar para o bem" */}
                   {escola==='bussola'&&(
                     <div style={{marginTop:'10px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
                       <button type="button" onClick={()=>setMobiliarioAberto(v=>!v)}
-                        style={{background:'none',border:'none',padding:0,color:'#245F52',fontSize:'11px',fontWeight:'bold',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                        style={{background:'none',border:'none',padding:0,color:'#245F52',fontSize:'13px',fontWeight:'bold',cursor:'pointer',textAlign:'left',width:'100%'}}>
                         {mobiliarioAberto?'▾':'▸'} 🛋️ Posicionamento de Mobiliário (Ba Zhai)
                       </button>
                       {mobiliarioAberto&&(()=>{
@@ -2144,7 +2230,7 @@ function BaguaPlantaContent() {
                         const avaliacao=mingGua?avaliarPosicionamento(mingGua.direcoes,mobiliarioLocalizacao,direcaoSetor):null
                         return (
                           <div style={{marginTop:'8px'}}>
-                            <p style={{margin:'0 0 8px',fontSize:'10px',color:'#4C1D95'}}>
+                            <p style={{margin:'0 0 8px',fontSize:'12px',color:'#4C1D95'}}>
                               Regra 坐凶向吉 (&ldquo;sentar no mal, olhar para o bem&rdquo;): o corpo do objeto pode estar num setor
                               desfavorável — é onde essas coisas normalmente já estão — mas a direção para a qual ele
                               aponta (boca do fogão, perpendicular à cabeceira da cama, olhar na mesa) deve ser favorável
@@ -2153,48 +2239,48 @@ function BaguaPlantaContent() {
                             <div style={{display:'flex',gap:'4px',marginBottom:'8px',flexWrap:'wrap'}}>
                               {(['cama','fogao','mesa'] as const).map(t=>(
                                 <button type="button" key={t} onClick={()=>setMobiliarioTipo(t)} style={{
-                                  padding:'4px 10px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                                  padding:'4px 10px',borderRadius:'5px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
                                   borderColor:mobiliarioTipo===t?'#2E7D6B':'#D1D5DB',background:mobiliarioTipo===t?'#2E7D6B':'#fff',color:mobiliarioTipo===t?'#fff':'#6B7280',
                                 }}>{t==='cama'?'Cama':t==='fogao'?'Fogão':'Mesa'}</button>
                               ))}
                             </div>
-                            <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                            <label style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
                               De quem é o Ming Gua a considerar (quem dorme na cama, cozinha, ou usa a mesa)?
                             </label>
                             <div style={{display:'flex',gap:'6px',marginBottom:'8px',flexWrap:'wrap'}}>
                               <input type="date" value={mobiliarioDataNascimento} onChange={e=>setMobiliarioDataNascimento(e.target.value)}
-                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
                               <select value={mobiliarioGenero} onChange={e=>setMobiliarioGenero(e.target.value)}
-                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}>
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}>
                                 <option value="">Gênero...</option>
                                 <option value="masculino">Masculino</option>
                                 <option value="feminino">Feminino</option>
                               </select>
                             </div>
-                            <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                            <label style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
                               Localização (setor onde o corpo do objeto está)
                             </label>
                             <select value={mobiliarioLocalizacao} onChange={e=>setMobiliarioLocalizacao(e.target.value as SetorCompasso)}
-                              style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',marginBottom:'8px',width:'100%'}}>
+                              style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px',marginBottom:'8px',width:'100%'}}>
                               {SETOR_NOMEADO_PARA_COMPASSO.map(([nome,setor])=>(
                                 <option key={setor} value={setor}>{nome} ({NOME_SETOR[setor]})</option>
                               ))}
                             </select>
-                            <label style={{display:'block',fontSize:'10px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
+                            <label style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
                               Direção (para onde o objeto aponta): <span style={{color:'#2E7D6B'}}>{mobiliarioDirecaoGraus.toFixed(1)}°</span> ({NOME_SETOR[direcaoSetor]})
                             </label>
                             <input type="number" min={0} max={359.9} step={0.1} value={mobiliarioDirecaoGraus}
                               onChange={e=>setMobiliarioDirecaoGraus(normalizarGraus(Number(e.target.value)||0))}
-                              style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',marginBottom:'8px'}}/>
+                              style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px',marginBottom:'8px'}}/>
                             {!genero&&mobiliarioGenero&&(
-                              <p style={{margin:'4px 0',fontSize:'10px',color:'#DC2626'}}>Gênero não reconhecido.</p>
+                              <p style={{margin:'4px 0',fontSize:'12px',color:'#B4533A'}}>Gênero não reconhecido.</p>
                             )}
                             {mingGua&&avaliacao&&(
                               <div style={{padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
-                                <p style={{margin:'0 0 4px',fontSize:'10px',color:'#374151'}}>
+                                <p style={{margin:'0 0 4px',fontSize:'12px',color:'#374151'}}>
                                   Ming Gua {mingGua.kua} (grupo {mingGua.grupo==='leste'?'Leste':'Oeste'})
                                 </p>
-                                <p style={{margin:0,fontSize:'11px',fontWeight:'bold',color:avaliacao.direcaoFavoravel?'#15803D':'#DC2626'}}>
+                                <p style={{margin:0,fontSize:'13px',fontWeight:'bold',color:avaliacao.direcaoFavoravel?'#2E7D6B':'#B4533A'}}>
                                   {avaliacao.direcaoFavoravel
                                     ?'✅ Direção favorável — bem posicionado.'
                                     :'⚠ Direção desfavorável — considere reposicionar para uma direção favorável.'}
@@ -2210,7 +2296,7 @@ function BaguaPlantaContent() {
                   {/* Mini-cards 3x3 */}
                   {setores.length>0&&(
                     <div style={{marginTop:'12px'}}>
-                      <div style={{fontSize:'11px',fontWeight:'bold',color:'#0E1B2C',marginBottom:'6px'}}>📊 Resumo por setor</div>
+                      <div style={{fontSize:'13px',fontWeight:'bold',color:'#0E1B2C',marginBottom:'6px'}}>📊 Resumo por setor</div>
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                         {setores.map((sc,i)=>{
                           const st=SETORES[order[i]]; const sel=ativo===i
@@ -2222,7 +2308,7 @@ function BaguaPlantaContent() {
                               padding:'7px',borderRadius:'6px',cursor:'pointer',
                               border:`2px solid ${sel?corTotal(ts):'#E5E7EB'}`,background:sel?corTotal(ts)+'18':'#F9FAFB',
                             }}>
-                              <div style={{fontSize:'10px',fontWeight:'bold',color:'#0E1B2C'}}>{st.nome}</div>
+                              <div style={{fontSize:'12px',fontWeight:'bold',color:'#0E1B2C'}}>{st.nome}</div>
                               <div style={{display:'flex',flexDirection:'column',gap:'1px',marginTop:'2px'}}>
                                 <div style={{display:'flex',justifyContent:'space-between',fontSize:'9px'}}>
                                   <span style={{color:'#6B7280'}}>Geo:</span>
@@ -2236,7 +2322,7 @@ function BaguaPlantaContent() {
                                   }
                                 </div>
                               </div>
-                              <div style={{fontSize:'10px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts===null?lblTotal(ts):`${ts}% · ${lblTotal(ts)}`}</div>
+                              <div style={{fontSize:'12px',color:corTotal(ts),fontWeight:'bold',marginTop:'2px',borderTop:'1px solid #E5E7EB',paddingTop:'2px'}}>{ts===null?lblTotal(ts):`${ts}% · ${lblTotal(ts)}`}</div>
                               {sc.ajusteManual!==null&&<div style={{fontSize:'7px',color:'#2E7D6B',marginTop:'1px'}}>&#x270F; Ajustado</div>}
                             </div>
                           )
@@ -2247,10 +2333,10 @@ function BaguaPlantaContent() {
 
                   {/* Balanced banner */}
                   {setores.length===9&&setores.every(s=>{const t=scoreTotal(s,modeloPontuacao,pesoGeo);return t!==null&&t>=90})&&(
-                    <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'8px',textAlign:'center'}}>
+                    <div style={{marginTop:'10px',padding:'10px 14px',background:'#F0F6F3',border:'1px solid #DCEAE4',borderRadius:'8px',textAlign:'center'}}>
                       <div style={{fontSize:'20px',marginBottom:'4px'}}>☯</div>
-                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#15803D'}}>Planta equilibrada</div>
-                      <div style={{fontSize:'10px',color:'#16A34A',marginTop:'2px'}}>Todos os setores com score total ≥ 90</div>
+                      <div style={{fontSize:'12px',fontWeight:'bold',color:'#2E7D6B'}}>Planta equilibrada</div>
+                      <div style={{fontSize:'12px',color:'#2E7D6B',marginTop:'2px'}}>Todos os setores com score total ≥ 90</div>
                     </div>
                   )}
 
@@ -2278,13 +2364,13 @@ function BaguaPlantaContent() {
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
                   <div>
                     <span style={{fontSize:'14px',fontWeight:'bold',color:'#0E1B2C'}}>{stAtivo.nome}</span>
-                    <div style={{fontSize:'10px',color:'#6B7280'}}>{stAtivo.elem} · {stAtivo.dir}</div>
+                    <div style={{fontSize:'12px',color:'#6B7280'}}>{stAtivo.elem} · {stAtivo.dir}</div>
                   </div>
                   <button type="button" onClick={()=>setAtivo(null)} style={{background:'transparent',border:'none',fontSize:'18px',cursor:'pointer',color:'#9CA3AF'}}>×</button>
                 </div>
 
                 {/* Cores / Elemento */}
-                <div style={{padding:'6px 8px',background:'#F9FAFB',borderRadius:'6px',marginBottom:'10px',fontSize:'10px',color:'#374151',display:'flex',gap:'10px',flexWrap:'wrap'}}>
+                <div style={{padding:'6px 8px',background:'#F9FAFB',borderRadius:'6px',marginBottom:'10px',fontSize:'12px',color:'#374151',display:'flex',gap:'10px',flexWrap:'wrap'}}>
                   <span>Elemento: <strong>{stAtivo.elem}</strong></span>
                   <span>Direção: <strong>{stAtivo.dir}</strong></span>
                 </div>
@@ -2299,32 +2385,32 @@ function BaguaPlantaContent() {
                       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
                         {/* Geo score */}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:`3px solid ${corGeo(gv,scAtivo)}`}}>
-                          <span style={{fontSize:'10px',color:'#6B7280'}}>Geométrico:</span>
-                          <span style={{fontSize:'11px',fontWeight:'bold',color:corGeo(gv,scAtivo)}}>{Math.round(gv)} pts · {lblGeo(gv,scAtivo)}</span>
+                          <span style={{fontSize:'12px',color:'#6B7280'}}>Geométrico:</span>
+                          <span style={{fontSize:'13px',fontWeight:'bold',color:corGeo(gv,scAtivo)}}>{Math.round(gv)} pts · {lblGeo(gv,scAtivo)}</span>
                         </div>
                         {scAtivo.faltaPct>0&&(
-                          <div style={{fontSize:'9px',color:'#DC2626',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
+                          <div style={{fontSize:'9px',color:'#B4533A',paddingLeft:'11px'}}>Falta: {Math.round(scAtivo.faltaPct)}%</div>
                         )}
                         {scAtivo.excessoPct>0&&(
-                          <div style={{fontSize:'9px',color:'#D97706',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
+                          <div style={{fontSize:'9px',color:'#8A6E2F',paddingLeft:'11px'}}>Excesso: {Math.round(scAtivo.excessoPct)}%</div>
                         )}
                         {scAtivo.ajusteManual!==null&&(
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 8px',background:'#E6F2EF',borderRadius:'4px',borderLeft:'3px solid #2E7D6B'}}>
                             <span style={{fontSize:'9px',color:'#1D4D43',fontWeight:'bold'}}>Geo ajustado:</span>
-                            <span style={{fontSize:'10px',fontWeight:'bold',color:corGeo(scAtivo.ajusteManual,scAtivo)}}>{scAtivo.ajusteManual} pts</span>
+                            <span style={{fontSize:'12px',fontWeight:'bold',color:corGeo(scAtivo.ajusteManual,scAtivo)}}>{scAtivo.ajusteManual} pts</span>
                           </div>
                         )}
                         {/* Physical score */}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 8px',background:'#F9FAFB',borderRadius:'5px',borderLeft:'3px solid #6B7280'}}>
-                          <span style={{fontSize:'10px',color:'#6B7280'}}>Físico:</span>
+                          <span style={{fontSize:'12px',color:'#6B7280'}}>Físico:</span>
                           {criteriosAvaliados(scAtivo.criterios)
-                            ? <span style={{fontSize:'11px',fontWeight:'bold',color:corTotal(sf)}}>{sf}%</span>
-                            : <span style={{fontSize:'11px',color:'#9CA3AF',fontStyle:'italic'}}>Não avaliado</span>
+                            ? <span style={{fontSize:'13px',fontWeight:'bold',color:corTotal(sf)}}>{sf}%</span>
+                            : <span style={{fontSize:'13px',color:'#9CA3AF',fontStyle:'italic'}}>Não avaliado</span>
                           }
                         </div>
                         {/* Total score */}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:corTotal(ts)+'15',borderRadius:'5px',borderLeft:`3px solid ${corTotal(ts)}`}}>
-                          <span style={{fontSize:'11px',fontWeight:'bold',color:'#374151'}}>Total:</span>
+                          <span style={{fontSize:'13px',fontWeight:'bold',color:'#374151'}}>Total:</span>
                           <span style={{fontSize:'13px',fontWeight:'bold',color:corTotal(ts)}}>{ts===null?lblTotal(ts):`${ts}% · ${lblTotal(ts)}`}</span>
                         </div>
                       </div>
@@ -2339,16 +2425,18 @@ function BaguaPlantaContent() {
                 {CRITERIOS.map((crit,ci)=>{
                   const LABELS=['-2','-1','0','+1','+2']
                   const NOMES=['Crítico','Ruim','Neutro','Bom','Ótimo']
-                  const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
-                  const BGS=['#FEF2F2','#FFF7ED','#F9FAFB','#F0FDF4','#DCFCE7']
+                  const CORES=['#B4533A','#A9613C','#6B7280','#65A30D','#2E7D6B']
+                  // Cinco níveis, cinco fundos: os dois últimos ficaram idênticos na varredura
+// de paleta, e o botão selecionado deixava de distinguir «Bom» de «Ótimo».
+const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#EAF1EE','#D9EBE4']
                   // `null` = não avaliado. Antes o default era 2 («Neutro»), o
                   // que impedia distinguir «achei neutro» de «não olhei».
                   const val=scAtivo.criterios[ci]
                   return (
                   <div key={ci} style={{marginBottom:'9px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:'3px'}}>
-                      <span style={{fontSize:'10px',color:'#374151'}}>{crit}</span>
-                      <span style={{fontSize:'10px',fontWeight:'bold',color:val===null?'#9CA3AF':CORES[val]}}>
+                      <span style={{fontSize:'12px',color:'#374151'}}>{crit}</span>
+                      <span style={{fontSize:'12px',fontWeight:'bold',color:val===null?'#9CA3AF':CORES[val]}}>
                         {val===null?'Não avaliado':NOMES[val]}
                       </span>
                     </div>
@@ -2357,14 +2445,14 @@ function BaguaPlantaContent() {
                         onClick={()=>setCrit(ativo!,ci,null)}
                         title="Não avaliado"
                         style={{
-                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
                           borderColor:val===null?'#6B7280':'#D1D5DB',
                           background:val===null?'#F3F4F6':'#fff',
                           color:val===null?'#374151':'#9CA3AF',
                         }}>—</button>
                       {[0,1,2,3,4].map(v=>(
                         <button type="button" key={v} onClick={()=>setCrit(ativo!,ci,v as NotaCriterio)} style={{
-                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
+                          flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
                           borderColor:val===v?CORES[v]:'#D1D5DB',
                           background:val===v?BGS[v]:'#fff',
                           color:val===v?CORES[v]:'#9CA3AF',
@@ -2380,12 +2468,12 @@ function BaguaPlantaContent() {
 
                 {/* ── Avançado — Ajuste do consultor (colapsável) ── */}
                 <details style={{marginBottom:'10px',marginTop:'4px'}}>
-                  <summary style={{fontSize:'11px',fontWeight:'bold',color:'#2E7D6B',cursor:'pointer',padding:'6px 0',userSelect:'none',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
+                  <summary style={{fontSize:'13px',fontWeight:'bold',color:'#2E7D6B',cursor:'pointer',padding:'6px 0',userSelect:'none',borderTop:'1px solid #F3F4F6',paddingTop:'8px'}}>
                     🎛 Avançado — Ajuste do consultor
                   </summary>
                   <div style={{padding:'10px',background:'#FAFAFA',borderRadius:'8px',border:'1px solid #E5E7EB',marginTop:'4px'}}>
                     <div style={{display:'flex',gap:'6px',alignItems:'center',marginBottom:'6px'}}>
-                      <label style={{fontSize:'10px',color:'#6B7280',whiteSpace:'nowrap'}}>Geo manual (pts):</label>
+                      <label style={{fontSize:'12px',color:'#6B7280',whiteSpace:'nowrap'}}>Geo manual (pts):</label>
                       <input type="number" min={0} max={200} step={1}
                         value={scAtivo.ajusteManual??''}
                         placeholder={String(Math.round(scAtivo.geo))}
@@ -2393,11 +2481,11 @@ function BaguaPlantaContent() {
                           const v=e.target.value
                           setAjusteManual(ativo!,v===''?null:Number(v))
                         }}
-                        style={{width:'60px',padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'11px',textAlign:'center'}}
+                        style={{width:'60px',padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'13px',textAlign:'center'}}
                       />
                       <select value={scAtivo.ajusteTipo??''}
                         onChange={e=>setAjusteTipo(ativo!,(e.target.value||null) as Setor['ajusteTipo'])}
-                        style={{flex:1,padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px'}}>
+                        style={{flex:1,padding:'4px 6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'12px'}}>
                         <option value="">Tipo automático</option>
                         <option value="equilibrado">Equilibrado</option>
                         <option value="faltante">Faltante</option>
@@ -2406,10 +2494,10 @@ function BaguaPlantaContent() {
                     </div>
                     <textarea value={scAtivo.obs} placeholder="Observações do consultor (opcional)"
                       onChange={e=>setObs(ativo!,e.target.value)}
-                      style={{width:'100%',padding:'6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px',resize:'vertical',minHeight:'36px',boxSizing:'border-box'}}
+                      style={{width:'100%',padding:'6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'12px',resize:'vertical',minHeight:'36px',boxSizing:'border-box'}}
                     />
                     {scAtivo.ajusteManual!==null&&(
-                      <button type="button" onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'10px',color:'#6B7280',cursor:'pointer'}}>
+                      <button type="button" onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'12px',color:'#6B7280',cursor:'pointer'}}>
                         ↺ Usar valor calculado
                       </button>
                     )}
@@ -2442,19 +2530,19 @@ function BaguaPlantaContent() {
                   if (!hasRec) return null
                   return (
                     <details style={{marginBottom:'10px'}}>
-                      <summary style={{fontSize:'11px',fontWeight:'bold',color:'#374151',cursor:'pointer',padding:'6px 0',userSelect:'none'}}>
+                      <summary style={{fontSize:'13px',fontWeight:'bold',color:'#374151',cursor:'pointer',padding:'6px 0',userSelect:'none'}}>
                         💡 Recomendações
                       </summary>
                       <div style={{padding:'10px 0',marginTop:'4px'}}>
                       {rec.urgente.length>0&&(
                         <div style={{marginBottom:'8px'}}>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
-                            <span style={{background:'#DC2626',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>URGENTE</span>
+                            <span style={{background:'#B4533A',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>URGENTE</span>
                           </div>
                           {rec.urgente.map((d,i)=>(
-                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FEF2F2',borderRadius:'5px',borderLeft:'3px solid #DC2626'}}>
-                              <span style={{color:'#DC2626',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
-                              <span style={{fontSize:'10px',color:'#7F1D1D',lineHeight:'1.45'}}>{d}</span>
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FAEEE9',borderRadius:'5px',borderLeft:'3px solid #B4533A'}}>
+                              <span style={{color:'#B4533A',fontSize:'13px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'12px',color:'#8F3F2C',lineHeight:'1.45'}}>{d}</span>
                             </div>
                           ))}
                         </div>
@@ -2463,12 +2551,12 @@ function BaguaPlantaContent() {
                       {rec.melhoria.length>0&&(
                         <div style={{marginBottom:'8px'}}>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
-                            <span style={{background:'#D97706',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MELHORIA</span>
+                            <span style={{background:'#8A6E2F',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MELHORIA</span>
                           </div>
                           {rec.melhoria.map((d,i)=>(
-                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FFFBEB',borderRadius:'5px',borderLeft:'3px solid #D97706'}}>
-                              <span style={{color:'#D97706',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
-                              <span style={{fontSize:'10px',color:'#78350F',lineHeight:'1.45'}}>{d}</span>
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #8A6E2F'}}>
+                              <span style={{color:'#8A6E2F',fontSize:'13px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'12px',color:'#6B5424',lineHeight:'1.45'}}>{d}</span>
                             </div>
                           ))}
                         </div>
@@ -2477,12 +2565,12 @@ function BaguaPlantaContent() {
                       {rec.manutencao.length>0&&(
                         <div>
                           <div style={{fontSize:'9px',fontWeight:'bold',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}>
-                            <span style={{background:'#15803D',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MANUTENÇÃO</span>
+                            <span style={{background:'#2E7D6B',color:'#fff',borderRadius:'3px',padding:'1px 6px'}}>MANUTENÇÃO</span>
                           </div>
                           {rec.manutencao.map((d,i)=>(
-                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#F0FDF4',borderRadius:'5px',borderLeft:'3px solid #15803D'}}>
-                              <span style={{color:'#15803D',fontSize:'11px',flexShrink:0,marginTop:'1px'}}>•</span>
-                              <span style={{fontSize:'10px',color:'#14532D',lineHeight:'1.45'}}>{d}</span>
+                            <div key={i} style={{display:'flex',gap:'5px',marginBottom:'4px',padding:'5px 7px',background:'#F0F6F3',borderRadius:'5px',borderLeft:'3px solid #2E7D6B'}}>
+                              <span style={{color:'#2E7D6B',fontSize:'13px',flexShrink:0,marginTop:'1px'}}>•</span>
+                              <span style={{fontSize:'12px',color:'#14532D',lineHeight:'1.45'}}>{d}</span>
                             </div>
                           ))}
                         </div>
@@ -2521,24 +2609,24 @@ function BaguaPlantaContent() {
               </div>
               <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
                 <button type="button" onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
-                  style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:modo==='bordas'?'#B4533A':'#8A6E2F',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='bordas'?'🔒 Finalizar bordas':'⬜ Ajustar bordas'}
                 </button>
                 <button type="button" onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
-                  style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:modo==='marcarFalta'?'#B4533A':'#B4533A',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarFalta'?'🔒 Finalizar':'▭ Falta'}
                 </button>
                 <button type="button" onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
-                  style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:modo==='marcarExcesso'?'#B4533A':'#C9A227',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Excesso'}
                 </button>
                 <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
-                  style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
+                  style={{background:recalculoPendente?'#A9613C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                     animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                   🔄 Recalcular{recalculoPendente?' (pendente)':''}
                 </button>
                 <button type="button" onClick={()=>{setModo('nenhum');setFullscreen(false)}}
-                  style={{background:'#15803D',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
+                  style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                   ✓ OK — Voltar
                 </button>
               </div>
@@ -2547,19 +2635,19 @@ function BaguaPlantaContent() {
             {/* Instructions */}
             {modo==='bordas'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FEF3C7',borderRadius:'6px',color:'#92400E',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#8A6E2F',fontSize:'12px',zIndex:1}}>
                 Arraste as alças laranja para ajustar os limites da construcao (fronteira Feng Shui)
               </div>
             )}
             {modo==='marcarFalta'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FEF2F2',borderRadius:'6px',color:'#DC2626',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAEEE9',borderRadius:'6px',color:'#B4533A',fontSize:'12px',zIndex:1}}>
                 Clique e arraste para marcar uma area de FALTA
               </div>
             )}
             {modo==='marcarExcesso'&&(
               <div style={{position:'absolute',top:'64px',left:'50%',transform:'translateX(-50%)',
-                padding:'6px 16px',background:'#FFF7ED',borderRadius:'6px',color:'#EA580C',fontSize:'12px',zIndex:1}}>
+                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#A9613C',fontSize:'12px',zIndex:1}}>
                 Clique e arraste para marcar uma area de EXCESSO
               </div>
             )}
@@ -2582,13 +2670,13 @@ function BaguaPlantaContent() {
               position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
               display:'flex', gap:'16px', alignItems:'center'
             }}>
-              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
+              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'13px'}}>
                 Método: <strong style={{color:'#fff'}}>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong>
               </span>
-              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
+              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'13px'}}>
                 Entrada: <strong style={{color:'#fff'}}>{lado}</strong>
               </span>
-              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'11px'}}>
+              <span style={{color:'rgba(255,255,255,0.5)',fontSize:'13px'}}>
                 Pressione ESC ou clique OK para sair
               </span>
             </div>

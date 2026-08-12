@@ -207,7 +207,7 @@ export default function LandingPage() {
         <div style={{
           position: 'absolute', top: '-20%', right: '-10%',
           width: '700px', height: '700px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(201,162,39,0.12) 0%, transparent 70%)',
           animation: 'pulse 6s ease-in-out infinite',
         }} />
         <div style={{
@@ -228,7 +228,7 @@ export default function LandingPage() {
             <div style={{ flex: 1 }}>
               <div className="fade-up" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
+                background: 'rgba(201,162,39,0.15)', border: '1px solid rgba(201,162,39,0.3)',
                 borderRadius: '100px', padding: '8px 20px', marginBottom: '24px',
               }}>
                 <span style={{ fontSize: '12px' }}>✨</span>
@@ -300,8 +300,8 @@ export default function LandingPage() {
                     { nome: 'Fama', cor: '#FF6B6B', elemento: 'Fogo', trigram: '☲' },
                     { nome: 'Amor', cor: '#F9A8D4', elemento: 'Terra', trigram: '☷' },
                     { nome: 'Família', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
-                    { nome: 'Centro', cor: '#FBBF24', elemento: 'Terra', trigram: '☯' },
-                    { nome: 'Filhos', cor: '#F59E0B', elemento: 'Metal', trigram: '☱' },
+                    { nome: 'Centro', cor: '#C9A227', elemento: 'Terra', trigram: '☯' },
+                    { nome: 'Filhos', cor: '#8FA3B0', elemento: 'Metal', trigram: '☱' },
                     { nome: 'Saber', cor: '#60A5FA', elemento: 'Terra', trigram: '☶' },
                     { nome: 'Carreira', cor: '#38BDF8', elemento: 'Água', trigram: '☵' },
                     { nome: 'Amigos', cor: '#CBD5E1', elemento: 'Metal', trigram: '☰' },
@@ -439,13 +439,13 @@ export default function LandingPage() {
           <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
             {[
               { icon: '🧭', title: 'Análise Ba Guá Interativa', desc: 'Faça upload da planta do imóvel e avalie os 9 setores do Ba Guá com critérios padronizados e scores automáticos.', color: '#2E7D6B' },
-              { icon: '◎', title: 'Roda da Vida Completa', desc: 'Questionário com 12 áreas da vida e 60 perguntas. Gráfico radar, médias por categoria e plano de ação integrado.', color: '#BE185D' },
-              { icon: '📊', title: 'Relatórios PDF Personalizados', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#15803D' },
-              { icon: '👥', title: 'Gestão de Clientes e Consultas', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#3B82F6' },
-              { icon: '📅', title: 'Calendário Lunar com Rituais', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações, rituais e datas auspiciosas.', color: '#D97706' },
+              { icon: '◎', title: 'Roda da Vida Completa', desc: 'Questionário com 12 áreas da vida e 60 perguntas. Gráfico radar, médias por categoria e plano de ação integrado.', color: '#A9613C' },
+              { icon: '📊', title: 'Relatórios PDF Personalizados', desc: 'Gere relatórios profissionais em PDF com sua marca, scores detalhados e recomendações por setor.', color: '#2E7D6B' },
+              { icon: '👥', title: 'Gestão de Clientes e Consultas', desc: 'Cadastre e organize todos os seus clientes com dados de contato, histórico de consultas e notas pessoais.', color: '#2E7D6B' },
+              { icon: '📅', title: 'Calendário Lunar com Rituais', desc: 'Consulte o calendário lunar chinês integrado para planejar ativações, rituais e datas auspiciosas.', color: '#8A6E2F' },
               { icon: '✨', title: 'Curas e Ativações por Setor', desc: 'Cristais, plantas, objetos, mudras, meditações e mantras para cada setor do Ba Guá.', color: '#C9A227' },
               { icon: '📱', title: 'PWA — Funciona como App', desc: 'Instale no celular como um app nativo. Funciona em qualquer dispositivo com interface responsiva.', color: '#0891B2' },
-              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#DC2626' },
+              { icon: '🔒', title: 'Dados Seguros', desc: 'Seus dados e de seus clientes estão protegidos com criptografia e autenticação segura.', color: '#B4533A' },
             ].map((feat, i) => (
               <div key={i} className="feature-card" style={{
                 background: '#ffffff',
@@ -498,13 +498,13 @@ export default function LandingPage() {
             {/* Connecting line */}
             <div className="hide-mobile" style={{
               position: 'absolute', top: '60px', left: '16%', right: '16%',
-              height: '2px', background: 'linear-gradient(90deg, #2E7D6B, #C9A227, #15803D)',
+              height: '2px', background: 'linear-gradient(90deg, #2E7D6B, #C9A227, #2E7D6B)',
               opacity: 0.3,
             }} />
             {[
               { step: '01', title: 'Cadastre seus clientes', desc: 'Adicione os dados dos seus clientes e imóveis a serem analisados.', color: '#2E7D6B' },
               { step: '02', title: 'Realize o diagnóstico', desc: 'Avalie cada setor do Ba Gua com os critérios integrados e gere scores automáticos.', color: '#C9A227' },
-              { step: '03', title: 'Entregue o relatório', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#15803D' },
+              { step: '03', title: 'Entregue o relatório', desc: 'Gere um PDF profissional e impressione seus clientes com a qualidade do seu trabalho.', color: '#2E7D6B' },
             ].map((item, i) => (
               <div key={i} style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
                 <div style={{
@@ -536,7 +536,7 @@ export default function LandingPage() {
         <div style={{
           position: 'absolute', top: '10%', right: '5%',
           width: '400px', height: '400px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(201,162,39,0.08) 0%, transparent 70%)',
         }} />
 
         <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
@@ -660,8 +660,8 @@ export default function LandingPage() {
 
             {/* Profissional */}
             <div className="pricing-card" style={{
-              background: 'linear-gradient(145deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05))',
-              border: '2px solid rgba(124,58,237,0.4)',
+              background: 'linear-gradient(145deg, rgba(201,162,39,0.15), rgba(201,162,39,0.05))',
+              border: '2px solid rgba(201,162,39,0.4)',
               borderRadius: '24px', padding: '40px 32px',
               position: 'relative', overflow: 'hidden',
             }}>

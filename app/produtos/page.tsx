@@ -36,7 +36,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'espelhos',
     nome: 'Espelhos',
     iconComp: Sparkle as LucideIcon,
-    cor: '#1D4ED8',
+    cor: '#0E1B2C',
     descricao: 'Espelhos côncavos, convexos e Ba Gua para harmonização',
     produtos: [
       { nome: 'Espelho Côncavo Ba Gua', desc: 'Espelho côncavo octogonal para proteção e desvio de energia negativa', tag: 'Proteção', preco: 'A partir de R$ 29,90' },
@@ -48,7 +48,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'cristais',
     nome: 'Cristais e Pedras',
     iconComp: Gem as LucideIcon,
-    cor: '#2E7D6B',
+    cor: '#7FB8A8',
     descricao: 'Cristais para ativação energética dos setores do Ba Gua',
     produtos: [
       { nome: 'Cristal Multifacetado', desc: 'Cristal de pendurar para dispersar energia estagnada e trazer luz', tag: 'Ativação', preco: 'A partir de R$ 19,90' },
@@ -62,7 +62,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'fontes',
     nome: 'Fontes de Água',
     iconComp: Droplets as LucideIcon,
-    cor: '#0EA5E9',
+    cor: '#1C3A52',
     descricao: 'Fontes para ativar o elemento água e prosperidade',
     produtos: [
       { nome: 'Fonte de Mesa Bambu', desc: 'Fonte decorativa de mesa com bambu e pedras naturais', tag: 'Prosperidade', preco: 'A partir de R$ 89,90' },
@@ -74,7 +74,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'plantas',
     nome: 'Plantas e Vasos',
     iconComp: Leaf as LucideIcon,
-    cor: '#15803D',
+    cor: '#2E7D6B',
     descricao: 'Plantas vivas e artificiais para purificação e ativação',
     produtos: [
       { nome: 'Bambu da Sorte', desc: 'Bambu da sorte em vaso de cerâmica para prosperidade', tag: 'Prosperidade', preco: 'A partir de R$ 29,90' },
@@ -86,7 +86,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'sinos',
     nome: 'Sinos de Vento e Mobiles',
     iconComp: Wind as LucideIcon,
-    cor: '#B45309',
+    cor: '#8A6E2F',
     descricao: 'Sinos e móbiles metálicos para ativação do elemento metal',
     produtos: [
       { nome: 'Sino de Vento 5 Tubos', desc: 'Sino de vento em alumínio com 5 tubos para energia metal', tag: 'Metal', preco: 'A partir de R$ 39,90' },
@@ -98,7 +98,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'velas',
     nome: 'Velas e Incensos',
     iconComp: Flame as LucideIcon,
-    cor: '#DC2626',
+    cor: '#B4533A',
     descricao: 'Velas e incensos para ativar o elemento Fogo',
     produtos: [
       { nome: 'Kit Velas Aromáticas 7 Chakras', desc: 'Kit com 7 velas aromáticas para ativação dos chakras', tag: 'Fogo', preco: 'A partir de R$ 59,90' },
@@ -110,7 +110,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'decoracao',
     nome: 'Decoração e Símbolos',
     iconComp: Lamp as LucideIcon,
-    cor: '#BE185D',
+    cor: '#A9613C',
     descricao: 'Objetos decorativos e símbolos para ativação dos setores',
     produtos: [
       { nome: 'Sapo da Fortuna', desc: 'Sapo de três pernas com moeda para prosperidade', tag: 'Prosperidade', preco: 'A partir de R$ 34,90' },
@@ -239,7 +239,7 @@ function ProdutosContent() {
         borderRadius: '12px', padding: '16px 24px', marginBottom: '24px',
         display: 'flex', alignItems: 'center', gap: '12px'
       }}>
-        <Lightbulb size={22} strokeWidth={1.75} color="#F0D888" style={{ flexShrink: 0 }} aria-hidden="true" />
+        <Lightbulb size={22} strokeWidth={1.75} color="#EEDFB4" style={{ flexShrink: 0 }} aria-hidden="true" />
         <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', margin: '0' }}>
           Os produtos listados são recomendações baseadas em práticas de Feng Shui.
           Ao clicar em &quot;Ver produto&quot;, você será redirecionado para a loja parceira.
@@ -383,7 +383,7 @@ function ProdutosContent() {
                     {produto.desc || produto.descricao}
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#15803D', fontSize: '14px', fontWeight: 'bold' }}>
+                    <span style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold' }}>
                       {produto.preco || ''}
                     </span>
                     {produto.link_afiliado ? (

@@ -18,11 +18,11 @@ import type { Setor } from './geometria-bagua'
 // ── Cores ────────────────────────────────────────────────────────────────────
 
 export const COR_SEM_NOTA = '#9CA3AF'
-export const COR_EXCELENTE = '#15803D'
+export const COR_EXCELENTE = '#2E7D6B'
 export const COR_BOM = '#65A30D'
-export const COR_REGULAR = '#D97706'
-export const COR_RUIM = '#EA580C'
-export const COR_CRITICO = '#DC2626'
+export const COR_REGULAR = '#8A6E2F'
+export const COR_RUIM = '#A9613C'
+export const COR_CRITICO = '#B4533A'
 
 /** Faixas da nota total, do melhor para o pior. */
 const FAIXAS_TOTAL = [

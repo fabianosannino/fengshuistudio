@@ -36,12 +36,12 @@ function StripeSuccess() {
         maxWidth: '500px', width: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
       }}>
         <div style={{
-          width: '80px', height: '80px', borderRadius: '50%', background: '#F0FDF4',
+          width: '80px', height: '80px', borderRadius: '50%', background: '#F0F6F3',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 24px', fontSize: '40px'
         }}>✅</div>
 
-        <h1 style={{ color: '#15803D', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+        <h1 style={{ color: '#2E7D6B', fontSize: '24px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
           {isSubscription ? 'Assinatura ativada!' : 'Pagamento confirmado!'}
         </h1>
 

@@ -8,31 +8,22 @@ import Skeleton from '../components/Skeleton'
 import type { Ritual, Profile, Cliente } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, podeCalendario } from '../../src/lib/plano-utils'
+import { faseLunar, simplesDoNome } from '../../src/lib/lunar'
 
+/**
+ * O cálculo vive em `src/lib/lunar.ts`. Ele estava copiado aqui e no relatório,
+ * com a mesma constante de lunação e a mesma âncora — duas cópias de um cálculo
+ * é uma cópia esperando para divergir da outra.
+ */
 function getMoonPhase(date: Date): { fase: string; emoji: string; percentual: number } {
-  const known = new Date(2000, 0, 6, 18, 14)
-  const cycle = 29.53058867
-  const diff = (date.getTime() - known.getTime()) / 1000 / 60 / 60 / 24
-  const phase = ((diff % cycle) + cycle) % cycle
-  const pct = Math.round((phase / cycle) * 100)
-  if (phase < 1.85) return { fase: 'Nova', emoji: '🌑', percentual: pct }
-  if (phase < 7.38) return { fase: 'Crescente', emoji: '🌒', percentual: pct }
-  if (phase < 9.23) return { fase: 'Quarto Crescente', emoji: '🌓', percentual: pct }
-  if (phase < 13.69) return { fase: 'Gibosa Crescente', emoji: '🌔', percentual: pct }
-  if (phase < 16.61) return { fase: 'Cheia', emoji: '🌕', percentual: pct }
-  if (phase < 20.30) return { fase: 'Gibosa Minguante', emoji: '🌖', percentual: pct }
-  if (phase < 22.15) return { fase: 'Quarto Minguante', emoji: '🌗', percentual: pct }
-  if (phase < 27.68) return { fase: 'Minguante', emoji: '🌘', percentual: pct }
-  return { fase: 'Nova', emoji: '🌑', percentual: pct }
+  const f = faseLunar(date)
+  return { fase: f.nome, emoji: f.emoji, percentual: f.percentual }
 }
 
 function getFaseSimples(fase: string): string {
-  if (fase.includes('Nova')) return 'nova'
-  if (fase.includes('Crescente')) return 'crescente'
-  if (fase.includes('Cheia')) return 'cheia'
-  if (fase.includes('Minguante')) return 'minguante'
-  return 'nova'
+  return simplesDoNome(fase)
 }
+
 
 function getProximasFases(ano: number, mes: number) {
   const fases: { data: Date; fase: string; emoji: string }[] = []
@@ -372,9 +363,9 @@ export default function Calendario() {
       {message && (
         <div style={{
           marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
-          background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-          border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-          color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+          background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+          border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+          color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
         }}>{message}</div>
       )}
 
@@ -459,8 +450,8 @@ export default function Calendario() {
                       textDecoration: r.status === 'concluido' ? 'line-through' : 'none'
                     }}>{r.titulo}</h4>
                     <span style={{
-                      background: r.status === 'concluido' ? '#F0FDF4' : '#FFF7ED',
-                      color: r.status === 'concluido' ? '#15803D' : '#D97706',
+                      background: r.status === 'concluido' ? '#F0F6F3' : '#FAF3E0',
+                      color: r.status === 'concluido' ? '#2E7D6B' : '#8A6E2F',
                       padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
                     }}>{r.status === 'concluido' ? 'Concluído' : 'Pendente'}</span>
                   </div>
@@ -472,12 +463,12 @@ export default function Calendario() {
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button type="button" onClick={() => toggleStatus(r.id, r.status)} style={{
-                    padding: '6px 14px', background: r.status === 'concluido' ? '#FFF7ED' : '#F0FDF4',
-                    color: r.status === 'concluido' ? '#D97706' : '#15803D',
+                    padding: '6px 14px', background: r.status === 'concluido' ? '#FAF3E0' : '#F0F6F3',
+                    color: r.status === 'concluido' ? '#8A6E2F' : '#2E7D6B',
                     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
                   }}>{r.status === 'concluido' ? 'Reabrir' : '✓ Concluir'}</button>
                   <button type="button" onClick={() => deleteRitual(r.id)} style={{
-                    padding: '6px 12px', background: '#FEF2F2', color: '#DC2626',
+                    padding: '6px 12px', background: '#FAEEE9', color: '#B4533A',
                     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
                   }}>🗑️</button>
                 </div>

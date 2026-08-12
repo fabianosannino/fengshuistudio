@@ -60,7 +60,7 @@ export default function NotificationBell() {
       }}>
         <span style={{ fontSize: '18px' }}>🔔</span>
         <span style={{
-          position: 'absolute', top: '-2px', right: '-2px', background: '#DC2626', color: '#fff',
+          position: 'absolute', top: '-2px', right: '-2px', background: '#B4533A', color: '#fff',
           borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', fontWeight: 'bold',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>{count}</span>

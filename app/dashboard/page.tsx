@@ -1,744 +1,560 @@
 'use client'
 
+import Link from 'next/link'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { supabase } from '../../src/lib/supabase'
+import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
-import type { Profile, BaguaEntrada, StatusChartEntry, PagamentoMesChartEntry, ConsultaMesChartEntry, ClienteMesChartEntry, AgendaItem } from '../../src/lib/types'
-import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, planoLabel, isProfissional, planoUsuario } from '../../src/lib/plano-utils'
-import { Users, ClipboardList, Moon, Star, Sparkles, FileText, CalendarDays, CircleAlert, Wallet, Check, Clock, Settings, type LucideIcon } from 'lucide-react'
+import PrimeiroUso from './PrimeiroUso'
+import HomeDoCliente from './HomeDoCliente'
+import { ehClienteFinal } from '../../src/lib/papel-do-usuario'
+import type { Profile, BaguaEntrada } from '../../src/lib/types'
+import { montarPendencias, type Pendencia, type TipoDePendencia } from '../../src/lib/pendencias'
+import { progressoDoDiagnostico, coresDaBarra, type ProgressoDoDiagnostico } from '../../src/lib/etapa-do-diagnostico'
+import { formatarMoeda } from '../../src/lib/formato'
+import { faseLunar } from '../../src/lib/lunar'
+import { montanhaDoGrau } from '../../src/lib/montanhas'
+import {
+  Plus, UserPlus, FileText, CircleAlert, Compass, CalendarDays, Moon, Clock,
+  ArrowRight, type LucideIcon,
+} from 'lucide-react'
 
-const ChartLoadingSkeleton = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <Skeleton variant="chart" />
-  </div>
-)
+/**
+ * Home do consultor — «o que eu preciso fazer agora?».
+ *
+ * A tela anterior abria com «Bem-vindo ao FengShui Studio», quatro contadores e
+ * quatro gráficos. Nenhum deles respondia a pergunta que se faz ao abrir o app:
+ * um relatório concluído e nunca emitido, uma parcela vencida e um imóvel sem
+ * leitura de fachada ficavam invisíveis até alguém lembrar. Os gráficos
+ * continuam existindo, em `/relatorios` — como relatório, que é o que são.
+ *
+ * O título diz o estado do dia («4 consultas ativas · 2 esperando você») em vez
+ * de cumprimentar. As regras de «Precisa de você» estão em `src/lib/pendencias.ts`
+ * e a etapa de cada consulta em `src/lib/etapa-do-diagnostico.ts` — ambas
+ * derivadas, nada gravado.
+ */
 
-const StatusPieChart = dynamic(
-  () => import('../components/DashboardCharts').then(mod => mod.StatusPieChart),
-  { ssr: false, loading: ChartLoadingSkeleton }
-)
-const PagamentosBarChart = dynamic(
-  () => import('../components/DashboardCharts').then(mod => mod.PagamentosBarChart),
-  { ssr: false, loading: ChartLoadingSkeleton }
-)
-const ConsultasLineChart = dynamic(
-  () => import('../components/DashboardCharts').then(mod => mod.ConsultasLineChart),
-  { ssr: false, loading: ChartLoadingSkeleton }
-)
-const ClientesBarChart = dynamic(
-  () => import('../components/DashboardCharts').then(mod => mod.ClientesBarChart),
-  { ssr: false, loading: ChartLoadingSkeleton }
-)
-
-const CORES_STATUS: Record<string, string> = {
-  rascunho: '#94A3B8',
-  em_andamento: '#F59E0B',
-  finalizada: '#15803D',
-  arquivada: '#6B7280',
+const ICONE_DA_PENDENCIA: Record<TipoDePendencia, LucideIcon> = {
+  parcela_vencida: CircleAlert,
+  relatorio_nao_emitido: FileText,
+  ritual_hoje: Moon,
+  sem_fachada: Compass,
+  sem_ano_construcao: CalendarDays,
+  consulta_parada: Clock,
 }
 
-const LABELS_STATUS: Record<string, string> = {
-  rascunho: 'Rascunho',
-  em_andamento: 'Em andamento',
-  finalizada: 'Concluída',
-  arquivada: 'Arquivada',
+const TOM_DA_PENDENCIA = {
+  alerta: { fundo: '#FAEEE9', icone: '#B4533A' },
+  atencao: { fundo: '#FAF3E0', icone: '#8A6E2F' },
+  neutro: { fundo: '#F0F6F3', icone: '#2E7D6B' },
+} as const
+
+const ESTILO_PAINEL: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid rgba(14,27,44,0.06)',
+  borderRadius: '14px',
+  boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
+  padding: '18px 20px',
 }
 
-const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const ESTILO_TITULO_PAINEL: React.CSSProperties = {
+  fontSize: '15px', fontWeight: 700, margin: 0, color: '#0E1B2C',
+}
 
-const COR_PAGO = '#15803D'
-const COR_PENDENTE = '#F59E0B'
-const COR_ATRASADO = '#DC2626'
+interface ConsultaAtiva {
+  id: string
+  nome: string
+  cliente: string | null
+  iniciais: string
+  progresso: ProgressoDoDiagnostico
+  diasParada: number | null
+  orientacaoGraus: number | null
+}
 
-const DASHBOARD_MODULES = [
-  { key: 'status_consultas', label: 'Status das Consultas' },
-  { key: 'pagamentos', label: 'Pagamentos' },
-  { key: 'consultas_mes', label: 'Consultas por Mês' },
-  { key: 'proximas_atividades', label: 'Próximas Atividades' },
-  { key: 'novos_clientes', label: 'Novos Clientes por Mês' },
-  { key: 'analises_bagua', label: 'Análises Ba Gua Recentes' },
-  { key: 'acoes_rapidas', label: 'Ações Rápidas' },
-]
+interface NumerosDoMes {
+  relatoriosEntregues: number
+  recebido: number
+  aReceber: number
+  vencido: number
+}
+
+interface ItemDaAgenda {
+  id: string
+  quando: string
+  texto: string
+  hoje: boolean
+}
+
+/** Iniciais para o avatar — no máximo duas, sem inventar quando não há nome. */
+function iniciais(nome: string | null): string {
+  if (!nome) return '—'
+  const partes = nome.trim().split(/\s+/).filter(Boolean)
+  if (partes.length === 0) return '—'
+  return (partes[0][0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase()
+}
+
+function diasDesde(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return null
+  return Math.floor((Date.now() - t) / 86_400_000)
+}
+
+function textoDeDias(dias: number | null): string {
+  if (dias === null) return ''
+  if (dias === 0) return 'hoje'
+  if (dias === 1) return 'ontem'
+  return `há ${dias} dias`
+}
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [totalClientes, setTotalClientes] = useState(0)
-  const [totalConsultas, setTotalConsultas] = useState(0)
-  const [totalRituais, setTotalRituais] = useState(0)
-
-  // Chart data
-  const [statusData, setStatusData] = useState<StatusChartEntry[]>([])
-  const [consultasMesData, setConsultasMesData] = useState<ConsultaMesChartEntry[]>([])
-  const [clientesMesData, setClientesMesData] = useState<ClienteMesChartEntry[]>([])
-
-  // Pagamentos
-  const [pagamentosData, setPagamentosData] = useState<PagamentoMesChartEntry[]>([])
-  const [totalRecebido, setTotalRecebido] = useState(0)
-  const [totalPendente, setTotalPendente] = useState(0)
-  const [totalAtrasado, setTotalAtrasado] = useState(0)
-
-  // Agenda
-  const [agenda, setAgenda] = useState<AgendaItem[]>([])
-
-  // Análises Baguá recentes
-  const [analisesBagua, setAnalisesBagua] = useState<{id:string;nome_imovel:string;finalizada_em:string;cliente_nome:string;status_bagua:'concluida'|'em_andamento'}[]>([])
-
-  const [visibleModules, setVisibleModules] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('fengshui-dashboard-modules')
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return Object.fromEntries(DASHBOARD_MODULES.map(m => [m.key, true]))
-  })
-  const [showSettings, setShowSettings] = useState(false)
+  const [pendencias, setPendencias] = useState<Pendencia[]>([])
+  const [ativas, setAtivas] = useState<ConsultaAtiva[]>([])
+  const [numeros, setNumeros] = useState<NumerosDoMes>({ relatoriosEntregues: 0, recebido: 0, aReceber: 0, vencido: 0 })
+  const [agenda, setAgenda] = useState<ItemDaAgenda[]>([])
+  const [temAlgumDado, setTemAlgumDado] = useState(true)
 
   useEffect(() => {
-    async function loadAll() {
+    async function carregar() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { redirecionarParaLogin(); return }
-      setUser(user)
 
-      // Profile (loaded first -- needed for plan checks)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      setProfile(profile)
+      const { data: perfil } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      setProfile(perfil)
 
-      // Date constants for agenda queries
-      const hoje = new Date().toISOString().split('T')[0]
-      const em30dias = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      // O cliente final tem outra home (`HomeDoCliente`), que busca o próprio
+      // dado. Seguir com as consultas de carteira aqui gastaria seis queries
+      // cujo resultado ninguém veria.
+      if (ehClienteFinal(perfil)) { setLoading(false); return }
 
-      // ── Run all independent queries in parallel (with graceful failure handling) ──
-      const results = await Promise.allSettled([
-        // 0 - KPI: Clientes ativos
-        supabase
-          .from('clientes')
-          .select('*', { count: 'exact', head: true })
-          .eq('consultor_id', user.id)
-          .eq('ativo', true),
-        // 1 - KPI: Total consultas
-        supabase
-          .from('consultas')
-          .select('*', { count: 'exact', head: true })
-          .eq('consultor_id', user.id),
-        // 2 - KPI: Rituais pendentes
-        supabase
-          .from('rituais')
-          .select('*', { count: 'exact', head: true })
-          .eq('consultor_id', user.id)
-          .eq('status', 'pendente'),
-        // 3 - CHART 1: Status das consultas (Pie)
-        supabase
-          .from('consultas')
-          .select('status')
-          .eq('consultor_id', user.id),
-        // 4 - CHART 2: Pagamentos por mes (Bar empilhado)
+      const inicioDoMes = new Date()
+      inicioDoMes.setDate(1)
+      inicioDoMes.setHours(0, 0, 0, 0)
+      const inicioISO = inicioDoMes.toISOString()
+      const hoje = new Date().toISOString().slice(0, 10)
+      const em7dias = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
+
+      // As consultas primeiro: os ids delas filtram as duas tabelas seguintes.
+      const consultasRes = await supabase
+        .from('consultas')
+        .select('id, nome_imovel, status, criado_em, atualizado_em, finalizada_em, relatorio_gerado_em, ano_construcao, ano_reforma_estrutural, bagua_entrada, clientes(nome_completo)')
+        .eq('consultor_id', user.id)
+        .order('atualizado_em', { ascending: false })
+
+      const idsDasConsultas = (consultasRes.data ?? []).map(c => c.id as string)
+
+      const [pagamentosRes, rituaisRes, prescricoesRes, setoresRes, clientesRes] = await Promise.all([
         supabase
           .from('pagamentos')
-          .select('*')
+          .select('id, descricao, valor, status, data_vencimento, data_pagamento, clientes(nome_completo)')
           .eq('consultor_id', user.id),
-        // 5 - CHART 3: Evolucao de consultas por mes (Line)
-        supabase
-          .from('consultas')
-          .select('criado_em')
-          .eq('consultor_id', user.id),
-        // 6 - CHART 4: Clientes cadastrados por mes (Bar)
-        supabase
-          .from('clientes')
-          .select('criado_em')
-          .eq('consultor_id', user.id),
-        // 7 - AGENDA: Rituais pendentes (proximos 30 dias)
         supabase
           .from('rituais')
-          .select('*, clientes(nome_completo)')
+          .select('id, titulo, data_ritual, horario, status, clientes(nome_completo)')
           .eq('consultor_id', user.id)
           .eq('status', 'pendente')
           .gte('data_ritual', hoje)
-          .lte('data_ritual', em30dias)
-          .order('data_ritual', { ascending: true })
-          .limit(5),
-        // 8 - AGENDA: Consultas em andamento
-        supabase
-          .from('consultas')
-          .select('*, clientes(nome_completo)')
-          .eq('consultor_id', user.id)
-          .eq('status', 'em_andamento')
-          .order('criado_em', { ascending: false })
-          .limit(5),
-        // 9 - AGENDA: Pagamentos pendentes proximos
-        supabase
-          .from('pagamentos')
-          .select('*, clientes(nome_completo)')
-          .eq('consultor_id', user.id)
-          .in('status', ['pendente', 'atrasado'])
-          .order('data_vencimento', { ascending: true })
-          .limit(5),
-        // 10 - Analises Bagua recentes
-        supabase
-          .from('consultas')
-          .select('id, nome_imovel, bagua_entrada, clientes(nome_completo)')
-          .eq('consultor_id', user.id)
-          .not('bagua_entrada', 'is', null)
-          .order('criado_em', { ascending: false })
-          .limit(20),
+          .lte('data_ritual', em7dias)
+          .order('data_ritual', { ascending: true }),
+        // Filtradas pelas consultas do usuário, não varrendo a tabela inteira.
+        // Sem isso o PostgREST corta em 1000 linhas (`max-rows`) — e como
+        // `setores_bagua` tem até 9 por consulta, a partir de ~112 consultas o
+        // corte silencioso faria a etapa do diagnóstico **regredir** conforme a
+        // carteira cresce, que é o oposto do que se espera.
+        supabase.from('prescricoes').select('consulta_id').in('consulta_id', idsDasConsultas),
+        supabase.from('setores_bagua').select('consulta_id, score_percentual').in('consulta_id', idsDasConsultas),
+        supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('consultor_id', user.id).eq('ativo', true),
       ])
 
-      // ── Extract results with graceful fallbacks ──
-      const clientesCountRes = results[0].status === 'fulfilled' ? results[0].value : { count: 0, data: null, error: null }
-      const consultasCountRes = results[1].status === 'fulfilled' ? results[1].value : { count: 0, data: null, error: null }
-      const rituaisCountRes = results[2].status === 'fulfilled' ? results[2].value : { count: 0, data: null, error: null }
-      const allConsultasRes = results[3].status === 'fulfilled' ? results[3].value : { data: [], error: null }
-      const allPagamentosRes = results[4].status === 'fulfilled' ? results[4].value : { data: [], error: null }
-      const consultasComDataRes = results[5].status === 'fulfilled' ? results[5].value : { data: [], error: null }
-      const clientesComDataRes = results[6].status === 'fulfilled' ? results[6].value : { data: [], error: null }
-      const rituaisAgendaRes = results[7].status === 'fulfilled' ? results[7].value : { data: [], error: null }
-      const consultasAndamentoRes = results[8].status === 'fulfilled' ? results[8].value : { data: [], error: null }
-      const pagProximosRes = results[9].status === 'fulfilled' ? results[9].value : { data: [], error: null }
-      const consultasBaguaRes = results[10].status === 'fulfilled' ? results[10].value : { data: [], error: null }
-
-      // ── Process KPI results ──
-      setTotalClientes(clientesCountRes.count || 0)
-      setTotalConsultas(consultasCountRes.count || 0)
-      setTotalRituais(rituaisCountRes.count || 0)
-
-      // ── CHART 1: Status das consultas (Pie) ──
-      const allConsultas = allConsultasRes.data
-      if (allConsultas && allConsultas.length > 0) {
-        const counts: Record<string, number> = {}
-        allConsultas.forEach(c => {
-          counts[c.status] = (counts[c.status] || 0) + 1
+      // Falha de consulta nunca vira «não há nada»: o consultor leria a lista
+      // vazia como carteira vazia e tomaria decisão sobre um dado que não veio.
+      const falhou = [consultasRes, pagamentosRes, rituaisRes, prescricoesRes, setoresRes].find(r => r.error)
+      if (falhou?.error) {
+        logger.error('Falha ao carregar a home do consultor', {
+          route: '/dashboard', userId: user.id, error: falhou.error.message,
         })
-        const pieData = Object.entries(counts).map(([status, value]) => ({
-          name: LABELS_STATUS[status] || status,
-          value,
-          color: CORES_STATUS[status] || '#94A3B8',
-        }))
-        setStatusData(pieData)
       }
 
-      // ── CHART 2: Pagamentos por mês (Bar empilhado) ──
-      const allPagamentos = allPagamentosRes.data
-      if (allPagamentos && allPagamentos.length > 0) {
-        // Totais
-        let recebido = 0, pendente = 0, atrasado = 0
-        allPagamentos.forEach(p => {
-          if (p.status === 'pago') recebido += Number(p.valor)
-          else if (p.status === 'pendente') pendente += Number(p.valor)
-          else if (p.status === 'atrasado') atrasado += Number(p.valor)
-        })
-        setTotalRecebido(recebido)
-        setTotalPendente(pendente)
-        setTotalAtrasado(atrasado)
+      const consultas = (consultasRes.data ?? []) as unknown as {
+        id: string; nome_imovel: string | null; status: string | null
+        criado_em: string | null; atualizado_em: string | null
+        finalizada_em: string | null; relatorio_gerado_em: string | null
+        ano_construcao: number | null; ano_reforma_estrutural: number | null
+        bagua_entrada: BaguaEntrada | null
+        clientes?: { nome_completo: string } | null
+      }[]
+      const pagamentos = (pagamentosRes.data ?? []) as unknown as {
+        id: string; descricao: string | null; valor: number | string | null
+        status: string | null; data_vencimento: string | null; data_pagamento: string | null
+        clientes?: { nome_completo: string } | null
+      }[]
+      const rituais = (rituaisRes.data ?? []) as unknown as {
+        id: string; titulo: string | null; data_ritual: string | null
+        horario: string | null; status: string | null
+        clientes?: { nome_completo: string } | null
+      }[]
 
-        // Por mês (últimos 6 meses)
-        const now = new Date()
-        const monthMap: Record<string, { pago: number; pendente: number; atrasado: number }> = {}
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          monthMap[key] = { pago: 0, pendente: 0, atrasado: 0 }
-        }
+      setTemAlgumDado(consultas.length > 0 || (clientesRes.count ?? 0) > 0)
 
-        allPagamentos.forEach(p => {
-          const dateField = p.status === 'pago' ? p.data_pagamento : p.data_vencimento
-          if (!dateField) return
-          const d = new Date(dateField)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          if (key in monthMap) {
-            if (p.status === 'pago') monthMap[key].pago += Number(p.valor)
-            else if (p.status === 'pendente') monthMap[key].pendente += Number(p.valor)
-            else if (p.status === 'atrasado') monthMap[key].atrasado += Number(p.valor)
-          }
-        })
+      setPendencias(montarPendencias({ consultas, pagamentos, rituais }))
 
-        const barData = Object.entries(monthMap).map(([key, val]) => {
-          const [, m] = key.split('-')
-          return { mes: MESES[parseInt(m) - 1], Recebido: val.pago, Pendente: val.pendente, Atrasado: val.atrasado }
-        })
-        setPagamentosData(barData)
+      // Prescrições e setores por consulta — o que decide as etapas 4 e 3. RLS
+      // já limita as duas tabelas ao dono, então não há filtro por consultor.
+      const prescricoesPorConsulta = new Map<string, number>()
+      for (const p of (prescricoesRes.data ?? []) as { consulta_id: string }[]) {
+        prescricoesPorConsulta.set(p.consulta_id, (prescricoesPorConsulta.get(p.consulta_id) ?? 0) + 1)
+      }
+      const setoresPorConsulta = new Map<string, number>()
+      for (const s of (setoresRes.data ?? []) as { consulta_id: string; score_percentual: number | null }[]) {
+        if (s.score_percentual == null) continue
+        setoresPorConsulta.set(s.consulta_id, (setoresPorConsulta.get(s.consulta_id) ?? 0) + 1)
       }
 
-      // ── CHART 3: Evolução de consultas por mês (Line) ──
-      const consultasComData = consultasComDataRes.data
-      if (consultasComData && consultasComData.length > 0) {
-        const now = new Date()
-        const monthCounts: Record<string, number> = {}
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          monthCounts[key] = 0
-        }
-        consultasComData.forEach(c => {
-          const d = new Date(c.criado_em)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          if (key in monthCounts) monthCounts[key]++
-        })
-        const lineData = Object.entries(monthCounts).map(([key, value]) => {
-          const [, m] = key.split('-')
-          return { mes: MESES[parseInt(m) - 1], consultas: value }
-        })
-        setConsultasMesData(lineData)
-      }
-
-      // ── CHART 4: Clientes cadastrados por mês (Bar) ──
-      const clientesComData = clientesComDataRes.data
-      if (clientesComData && clientesComData.length > 0) {
-        const now = new Date()
-        const monthCounts: Record<string, number> = {}
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          monthCounts[key] = 0
-        }
-        clientesComData.forEach(c => {
-          const d = new Date(c.criado_em)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          if (key in monthCounts) monthCounts[key]++
-        })
-        const barData = Object.entries(monthCounts).map(([key, value]) => {
-          const [, m] = key.split('-')
-          return { mes: MESES[parseInt(m) - 1], clientes: value }
-        })
-        setClientesMesData(barData)
-      }
-
-      // ── AGENDA: Merge rituais + consultas em andamento + pagamentos ──
-      const agendaItems: AgendaItem[] = []
-
-      const rituais = rituaisAgendaRes.data
-      rituais?.forEach(r => {
-        agendaItems.push({
-          tipo: 'ritual',
-          titulo: r.titulo,
-          subtitulo: r.clientes?.nome_completo || '',
-          data: r.data_ritual,
-          horario: r.horario,
-          icon: 'ritual',
-          cor: '#2E7D6B',
-        })
+      const vivas = consultas.filter(c => {
+        const st = (c.status ?? '').toLowerCase()
+        return st !== 'arquivada' && st !== 'deletada' && st !== 'finalizada'
       })
 
-      const consultasAndamento = consultasAndamentoRes.data
-      consultasAndamento?.forEach(c => {
-        agendaItems.push({
-          tipo: 'consulta',
-          titulo: c.nome_imovel,
-          subtitulo: c.clientes?.nome_completo || '',
-          data: c.criado_em?.split('T')[0],
-          horario: null,
-          icon: 'consulta',
-          cor: '#F59E0B',
-        })
+      setAtivas(vivas.map(c => ({
+        id: c.id,
+        nome: c.nome_imovel?.trim() || 'Imóvel sem nome',
+        cliente: c.clientes?.nome_completo ?? null,
+        iniciais: iniciais(c.clientes?.nome_completo ?? null),
+        progresso: progressoDoDiagnostico({
+          orientacaoGraus: c.bagua_entrada?.orientacao_graus,
+          baguaFinalizadaEm: c.bagua_entrada?.finalizada_em,
+          setoresComScore: setoresPorConsulta.get(c.id) ?? 0,
+          prescricoes: prescricoesPorConsulta.get(c.id) ?? 0,
+          relatorioGeradoEm: c.relatorio_gerado_em,
+        }),
+        diasParada: diasDesde(c.atualizado_em ?? c.criado_em),
+        orientacaoGraus: typeof c.bagua_entrada?.orientacao_graus === 'number' ? c.bagua_entrada.orientacao_graus : null,
+      })))
+
+      // ── Números do mês ──────────────────────────────────────────────────
+      // «Vencido» é derivado da data, como em `pendencias.ts`: o status gravado
+      // e a data podem discordar, e é a data que sabe.
+      let recebido = 0, aReceber = 0, vencido = 0
+      for (const p of pagamentos) {
+        const valor = Number(p.valor)
+        if (!Number.isFinite(valor)) continue
+        const st = (p.status ?? '').toLowerCase()
+        if (st === 'cancelado') continue
+        if (st === 'pago') {
+          if (p.data_pagamento && p.data_pagamento >= inicioISO.slice(0, 10)) recebido += valor
+          continue
+        }
+        if (p.data_vencimento && p.data_vencimento < hoje) vencido += valor
+        else aReceber += valor
+      }
+
+      setNumeros({
+        relatoriosEntregues: consultas.filter(c =>
+          c.relatorio_gerado_em && c.relatorio_gerado_em >= inicioISO
+        ).length,
+        recebido, aReceber, vencido,
       })
 
-      const pagProximos = pagProximosRes.data
-      pagProximos?.forEach(p => {
-        agendaItems.push({
-          tipo: 'pagamento',
-          titulo: p.descricao,
-          subtitulo: `R$ ${Number(p.valor).toFixed(2)} • ${p.clientes?.nome_completo || ''}`,
-          data: p.data_vencimento,
-          horario: null,
-          icon: p.status === 'atrasado' ? 'atrasado' : 'pagamento',
-          cor: p.status === 'atrasado' ? '#DC2626' : '#15803D',
-        })
-      })
-
-      // Ordenar por data
-      agendaItems.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
-      setAgenda(agendaItems.slice(0, 8))
-
-      // Análises Baguá recentes
-      const consultasBagua = consultasBaguaRes.data
-      const recentes = ((consultasBagua || []) as unknown as { id: string; nome_imovel: string | null; bagua_entrada: BaguaEntrada | null; clientes?: { nome_completo: string } | null }[])
-        .filter((c) => c.bagua_entrada?.finalizada_em || c.bagua_entrada?.planta_url)
-        .sort((a, b) => {
-          const da = a.bagua_entrada?.finalizada_em || a.bagua_entrada?.etapa || ''
-          const db = b.bagua_entrada?.finalizada_em || b.bagua_entrada?.etapa || ''
-          return new Date(db).getTime() - new Date(da).getTime()
-        })
-        .slice(0, 5)
-        .map((c) => ({
-          id: c.id,
-          nome_imovel: c.nome_imovel || 'Imóvel',
-          finalizada_em: c.bagua_entrada?.finalizada_em || '',
-          cliente_nome: c.clientes?.nome_completo || '',
-          status_bagua: c.bagua_entrada?.finalizada_em ? 'concluida' as const : 'em_andamento' as const,
-        }))
-      setAnalisesBagua(recentes)
+      // ── Agenda da semana ────────────────────────────────────────────────
+      setAgenda(rituais.slice(0, 5).map(r => {
+        const ehHoje = r.data_ritual === hoje
+        const d = r.data_ritual ? new Date(`${r.data_ritual}T12:00:00`) : null
+        return {
+          id: r.id,
+          quando: ehHoje ? 'Hoje' : d
+            ? d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }).replace('.', '')
+            : '—',
+          texto: [r.titulo?.trim() || 'Ritual', r.clientes?.nome_completo].filter(Boolean).join(' · '),
+          hoje: ehHoje,
+        }
+      }))
 
       setLoading(false)
     }
-    loadAll()
+    carregar()
   }, [])
 
-  function formatDate(dateStr: string) {
-    const d = new Date(dateStr + 'T12:00:00')
-    const hoje = new Date()
-    const amanha = new Date(hoje)
-    amanha.setDate(amanha.getDate() + 1)
-
-    if (d.toDateString() === hoje.toDateString()) return 'Hoje'
-    if (d.toDateString() === amanha.toDateString()) return 'Amanhã'
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  }
-
-  function formatCurrency(value: number) {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  }
+  const retomar = ativas[0] ?? null
+  const esperando = pendencias.length
 
   if (loading) {
     return (
       <AppShell currentPage="dashboard">
-        {/* Header skeleton */}
-        <div style={{ marginBottom: '32px' }}>
-          <Skeleton width="280px" height="24px" />
-          <div style={{ marginTop: '8px' }}><Skeleton width="320px" height="16px" /></div>
-        </div>
-        {/* KPI cards skeleton */}
-        <Skeleton variant="kpi" />
-        {/* Row 1: Two chart skeletons side by side */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-          <Skeleton variant="chart" />
-          <Skeleton variant="chart" />
-        </div>
-        {/* Row 2: Chart + Agenda skeletons side by side */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-          <Skeleton variant="chart" />
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-            <Skeleton width="180px" height="18px" />
-            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[1, 2, 3, 4].map(i => (
-                <Skeleton key={i} width="100%" height="48px" />
-              ))}
-            </div>
+        <div style={{ marginBottom: '18px' }}><Skeleton width="360px" height="28px" /></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '18px', alignItems: 'start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton width="100%" height="188px" />
+            <Skeleton width="100%" height="240px" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton width="100%" height="140px" />
+            <Skeleton width="100%" height="200px" />
           </div>
         </div>
-        {/* Row 3: Full-width chart skeleton */}
-        <div style={{ marginTop: '20px' }}><Skeleton variant="chart" /></div>
+      </AppShell>
+    )
+  }
+
+  // Consultor sem nenhum dado recebe a tela de primeiro uso inteira, não quatro
+  // painéis vazios com mensagens negativas.
+  if (ehClienteFinal(profile)) {
+    return (
+      <AppShell currentPage="dashboard">
+        <HomeDoCliente nome={profile?.nome_completo ?? null} />
+      </AppShell>
+    )
+  }
+
+  if (!temAlgumDado) {
+    return (
+      <AppShell currentPage="dashboard">
+        <PrimeiroUso nome={profile?.nome_completo ?? null} />
       </AppShell>
     )
   }
 
   return (
     <AppShell currentPage="dashboard">
-      {/* Header */}
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <div>
-          <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
-            Painel
-          </p>
-          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
-            Bem-vindo ao FengShui Studio
-          </h1>
-          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>
-            Gerencie seus clientes e consultas de Feng Shui
-          </p>
-        </div>
-        <button type="button" onClick={() => setShowSettings(!showSettings)} style={{
-          background: 'none', border: '1px solid #D1D5DB', borderRadius: '8px',
-          padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280',
-          display: 'inline-flex', alignItems: 'center', gap: '6px'
-        }}><Settings size={15} strokeWidth={1.75} aria-hidden="true" /> Personalizar</button>
+      <div className="home-cabecalho" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
+        <h1 style={{
+          fontFamily: 'var(--font-fraunces), serif', fontSize: '25px', fontWeight: 500,
+          margin: 0, color: '#0E1B2C', letterSpacing: '-0.01em',
+        }}>
+          {ativas.length === 0
+            ? 'Nenhuma consulta em aberto'
+            : `${ativas.length} ${ativas.length === 1 ? 'consulta ativa' : 'consultas ativas'}`}
+          {esperando > 0 && ` · ${esperando} ${esperando === 1 ? 'esperando você' : 'esperando você'}`}
+        </h1>
+        <span style={{ color: '#6B7280', fontSize: '13px' }}>
+          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+          {' · '}{faseLunar(new Date()).nome.toLowerCase()}
+        </span>
       </div>
 
-      {showSettings && (
-        <div className="panel" style={{ padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#0E1B2C' }}>Escolha os módulos visíveis</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
-            {DASHBOARD_MODULES.map(m => (
-              <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: 'pointer', background: visibleModules[m.key] ? '#F0FDF4' : '#F9FAFB' }}>
-                <input type="checkbox" checked={visibleModules[m.key] !== false} onChange={e => {
-                  const next = { ...visibleModules, [m.key]: e.target.checked }
-                  setVisibleModules(next)
-                  try { localStorage.setItem('fengshui-dashboard-modules', JSON.stringify(next)) } catch {}
-                }} style={{ accentColor: '#2E7D6B' }} />
-                <span style={{ fontSize: '13px', color: '#374151' }}>{m.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="home-grade" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '18px', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
 
-      {/* KPI Cards */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '20px', marginBottom: '32px'
-      }}>
-        {[
-          { label: 'Clientes ativos', value: String(totalClientes), icon: Users, color: '#1D4ED8', link: '/clientes' },
-          { label: 'Consultas realizadas', value: String(totalConsultas), icon: ClipboardList, color: '#15803D', link: '/consultas' },
-          { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#2E7D6B', link: '/calendario' },
-          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: Star, color: '#C9A227', link: '/planos' },
-        ].map((kpi, i) => (
-          <div key={i} className="panel panel-interactive" onClick={() => window.location.href = kpi.link} style={{
-            padding: '24px', borderLeft: `4px solid ${kpi.color}`,
-            cursor: 'pointer',
-          }}>
-            <div style={{ marginBottom: '8px' }}><kpi.icon size={26} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
-            <div style={{ fontSize: '28px', fontWeight: 'bold', color: kpi.color, marginBottom: '4px' }}>{kpi.value}</div>
-            <div style={{ color: '#6B7280', fontSize: '13px' }}>{kpi.label}</div>
-          </div>
-        ))}
-      </div>
+          {/* ── Continue de onde parou ─────────────────────────────────── */}
+          {retomar && (
+            <div style={{
+              background: 'linear-gradient(120deg,#0E1B2C,#1C3A52)',
+              borderRadius: '14px', padding: '20px 22px', color: '#fff',
+            }}>
+              <p style={{ color: '#C9A227', fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                Continue de onde parou
+              </p>
+              <p style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '21px', margin: '0 0 4px' }}>
+                {retomar.nome}{retomar.cliente ? ` · ${retomar.cliente}` : ''}
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.66)', fontSize: '13px', margin: '0 0 12px' }}>
+                {retomar.progresso.rotulo}
+                {retomar.diasParada !== null && ` — última mudança ${textoDeDias(retomar.diasParada)}`}
+              </p>
 
-      {/* Row 1: Status Consultas (Pie) + Pagamentos (Bar) */}
-      {(visibleModules.status_consultas !== false || visibleModules.pagamentos !== false) && (
-      <div style={{ display: 'grid', gridTemplateColumns: visibleModules.status_consultas !== false && visibleModules.pagamentos !== false ? '1fr 1fr' : '1fr', gap: '20px', marginBottom: '20px' }}>
+              {/* A barra é a etapa derivada, não um campo gravado. */}
+              <div role="img"
+                aria-label={`Progresso do diagnóstico: ${retomar.progresso.rotulo}`}
+                style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '14px' }}>
+                {coresDaBarra(retomar.progresso).map((cor, i) => (
+                  <span key={i} style={{ height: '6px', flex: 1, borderRadius: '99px', background: cor }} />
+                ))}
+              </div>
 
-        {/* CHART 1: Status Consultas - Pie */}
-        {visibleModules.status_consultas !== false && (
-        <div style={{
-          background: '#ffffff', borderRadius: '14px', padding: '24px',
-          border: '1px solid rgba(14,27,44,0.06)',
-          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
-        }}>
-          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-            Status das Consultas
-          </h3>
-          <StatusPieChart statusData={statusData} />
-        </div>
-        )}
-
-        {/* CHART 2: Pagamentos - Bar empilhado */}
-        {visibleModules.pagamentos !== false && (
-        <div style={{
-          background: '#ffffff', borderRadius: '14px', padding: '24px',
-          border: '1px solid rgba(14,27,44,0.06)',
-          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
-              Pagamentos
-            </h3>
-            <button type="button" onClick={() => window.location.href = '/pagamentos'} style={{
-              background: 'none', border: 'none', color: '#2E7D6B',
-              fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
-            }}>Ver todos →</button>
-          </div>
-
-          {/* Mini KPIs */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ flex: 1, background: '#F0FDF4', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-              <p style={{ color: COR_PAGO, fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalRecebido)}</p>
-              <p style={{ color: '#6B7280', fontSize: '11px', margin: '2px 0 0 0' }}>Recebido</p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <Link href={`/consultas/${retomar.id}`} style={{
+                  background: '#C9A227', color: '#0E1B2C', fontSize: '14px', fontWeight: 700,
+                  padding: '10px 20px', borderRadius: '9px', textDecoration: 'none',
+                }}>Retomar diagnóstico</Link>
+                <Link href={`/bagua-planta?consulta=${retomar.id}`} style={{
+                  border: '1px solid rgba(255,255,255,0.28)', color: '#fff', fontSize: '14px',
+                  padding: '10px 18px', borderRadius: '9px', textDecoration: 'none',
+                }}>Ver planta</Link>
+                {/* A leitura da fachada é o que decide Kua da Casa e Estrelas
+                    Voadoras; quando falta, dizer isso vale mais que um espaço vazio. */}
+                <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                  {retomar.orientacaoGraus === null
+                    ? 'Fachada ainda não medida'
+                    : <>{retomar.orientacaoGraus.toFixed(1).replace('.', ',')}° · <strong style={{ color: '#fff' }}>{montanhaDoGrau(retomar.orientacaoGraus).nome}</strong></>}
+                </span>
+              </div>
             </div>
-            <div style={{ flex: 1, background: '#FFFBEB', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-              <p style={{ color: COR_PENDENTE, fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalPendente)}</p>
-              <p style={{ color: '#6B7280', fontSize: '11px', margin: '2px 0 0 0' }}>Pendente</p>
+          )}
+
+          {/* ── Precisa de você ────────────────────────────────────────── */}
+          <div style={ESTILO_PAINEL}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={ESTILO_TITULO_PAINEL}>Precisa de você</h2>
+              <span style={{ color: '#9CA3AF', fontSize: '12px' }}>
+                {pendencias.length === 0 ? 'nada pendente' : `${pendencias.length} ${pendencias.length === 1 ? 'item' : 'itens'}`}
+              </span>
             </div>
-            {totalAtrasado > 0 && (
-              <div style={{ flex: 1, background: '#FEF2F2', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-                <p style={{ color: COR_ATRASADO, fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalAtrasado)}</p>
-                <p style={{ color: '#6B7280', fontSize: '11px', margin: '2px 0 0 0' }}>Atrasado</p>
+            {pendencias.length === 0 ? (
+              <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
+                Nenhum relatório atrasado, nenhuma parcela vencida e nenhum imóvel com lacuna
+                de método. Lista vazia aqui é boa notícia.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {pendencias.slice(0, 6).map((p, i, lista) => {
+                  const Icone = ICONE_DA_PENDENCIA[p.tipo]
+                  const tom = TOM_DA_PENDENCIA[p.tom]
+                  return (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 8px',
+                      borderBottom: i < lista.length - 1 ? '1px solid #F1EEE6' : 'none',
+                    }}>
+                      <span style={{
+                        width: '32px', height: '32px', borderRadius: '9px', flexShrink: 0,
+                        background: tom.fundo, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Icone size={17} strokeWidth={1.75} color={tom.icone} aria-hidden="true" />
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#0E1B2C' }}>{p.titulo}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9CA3AF' }}>{p.detalhe}</p>
+                      </div>
+                      <Link href={p.href} style={{
+                        fontSize: '12px', fontWeight: 700, textDecoration: 'none', flexShrink: 0,
+                        padding: '6px 12px', borderRadius: '8px',
+                        ...(p.tom === 'neutro' && p.tipo === 'relatorio_nao_emitido'
+                          ? { background: '#2E7D6B', color: '#fff' }
+                          : { border: '1px solid #D8D0C0', color: '#0E1B2C' }),
+                      }}>{p.acao}</Link>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
 
-          <PagamentosBarChart pagamentosData={pagamentosData} />
+          {/* ── Consultas ativas ───────────────────────────────────────── */}
+          <div style={ESTILO_PAINEL}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={ESTILO_TITULO_PAINEL}>Consultas ativas</h2>
+              <Link href="/consultas" style={{ fontSize: '12px', fontWeight: 700, color: '#2E7D6B', textDecoration: 'none' }}>
+                Ver todas <ArrowRight size={13} strokeWidth={2.25} style={{ verticalAlign: '-2px' }} aria-hidden="true" />
+              </Link>
+            </div>
+            {ativas.length === 0 ? (
+              <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
+                Nenhuma consulta em aberto. As finalizadas continuam em Consultas.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {ativas.slice(0, 6).map(c => {
+                  const parada = c.diasParada !== null && c.diasParada >= 14
+                  return (
+                    <Link key={c.id} href={`/consultas/${c.id}`} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none',
+                      padding: '10px 12px', border: '1px solid #F1EEE6', borderRadius: '10px',
+                      opacity: parada ? 0.78 : 1,
+                    }}>
+                      <span style={{
+                        width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0,
+                        background: '#E4F1EC', color: '#2E7D6B', fontSize: '12px', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }} aria-hidden="true">{c.iniciais}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0E1B2C' }}>{c.nome}</span>
+                        <span style={{ display: 'block', fontSize: '12px', color: '#9CA3AF' }}>{c.cliente ?? 'Sem cliente vinculado'}</span>
+                      </span>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
+                        flexShrink: 0, color: '#2E7D6B', background: '#F0F6F3',
+                      }}>{c.progresso.rotulo.replace('Etapa ', '')}</span>
+                      <span style={{
+                        fontSize: '12px', width: '68px', textAlign: 'right', flexShrink: 0,
+                        color: parada ? '#B4533A' : '#9CA3AF',
+                      }}>{textoDeDias(c.diasParada)}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
-        )}
-      </div>
-      )}
 
-      {/* Row 2: Consultas por mês (Line) + Agenda */}
-      {(visibleModules.consultas_mes !== false || visibleModules.proximas_atividades !== false) && (
-      <div style={{ display: 'grid', gridTemplateColumns: visibleModules.consultas_mes !== false && visibleModules.proximas_atividades !== false ? '1fr 1fr' : '1fr', gap: '20px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
 
-        {/* CHART 3: Evolução Consultas - Line */}
-        {visibleModules.consultas_mes !== false && (
-        <div style={{
-          background: '#ffffff', borderRadius: '14px', padding: '24px',
-          border: '1px solid rgba(14,27,44,0.06)',
-          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
-        }}>
-          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-            Consultas por Mês
-          </h3>
-          <ConsultasLineChart consultasMesData={consultasMesData} />
-        </div>
-        )}
-
-        {/* AGENDA */}
-        {visibleModules.proximas_atividades !== false && (
-        <div style={{
-          background: '#ffffff', borderRadius: '14px', padding: '24px',
-          border: '1px solid rgba(14,27,44,0.06)',
-          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
-              Próximas Atividades
-            </h3>
-            <span style={{ color: '#9CA3AF', fontSize: '12px' }}>Próximos 30 dias</span>
+          {/* ── Começar ────────────────────────────────────────────────── */}
+          <div style={{ background: '#F3EEE4', border: '1px solid #E7E1D6', borderRadius: '14px', padding: '18px 20px' }}>
+            <p style={{ color: '#8A6E2F', fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+              Começar
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Link href="/consultas/nova" style={{
+                background: '#2E7D6B', color: '#fff', fontSize: '14px', fontWeight: 700,
+                padding: '11px 16px', borderRadius: '9px', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: '8px',
+              }}><Plus size={16} strokeWidth={2} aria-hidden="true" />Nova consulta</Link>
+              <Link href="/clientes" style={{
+                border: '1px solid #D8D0C0', background: '#fff', color: '#0E1B2C', fontSize: '14px',
+                padding: '11px 16px', borderRadius: '9px', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: '8px',
+              }}><UserPlus size={16} strokeWidth={1.75} aria-hidden="true" />Novo cliente</Link>
+            </div>
           </div>
 
-          {agenda.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
-              {agenda.map((item, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '10px 12px', borderRadius: '10px',
-                  background: '#F9FAFB', border: '1px solid #F1F5F9',
-                }}>
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '10px',
-                    background: `${item.cor}15`, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    {(() => {
-                      const map: Record<string, LucideIcon> = { ritual: Moon, consulta: ClipboardList, pagamento: Wallet, atrasado: CircleAlert }
-                      const Icon = map[item.icon] || CalendarDays
-                      return <Icon size={20} strokeWidth={1.75} color={item.cor} aria-hidden="true" />
-                    })()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ color: '#111827', fontSize: '13px', fontWeight: 'bold', margin: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.titulo}
-                    </p>
-                    <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.subtitulo}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <p style={{ color: item.cor, fontSize: '13px', fontWeight: 'bold', margin: '0' }}>
-                      {formatDate(item.data)}
-                    </p>
-                    {item.horario && (
-                      <p style={{ color: '#9CA3AF', fontSize: '11px', margin: '2px 0 0 0' }}>{item.horario}</p>
-                    )}
-                  </div>
+          {/* ── Números do mês ─────────────────────────────────────────── */}
+          <div style={ESTILO_PAINEL}>
+            <h2 style={{ ...ESTILO_TITULO_PAINEL, marginBottom: '14px', textTransform: 'capitalize' }}>
+              {new Date().toLocaleDateString('pt-BR', { month: 'long' })}
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[
+                { rotulo: 'Relatórios entregues', valor: String(numeros.relatoriosEntregues), alerta: false },
+                { rotulo: 'Recebido', valor: formatarMoeda(numeros.recebido), alerta: false },
+                { rotulo: 'A receber', valor: formatarMoeda(numeros.aReceber), alerta: false },
+                { rotulo: 'Vencido', valor: formatarMoeda(numeros.vencido), alerta: numeros.vencido > 0 },
+              ].map(linha => (
+                <div key={linha.rotulo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '13px', color: linha.alerta ? '#B4533A' : '#6B7280' }}>{linha.rotulo}</span>
+                  <strong style={{ fontSize: '19px', color: linha.alerta ? '#B4533A' : '#0E1B2C' }}>{linha.valor}</strong>
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ height: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <CalendarDays size={32} strokeWidth={1.5} color="#9CA3AF" aria-hidden="true" />
-              <p style={{ color: '#9CA3AF', fontSize: '14px', textAlign: 'center', margin: '0' }}>Nenhuma atividade próxima</p>
-              <p style={{ color: '#D1D5DB', fontSize: '12px', textAlign: 'center', margin: '0' }}>Rituais, consultas e pagamentos aparecem aqui</p>
+            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #F1EEE6' }}>
+              <Link href="/relatorios" style={{ fontSize: '13px', fontWeight: 700, color: '#2E7D6B', textDecoration: 'none' }}>
+                Relatórios e gráficos <ArrowRight size={13} strokeWidth={2.25} style={{ verticalAlign: '-2px' }} aria-hidden="true" />
+              </Link>
             </div>
-          )}
-        </div>
-        )}
-      </div>
-      )}
+          </div>
 
-      {/* Row 3: Clientes por mês (Bar) */}
-      {visibleModules.novos_clientes !== false && (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginBottom: '32px' }}>
-        <div style={{
-          background: '#ffffff', borderRadius: '14px', padding: '24px',
-          border: '1px solid rgba(14,27,44,0.06)',
-          boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)',
-        }}>
-          <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-            Novos Clientes por Mês
-          </h3>
-          <ClientesBarChart clientesMesData={clientesMesData} />
-        </div>
-      </div>
-      )}
-
-      {/* Análises Baguá recentes */}
-      {visibleModules.analises_bagua !== false && analisesBagua.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src="/marketing/logo-fengshui.png" alt="" width={22} height={22} />
-            Análises Ba Gua recentes
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {analisesBagua.map(a => (
-                <div key={a.id} className="panel panel-interactive" onClick={() => window.location.href = `/consultas/${a.id}`} style={{
-                  padding: '14px 18px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                borderLeft: `4px solid ${a.status_bagua==='concluida'?'#15803D':'#D97706'}`
-              }}>
-                <div>
-                  <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '14px', margin: '0 0 2px 0' }}>{a.nome_imovel}</p>
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '0' }}>
-                    {a.cliente_nome && `${a.cliente_nome} · `}
-                    {a.status_bagua==='concluida'
-                      ? `Diagnóstico finalizado em ${new Date(a.finalizada_em).toLocaleDateString('pt-BR')} às ${new Date(a.finalizada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-                      : 'Análise em andamento'
-                    }
-                  </p>
-                </div>
-                <span style={{
-                  background: a.status_bagua==='concluida'?'#F0FDF4':'#FFF7ED',
-                  color: a.status_bagua==='concluida'?'#15803D':'#D97706',
-                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
-                  display: 'inline-flex', alignItems: 'center', gap: '4px'
-                }}>
-                  {a.status_bagua==='concluida'
-                    ? <><Check size={12} strokeWidth={2.5} aria-hidden="true" /> Concluída</>
-                    : <><Clock size={12} strokeWidth={2.5} aria-hidden="true" /> Em andamento</>}
-                </span>
+          {/* ── Agenda da semana ───────────────────────────────────────── */}
+          <div style={ESTILO_PAINEL}>
+            <h2 style={{ ...ESTILO_TITULO_PAINEL, marginBottom: '12px' }}>Agenda da semana</h2>
+            {agenda.length === 0 ? (
+              <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
+                Nada marcado para os próximos sete dias.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {agenda.map(item => (
+                  <div key={item.id} style={{ display: 'flex', gap: '10px', alignItems: 'baseline' }}>
+                    <span style={{
+                      fontSize: '12px', fontWeight: 700, width: '52px', flexShrink: 0,
+                      color: item.hoje ? '#2E7D6B' : '#6B7280', textTransform: 'capitalize',
+                    }}>{item.quando}</span>
+                    <span style={{ fontSize: '13px', color: '#3D4C58' }}>{item.texto}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
-
-      {/* Ações rápidas */}
-      {visibleModules.acoes_rapidas !== false && (
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-          Ações rápidas
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-          {[
-            { label: 'Nova consulta', desc: 'Iniciar novo diagnóstico Ba Gua', icon: Sparkles, color: '#2E7D6B', link: '/consultas/nova' },
-            { label: 'Novo cliente', desc: 'Cadastrar cliente na plataforma', icon: Users, color: '#1D4ED8', link: '/clientes' },
-            { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#15803D', link: '/consultas' },
-            { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: Moon, color: '#C9A227', link: '/calendario' },
-          ].map((kpi, i) => (
-                <div key={i} className="panel panel-interactive" onClick={() => window.location.href = kpi.link} style={{
-                  padding: '20px', cursor: 'pointer',
-              borderTop: `3px solid ${kpi.color}`,
-            }}>
-              <div style={{ marginBottom: '8px' }}><kpi.icon size={24} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
-              <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{kpi.label}</div>
-              <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{kpi.desc}</div>
-            </div>
-          ))}
         </div>
       </div>
-      )}
 
-      {/* Banner upgrade */}
-      {planoUsuario(profile) !== 'profissional' && (
-        <div style={{
-          background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
-          borderRadius: '12px', padding: '24px 32px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexWrap: 'wrap', gap: '16px'
-        }}>
-          <div>
-            <p style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '16px', margin: '0 0 4px 0' }}>
-              Você está no plano Freemium
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', margin: '0' }}>
-              Faça upgrade para acessar relatórios PDF, cronograma lunar e clientes ilimitados
-            </p>
-          </div>
-          <button type="button" onClick={() => window.location.href = '/planos'} style={{
-            background: '#C9A227', color: '#ffffff', border: 'none',
-            padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
-            fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
-          }}>
-            Fazer upgrade
-          </button>
-        </div>
-      )}
+      <style>{`
+        /* A grade de duas colunas não cabe em telas estreitas: vira uma coluna,
+           na ordem em que as coisas importam. */
+        @media (max-width: 900px) {
+          .home-grade { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </AppShell>
   )
 }

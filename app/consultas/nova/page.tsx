@@ -1,5 +1,7 @@
 'use client'
 
+import CamposAnoDoImovel from '../../components/CamposAnoDoImovel'
+import { calcularMingGua } from '../../../src/lib/ming-gua'
 import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -9,14 +11,17 @@ import FlowLayout from '../../components/FlowLayout'
 import Skeleton from '../../components/Skeleton'
 import type { Profile, Cliente } from '../../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional as isProfissionalFn, planoUsuario, PROF_TYPES } from '../../../src/lib/plano-utils'
+import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional as isProfissionalFn, planoUsuario, PROF_TYPES, mensagemLimiteImoveis } from '../../../src/lib/plano-utils'
 
 function NovaConsultaContent() {
   const searchParams = useSearchParams()
-  const preSelectedClientId = searchParams.get('clienteId')
+  // O card do cliente navega com `cliente_id`; esta tela lia `clienteId`. Os
+  // nomes nunca bateram, então a pré-seleção jamais funcionou. Fica o nome que
+  // já é enviado, e o antigo segue aceito para não quebrar link salvo.
+  const preSelectedClientId = searchParams.get('cliente_id') ?? searchParams.get('clienteId')
 
   const [user, setUser] = useState<User | null>(null)
-  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
+  const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo' | 'cidade' | 'estado' | 'data_nascimento' | 'genero'>[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -34,6 +39,8 @@ function NovaConsultaContent() {
     area_total_m2: '',
     endereco_imovel: '',
     num_moradores: '',
+    ano_construcao: '',
+    ano_reforma_estrutural: '',
     historico_imovel: '',
     observacoes_topograficas: '',
     dados_adicionais: '',
@@ -60,7 +67,9 @@ function NovaConsultaContent() {
         // Professional: load clients list
         const { data } = await supabase
           .from('clientes')
-          .select('id, nome_completo')
+          // Cidade, nascimento e gênero entram no bloco de contexto do cliente:
+          // é o que permite mostrar o Ming Gua sem uma segunda ida ao banco.
+          .select('id, nome_completo, cidade, estado, data_nascimento, genero')
           .eq('consultor_id', user.id)
           .eq('ativo', true)
           .order('nome_completo')
@@ -143,6 +152,8 @@ function NovaConsultaContent() {
           area_total_m2: form.area_total_m2 ? parseFloat(form.area_total_m2) : null,
           endereco_imovel: form.endereco_imovel,
           num_moradores: form.num_moradores ? parseInt(form.num_moradores) : null,
+          ano_construcao: form.ano_construcao ? parseInt(form.ano_construcao) : null,
+          ano_reforma_estrutural: form.ano_reforma_estrutural ? parseInt(form.ano_reforma_estrutural) : null,
           historico_imovel: form.historico_imovel || null,
           observacoes_topograficas: form.observacoes_topograficas || null,
           dados_adicionais: form.dados_adicionais || null,
@@ -184,7 +195,20 @@ function NovaConsultaContent() {
   const simplesLimitReached = !isProfessional && plano === 'simples' && consultasAtivas >= 1
   const limitReached = freeLimitReached || simplesLimitReached
 
-  const preSelectedClient = preSelectedClientId ? clientes.find(c => c.id === preSelectedClientId) : null
+  /**
+   * O cliente do contexto é o do **formulário**, não o da query string: depois
+   * de «Trocar cliente» a query continua lá, e ler dela devolveria o bloco do
+   * cliente antigo por cima do novo.
+   */
+  const clienteEscolhido = form.cliente_id ? clientes.find(c => c.id === form.cliente_id) ?? null : null
+  const mingGuaDoCliente = calcularMingGua(clienteEscolhido?.data_nascimento, clienteEscolhido?.genero)
+
+  /** Iniciais para o avatar — duas no máximo. */
+  function iniciaisDe(nome: string): string {
+    const partes = nome.trim().split(/\s+/).filter(Boolean)
+    if (partes.length === 0) return '—'
+    return (partes[0][0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase()
+  }
 
   return (
     <FlowLayout backLabel="Consultas" backHref="/consultas">
@@ -203,13 +227,10 @@ function NovaConsultaContent() {
         {freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
-            background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
+            background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '14px'
           }}>
-            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Limite de 3 imóveis atingido no plano {planoLabel(profile?.plano)}.
-            </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Para cadastrar mais imóveis, faça upgrade.
+              {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
             </p>
             <a href="/planos" style={{
               display: 'inline-block', padding: '8px 20px', background: '#2E7D6B',
@@ -223,17 +244,14 @@ function NovaConsultaContent() {
         {simplesLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
-            background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', fontSize: '14px'
+            background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '14px'
           }}>
-            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Você já possui 1 imóvel ativo.
-            </p>
             <p style={{ margin: '0 0 12px 0' }}>
-              Arquive o imóvel atual para cadastrar um novo, ou faça upgrade para o plano Profissional.
+              {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <Link href="/consultas" style={{
-                display: 'inline-block', padding: '8px 20px', background: '#D97706',
+                display: 'inline-block', padding: '8px 20px', background: '#8A6E2F',
                 color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 textDecoration: 'none'
               }}>Arquivar imóvel atual</Link>
@@ -250,9 +268,12 @@ function NovaConsultaContent() {
         {plano === 'free' && !freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#EAF4F1', border: '1px solid #DCEFE9', color: '#6B21A8', fontSize: '13px'
+            background: '#EAF4F1', border: '1px solid #DCEFE9', color: '#0E1B2C', fontSize: '13px'
           }}>
-            Plano {planoLabel(profile?.plano)}: {totalConsultas}/3 imóveis cadastrados.
+            {/* O limite vem de `plano-utils`, não escrito à mão: os dois
+                contadores desta tela tinham o número fixo, e o do Simples
+                continuou dizendo «/1» depois de o limite virar 10. */}
+            Plano {planoLabel(profile?.plano)}: {totalConsultas}/{limite ?? '∞'} imóveis cadastrados.
           </div>
         )}
 
@@ -260,16 +281,16 @@ function NovaConsultaContent() {
         {plano === 'simples' && !simplesLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontSize: '13px'
+            background: '#F0F6F3', border: '1px solid #DCEAE4', color: '#245F52', fontSize: '13px'
           }}>
-            Plano Simples: {consultasAtivas}/1 imóvel ativo.
+            Plano Simples: {consultasAtivas}/{limite ?? '∞'} {limite === 1 ? 'imóvel ativo' : 'imóveis ativos'}.
           </div>
         )}
 
         {message && (
           <div style={{
             marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-            background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '14px'
+            background: '#FAEEE9', border: '1px solid #EBD3C7', color: '#B4533A', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -282,16 +303,43 @@ function NovaConsultaContent() {
                 <div style={{ marginBottom: '20px' }}>
                   <label htmlFor="select-cliente" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cliente *</label>
                   {clientes.length === 0 ? (
-                    <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', color: '#92400E', fontSize: '14px' }}>
+                    <div style={{ padding: '12px', background: '#FAF3E0', borderRadius: '8px', color: '#8A6E2F', fontSize: '14px' }}>
                       Nenhum cliente cadastrado. <span style={{ color: '#2E7D6B', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.location.href = '/clientes'}>Cadastre um cliente primeiro.</span>
                     </div>
-                  ) : preSelectedClient ? (
-                    <input
-                      type="text"
-                      value={preSelectedClient.nome_completo}
-                      disabled
-                      style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#F3F4F6', color: '#6B7280' }}
-                    />
+                  ) : clienteEscolhido ? (
+                    // Contexto, não campo desabilitado. Um `<input disabled>` com
+                    // o nome dentro parece um campo que falhou em habilitar, e não
+                    // mostra nada além do nome — nem o Ming Gua, nem de onde ele veio.
+                    <div style={{
+                      background: 'linear-gradient(120deg,#0E1B2C,#1C3A52)', borderRadius: '12px',
+                      padding: '16px 18px', color: '#fff',
+                      display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
+                    }}>
+                      <span style={{
+                        width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
+                        background: 'rgba(255,255,255,0.12)', color: '#C9A227',
+                        fontSize: '15px', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }} aria-hidden="true">{iniciaisDe(clienteEscolhido.nome_completo)}</span>
+                      <div style={{ flex: 1, minWidth: '160px' }}>
+                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{clienteEscolhido.nome_completo}</p>
+                        <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.66)' }}>
+                          {clienteEscolhido.cidade
+                            ? `${clienteEscolhido.cidade}${clienteEscolhido.estado ? ` · ${clienteEscolhido.estado}` : ''}`
+                            : 'Sem endereço cadastrado'}
+                          {' · '}
+                          {/* Ming Gua ausente aparece como lacuna: é ele que habilita
+                              as direções favoráveis do morador no relatório. */}
+                          {mingGuaDoCliente
+                            ? `Ming Gua ${mingGuaDoCliente.kua} · grupo ${mingGuaDoCliente.grupo === 'leste' ? 'Leste' : 'Oeste'}`
+                            : 'sem data de nascimento'}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setForm(f => ({ ...f, cliente_id: '' }))} style={{
+                        border: '1px solid rgba(255,255,255,0.28)', background: 'transparent', color: '#fff',
+                        fontSize: '13px', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', flexShrink: 0,
+                      }}>Trocar cliente</button>
+                    </div>
                   ) : (
                     <select id="select-cliente" name="cliente_id" value={form.cliente_id} onChange={handleChange} required
                       style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
@@ -306,11 +354,11 @@ function NovaConsultaContent() {
               {!isProfessional && (
                 <div style={{
                   marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-                  background: '#F0FDF4', border: '1px solid #BBF7D0',
+                  background: '#F0F6F3', border: '1px solid #DCEAE4',
                   display: 'flex', alignItems: 'center', gap: '10px'
                 }}>
                   <span style={{ fontSize: '20px' }}>🏠</span>
-                  <p style={{ color: '#15803D', fontSize: '13px', margin: '0' }}>
+                  <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '0' }}>
                     Cadastre os dados do seu imóvel para receber o diagnóstico Feng Shui personalizado.
                   </p>
                 </div>
@@ -351,6 +399,18 @@ function NovaConsultaContent() {
                 <label htmlFor="input-endereco-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Endereço do imóvel</label>
                 <input id="input-endereco-imovel" name="endereco_imovel" value={form.endereco_imovel} onChange={handleChange} placeholder="Rua, número, bairro, cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Idade do imóvel — o período (Yun) da carta natal sai daqui. */}
+              <div style={{ marginBottom: '20px' }}>
+                <CamposAnoDoImovel
+                  anoConstrucao={form.ano_construcao}
+                  anoReformaEstrutural={form.ano_reforma_estrutural}
+                  onChange={(campo, valor) => setForm(f => ({ ...f, [campo]: valor }))}
+                  // Destaque: é o campo que habilita as Estrelas Voadoras, e o
+                  // levantamento inteiro passa por aqui uma vez só.
+                  estiloInput={{ border: '2px solid #C9A227', background: '#FFFDF6' }}
+                />
               </div>
 
               {/* Dados Adicionais do Imóvel */}

@@ -1,36 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePreferenciaLista, PREFERENCIA_ITENS_CHI } from '../../components/hooks-cliente'
-
-// ── Chi Flow checklist (11 items) ───────────────────────────────────────
-const CHECKLIST_CHI = [
-  { id: 'porta_abre', label: 'Porta principal abre completamente (sem obstruções)', categoria: 'entrada' },
-  { id: 'entrada_livre', label: 'Entrada livre e acolhedora (sem objetos acumulados)', categoria: 'entrada' },
-  { id: 'sem_corredor_longo', label: 'Não há corredores longos e estreitos sem tratamento', categoria: 'circulacao' },
-  { id: 'sem_portas_alinhadas', label: 'Não há portas alinhadas diretamente (porta-a-porta)', categoria: 'circulacao' },
-  { id: 'sem_escada_porta', label: 'Não há escada diretamente voltada para a porta principal', categoria: 'circulacao' },
-  { id: 'banheiro_fora_centro', label: 'Banheiro não está localizado no centro da casa', categoria: 'estrutura' },
-  { id: 'sem_vigas_expostas', label: 'Não há vigas expostas sobre cama, sofá ou mesa de trabalho', categoria: 'estrutura' },
-  { id: 'espelhos_ok', label: 'Espelhos não refletem diretamente a porta de entrada', categoria: 'elementos' },
-  { id: 'sem_cantos_agressivos', label: 'Não há cantos/quinas apontados para áreas de estar ou descanso', categoria: 'elementos' },
-  { id: 'fluxo_suave', label: 'Fluxo de circulação suave entre cômodos (sem bloqueios)', categoria: 'circulacao' },
-  { id: 'luz_natural', label: 'Iluminação natural adequada nos principais ambientes', categoria: 'elementos' },
-]
-
-const CATEGORIAS_CHI: Record<string, { label: string; cor: string }> = {
-  entrada: { label: 'Entrada / Boca do Chi', cor: '#1D4ED8' },
-  circulacao: { label: 'Circulação', cor: '#2E7D6B' },
-  estrutura: { label: 'Estrutura', cor: '#D97706' },
-  elementos: { label: 'Elementos', cor: '#15803D' },
-}
+import {
+  normalizarChecklist, resumirChi, definirEstado, proximoEstado,
+  type ChecklistChi, type EstadoDoItem,
+} from '../../../src/lib/fluxo-chi'
+import { supabase } from '../../../src/lib/supabase'
+import { logger } from '../../../src/lib/logger'
+import { BedDouble, Laptop, CookingPot, Sofa } from 'lucide-react'
+// A lista dos onze pontos vive em `src/lib/checklist-chi.ts`: estava copiada
+// aqui e no relatório, e é o `id` que liga o estado gravado ao ponto.
+import { CHECKLIST_CHI, CATEGORIAS_CHI } from '../../../src/lib/checklist-chi'
 
 // ── Command Position checklist per room type ───────────────────────────
+// Ícones `lucide`, não emoji: emoji renderiza diferente em cada sistema, muda
+// de tamanho com a fonte e é lido em voz alta pelo leitor de tela como o nome
+// do caractere. Nas telas novas não entra nenhum.
 const COMODOS_POSICAO = [
-  { id: 'quarto', label: 'Quarto Principal', icon: '🛏️' },
-  { id: 'escritorio', label: 'Escritório / Home Office', icon: '💻' },
-  { id: 'cozinha', label: 'Cozinha', icon: '🍳' },
-  { id: 'sala', label: 'Sala de Estar', icon: '🛋️' },
+  { id: 'quarto', label: 'Quarto Principal', Icone: BedDouble },
+  { id: 'escritorio', label: 'Escritório / Home Office', Icone: Laptop },
+  { id: 'cozinha', label: 'Cozinha', Icone: CookingPot },
+  { id: 'sala', label: 'Sala de Estar', Icone: Sofa },
 ]
 
 const CHECKS_POSICAO: Record<string, { id: string; label: string }[]> = {
@@ -62,29 +52,81 @@ const CHECKS_POSICAO: Record<string, { id: string; label: string }[]> = {
   ],
 }
 
+/** Como cada estado se apresenta. `undefined` (não verificado) é o neutro. */
+const APARENCIA_DO_ESTADO: Record<EstadoDoItem | 'nao_verificado', {
+  fundo: string; borda: string; texto: string; marca: string; rotulo: string
+}> = {
+  conforme:       { fundo: '#F0F6F3', borda: '#DCEAE4', texto: '#2E7D6B', marca: '✓', rotulo: 'Conforme' },
+  problema:       { fundo: '#FAEEE9', borda: '#EBD3C7', texto: '#B4533A', marca: '!', rotulo: 'Problema' },
+  nao_verificado: { fundo: '#F9FAFB', borda: '#E5E7EB', texto: '#6B7280', marca: '',  rotulo: 'Não verificado' },
+}
+
+function aparencia(estado: EstadoDoItem | undefined) {
+  return APARENCIA_DO_ESTADO[estado ?? 'nao_verificado']
+}
+
 interface Props {
-  checklistChi: string[]
+  /**
+   * Chega como `unknown` porque o banco tem os dois formatos: `string[]`
+   * (legado) e o mapa por estado. `normalizarChecklist` reconcilia.
+   */
+  checklistChi: unknown
   posicaoComando: Record<string, string[]>
-  onChangeChi: (data: string[]) => void
+  onChangeChi: (data: ChecklistChi) => void
   onChangePosicao: (data: Record<string, string[]>) => void
   onSave: () => void
   saving: boolean
 }
 
 export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi, onChangePosicao, onSave, saving }: Props) {
+  // Aceita o formato antigo (`string[]` = marcados) e o novo. No antigo,
+  // marcado significava «verifiquei e está conforme» — é a leitura fiel, e a
+  // única que não inventa problema onde havia silêncio.
+  const chi = normalizarChecklist(checklistChi)
   const [comodoAtivo, setComodoAtivo] = useState('quarto')
-  const [customItems, setCustomItems] = usePreferenciaLista<{id: string; label: string; categoria: string}>(PREFERENCIA_ITENS_CHI, [])
+  // Vinham de `localStorage`: sumiam em outro aparelho, não chegavam ao
+  // relatório e ainda assim entravam no denominador do score.
+  const [customItems, setCustomItems] = useState<{id: string; label: string; categoria: string}[]>([])
   const [newItemLabel, setNewItemLabel] = useState('')
   const [newItemCategoria, setNewItemCategoria] = useState('elementos')
   const [showAddForm, setShowAddForm] = useState(false)
   const [hoveredCustomId, setHoveredCustomId] = useState<string | null>(null)
 
+  // Os pontos personalizados vêm do banco (RLS filtra pelo consultor). Antes de
+  // carregarem, `allItems` é só o padrão — nenhum ponto some do checklist e
+  // nenhum estado gravado é perdido, porque o estado vive na consulta.
+  useEffect(() => {
+    let ativo = true
+    async function carregar() {
+      const { data, error } = await supabase
+        .from('consultor_checklist_chi_custom')
+        .select('item_id, label, categoria')
+        .order('criado_em', { ascending: true })
+      if (!ativo) return
+      if (error) {
+        logger.error('Falha ao carregar pontos personalizados do Chi', {
+          route: 'TabFluxoChi', action: 'load-custom', error: error.message,
+        })
+        return
+      }
+      setCustomItems((data ?? []).map(r => ({
+        id: r.item_id as string, label: r.label as string, categoria: r.categoria as string,
+      })))
+    }
+    void carregar()
+    return () => { ativo = false }
+  }, [])
+
   // All items = standard + custom
   const allItems = [...CHECKLIST_CHI, ...customItems]
 
-  // Chi flow score
-  const chiScore = Math.round((checklistChi.length / allItems.length) * 100)
-  const chiColor = chiScore >= 70 ? '#15803D' : chiScore >= 40 ? '#D97706' : '#DC2626'
+  // O score é sobre o que foi VERIFICADO, não sobre o total: antes,
+  // `marcados / total` fazia um imóvel não avaliado pontuar 0% igual a um
+  // imóvel problemático. Item não verificado não entra no denominador.
+  const resumo = resumirChi(chi, allItems.map(i => i.id))
+  const chiScore = resumo.score
+  const chiColor = chiScore === null ? '#6B7280'
+    : chiScore >= 70 ? '#2E7D6B' : chiScore >= 40 ? '#C9A227' : '#B4533A'
 
   // Command position score per room
   function posicaoScore(comodoId: string): number {
@@ -93,12 +135,9 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
     return checks.length > 0 ? Math.round((checked / checks.length) * 100) : 0
   }
 
+  /** Ciclo: não verificado → conforme → problema → não verificado. */
   function toggleChi(itemId: string) {
-    if (checklistChi.includes(itemId)) {
-      onChangeChi(checklistChi.filter(c => c !== itemId))
-    } else {
-      onChangeChi([...checklistChi, itemId])
-    }
+    onChangeChi(definirEstado(chi, itemId, proximoEstado(chi[itemId])))
   }
 
   function togglePosicao(comodoId: string, checkId: string) {
@@ -110,17 +149,26 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
     }
   }
 
-  function deleteCustomItem(itemId: string) {
-    const updated = customItems.filter(i => i.id !== itemId)
-    setCustomItems(updated)
-    // Also remove from checked list if it was checked
-    if (checklistChi.includes(itemId)) {
-      onChangeChi(checklistChi.filter(c => c !== itemId))
+  async function deleteCustomItem(itemId: string) {
+    const { error } = await supabase
+      .from('consultor_checklist_chi_custom')
+      .delete()
+      .eq('item_id', itemId)
+    if (error) {
+      logger.error('Falha ao remover ponto personalizado do Chi', {
+        route: 'TabFluxoChi', action: 'delete-custom', error: error.message,
+      })
+      return
     }
+    setCustomItems(customItems.filter(i => i.id !== itemId))
+    if (chi[itemId] !== undefined) onChangeChi(definirEstado(chi, itemId, undefined))
   }
 
   // Group chi items by category
-  const categorias = Object.keys(CATEGORIAS_CHI)
+  const categorias = Object.keys(CATEGORIAS_CHI) as (keyof typeof CATEGORIAS_CHI)[]
+
+  const comProblema = allItems.filter(i => chi[i.id] === 'problema')
+  const naoVerificados = allItems.filter(i => chi[i.id] === undefined)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -133,7 +181,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               Checklist de Fluxo de Chi
             </h2>
             <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>
-              Avalie os 11 pontos essenciais de circulação energética do imóvel
+              Clique em cada ponto para alternar entre conforme, problema e não verificado
             </p>
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -142,18 +190,36 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               background: chiColor, display: 'flex', alignItems: 'center',
               justifyContent: 'center', flexDirection: 'column'
             }}>
-              <span style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>{chiScore}%</span>
+              {/* «—» e não «0%»: nada verificado é ausência de diagnóstico, não
+                  diagnóstico ruim. Ver src/lib/fluxo-chi.ts. */}
+              <span style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
+                {chiScore === null ? '—' : `${chiScore}%`}
+              </span>
             </div>
             <p style={{ color: '#6B7280', fontSize: '11px', margin: '4px 0 0 0' }}>
-              {checklistChi.length}/{allItems.length} OK
+              {resumo.texto}
             </p>
           </div>
         </div>
 
+        {/* O score é sobre o verificado; o texto ao lado impede que 100% de dois
+            pontos seja lido como diagnóstico completo. */}
+        {resumo.naoVerificado > 0 && (
+          <p style={{
+            fontSize: '12px', color: '#8A6E2F', background: '#FAF3E0',
+            border: '1px solid #EEDFB4', borderRadius: '8px',
+            padding: '8px 12px', margin: '0 0 16px 0'
+          }}>
+            {resumo.score === null
+              ? 'Nenhum ponto foi verificado ainda — o relatório vai declarar isso como lacuna, não como problema.'
+              : `A conformidade de ${resumo.score}% considera apenas os ${resumo.conforme + resumo.problema} pontos verificados. Faltam ${resumo.naoVerificado}.`}
+          </p>
+        )}
+
         {categorias.map(catKey => {
           const cat = CATEGORIAS_CHI[catKey]
           const items = allItems.filter(i => i.categoria === catKey)
-          const checked = items.filter(i => checklistChi.includes(i.id)).length
+          const daCategoria = resumirChi(chi, items.map(i => i.id))
           return (
             <div key={catKey} style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -161,43 +227,64 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                   width: '8px', height: '8px', borderRadius: '50%', background: cat.cor
                 }} />
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: cat.cor }}>{cat.label}</span>
-                <span style={{ fontSize: '11px', color: '#9CA3AF' }}>({checked}/{items.length})</span>
+                <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                  ({daCategoria.conforme + daCategoria.problema}/{items.length} verificados)
+                </span>
+                {daCategoria.problema > 0 && (
+                  <span style={{
+                    fontSize: '10px', color: '#B4533A', background: '#FAEEE9',
+                    padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold'
+                  }}>{daCategoria.problema} com problema</span>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '16px' }}>
                 {items.map(item => {
-                  const isChecked = checklistChi.includes(item.id)
+                  const estado = chi[item.id]
+                  const visual = aparencia(estado)
                   const isCustom = item.id.startsWith('custom_')
                   const isHovered = hoveredCustomId === item.id
                   return (
-                    <label key={item.id} style={{
+                    <div key={item.id} style={{
                       display: 'flex', alignItems: 'center', gap: '10px',
-                      padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
-                      background: isChecked ? '#F0FDF4' : '#F9FAFB',
-                      border: `1px solid ${isChecked ? '#BBF7D0' : '#E5E7EB'}`,
+                      padding: '8px 12px', borderRadius: '8px',
+                      background: visual.fundo,
+                      border: `1px solid ${visual.borda}`,
                       transition: 'all 0.15s',
                       position: 'relative'
                     }}
                     onMouseEnter={() => isCustom ? setHoveredCustomId(item.id) : undefined}
                     onMouseLeave={() => isCustom ? setHoveredCustomId(null) : undefined}
                     >
-                      <input
-                        type="checkbox" checked={isChecked}
-                        onChange={() => toggleChi(item.id)}
-                        style={{ width: '18px', height: '18px', accentColor: '#15803D', cursor: 'pointer' }}
-                      />
-                      <span style={{
-                        fontSize: '13px', color: isChecked ? '#15803D' : '#374151',
-                        textDecoration: isChecked ? 'none' : 'none',
-                        fontWeight: isChecked ? '600' : 'normal'
-                      }}>
-                        {item.label}
-                      </span>
-                      {isCustom && isHovered && (
+                      {/* Botão, não checkbox: são três estados, e um checkbox só
+                          sabe representar dois. */}
+                      <button type="button"
+                        onClick={() => toggleChi(item.id)}
+                        aria-label={`${item.label} — ${visual.rotulo}. Clique para alternar.`}
+                        title={`${visual.rotulo} — clique para alternar`}
+                        style={{
+                          flexShrink: 0, width: '22px', height: '22px', borderRadius: '6px',
+                          border: `2px solid ${estado === undefined ? '#D1D5DB' : visual.texto}`,
+                          background: estado === undefined ? '#ffffff' : visual.texto,
+                          color: '#ffffff', fontSize: '13px', fontWeight: 'bold',
+                          lineHeight: 1, padding: 0, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >{visual.marca}</button>
+                      <button type="button"
+                        onClick={() => toggleChi(item.id)}
+                        style={{
+                          flex: 1, textAlign: 'left', background: 'none', border: 'none',
+                          padding: 0, cursor: 'pointer',
+                          fontSize: '13px', color: estado === undefined ? '#374151' : visual.texto,
+                          fontWeight: estado === undefined ? 'normal' : '600',
+                        }}
+                      >{item.label}</button>
+                      {isCustom && isHovered ? (
                         <button type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteCustomItem(item.id) }}
+                          onClick={() => deleteCustomItem(item.id)}
                           style={{
-                            marginLeft: 'auto', background: '#FEE2E2', border: 'none',
-                            color: '#DC2626', fontSize: '14px', fontWeight: 'bold',
+                            background: '#FAEEE9', border: 'none',
+                            color: '#B4533A', fontSize: '14px', fontWeight: 'bold',
                             width: '24px', height: '24px', borderRadius: '50%',
                             cursor: 'pointer', display: 'flex', alignItems: 'center',
                             justifyContent: 'center', lineHeight: 1, padding: 0,
@@ -207,15 +294,15 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                         >
                           ×
                         </button>
-                      )}
-                      {!isChecked && !(isCustom && isHovered) && (
+                      ) : (
                         <span style={{
-                          marginLeft: 'auto', fontSize: '10px', color: '#DC2626',
-                          padding: '2px 8px', background: '#FEF2F2', borderRadius: '10px',
-                          fontWeight: 'bold'
-                        }}>Verificar</span>
+                          fontSize: '10px', fontWeight: 'bold', flexShrink: 0,
+                          color: visual.texto, padding: '2px 8px', borderRadius: '10px',
+                          background: estado === undefined ? '#F3F4F6' : visual.fundo,
+                          border: `1px solid ${visual.borda}`,
+                        }}>{visual.rotulo}</span>
                       )}
-                    </label>
+                    </div>
                   )
                 })}
               </div>
@@ -242,12 +329,21 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                     <option key={k} value={k}>{v.label}</option>
                   ))}
                 </select>
-                <button type="button" onClick={() => {
+                <button type="button" onClick={async () => {
                   if (!newItemLabel.trim()) return
+                  const { data: { user } } = await supabase.auth.getUser()
+                  if (!user) return
                   const item = { id: `custom_${Date.now()}`, label: newItemLabel.trim(), categoria: newItemCategoria }
-                  const updated = [...customItems, item]
-                  setCustomItems(updated)
-                  try { localStorage.setItem('fengshui-custom-chi-items', JSON.stringify(updated)) } catch {}
+                  const { error } = await supabase.from('consultor_checklist_chi_custom').insert({
+                    consultor_id: user.id, item_id: item.id, label: item.label, categoria: item.categoria,
+                  })
+                  if (error) {
+                    logger.error('Falha ao salvar ponto personalizado do Chi', {
+                      route: 'TabFluxoChi', action: 'insert-custom', error: error.message,
+                    })
+                    return
+                  }
+                  setCustomItems([...customItems, item])
                   setNewItemLabel('')
                   setShowAddForm(false)
                 }} style={{ padding: '8px 16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -279,7 +375,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           {COMODOS_POSICAO.map(comodo => {
             const ativo = comodoAtivo === comodo.id
             const score = posicaoScore(comodo.id)
-            const cor = score >= 70 ? '#15803D' : score >= 40 ? '#D97706' : '#DC2626'
+            const cor = score >= 70 ? '#2E7D6B' : score >= 40 ? '#8A6E2F' : '#B4533A'
             return (
               <button type="button" key={comodo.id} onClick={() => setComodoAtivo(comodo.id)} style={{
                 padding: '10px 16px', borderRadius: '8px', border: 'none',
@@ -288,7 +384,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                 color: ativo ? '#fff' : '#6B7280',
                 display: 'flex', alignItems: 'center', gap: '6px'
               }}>
-                <span>{comodo.icon}</span>
+                <comodo.Icone size={16} strokeWidth={1.75} aria-hidden="true" />
                 <span>{comodo.label}</span>
                 {(posicaoComando[comodo.id]?.length || 0) > 0 && (
                   <span style={{
@@ -309,22 +405,22 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
               <label key={check.id} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
-                background: isChecked ? '#F0FDF4' : '#F9FAFB',
-                border: `1px solid ${isChecked ? '#BBF7D0' : '#E5E7EB'}`,
+                background: isChecked ? '#F0F6F3' : '#F9FAFB',
+                border: `1px solid ${isChecked ? '#DCEAE4' : '#E5E7EB'}`,
                 transition: 'all 0.15s'
               }}>
                 <input
                   type="checkbox" checked={isChecked}
                   onChange={() => togglePosicao(comodoAtivo, check.id)}
-                  style={{ width: '18px', height: '18px', accentColor: '#15803D', cursor: 'pointer' }}
+                  style={{ width: '18px', height: '18px', accentColor: '#2E7D6B', cursor: 'pointer' }}
                 />
                 <span style={{
-                  fontSize: '13px', color: isChecked ? '#15803D' : '#374151',
+                  fontSize: '13px', color: isChecked ? '#2E7D6B' : '#374151',
                   fontWeight: isChecked ? '600' : 'normal'
                 }}>{check.label}</span>
                 {isChecked && (
                   <span style={{
-                    marginLeft: 'auto', fontSize: '16px', color: '#15803D'
+                    marginLeft: 'auto', fontSize: '16px', color: '#2E7D6B'
                   }}>✓</span>
                 )}
               </label>
@@ -343,7 +439,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {COMODOS_POSICAO.map(comodo => {
               const score = posicaoScore(comodo.id)
-              const cor = score >= 70 ? '#15803D' : score >= 40 ? '#D97706' : score > 0 ? '#DC2626' : '#9CA3AF'
+              const cor = score >= 70 ? '#2E7D6B' : score >= 40 ? '#8A6E2F' : score > 0 ? '#B4533A' : '#9CA3AF'
               const totalChecks = CHECKS_POSICAO[comodo.id]?.length || 0
               const checkedCount = (posicaoComando[comodo.id] || []).length
               return (
@@ -351,7 +447,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                   textAlign: 'center', padding: '10px', background: '#fff',
                   borderRadius: '8px', border: '1px solid #DCEFE9'
                 }}>
-                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{comodo.icon}</div>
+                  <comodo.Icone size={20} strokeWidth={1.75} color={cor} style={{ margin: '0 auto 4px' }} aria-hidden="true" />
                   <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>{comodo.label}</div>
                   <div style={{ fontSize: '18px', fontWeight: 'bold', color: cor }}>
                     {checkedCount > 0 ? `${score}%` : '—'}
@@ -375,19 +471,33 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       }}>{saving ? 'Salvando...' : 'Salvar Fluxo de Chi e Posição de Comando'}</button>
 
       {/* Integrated recommendation */}
-      {(checklistChi.length > 0 || Object.values(posicaoComando).some(v => v.length > 0)) && (
+      {(resumo.conforme + resumo.problema > 0 || Object.values(posicaoComando).some(v => v.length > 0)) && (
         <div style={{ padding: '16px', background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9', marginTop: '16px' }}>
           <h3 style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
-            📋 Orientação integrada
+            Orientação integrada
           </h3>
-          {/* Show unchecked items as priority actions */}
-          {allItems.filter(i => !checklistChi.includes(i.id)).length > 0 && (
+          {/* Problema encontrado é pauta. Não verificado é lacuna. Antes os dois
+              apareciam juntos como «pontos que requerem atenção», o que dava ao
+              consultor uma lista de trabalho que ele não tinha gerado. */}
+          {comProblema.length > 0 && (
             <div style={{ marginBottom: '12px' }}>
-              <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#DC2626', margin: '0 0 6px 0' }}>
-                Pontos que requerem atenção ({allItems.filter(i => !checklistChi.includes(i.id)).length}):
+              <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#B4533A', margin: '0 0 6px 0' }}>
+                Problemas encontrados ({comProblema.length}):
               </p>
-              {allItems.filter(i => !checklistChi.includes(i.id)).slice(0, 5).map(item => (
-                <p key={item.id} style={{ fontSize: '12px', color: '#7F1D1D', margin: '0 0 4px 0', paddingLeft: '12px' }}>
+              {comProblema.slice(0, 5).map(item => (
+                <p key={item.id} style={{ fontSize: '12px', color: '#8F3F2C', margin: '0 0 4px 0', paddingLeft: '12px' }}>
+                  • {item.label}
+                </p>
+              ))}
+            </div>
+          )}
+          {naoVerificados.length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#8A6E2F', margin: '0 0 6px 0' }}>
+                Ainda não verificados ({naoVerificados.length}):
+              </p>
+              {naoVerificados.slice(0, 5).map(item => (
+                <p key={item.id} style={{ fontSize: '12px', color: '#6B5424', margin: '0 0 4px 0', paddingLeft: '12px' }}>
                   • {item.label}
                 </p>
               ))}
@@ -395,7 +505,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
           )}
           {/* Command position summary */}
           {COMODOS_POSICAO.filter(c => posicaoScore(c.id) < 60 && (posicaoComando[c.id]?.length || 0) > 0).map(comodo => (
-            <p key={comodo.id} style={{ fontSize: '12px', color: '#D97706', margin: '0 0 4px 0' }}>
+            <p key={comodo.id} style={{ fontSize: '12px', color: '#8A6E2F', margin: '0 0 4px 0' }}>
               ⚠ {comodo.label}: posição de comando precisa de ajustes ({posicaoScore(comodo.id)}%)
             </p>
           ))}

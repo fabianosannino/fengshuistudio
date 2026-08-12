@@ -12,7 +12,9 @@ import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/l
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
 import { calcularMingGua } from '../../../../src/lib/ming-gua'
 import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
-import { periodoDaConstrucao, calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
+import { calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
+import { periodoDaConsulta, faixaDoPeriodo } from '../../../../src/lib/periodo-do-imovel'
+import { RESSALVA_XUAN_KONG } from '../../../../src/lib/sustentacao-do-diagnostico'
 import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
 import { dataSolar } from '../../../../src/lib/data-solar'
 import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario'
@@ -20,6 +22,10 @@ import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
 import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/lib/sintese-metodos'
 import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
+import { normalizarChecklist, resumirChi } from '../../../../src/lib/fluxo-chi'
+import { CHECKLIST_CHI } from '../../../../src/lib/checklist-chi'
+import { FORMATOS, secoesDoFormato, formatoCorrespondente, paginasEstimadas } from '../../../../src/lib/formato-do-relatorio'
+import { faseLunar } from '../../../../src/lib/lunar'
 import { logger } from '../../../../src/lib/logger'
 import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
@@ -31,19 +37,10 @@ import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../.
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
 // Chi Flow items
-const CHI_ITEMS = [
-  { id: 'porta_abre', label: 'Porta principal abre completamente' },
-  { id: 'entrada_livre', label: 'Entrada livre e acolhedora' },
-  { id: 'sem_corredor_longo', label: 'Sem corredores longos e estreitos' },
-  { id: 'sem_portas_alinhadas', label: 'Sem portas alinhadas (porta-a-porta)' },
-  { id: 'sem_escada_porta', label: 'Sem escada frente à porta principal' },
-  { id: 'banheiro_fora_centro', label: 'Banheiro fora do centro da casa' },
-  { id: 'sem_vigas_expostas', label: 'Sem vigas expostas sobre áreas de estar' },
-  { id: 'espelhos_ok', label: 'Espelhos não refletem a porta de entrada' },
-  { id: 'sem_cantos_agressivos', label: 'Sem cantos agressivos para áreas de estar' },
-  { id: 'fluxo_suave', label: 'Fluxo de circulação suave' },
-  { id: 'luz_natural', label: 'Iluminação natural adequada' },
-]
+// Os onze pontos vêm de `src/lib/checklist-chi.ts` — a cópia local aqui tinha
+// os mesmos ids por sorte, e divergir faria o relatório mostrar «não
+// verificado» num ponto que o consultor marcou.
+const CHI_ITEMS = CHECKLIST_CHI.map(i => ({ id: i.id, label: i.labelCurto }))
 
 const COMODO_LABELS: Record<string, string> = {
   sala: 'Sala de Estar', quarto_casal: 'Quarto do Casal', quarto_filho: 'Quarto de Filho(a)',
@@ -57,17 +54,17 @@ const COMODO_LABELS: Record<string, string> = {
 
 function scoreColor(pct: number | null) {
   if (pct === null || pct === undefined) return '#9CA3AF'
-  if (pct >= 70) return '#16A34A'
-  if (pct >= 40) return '#D97706'
-  return '#DC2626'
+  if (pct >= 70) return '#2E7D6B'
+  if (pct >= 40) return '#8A6E2F'
+  return '#B4533A'
 }
 
 function scoreLevelLabel(pct: number | null): { label: string; color: string } {
   if (pct === null || pct === undefined) return { label: 'N/A', color: '#9CA3AF' }
   if (pct >= 80) return { label: 'EXCELENTE', color: '#C9A227' }
-  if (pct >= 70) return { label: 'BOM', color: '#16A34A' }
-  if (pct >= 40) return { label: 'ATENÇÃO', color: '#D97706' }
-  return { label: 'URGENTE', color: '#DC2626' }
+  if (pct >= 70) return { label: 'BOM', color: '#2E7D6B' }
+  if (pct >= 40) return { label: 'ATENÇÃO', color: '#8A6E2F' }
+  return { label: 'URGENTE', color: '#B4533A' }
 }
 
 // Rótulos em português dos campos de proveniência de `Remedio` (Parte IV / ADR 0015).
@@ -85,10 +82,10 @@ const ROTULO_EVIDENCIA: Record<Remedio['forcaEvidencia'], string> = {
 
 function desvioLabel(pct: number | null): { nivel: string; cor: string } {
   if (pct === null || pct === undefined) return { nivel: 'N/A', cor: '#9CA3AF' }
-  if (pct >= 70) return { nivel: 'Leve', cor: '#16A34A' }
-  if (pct >= 40) return { nivel: 'Moderado', cor: '#D97706' }
-  if (pct >= 20) return { nivel: 'Acentuado', cor: '#DC2626' }
-  return { nivel: 'Ausente', cor: '#7F1D1D' }
+  if (pct >= 70) return { nivel: 'Leve', cor: '#2E7D6B' }
+  if (pct >= 40) return { nivel: 'Moderado', cor: '#8A6E2F' }
+  if (pct >= 20) return { nivel: 'Acentuado', cor: '#B4533A' }
+  return { nivel: 'Ausente', cor: '#8F3F2C' }
 }
 
 // ─── COMPONENT ──────────────────────────────────────────────────────────────
@@ -145,9 +142,17 @@ export default function Relatorio() {
   // Editable fields for the consultant
   const [textoIntroducao, setTextoIntroducao] = useState('Este relatório apresenta o diagnóstico completo de Feng Shui do imóvel, baseado na Escola Budista da Seita Negra (Black Hat Sect). A análise integra o mapa Ba Guá, a Roda da Vida, o fluxo de Chi e recomendações de curas e ativações para harmonização dos ambientes.')
   const [textoCuras, setTextoCuras] = useState('As curas e ativações abaixo são recomendadas com base no diagnóstico energético de cada setor do Ba Guá. Cada elemento — cristais, plantas, objetos, mudras, meditações e mantras — atua em uma frequência específica para reequilibrar a energia do ambiente.')
-  const [textoChi, setTextoChi] = useState('O Fluxo de Chi (energia vital) foi avaliado em 11 pontos essenciais do imóvel. Os itens marcados indicam pontos onde a circulação energética está adequada. Os itens pendentes requerem atenção para melhorar o fluxo de energia no ambiente.')
+  const [textoChi, setTextoChi] = useState('O Fluxo de Chi (energia vital) foi avaliado ponto a ponto no imóvel. «✓» indica onde a circulação energética está adequada e «✕» onde há um ponto a tratar. «–» marca o que não foi verificado nesta visita — é uma lacuna do levantamento, não um problema encontrado.')
   const [textoConclusao, setTextoConclusao] = useState('As recomendações apresentadas neste relatório visam promover o equilíbrio energético do imóvel e o bem-estar de seus ocupantes. Recomenda-se a implementação gradual das sugestões, começando pelas áreas de maior urgência.')
   const [recsAdicionais, setRecsAdicionais] = useState<Record<string, string>>({})
+  const [chiCustom, setChiCustom] = useState<{ id: string; label: string }[]>([])
+
+  /**
+   * `null` quando o consultor ajustou as caixas à mão. Sem isso o seletor
+   * mentiria: com «Resumo» destacado e uma seção extra ligada, ele entregaria
+   * um dossiê achando que mandou o resumo.
+   */
+  const formatoAtual = formatoCorrespondente(selectedSections)
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
@@ -191,6 +196,21 @@ export default function Relatorio() {
         .eq('consulta_id', id)
         .order('criado_em', { ascending: true })
       setSnapshots(snapsData || [])
+
+      // Pontos personalizados do checklist de Chi. Viviam em `localStorage` e
+      // por isso nunca chegavam ao relatório — que é o entregável ao cliente.
+      const { data: custom, error: erroCustom } = await supabase
+        .from('consultor_checklist_chi_custom')
+        .select('item_id, label')
+        .order('criado_em', { ascending: true })
+      if (erroCustom) {
+        logger.error('Falha ao carregar pontos personalizados do Chi no relatório', {
+          route: 'relatorio', action: 'load-chi-custom', error: erroCustom.message,
+        })
+      } else {
+        setChiCustom((custom ?? []).map(r => ({ id: r.item_id as string, label: r.label as string })))
+      }
+
       setLoading(false)
     }
     load()
@@ -229,16 +249,13 @@ export default function Relatorio() {
   }
 
   function getProximasFasesLunares() {
+    // O cálculo vem de `src/lib/lunar.ts`. Estava copiado aqui e no calendário,
+    // com a mesma constante de lunação — e duas cópias divergem cedo ou tarde.
     const hoje = new Date()
-    const cycle = 29.53058867
-    const known = new Date(2000, 0, 6, 18, 14)
     const fases: { data: Date; fase: string; emoji: string; sugestao: string }[] = []
     for (let d = 0; d < 30 && fases.length < 3; d++) {
       const date = new Date(hoje.getTime() + d * 86400000)
-      const diff = (date.getTime() - known.getTime()) / 86400000
-      const phase = ((diff % cycle) + cycle) % cycle
-      const nome = phase < 1.85 ? 'Nova' : phase < 7.38 ? 'Crescente' : phase < 9.23 ? 'Quarto Crescente' : phase < 13.69 ? 'Gibosa Crescente' : phase < 16.61 ? 'Cheia' : phase < 20.30 ? 'Gibosa Minguante' : phase < 22.15 ? 'Quarto Minguante' : phase < 27.68 ? 'Minguante' : 'Nova'
-      const emoji = nome.includes('Nova') ? '🌑' : nome.includes('Crescente') ? '🌓' : nome.includes('Cheia') ? '🌕' : '🌗'
+      const { nome, emoji } = faseLunar(date)
       if (['Nova', 'Quarto Crescente', 'Cheia', 'Quarto Minguante'].includes(nome) && (fases.length === 0 || fases[fases.length-1].fase !== nome)) {
         const sugestoes: Record<string, string> = {
           'Nova': 'Ideal para limpeza energética, definição de intenções e novos começos',
@@ -445,11 +462,16 @@ export default function Relatorio() {
   const geralLevel = scoreLevelLabel(geral)
   const top3 = getTop3()
   const rodaData = (consulta.roda_da_vida || {}) as Record<string, number>
-  const checklistChi: string[] = consulta.checklist_chi || []
   const posicaoComando: Record<string, string[]> = consulta.posicao_comando || {}
   const hasRoda = Object.keys(rodaData).length > 0
-  const hasChi = checklistChi.length > 0
-  const chiScore = Math.round((checklistChi.length / CHI_ITEMS.length) * 100)
+  // Três estados: conforme, problema e — pela ausência da chave — não
+  // verificado. O score é sobre o que foi olhado, e `null` quando nada foi.
+  // Ver src/lib/fluxo-chi.ts.
+  const chi = normalizarChecklist(consulta.checklist_chi)
+  const chiItens = [...CHI_ITEMS, ...chiCustom]
+  const resumoChi = resumirChi(chi, chiItens.map(i => i.id))
+  const chiScore = resumoChi.score
+  const hasChi = resumoChi.conforme + resumoChi.problema > 0
 
   // Sorted sectors for Ki Flow
   const sortedSetores = [...setores]
@@ -480,17 +502,55 @@ export default function Relatorio() {
   return (
     <>
       <style>{`
+        .print-only { display: none; }
+
         @media print {
           .no-print { display: none !important; }
+          .print-only { display: block !important; }
           body { margin: 0; background: #fff; }
           .print-area { padding: 0 !important; box-shadow: none !important; max-width: 100% !important; }
-          .print-only { display: none; }
-          @page { size: A4 portrait; margin: 1.5cm; }
-        }
-        @media print {
-          .print-only { display: block !important; }
+
+          @page { size: A4 portrait; margin: 1.6cm 1.5cm 2.2cm; }
+
+          /* ── Quebras controladas ────────────────────────────────────────
+           * Sem isto o navegador corta onde calhar: um título na última linha
+           * de uma página com o conteúdo na seguinte, uma linha de tabela
+           * partida ao meio, uma foto cortada na horizontal.
+           */
+          h1, h2, h3, h4 { break-after: avoid-page; }
+          img, table, figure { break-inside: avoid; }
+          tr, li { break-inside: avoid; }
+          /* Duas linhas órfãs/viúvas no mínimo — uma linha sozinha no pé ou no
+           * topo da página é o defeito tipográfico que mais salta à vista. */
+          p, li { orphans: 2; widows: 2; }
+
+          /* O fundo dos selos e das faixas some na impressão padrão, e com ele
+           * some a distinção entre «em harmonia» e «precisa de cuidado». */
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+          /* Rodapé repetido. O número da página fica com o navegador: o Chrome
+           * não implementa as margin boxes do CSS Paged Media, então contar
+           * páginas aqui daria um número que só existiria no Firefox. */
+          .rodape-impressao {
+            display: block !important;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding-top: 6px; border-top: 1px solid #E7E1D6;
+            font-size: 9px; color: #6B7280;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex; justify-content: space-between;
+          }
+
+          /* Link impresso não é clicável; o endereço em si raramente ajuda. */
+          a { text-decoration: none; color: inherit; }
         }
       `}</style>
+
+      {/* Rodapé que se repete em toda página impressa — quem assina o
+          diagnóstico e de quando ele é. Invisível na tela. */}
+      <div className="rodape-impressao print-only" aria-hidden="true">
+        <span>{profile?.nome_completo || 'FengShui Studio'}{profile?.nome_empresa ? ` · ${profile.nome_empresa}` : ''}</span>
+        <span>{consulta?.nome_imovel || ''} · {new Date().toLocaleDateString('pt-BR')}</span>
+      </div>
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <div className="no-print" style={{
@@ -503,7 +563,7 @@ export default function Relatorio() {
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {needsWatermark && (
-            <span style={{ color: '#FBBF24', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
+            <span style={{ color: '#C9A227', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
               Plano Simples — PDF com marca d&apos;água
             </span>
           )}
@@ -517,16 +577,27 @@ export default function Relatorio() {
             background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
             color: '#C9A227', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
           }}>Curas</button>
-          <button type="button" onClick={handlePrint} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
-            color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
-            cursor: 'pointer', fontSize: '14px'
-          }}>Imprimir</button>
-          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens} style={{
-            background: (downloading || assinandoImagens) ? '#9CA3AF' : gold, border: 'none',
-            color: '#ffffff', padding: '6px 20px', borderRadius: '6px',
-            cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
-          }}>{downloading ? 'Gerando PDF...' : assinandoImagens ? 'Carregando fotos...' : 'Baixar PDF'}</button>
+          {/* Impressão do navegador é o caminho principal: gera texto
+              selecionável, respeita as quebras do CSS de impressão e não
+              depende de o html2canvas entender a função de cor da vez.
+              «Salvar como PDF» no diálogo produz o arquivo. */}
+          <button type="button" onClick={handlePrint} title="Abre o diálogo de impressão — escolha «Salvar como PDF»" style={{
+            background: gold, border: 'none', color: '#0E1B2C',
+            padding: '6px 20px', borderRadius: '6px',
+            cursor: 'pointer', fontSize: '14px', fontWeight: 600,
+          }}>Imprimir / Salvar PDF</button>
+          {/* O caminho antigo continua, e agora diz o que é: fotografa a tela e
+              recorta em páginas. Texto vira imagem — não dá para copiar nem
+              buscar —, mas sai sem passar pelo diálogo do navegador. */}
+          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens}
+            title="Gera o arquivo direto, mas o texto vira imagem"
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.25)',
+              color: (downloading || assinandoImagens) ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.7)',
+              padding: '6px 14px', borderRadius: '6px',
+              cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px',
+            }}>{downloading ? 'Gerando…' : assinandoImagens ? 'Carregando fotos…' : 'Baixar como imagem'}</button>
           {savedRelatorioEm && (
             <button type="button"
               onClick={baixarVersaoSalva}
@@ -547,9 +618,9 @@ export default function Relatorio() {
         <div className="no-print" style={{
           maxWidth: '980px', margin: '16px auto 0', display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap',
-          background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 20px',
+          background: '#F0F6F3', border: '1px solid #DCEAE4', borderRadius: '10px', padding: '14px 20px',
         }}>
-          <div style={{ fontSize: '14px', color: '#15803D' }}>
+          <div style={{ fontSize: '14px', color: '#2E7D6B' }}>
             <strong>Relatório entregue.</strong> Marcar esta consulta como concluída?
             <span style={{ display: 'block', fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
               Apenas atualiza o status da consulta — o diagnóstico do Ba Guá não é alterado.
@@ -561,7 +632,7 @@ export default function Relatorio() {
               padding: '8px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
             }}>Agora não</button>
             <button type="button" onClick={marcarConsultaConcluida} disabled={concluindo} style={{
-              background: concluindo ? '#9CA3AF' : '#16A34A', border: 'none', color: '#fff',
+              background: concluindo ? '#9CA3AF' : '#2E7D6B', border: 'none', color: '#fff',
               padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 600,
               cursor: concluindo ? 'not-allowed' : 'pointer',
             }}>{concluindo ? 'Concluindo…' : 'Marcar como concluída'}</button>
@@ -582,20 +653,49 @@ export default function Relatorio() {
               {[
                 { label: 'Ba Guá', ok: setores.length > 0 },
                 { label: 'Roda da Vida', ok: !!(consulta?.roda_da_vida && (consulta.roda_da_vida as Record<string, unknown>)?.respostas) },
-                { label: 'Checklist Chi', ok: !!(consulta?.checklist_chi && (consulta.checklist_chi as string[]).length > 0) },
+                { label: 'Checklist Chi', ok: hasChi },
                 { label: 'Foto geral', ok: !!consulta?.foto_geral_url },
                 { label: 'Fotos antes', ok: ((consulta?.fotos_antes as string[] | undefined)?.length ?? 0) > 0 },
                 { label: 'Fotos depois', ok: ((consulta?.fotos_depois as string[] | undefined)?.length ?? 0) > 0 },
               ].map((item, i) => (
                 <span key={i} style={{
                   padding: '3px 8px', borderRadius: '10px', fontWeight: 'bold',
-                  background: item.ok ? '#F0FDF4' : '#FEF2F2',
-                  color: item.ok ? '#15803D' : '#DC2626',
+                  background: item.ok ? '#F0F6F3' : '#FAEEE9',
+                  color: item.ok ? '#2E7D6B' : '#B4533A',
                 }}>{item.ok ? '✓' : '✕'} {item.label}</span>
               ))}
             </div>
           </div>
-          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>Selecione as seções que deseja incluir:</p>
+          {/* Dois formatos em vez de onze caixas em branco. As caixas continuam
+              embaixo: a escolha é ponto de partida, não camisa de força. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+            {(['resumo', 'dossie'] as const).map(formatoId => {
+              const f = FORMATOS[formatoId]
+              const escolhido = formatoAtual === formatoId
+              return (
+                <button type="button" key={formatoId}
+                  onClick={() => setSelectedSections(prev => ({ ...prev, ...secoesDoFormato(formatoId) }))}
+                  aria-pressed={escolhido}
+                  style={{
+                    textAlign: 'left', padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                    background: escolhido ? '#FAF3E0' : '#fff',
+                    border: escolhido ? '2px solid #C9A227' : '1px solid #E7E1D6',
+                  }}>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0E1B2C', marginBottom: '4px' }}>{f.titulo}</span>
+                  <span style={{ display: 'block', fontSize: '12px', color: '#6B7280', lineHeight: 1.5 }}>{f.subtitulo}</span>
+                  <span style={{ display: 'block', fontSize: '12px', color: '#8A6E2F', fontWeight: 700, marginTop: '6px' }}>
+                    cerca de {paginasEstimadas(f.secoes)} páginas
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
+            {formatoAtual
+              ? `Formato ${FORMATOS[formatoAtual].titulo.toLowerCase()} · cerca de ${paginasEstimadas(selectedSections)} páginas`
+              : `Ajustado à mão · cerca de ${paginasEstimadas(selectedSections)} páginas`}
+          </p>
           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid #E5E7EB', marginBottom: '8px', paddingBottom: '12px' }}>
             <input type="checkbox" checked={selectedSections.completo}
               onChange={e => {
@@ -787,7 +887,7 @@ export default function Relatorio() {
                 </div>
               </div>
               {compat && (
-                <div style={{ fontSize: '11px', color: compat.compativel ? '#16A34A' : '#D97706', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <div style={{ fontSize: '11px', color: compat.compativel ? '#2E7D6B' : '#8A6E2F', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                   {compat.compativel ? '✓' : '⚠'} {compat.mensagem}
                 </div>
               )}
@@ -798,9 +898,12 @@ export default function Relatorio() {
         {/* ══════ ESTRELAS VOADORAS — só com Bússola + data de construção ══════ */}
         {(() => {
           const be = consulta.bagua_entrada
-          if (be?.escola !== 'bussola' || !be.data_construcao) return null
-          const periodo = periodoDaConstrucao(be.data_construcao)
-          const mapa = periodo != null ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus ?? 0, periodo }) : null
+          if (be?.escola !== 'bussola') return null
+          // Colunas primeiro, `data_construcao` como fallback das consultas
+          // antigas — ver src/lib/periodo-do-imovel.ts.
+          const doImovel = periodoDaConsulta(consulta)
+          if (!doImovel) return null
+          const mapa = calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus ?? 0, periodo: doImovel.periodo })
           if (!mapa) return null
           const porPalacio = Object.fromEntries(mapa.palacios.map(p => [p.palacio, p]))
           const linhas: Palacio[][] = [['SE', 'S', 'SW'], ['E', 'C', 'W'], ['NE', 'N', 'NW']]
@@ -810,6 +913,13 @@ export default function Relatorio() {
                 <span style={{ fontSize: '18px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>飛星</span>
                 Estrelas Voadoras — Período {mapa.periodo}
               </div>
+              {/* De onde saiu o período. Sem isto o cliente vê um número de 1 a 9
+                  sem meio de conferir de que ano ele veio. */}
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '0.5rem', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Carta natal do Período {mapa.periodo} ({faixaDoPeriodo(doImovel.anoUsado).inicio}–{faixaDoPeriodo(doImovel.anoUsado).fim}),
+                {doImovel.daReforma ? ' pela reforma estrutural de ' : ' pela construção de '}{doImovel.anoUsado}.
+                {doImovel.ambiguo && ` Como ${doImovel.anoUsado} é ano de virada, uma conclusão de obra anterior a 4 de fevereiro corresponderia ao Período ${doImovel.periodoAnterior}.`}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: '4px' }}>
                 {linhas.flat().map(p => {
                   const est = porPalacio[p]
@@ -818,16 +928,21 @@ export default function Relatorio() {
                       <div style={{ fontSize: '9px', color: inkLt }}>{est.montanha}</div>
                       <div style={{ fontSize: '15px', fontWeight: 700, color: ink }}>{est.periodo}</div>
                       <div style={{ fontSize: '9px', color: inkLt }}>{est.fachada}</div>
-                      {est.temEstrela5 && <div style={{ fontSize: '8px', color: '#DC2626' }}>⚠ Estrela 5</div>}
+                      {est.temEstrela5 && <div style={{ fontSize: '8px', color: '#B4533A' }}>⚠ Estrela 5</div>}
                     </div>
                   )
                 })}
               </div>
-              <p style={{ margin: '0.6rem 0 0', fontSize: '10px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                Montanha / Período / Fachada. Base do método San Yuan Xuan Kong — não inclui estrela de substituição
-                para fachadas de borda, sobreposição anual/mensal nem teoria de combinações. Recomendado validar com
-                um consultor formado em Xuan Kong antes de decisões importantes.
+              <p style={{ margin: '0.6rem 0 0', fontSize: '11px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Montanha / Período / Fachada.
               </p>
+              {/* A ressalva vive em `sustentacao-do-diagnostico.ts` para sair
+                  idêntica aqui e na bancada — e em caixa, não em rodapé de 10px. */}
+              <div style={{ marginTop: '0.5rem', background: '#FAF3E0', border: '1px solid #EEDFB4', borderRadius: '8px', padding: '11px 13px' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#6B5220', lineHeight: 1.55, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  {RESSALVA_XUAN_KONG}
+                </p>
+              </div>
             </div>
           )
         })()}
@@ -842,13 +957,13 @@ export default function Relatorio() {
             {[
               { val: `${geral}%`, label: 'Média Geral', color: geralLevel.color },
               null,
-              { val: `${urgentCount}`, label: 'Áreas Urgentes', color: '#DC2626' },
+              { val: `${urgentCount}`, label: 'Áreas Urgentes', color: '#B4533A' },
               null,
-              { val: `${okCount}`, label: 'Equilibradas', color: '#16A34A' },
+              { val: `${okCount}`, label: 'Equilibradas', color: '#2E7D6B' },
               null,
-              { val: lowestSetor?.nome || '—', label: 'Prioridade Máxima', color: '#DC2626', sm: true },
+              { val: lowestSetor?.nome || '—', label: 'Prioridade Máxima', color: '#B4533A', sm: true },
               null,
-              { val: highestSetor?.nome || '—', label: 'Mais Equilibrada', color: '#16A34A', sm: true },
+              { val: highestSetor?.nome || '—', label: 'Mais Equilibrada', color: '#2E7D6B', sm: true },
             ].map((item, idx) =>
               item === null ? (
                 <div key={idx} style={{ width: '1px', background: border, height: '36px', flexShrink: 0 }} />
@@ -888,7 +1003,7 @@ export default function Relatorio() {
             Introdução
           </div>
           <textarea className="no-print" value={textoIntroducao} onChange={e => setTextoIntroducao(e.target.value)}
-            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
+            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
           <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoIntroducao}</div>
         </div>
         )}
@@ -1010,7 +1125,7 @@ export default function Relatorio() {
                           </g>
                         )
                       })}
-                      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={1.5} />
+                      <polygon points={poly} fill="rgba(46,125,107,0.15)" stroke="#2E7D6B" strokeWidth={1.5} />
                       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill={RODA_12_AREAS[i].cor} />)}
                     </svg>
                   </div>
@@ -1062,14 +1177,14 @@ export default function Relatorio() {
                   const lvl = scoreLevelLabel(pct)
                   const isUrgent = pct < 40
                   const isWarn = pct >= 40 && pct < 70
-                  const bgRow = isUrgent ? '#FEF2F2' : isWarn ? '#FFFBEB' : '#F0FDF4'
-                  const borderCol = isUrgent ? '#EF4444' : isWarn ? '#F59E0B' : '#22C55E'
+                  const bgRow = isUrgent ? '#FAEEE9' : isWarn ? '#FAF3E0' : '#F0F6F3'
+                  const borderCol = isUrgent ? '#B4533A' : isWarn ? '#C9A227' : '#2E7D6B'
                   // Value origin: check if manually adjusted criteria exist
                   const crits = setor.diagnostico_criterios || []
                   const hasManualNotes = crits.some((c: DiagnosticoCriterio) => c.notas && c.notas.trim() !== '')
                   const hasCustomRec = Array.isArray(setor.recomendacoes_custom) && setor.recomendacoes_custom.length > 0
                   const origem = hasManualNotes || hasCustomRec ? 'Ajustado pelo consultor' : crits.length > 0 ? 'Com marcações' : 'Automático'
-                  const origemCor = hasManualNotes || hasCustomRec ? '#2E7D6B' : crits.length > 0 ? '#1D4ED8' : '#6B7280'
+                  const origemCor = hasManualNotes || hasCustomRec ? '#2E7D6B' : crits.length > 0 ? '#2E7D6B' : '#6B7280'
                   return (
                     <div key={setor.id} style={{
                       display: 'flex', alignItems: 'center', gap: '9px',
@@ -1104,7 +1219,7 @@ export default function Relatorio() {
               Fluxo de Chi — Análise de Circulação Energética
             </div>
             <textarea className="no-print" value={textoChi} onChange={e => setTextoChi(e.target.value)}
-              rows={3} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
+              rows={3} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
             <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoChi}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
               {/* Chi checklist */}
@@ -1114,22 +1229,37 @@ export default function Relatorio() {
                     <span style={{ fontSize: '18px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>氣</span>
                     Checklist de Chi
                   </div>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: scoreColor(chiScore) }}>{chiScore}%</span>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: chiScore === null ? '#6B7280' : scoreColor(chiScore) }}>
+                    {chiScore === null ? '—' : `${chiScore}%`}
+                  </span>
                 </div>
-                {CHI_ITEMS.map(item => {
-                  const ok = checklistChi.includes(item.id)
+                {chiItens.map(item => {
+                  // Três símbolos para três estados. Antes, «✕» dizia ao cliente que
+                  // o ponto estava errado quando o consultor apenas não o olhou.
+                  const estado = chi[item.id]
+                  const visual = estado === 'conforme' ? { marca: '✓', cor: '#2E7D6B' }
+                    : estado === 'problema' ? { marca: '✕', cor: '#B4533A' }
+                    : { marca: '–', cor: '#9CA3AF' }
                   return (
                     <div key={item.id} style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
                       fontSize: '11px', padding: '3px 0', fontFamily: 'Helvetica Neue, Arial, sans-serif'
                     }}>
-                      <span style={{ fontWeight: 700, fontSize: '12px', color: ok ? '#16A34A' : '#DC2626', width: '14px' }}>
-                        {ok ? '✓' : '✕'}
+                      <span style={{ fontWeight: 700, fontSize: '12px', color: visual.cor, width: '14px' }}>
+                        {visual.marca}
                       </span>
-                      <span style={{ color: ink }}>{item.label}</span>
+                      <span style={{ color: estado === undefined ? '#6B7280' : ink }}>{item.label}</span>
                     </div>
                   )
                 })}
+                {/* Lacuna declarada, não omitida — ADR 0020. */}
+                <div style={{
+                  marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${border}`,
+                  fontSize: '10px', color: '#6B7280', fontFamily: 'Helvetica Neue, Arial, sans-serif'
+                }}>
+                  {resumoChi.texto}
+                  {resumoChi.naoVerificado > 0 && ' — «–» marca o que não foi verificado nesta visita.'}
+                </div>
               </div>
               {/* Command position */}
               <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem' }}>
@@ -1142,7 +1272,7 @@ export default function Relatorio() {
                   const roomChecks: Record<string, number> = { quarto: 5, escritorio: 5, cozinha: 4, sala: 4 }
                   const total = roomChecks[room] || checks.length
                   const pct = Math.round((checks.length / total) * 100)
-                  const cor = pct >= 70 ? '#16A34A' : pct >= 40 ? '#D97706' : '#DC2626'
+                  const cor = pct >= 70 ? '#2E7D6B' : pct >= 40 ? '#8A6E2F' : '#B4533A'
                   return (
                     <div key={room} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1175,9 +1305,9 @@ export default function Relatorio() {
           </div>
 
           {[
-            { label: 'URGENTE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual < CORTE_URGENTE },
-            { label: 'ATENÇÃO', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_URGENTE && s.score_percentual < CORTE_ATENCAO },
-            { label: 'MANTER', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_ATENCAO },
+            { label: 'URGENTE', color: '#B4533A', bg: '#FAEEE9', border: '#EBD3C7', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual < CORTE_URGENTE },
+            { label: 'ATENÇÃO', color: '#8A6E2F', bg: '#FAF3E0', border: '#EEDFB4', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_URGENTE && s.score_percentual < CORTE_ATENCAO },
+            { label: 'MANTER', color: '#2E7D6B', bg: '#F0F6F3', border: '#DCEAE4', filter: (s: SetorBagua) => s.score_percentual != null && s.score_percentual >= CORTE_ATENCAO },
           ].map(group => {
             const groupSetores = sortedSetores.filter(group.filter)
             if (groupSetores.length === 0) return null
@@ -1301,14 +1431,14 @@ export default function Relatorio() {
                       <tr style={{ pageBreakInside: 'avoid' }}>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink }}>{r.acao}</td>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#15803D' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
+                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#2E7D6B' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
                         <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
                       </tr>
                       {r.contraindicacoes.length > 0 && (
                         <tr style={{ pageBreakInside: 'avoid' }}>
                           <td />
-                          <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#92400E', fontSize: '9.5px', lineHeight: 1.5 }}>
+                          <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#8A6E2F', fontSize: '9.5px', lineHeight: 1.5 }}>
                             {r.contraindicacoes.map((c, i) => (
                               <div key={i} style={{ marginTop: i === 0 ? 0 : '2px' }}>⚠ {c}</div>
                             ))}
@@ -1340,7 +1470,7 @@ export default function Relatorio() {
           const atual = snapshots[snapshots.length - 1]
           const ev = compararSnapshots(inicial.scores, atual.scores)
           const dataFmt = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
-          const deltaCor = (d: number | null) => d == null ? '#9CA3AF' : d > 0 ? '#16A34A' : d < 0 ? '#DC2626' : '#6B7280'
+          const deltaCor = (d: number | null) => d == null ? '#9CA3AF' : d > 0 ? '#2E7D6B' : d < 0 ? '#B4533A' : '#6B7280'
           const deltaTxt = (d: number | null) => d == null ? '—' : d > 0 ? `▲ +${d}` : d < 0 ? `▼ ${d}` : '= 0'
           return (
             <div style={{ padding: '0 1.5rem 1rem' }}>
@@ -1357,9 +1487,9 @@ export default function Relatorio() {
                       <span style={{ fontSize: '18px', color: deltaCor(ev.mediaDepois - ev.mediaAntes), fontWeight: 700 }}>{ev.mediaDepois}%</span>
                     </div>
                     <div style={{ fontSize: '11px', color: inkLt }}>
-                      <span style={{ color: '#16A34A', fontWeight: 700 }}>{ev.melhoraram}</span> melhoraram ·{' '}
+                      <span style={{ color: '#2E7D6B', fontWeight: 700 }}>{ev.melhoraram}</span> melhoraram ·{' '}
                       <span style={{ color: '#6B7280', fontWeight: 700 }}>{ev.estaveis}</span> estáveis ·{' '}
-                      <span style={{ color: '#DC2626', fontWeight: 700 }}>{ev.pioraram}</span> pioraram
+                      <span style={{ color: '#B4533A', fontWeight: 700 }}>{ev.pioraram}</span> pioraram
                     </div>
                   </div>
                 )}
@@ -1391,7 +1521,7 @@ export default function Relatorio() {
               Curas &amp; Ativações Detalhadas por Área
             </div>
             <textarea className="no-print" value={textoCuras} onChange={e => setTextoCuras(e.target.value)}
-              rows={3} style={{ width: '100%', padding: '8px 10px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
+              rows={3} style={{ width: '100%', padding: '8px 10px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
             <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoCuras}</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
               <thead>
@@ -1425,7 +1555,7 @@ export default function Relatorio() {
                         <span style={{
                           display: 'inline-block', padding: '2px 8px', borderRadius: '10px',
                           fontSize: '11px', fontWeight: 700,
-                          background: pct < 40 ? '#FEF2F2' : pct < 70 ? '#FFFBEB' : '#F0FDF4',
+                          background: pct < 40 ? '#FAEEE9' : pct < 70 ? '#FAF3E0' : '#F0F6F3',
                           color: lvl.color
                         }}>{pct}%</span>
                       </td>
@@ -1483,21 +1613,21 @@ export default function Relatorio() {
                   {/* Plantas */}
                   {meta?.plants && (
                     <div style={{ marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 700, color: '#15803D', marginBottom: '3px' }}>🌿 Plantas recomendadas</div>
+                      <div style={{ fontWeight: 700, color: '#2E7D6B', marginBottom: '3px' }}>🌿 Plantas recomendadas</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.plants}</div>
                     </div>
                   )}
                   {/* Cores */}
                   {meta?.colors && (
                     <div style={{ marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 700, color: '#D97706', marginBottom: '3px' }}>🎨 Cores harmônicas</div>
+                      <div style={{ fontWeight: 700, color: '#8A6E2F', marginBottom: '3px' }}>🎨 Cores harmônicas</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.colors}</div>
                     </div>
                   )}
                   {/* Ação principal */}
                   {meta?.action && (
                     <div style={{ marginBottom: '4px' }}>
-                      <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: '3px' }}>⚡ Ação prioritária</div>
+                      <div style={{ fontWeight: 700, color: '#B4533A', marginBottom: '3px' }}>⚡ Ação prioritária</div>
                       <div style={{ color: '#374151', lineHeight: 1.5 }}>{meta.action}</div>
                     </div>
                   )}
@@ -1617,13 +1747,13 @@ export default function Relatorio() {
                     {temRec && rec && (
                       <div style={{ marginBottom: cRecs.length > 0 ? '10px' : '0' }}>
                         {rec.urgente.length > 0 && rec.urgente.map((d, i) => (
-                          <div key={`u${i}`} style={{ padding: '5px 10px', background: '#FEF2F2', borderLeft: '3px solid #EF4444', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
+                          <div key={`u${i}`} style={{ padding: '5px 10px', background: '#FAEEE9', borderLeft: '3px solid #B4533A', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
                         ))}
                         {rec.melhoria.length > 0 && rec.melhoria.map((d, i) => (
-                          <div key={`m${i}`} style={{ padding: '5px 10px', background: '#FFFBEB', borderLeft: '3px solid #F59E0B', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
+                          <div key={`m${i}`} style={{ padding: '5px 10px', background: '#FAF3E0', borderLeft: '3px solid #C9A227', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
                         ))}
                         {rec.manutencao.length > 0 && rec.manutencao.map((d, i) => (
-                          <div key={`k${i}`} style={{ padding: '5px 10px', background: '#F0FDF4', borderLeft: '3px solid #22C55E', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
+                          <div key={`k${i}`} style={{ padding: '5px 10px', background: '#F0F6F3', borderLeft: '3px solid #2E7D6B', borderRadius: '2px', marginBottom: '3px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>{d}</div>
                         ))}
                       </div>
                     )}
@@ -1632,13 +1762,13 @@ export default function Relatorio() {
                     {cRecs.length > 0 && cRecs.map((cr, i) => (
                       <div key={i} style={{
                         padding: '6px 10px', background: paperWarm,
-                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#16A34A'}`,
+                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#B4533A' : cr.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'}`,
                         borderRadius: '2px', marginBottom: '3px', fontSize: '11px',
                         fontFamily: 'Helvetica Neue, Arial, sans-serif'
                       }}>
                         <span style={{
                           fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px',
-                          background: cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#16A34A'
+                          background: cr.tipo === 'urgente' ? '#B4533A' : cr.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'
                         }}>{cr.tipo === 'urgente' ? 'URGENTE' : cr.tipo === 'melhoria' ? 'MELHORIA' : 'MANTER'}</span>
                         {cr.texto}
                       </div>
@@ -1648,7 +1778,7 @@ export default function Relatorio() {
                     <div style={{ marginTop: '6px' }}>
                       <textarea className="no-print" value={recsAdicionais[setor.id] || ''} onChange={e => setRecsAdicionais(prev => ({ ...prev, [setor.id]: e.target.value }))}
                         placeholder={`Recomendações adicionais para ${setor.nome}...`} rows={2}
-                        style={{ width: '100%', padding: '6px 8px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif' }} />
+                        style={{ width: '100%', padding: '6px 8px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif' }} />
                       {recsAdicionais[setor.id] && (
                         <div className="print-only" style={{ padding: '6px 10px', background: '#EAF4F1', borderLeft: '3px solid #2E7D6B', borderRadius: '2px', fontSize: '11px', color: '#374151', fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
                           <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', padding: '1px 5px', borderRadius: '4px', marginRight: '6px', background: '#2E7D6B' }}>CONSULTOR</span>
@@ -1699,12 +1829,12 @@ export default function Relatorio() {
 
           {((consulta?.fotos_depois as string[] | undefined)?.length ?? 0) > 0 && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#15803D', marginBottom: '8px' }}>Depois</div>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#2E7D6B', marginBottom: '8px' }}>Depois</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {(consulta?.fotos_depois as string[] || []).slice(0, 6).map((url: string, i: number) => {
                   const assinada = resolverFoto(url)
                   return assinada ? (
-                    <img key={i} src={assinada} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #BBF7D0' }} />
+                    <img key={i} src={assinada} alt={`Depois ${i+1}`} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #DCEAE4' }} />
                   ) : null
                 })}
               </div>
@@ -1732,7 +1862,7 @@ export default function Relatorio() {
               const customRecs = Array.isArray(setor.recomendacoes_custom) ? setor.recomendacoes_custom as {texto:string}[] : []
               const action = customRecs[0]?.texto || rec.urgente[0] || rec.melhoria[0] || meta?.action || 'Avaliar e harmonizar este setor'
               return (
-                <div key={setor.id} style={{ padding: '14px 16px', marginBottom: '10px', borderRadius: '8px', background: i === 0 ? '#FEF2F2' : i === 1 ? '#FFFBEB' : '#F0FDF4', border: `1px solid ${i === 0 ? '#FECACA' : i === 1 ? '#FDE68A' : '#BBF7D0'}` }}>
+                <div key={setor.id} style={{ padding: '14px 16px', marginBottom: '10px', borderRadius: '8px', background: i === 0 ? '#FAEEE9' : i === 1 ? '#FAF3E0' : '#F0F6F3', border: `1px solid ${i === 0 ? '#EBD3C7' : i === 1 ? '#EEDFB4' : '#DCEAE4'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#0E1B2C' }}>Prioridade {i + 1} — {setor.nome}</span>
                     <span style={{ fontSize: '11px', fontWeight: 'bold', color: scoreColor(setor.score_percentual ?? 0), background: '#fff', padding: '2px 8px', borderRadius: '10px' }}>{setor.score_percentual}%</span>
@@ -1772,8 +1902,8 @@ export default function Relatorio() {
           // de domínio (ADR 0013), então não há síntese a fazer.
           if (be?.escola !== 'bussola' || typeof be.orientacao_graus !== 'number') return null
 
-          const periodo = be.data_construcao ? periodoDaConstrucao(be.data_construcao) : null
-          const mapa = periodo != null ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus, periodo }) : null
+          const doImovel = periodoDaConsulta(consulta)
+          const mapa = doImovel ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus, periodo: doImovel.periodo }) : null
           const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
           const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
           const favoraveis = mg ? setoresFavoraveis(mg.direcoes) : null
@@ -1801,12 +1931,12 @@ export default function Relatorio() {
               </p>
 
               {sintese.perigosos.length > 0 && (
-                <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '4px', padding: '0.8rem', marginBottom: '0.8rem', pageBreakInside: 'avoid' }}>
+                <div style={{ background: '#FAEEE9', border: '1px solid #E0A48E', borderRadius: '4px', padding: '0.8rem', marginBottom: '0.8rem', pageBreakInside: 'avoid' }}>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#991B1B', marginBottom: '5px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                     Setores que exigem cautela ({sintese.perigosos.length})
                   </div>
                   {sintese.perigosos.map(p => (
-                    <div key={p.setor} style={{ fontSize: '11px', color: '#7F1D1D', marginBottom: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                    <div key={p.setor} style={{ fontSize: '11px', color: '#8F3F2C', marginBottom: '3px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                       <strong>{p.setor}</strong> — {p.resolucao.motivoFinal}
                     </div>
                   ))}
@@ -1820,7 +1950,7 @@ export default function Relatorio() {
                       Setor {d.setor}
                     </div>
                     <div style={{ fontSize: '11px', color: ink, marginBottom: '4px' }}>
-                      <span style={{ color: '#15803D', fontWeight: 700 }}>Prevaleceu</span>
+                      <span style={{ color: '#2E7D6B', fontWeight: 700 }}>Prevaleceu</span>
                       {' — '}
                       {d.resolucao.metodoVencedor ? PERFIS_METODOS[d.resolucao.metodoVencedor].nome : '—'}: {d.resolucao.motivoFinal}
                     </div>
@@ -1839,7 +1969,7 @@ export default function Relatorio() {
               )}
 
               {sintese.avisos.map((aviso, i) => (
-                <p key={i} style={{ margin: '0.5rem 0 0', fontSize: '10px', color: '#92400E', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <p key={i} style={{ margin: '0.5rem 0 0', fontSize: '10px', color: '#8A6E2F', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                   ⚠ {aviso}
                 </p>
               ))}
@@ -1866,7 +1996,7 @@ export default function Relatorio() {
             Conclusão
           </div>
           <textarea className="no-print" value={textoConclusao} onChange={e => setTextoConclusao(e.target.value)}
-            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFEF5', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
+            rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
           <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoConclusao}</div>
         </div>
         )}

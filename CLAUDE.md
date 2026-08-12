@@ -34,6 +34,17 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
 - **Sem `console.log`**: use `src/lib/logger.ts` (estruturado, sem PII).
 - **Sem strings/números mágicos**: constantes nomeadas (`src/lib/constants.ts`,
   `plano-utils.ts`).
+- **Estado que muda com o tempo é derivado, não gravado** (ADR 0027). «Atrasado»
+  sai da data de vencimento, nunca de `pagamentos.status`; a etapa da consulta
+  sai dos dados presentes, não de uma coluna. Guardar os dois cria duas
+  verdades, e a que envelhece é a gravada.
+- **Papel ≠ plano** (ADR 0024). `papelDoUsuario` responde «atende clientes ou
+  cuida da própria casa?» e decide menu e home; `planoUsuario` responde «o que
+  comprou?» e decide limites. Um consultor no free é as duas coisas.
+- **Ausência ≠ zero.** Setor não avaliado é `null` e aparece como «—», nunca
+  como 0%; item de checklist não verificado não entra no denominador; área da
+  Roda sem resposta não vira média. Vale para score, checklist, Roda da Vida e
+  período do imóvel.
 
 ## Segurança — inegociável
 
@@ -96,7 +107,10 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   hierarquia de precedência entre métodos (0013), referência de norte e
   declinação (0014), fronteira de classificação dos remédios (0015),
   questionário de facing (0016), curadoria de evidência com proveniência
-  (0017), Ba Guá fixo no BTB (0018), erro genérico ≠ erro enganoso (0019), lacuna declarada em auditoria (0020), modelos de pontuação escolhidos pelo consultor (0021), fotos por URL assinada (0022), rate limit com degradação declarada (0023).
+  (0017), Ba Guá fixo no BTB (0018), erro genérico ≠ erro enganoso (0019), lacuna declarada em auditoria (0020), modelos de pontuação escolhidos pelo consultor (0021), fotos por URL assinada (0022), rate limit com degradação declarada (0023),
+  papel do usuário separado do plano (0024), cliente final recebe julgamento e
+  não score (0025), fila offline da vistoria (0026), estado derivado em vez de
+  status gravado (0027).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
 - `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).

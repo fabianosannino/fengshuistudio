@@ -2,6 +2,7 @@
 
 /* Design "Chi": página de preços — toggle mensal/anual, 3 planos (Profissional em destaque),
  * tabela comparativa, banner ROI, selos de confiança, FAQ de compra. */
+import { resumoDoPlano, limiteImoveis, limiteClientes, podePDF, podeCalendario, podeParceiros, type PlanoEfetivo } from '../../src/lib/plano-utils'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Check, Minus, Lock, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react'
@@ -12,6 +13,26 @@ import CtaBand from '../components/marketing/CtaBand'
 import FaqAccordion from '../components/marketing/FaqAccordion'
 import { ASSETS, REGISTER_URL } from '../components/marketing/assets'
 
+/**
+ * A tabela de preços é um contrato: cada linha aqui é uma promessa. Ela passou
+ * a ser gerada de `plano-utils` porque as duas divergiram — a página prometia
+ * «Relatório com marca d'água» ao Free enquanto `podePDF('free')` devolvia
+ * 'bloqueado', e anunciava 1 imóvel no Simples (pago) contra 3 no Free.
+ */
+function textoLimite(plano: PlanoEfetivo, recurso: 'imoveis' | 'clientes'): string | boolean {
+  const limite = recurso === 'imoveis' ? limiteImoveis(plano) : limiteClientes(plano)
+  if (limite === null) return 'Ilimitados'
+  if (limite === 0) return false
+  return String(limite)
+}
+
+function textoPDF(plano: PlanoEfetivo): string | boolean {
+  const modo = podePDF(plano)
+  if (modo === 'limpo') return 'Com a sua marca'
+  if (modo === 'marca_dagua') return "Com marca d'água"
+  return false
+}
+
 const planos = (anual: boolean) => [
   {
     nome: 'Free',
@@ -19,7 +40,7 @@ const planos = (anual: boolean) => [
     sufixo: '/mês',
     desc: 'Para experimentar e dar os primeiros passos.',
     destaque: false,
-    features: ['Até 3 imóveis', 'Análise Ba Guá completa', 'Roda da Vida', 'Curas e ativações', "Relatório com marca d'água"],
+    features: resumoDoPlano('free'),
     cta: 'Começar grátis',
   },
   {
@@ -29,12 +50,9 @@ const planos = (anual: boolean) => [
     desc: 'Para consultores que atendem clientes.',
     destaque: true,
     features: [
-      'Imóveis e clientes ilimitados',
-      "Relatório PDF com a sua marca, sem marca d'água",
+      ...resumoDoPlano('profissional'),
       'CRM e controle financeiro',
-      'Calendário lunar com rituais',
       'Loja própria com Stripe',
-      'Rede de parceiros',
       'Suporte prioritário',
     ],
     cta: 'Assinar Profissional',
@@ -45,23 +63,23 @@ const planos = (anual: boolean) => [
     sufixo: anual ? '/mês no plano anual' : '/mês',
     desc: 'Para uso pessoal, na sua própria casa.',
     destaque: false,
-    features: ['1 imóvel ativo', 'Análise Ba Guá completa', 'Calendário lunar', 'Curas e ativações', "Relatório com marca d'água"],
+    features: resumoDoPlano('simples'),
     cta: 'Assinar Simples',
   },
 ]
 
 const comparativo: { label: string; free: string | boolean; pro: string | boolean; simples: string | boolean }[] = [
-  { label: 'Imóveis', free: '3', pro: 'Ilimitados', simples: '1' },
-  { label: 'Clientes no CRM', free: false, pro: true, simples: false },
+  { label: 'Imóveis ativos', free: textoLimite('free', 'imoveis'), pro: textoLimite('profissional', 'imoveis'), simples: textoLimite('simples', 'imoveis') },
+  { label: 'Clientes no CRM', free: textoLimite('free', 'clientes'), pro: textoLimite('profissional', 'clientes'), simples: textoLimite('simples', 'clientes') },
   { label: 'Análise Ba Guá com planta', free: true, pro: true, simples: true },
   { label: 'Roda da Vida (12 áreas)', free: true, pro: true, simples: true },
   { label: 'Fluxo do Chi', free: true, pro: true, simples: true },
-  { label: 'Relatório PDF', free: "Com marca d'água", pro: 'Com a sua marca', simples: "Com marca d'água" },
-  { label: 'Calendário lunar com rituais', free: false, pro: true, simples: true },
+  { label: 'Relatório PDF', free: textoPDF('free'), pro: textoPDF('profissional'), simples: textoPDF('simples') },
+  { label: 'Calendário lunar com rituais', free: podeCalendario('free'), pro: podeCalendario('profissional'), simples: podeCalendario('simples') },
   { label: 'Curas e ativações por setor', free: true, pro: true, simples: true },
   { label: 'Controle financeiro', free: false, pro: true, simples: false },
   { label: 'Loja própria (Stripe)', free: false, pro: true, simples: false },
-  { label: 'Rede de parceiros', free: false, pro: true, simples: false },
+  { label: 'Rede de parceiros', free: podeParceiros('free') !== 'bloqueado', pro: podeParceiros('profissional') !== 'bloqueado', simples: podeParceiros('simples') !== 'bloqueado' },
   { label: 'Suporte prioritário', free: false, pro: true, simples: false },
 ]
 

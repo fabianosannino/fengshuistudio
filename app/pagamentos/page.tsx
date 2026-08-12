@@ -1,6 +1,7 @@
 'use client'
 
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
+import { estadoDoPagamento, totaisFinanceiros, diasDeAtraso, reguaDaParcela, APARENCIA } from '../../src/lib/estado-do-pagamento'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -11,9 +12,9 @@ import type { User } from '@supabase/supabase-js'
 import { Wrench, Wallet, User as UserIcon, Home as HomeIcon, Check } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string }> = {
-  pendente: { label: 'Pendente', cor: '#D97706', bg: '#FFFBEB' },
-  pago: { label: 'Pago', cor: '#15803D', bg: '#F0FDF4' },
-  atrasado: { label: 'Atrasado', cor: '#DC2626', bg: '#FEF2F2' },
+  pendente: { label: 'Pendente', cor: '#8A6E2F', bg: '#FAF3E0' },
+  pago: { label: 'Pago', cor: '#2E7D6B', bg: '#F0F6F3' },
+  atrasado: { label: 'Atrasado', cor: '#B4533A', bg: '#FAEEE9' },
   cancelado: { label: 'Cancelado', cor: '#6B7280', bg: '#F3F4F6' },
 }
 
@@ -105,13 +106,14 @@ export default function Pagamentos() {
     setAllCount(count || 0)
 
     if (allPags) {
-      const hoje = new Date(new Date().toISOString().split('T')[0])
-      const recebido = allPags.filter(p => p.status === 'pago').reduce((a, p) => a + Number(p.valor), 0)
-      const pendente = allPags.filter(p => p.status === 'pendente').reduce((a, p) => a + Number(p.valor), 0)
-      const atrasado = allPags.filter(p => p.status === 'atrasado' || (p.status === 'pendente' && new Date(p.data_vencimento) < hoje)).reduce((a, p) => a + Number(p.valor), 0)
-      setTotalRecebido(recebido)
-      setTotalPendente(pendente)
-      setTotalAtrasado(atrasado)
+      // Cada parcela cai em **um** balde. Antes, a soma de pendentes incluía
+      // todo `status = 'pendente'` e a de atrasados somava por cima os
+      // pendentes com data vencida — a mesma parcela contada duas vezes, e
+      // pendente + atrasado dando mais que o contratado.
+      const totais = totaisFinanceiros(allPags)
+      setTotalRecebido(totais.recebido)
+      setTotalPendente(totais.aReceber)
+      setTotalAtrasado(totais.vencido)
     }
   }, [])
 
@@ -268,10 +270,9 @@ export default function Pagamentos() {
     return d.toLocaleDateString('pt-BR')
   }
 
-  function isVencido(pag: Pagamento) {
-    if (pag.status !== 'pendente') return false
-    return new Date(pag.data_vencimento) < new Date(new Date().toISOString().split('T')[0])
-  }
+  // `isVencido` saiu: a regra vive em `estadoDoPagamento`, e ela também cobre
+  // o caso inverso — status «atrasado» gravado numa parcela cuja data foi
+  // renegociada para o futuro.
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
@@ -295,19 +296,25 @@ export default function Pagamentos() {
 
   return (
     <AppShell currentPage="pagamentos">
-      {/* Banner em desenvolvimento */}
+      {/* «Em desenvolvimento» descrevia a tela inteira, inclusive o que já
+          funciona — e uma tela que se anuncia como inacabada não é usada. O
+          aviso passa a dizer só o que de fato falta: a cobrança automática. */}
       <div style={{
-        background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px',
-        padding: '16px 20px', marginBottom: '24px', textAlign: 'center'
+        background: '#FAF3E0', border: '1px solid #EEDFB4', borderRadius: '10px',
+        padding: '14px 18px', marginBottom: '24px',
+        display: 'flex', gap: '12px', alignItems: 'flex-start',
       }}>
-        <Wrench size={22} strokeWidth={1.75} color="#92400E" style={{ margin: '0 auto 8px' }} aria-hidden="true" />
-        <p style={{ color: '#92400E', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-          Pagamentos — Em desenvolvimento
-        </p>
-        <p style={{ color: '#92400E', fontSize: '12px', margin: 0 }}>
-          Em breve você poderá gerenciar cobranças e recebimentos diretamente pela plataforma.
-          Por enquanto, utilize a seção abaixo para registro manual.
-        </p>
+        <Wrench size={20} strokeWidth={1.75} color="#8A6E2F" style={{ flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
+        <div>
+          <p style={{ color: '#0E1B2C', fontSize: '13px', fontWeight: 700, margin: '0 0 3px 0' }}>
+            O controle é seu; a cobrança ainda não é automática
+          </p>
+          <p style={{ color: '#6B7280', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+            Registrar parcelas, acompanhar vencimentos e dar baixa funciona. Link de
+            cobrança e baixa automática dependem da conta Stripe conectada — quando ela
+            estiver ativa, esta tela emite a cobrança por parcela.
+          </p>
+        </div>
       </div>
 
       {/* Header */}
@@ -326,17 +333,17 @@ export default function Pagamentos() {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: '#F0FDF4', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #15803D' }}>
+        <div style={{ background: '#F0F6F3', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #2E7D6B' }}>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 4px 0' }}>Total Recebido</p>
-          <p style={{ color: '#15803D', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalRecebido)}</p>
+          <p style={{ color: '#2E7D6B', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalRecebido)}</p>
         </div>
-        <div style={{ background: '#FFFBEB', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #D97706' }}>
+        <div style={{ background: '#FAF3E0', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #8A6E2F' }}>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 4px 0' }}>Total Pendente</p>
-          <p style={{ color: '#D97706', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalPendente)}</p>
+          <p style={{ color: '#8A6E2F', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalPendente)}</p>
         </div>
-        <div style={{ background: '#FEF2F2', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #DC2626' }}>
+        <div style={{ background: '#FAEEE9', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #B4533A' }}>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 4px 0' }}>Total Atrasado</p>
-          <p style={{ color: '#DC2626', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalAtrasado)}</p>
+          <p style={{ color: '#B4533A', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>{formatCurrency(totalAtrasado)}</p>
         </div>
       </div>
 
@@ -357,8 +364,8 @@ export default function Pagamentos() {
       {message && (
         <div style={{
           marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-          background: '#FEF2F2', border: '1px solid #FECACA',
-          color: '#DC2626', fontSize: '14px',
+          background: '#FAEEE9', border: '1px solid #EBD3C7',
+          color: '#B4533A', fontSize: '14px',
         }}>{message}</div>
       )}
 
@@ -382,13 +389,15 @@ export default function Pagamentos() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {pagamentos.map(pag => {
-            const st = STATUS_CONFIG[pag.status] || STATUS_CONFIG.pendente
-            const vencido = isVencido(pag)
+            const estado = estadoDoPagamento(pag)
+            const st = APARENCIA[estado]
+            const vencido = estado === 'atrasado'
+            const atraso = diasDeAtraso(pag)
             return (
               <div key={pag.id} style={{
                 background: '#ffffff', borderRadius: '12px', padding: '16px 20px',
                 boxShadow: '0 1px 2px rgba(14,27,44,0.04), 0 10px 28px -16px rgba(14,27,44,0.18)', border: '1px solid rgba(14,27,44,0.06)',
-                borderLeft: `4px solid ${vencido ? '#DC2626' : st.cor}`,
+                borderLeft: `4px solid ${vencido ? '#B4533A' : st.cor}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexWrap: 'wrap', gap: '12px',
               }}>
@@ -399,11 +408,10 @@ export default function Pagamentos() {
                       {pag.descricao}
                     </h3>
                     <span style={{
-                      background: vencido ? '#FEF2F2' : st.bg,
-                      color: vencido ? '#DC2626' : st.cor,
+                      background: st.fundo, color: st.cor,
                       padding: '2px 10px', borderRadius: '20px',
                       fontSize: '11px', fontWeight: 'bold',
-                    }}>{vencido ? 'Atrasado' : st.label}</span>
+                    }}>{st.rotulo}{atraso > 0 ? ` há ${atraso} ${atraso === 1 ? 'dia' : 'dias'}` : ''}</span>
                   </div>
                   <p style={{ color: '#6B7280', fontSize: '13px', margin: '0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {pag.clientes?.nome_completo && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><UserIcon size={13} strokeWidth={1.75} aria-hidden="true" /> {pag.clientes.nome_completo}</span>}
@@ -419,17 +427,30 @@ export default function Pagamentos() {
 
                 {/* Valor */}
                 <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                  <p style={{ color: pag.status === 'pago' ? '#15803D' : '#111827', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
+                  <p style={{ color: estado === 'pago' ? '#2E7D6B' : '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
                     {formatCurrency(Number(pag.valor))}
                   </p>
+                  {/* A régua: três marcos, não cinco. «Enviado» e «aberto»
+                      exigiriam link de cobrança com rastreio, que ainda não
+                      existe — desenhá-los apagados sugeriria que o produto sabe
+                      se o cliente abriu a cobrança. */}
+                  <div role="img" aria-label={`Estado: ${st.rotulo}`}
+                    style={{ display: 'flex', gap: '3px', marginTop: '6px', justifyContent: 'flex-end' }}>
+                    {reguaDaParcela(pag).map((marco, i) => (
+                      <span key={i} title={marco.rotulo} style={{
+                        height: '4px', width: '28px', borderRadius: '99px',
+                        background: marco.cumprido ? '#2E7D6B' : marco.atual ? st.cor : '#EAE5DA',
+                      }} />
+                    ))}
+                  </div>
                 </div>
 
                 {/* Ações */}
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  {(pag.status === 'pendente' || pag.status === 'atrasado' || vencido) && (
+                  {(estado === 'atrasado' || estado === 'vence_hoje' || estado === 'a_vencer') && (
                     <button type="button" onClick={() => handleMarcarPago(pag)} style={{
-                      padding: '6px 14px', background: '#F0FDF4', color: '#15803D',
-                      border: '1px solid #BBF7D0', borderRadius: '6px',
+                      padding: '6px 14px', background: '#F0F6F3', color: '#2E7D6B',
+                      border: '1px solid #DCEAE4', borderRadius: '6px',
                       fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '4px',
                     }}><Check size={13} strokeWidth={2.5} aria-hidden="true" /> Pago</button>
@@ -440,8 +461,8 @@ export default function Pagamentos() {
                     fontSize: '12px', cursor: 'pointer',
                   }}>Editar</button>
                   <button type="button" onClick={() => setDeleteTarget(pag.id)} style={{
-                    padding: '6px 14px', background: '#FEF2F2', color: '#DC2626',
-                    border: '1px solid #FECACA', borderRadius: '6px',
+                    padding: '6px 14px', background: '#FAEEE9', color: '#B4533A',
+                    border: '1px solid #EBD3C7', borderRadius: '6px',
                     fontSize: '12px', cursor: 'pointer',
                   }}>Excluir</button>
                 </div>
@@ -508,8 +529,8 @@ export default function Pagamentos() {
             {message && (
               <div style={{
                 marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-                background: '#FEF2F2', border: '1px solid #FECACA',
-                color: '#DC2626', fontSize: '14px',
+                background: '#FAEEE9', border: '1px solid #EBD3C7',
+                color: '#B4533A', fontSize: '14px',
               }}>{message}</div>
             )}
 

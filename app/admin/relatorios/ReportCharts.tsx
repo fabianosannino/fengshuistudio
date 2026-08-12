@@ -11,7 +11,7 @@ const PLAN_COLORS: Record<string, string> = {
   free: '#6B7280',
   simples: '#059669',
   profissional: '#2E7D6B',
-  gratuidade: '#1D4ED8',
+  gratuidade: '#2E7D6B',
 }
 
 export default function ReportCharts({ data }: { data: ReportData }) {

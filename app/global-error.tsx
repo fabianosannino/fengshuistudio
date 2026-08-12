@@ -57,8 +57,8 @@ export default function GlobalError({
             <details style={{
               textAlign: 'left',
               marginBottom: '28px',
-              background: '#FEF2F2',
-              border: '1px solid #FECACA',
+              background: '#FAEEE9',
+              border: '1px solid #EBD3C7',
               borderRadius: '8px',
               padding: '16px',
             }}>
@@ -73,7 +73,7 @@ export default function GlobalError({
               <pre style={{
                 marginTop: '12px',
                 fontSize: '12px',
-                color: '#7F1D1D',
+                color: '#8F3F2C',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}>

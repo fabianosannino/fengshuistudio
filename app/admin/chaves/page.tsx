@@ -14,10 +14,10 @@ const PAGE_SIZE = 20
 const BUSCA_MINIMA = 2
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
-  available: { bg: '#DCFCE7', color: '#15803D', label: 'Disponível' },
-  used:      { bg: '#DBEAFE', color: '#1D4ED8', label: 'Utilizada' },
-  expired:   { bg: '#FEF9C3', color: '#A16207', label: 'Expirada' },
-  cancelled: { bg: '#FEE2E2', color: '#DC2626', label: 'Cancelada' },
+  available: { bg: '#F0F6F3', color: '#2E7D6B', label: 'Disponível' },
+  used:      { bg: '#EAF1EE', color: '#245F52', label: 'Utilizada' },
+  expired:   { bg: '#FAF3E0', color: '#8A6E2F', label: 'Expirada' },
+  cancelled: { bg: '#FAEEE9', color: '#B4533A', label: 'Cancelada' },
 }
 
 interface Summary { total: number; available: number; used: number; expired: number; cancelled: number }
@@ -222,9 +222,9 @@ export default function AdminChaves() {
       {msg && (
         <div style={{
           marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-          background: msgType === 'success' ? '#F0FDF4' : '#FEF2F2',
-          border: `1px solid ${msgType === 'success' ? '#BBF7D0' : '#FECACA'}`,
-          color: msgType === 'success' ? '#15803D' : '#DC2626',
+          background: msgType === 'success' ? '#F0F6F3' : '#FAEEE9',
+          border: `1px solid ${msgType === 'success' ? '#DCEAE4' : '#EBD3C7'}`,
+          color: msgType === 'success' ? '#2E7D6B' : '#B4533A',
           fontSize: '14px', fontWeight: 'bold',
         }}>{msg}</div>
       )}
@@ -233,9 +233,9 @@ export default function AdminChaves() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Total gerado', value: summary.total, color: '#0E1B2C', Icon: KeyRound },
-          { label: 'Disponíveis', value: summary.available, color: '#15803D', Icon: CircleCheck },
-          { label: 'Utilizadas', value: summary.used, color: '#1D4ED8', Icon: CircleDot },
-          { label: 'Expiradas', value: summary.expired, color: '#A16207', Icon: CircleAlert },
+          { label: 'Disponíveis', value: summary.available, color: '#2E7D6B', Icon: CircleCheck },
+          { label: 'Utilizadas', value: summary.used, color: '#2E7D6B', Icon: CircleDot },
+          { label: 'Expiradas', value: summary.expired, color: '#8A6E2F', Icon: CircleAlert },
         ].map(card => (
           <div key={card.label} style={{
             background: '#fff', borderRadius: '12px', padding: '16px 20px',
@@ -466,8 +466,8 @@ export default function AdminChaves() {
                           }}><Copy size={13} strokeWidth={1.75} aria-hidden="true" /></button>
                           {k.status === 'available' && (
                             <button type="button" onClick={() => setCancelTarget(k.id)} title="Cancelar chave" aria-label="Cancelar chave" style={{
-                              padding: '4px 8px', background: '#FEF2F2', border: '1px solid #FECACA',
-                              borderRadius: '4px', cursor: 'pointer', color: '#DC2626', display: 'inline-flex', alignItems: 'center',
+                              padding: '4px 8px', background: '#FAEEE9', border: '1px solid #EBD3C7',
+                              borderRadius: '4px', cursor: 'pointer', color: '#B4533A', display: 'inline-flex', alignItems: 'center',
                             }}><X size={13} strokeWidth={2} aria-hidden="true" /></button>
                           )}
                           <button type="button" onClick={() => setExpandedRow(expanded ? null : k.id)} title="Ver detalhes" aria-label="Ver detalhes" style={{
@@ -581,8 +581,8 @@ export default function AdminChaves() {
               <strong>Plano atual:</strong>{' '}
               <span style={{
                 padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold',
-                background: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#E6F2EF' : '#FEF3C7',
-                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#2E7D6B' : '#A16207',
+                background: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#E6F2EF' : '#FAF3E0',
+                color: planoEfetivo(promoteTarget.plano) === 'profissional' ? '#2E7D6B' : '#8A6E2F',
               }}>{planoLabel(promoteTarget.plano)}</span>
             </div>
             {planoEfetivo(promoteTarget.plano) === 'profissional' ? (

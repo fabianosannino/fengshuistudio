@@ -1,5 +1,6 @@
 'use client'
 
+import { mediaDaArea, mediaGeral, notasDaArea } from '../../src/lib/roda-da-vida'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -23,11 +24,11 @@ const novaAcao = (): Acao => ({ acao: '', categoria: '', data_inicio: '', data_f
 const defaultAcoes = (): Acao[] => [novaAcao()]
 
 function classificar(val: number): { nivel: string; cor: string; bg: string } {
-  if (val >= 8) return { nivel: 'Ótimo', cor: '#15803D', bg: '#F0FDF4' }
-  if (val >= 5) return { nivel: 'Leve', cor: '#2563EB', bg: '#EFF6FF' }
-  if (val >= 3) return { nivel: 'Moderado', cor: '#D97706', bg: '#FFFBEB' }
-  if (val >= 1) return { nivel: 'Acentuado', cor: '#DC2626', bg: '#FEF2F2' }
-  return { nivel: 'Ausente', cor: '#7F1D1D', bg: '#FEF2F2' }
+  if (val >= 8) return { nivel: 'Ótimo', cor: '#2E7D6B', bg: '#F0F6F3' }
+  if (val >= 5) return { nivel: 'Leve', cor: '#2E7D6B', bg: '#F0F6F3' }
+  if (val >= 3) return { nivel: 'Moderado', cor: '#8A6E2F', bg: '#FAF3E0' }
+  if (val >= 1) return { nivel: 'Acentuado', cor: '#B4533A', bg: '#FAEEE9' }
+  return { nivel: 'Ausente', cor: '#8F3F2C', bg: '#FAEEE9' }
 }
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) } catch { return d } }
 
@@ -38,7 +39,7 @@ function polar(cx: number, cy: number, r: number, i: number, total: number) {
 
 function RadarChart({ respostas }: { respostas: Record<string, number[]> }) {
   const cx = 200, cy = 200, R = 160, n = 12
-  const values = AREAS.map(a => avg(respostas[a.key] || [5,5,5,5,5]))
+  const values = AREAS.map(a => mediaDaArea(respostas[a.key]) ?? 0)
   const rings = [2,4,6,8,10]
   const pts = values.map((v, i) => polar(cx, cy, R * v / 10, i, n))
   const poly = pts.map(p => `${p.x},${p.y}`).join(' ')
@@ -53,7 +54,7 @@ function RadarChart({ respostas }: { respostas: Record<string, number[]> }) {
           <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" fontSize={8} fill={a.cor} fontWeight="bold">{a.label}</text>
         </g>
       })}
-      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={2} />
+      <polygon points={poly} fill="rgba(46,125,107,0.15)" stroke="#2E7D6B" strokeWidth={2} />
       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={4} fill={AREAS[i].cor} />)}
       {pts.map((p, i) => <text key={'t'+i} x={p.x} y={p.y - 8} textAnchor="middle" fontSize={8} fill={AREAS[i].cor} fontWeight="bold">{values[i].toFixed(1)}</text>)}
     </svg>
@@ -179,8 +180,8 @@ export default function RodaDaVidaPage() {
   }
 
   const area = AREAS[areaAtual]
-  const catAvg = (keys: string[]) => { const vals = keys.map(k => avg(respostas[k] || [5,5,5,5,5])); return vals.reduce((s,v)=>s+v,0)/vals.length }
-  const totalAvg = avg(AREAS.map(a => avg(respostas[a.key] || [5,5,5,5,5])))
+  const catAvg = (keys: string[]) => mediaGeral(respostas, keys)
+  const totalAvg = mediaGeral(respostas, AREAS.map(a => a.key))
   const progress = ((areaAtual + 1) / 12 * 100)
 
   const cardStyle: React.CSSProperties = { background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16, marginBottom: 12 }
@@ -190,7 +191,7 @@ export default function RodaDaVidaPage() {
 
   return (
     <AppShell currentPage="roda-da-vida">
-      {message && <div style={{ padding: '10px 16px', marginBottom: 16, borderRadius: 8, background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4', color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: 14, fontWeight: 'bold', border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}` }}>{message}</div>}
+      {message && <div style={{ padding: '10px 16px', marginBottom: 16, borderRadius: 8, background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3', color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: 14, fontWeight: 'bold', border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}` }}>{message}</div>}
 
       {/* ── LIST STEP ── */}
       {step === 'list' && <>
@@ -206,7 +207,7 @@ export default function RodaDaVidaPage() {
             <div key={c.id} onClick={() => openExisting(c)} style={{ ...cardStyle, cursor: 'pointer' }}>
               <div style={{ fontSize: 14, fontWeight: 'bold', color: '#0E1B2C' }}>{c.roda_da_vida?.pessoa_nome || c.clientes?.nome_completo || 'Sem nome'}</div>
               <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{c.nome_imovel} — {fmtDate(c.criado_em)}</div>
-              <div style={{ fontSize: 12, color: '#2E7D6B', marginTop: 4, fontWeight: 'bold' }}>Média geral: {avg(AREAS.map(a => avg(c.roda_da_vida?.respostas?.[a.key] || [5,5,5,5,5]))).toFixed(1)}</div>
+              <div style={{ fontSize: 12, color: '#2E7D6B', marginTop: 4, fontWeight: 'bold' }}>Média geral: {mediaGeral(c.roda_da_vida?.respostas ?? {}, AREAS.map(a => a.key))?.toFixed(1) ?? '—'}</div>
             </div>
           ))}
           {consultas.filter(c => c.roda_da_vida?.respostas).length === 0 && (
@@ -264,7 +265,7 @@ export default function RodaDaVidaPage() {
             <input value={pessoaNome} onChange={e => { setPessoaNome(e.target.value); if (!clientes.find(c => c.nome_completo === e.target.value)) setClienteId(null) }}
               placeholder="Digite o nome..." style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, boxSizing: 'border-box' }} />
             {!clienteId && pessoaNome.trim() && (
-              <p style={{ fontSize: 12, color: '#D97706', marginTop: 6 }}>Um novo cliente será criado automaticamente</p>
+              <p style={{ fontSize: 12, color: '#8A6E2F', marginTop: 6 }}>Um novo cliente será criado automaticamente</p>
             )}
           </div>
 
@@ -305,7 +306,7 @@ export default function RodaDaVidaPage() {
           <button type="button" onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setStep('select_client')} style={btnPrimary('#6B7280')}>Anterior</button>
           {areaAtual < 11
             ? <button type="button" onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
-            : <button type="button" onClick={() => setStep('results')} style={btnPrimary('#15803D')}>Ver Resultados</button>
+            : <button type="button" onClick={() => setStep('results')} style={btnPrimary('#2E7D6B')}>Ver Resultados</button>
           }
         </div>
       </>}
@@ -315,7 +316,7 @@ export default function RodaDaVidaPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 20, color: '#0E1B2C' }}>Resultados — {pessoaNome || 'Roda da Vida'}</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#2E7D6B' }}>{totalAvg.toFixed(1)}</b></p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#2E7D6B' }}>{totalAvg?.toFixed(1) ?? '—'}</b></p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={() => { setAreaAtual(0); setStep('questionnaire') }} style={btnPrimary('#6B7280')}>Editar</button>
@@ -337,14 +338,14 @@ export default function RodaDaVidaPage() {
               <div key={cat.key} style={cardStyle}>
                 <div style={{ fontSize: 13, fontWeight: 'bold', color: cat.cor, marginBottom: 8 }}>{cat.label}</div>
                 <div style={{ height: 8, borderRadius: 4, background: '#E5E7EB' }}>
-                  <div style={{ height: '100%', borderRadius: 4, background: cat.cor, width: `${v*10}%` }} />
+                  <div style={{ height: '100%', borderRadius: 4, background: cat.cor, width: `${(v ?? 0)*10}%` }} />
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 'bold', color: cat.cor, marginTop: 6 }}>{v.toFixed(1)}</div>
+                <div style={{ fontSize: 20, fontWeight: 'bold', color: cat.cor, marginTop: 6 }}>{v?.toFixed(1) ?? '—'}</div>
                 {cat.areas.map(ak => {
                   const a = AREAS.find(x => x.key === ak)!
-                  const av = avg(respostas[ak] || [5,5,5,5,5])
+                  const av = mediaDaArea(respostas[ak])
                   return <div key={ak} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151', marginTop: 4 }}>
-                    <span>{a.label}</span><span style={{ fontWeight: 'bold', color: a.cor }}>{av.toFixed(1)}</span>
+                    <span>{a.label}</span><span style={{ fontWeight: 'bold', color: a.cor }}>{av?.toFixed(1) ?? '—'}</span>
                   </div>
                 })}
               </div>
@@ -356,8 +357,9 @@ export default function RodaDaVidaPage() {
         <div style={cardStyle}>
           <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0E1B2C' }}>Detalhamento por Área</h3>
           {AREAS.map(a => {
-            const scores = respostas[a.key] || [5,5,5,5,5]
-            const areaAvg = avg(scores)
+            const scores = notasDaArea(respostas[a.key])
+            // `null` significa pergunta não respondida — não entra na média.
+            const areaAvg = mediaDaArea(respostas[a.key]) ?? 0
             const cls = classificar(areaAvg)
             const expanded = expandedArea === a.key
             return (
@@ -391,7 +393,7 @@ export default function RodaDaVidaPage() {
                   style={{
                     width: '100%', marginTop: 6, padding: '6px 8px', border: '1px solid #E5E7EB', borderRadius: 6,
                     fontSize: 11, color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const,
-                    background: observacoes[a.key] ? '#FFFBEB' : '#fff'
+                    background: observacoes[a.key] ? '#FAF3E0' : '#fff'
                   }}
                 />
               </div>
@@ -408,7 +410,7 @@ export default function RodaDaVidaPage() {
               style={{
                 width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 8,
                 fontSize: 13, color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const,
-                background: observacaoGeral ? '#FFFBEB' : '#fff'
+                background: observacaoGeral ? '#FAF3E0' : '#fff'
               }}
             />
           </div>
@@ -425,7 +427,7 @@ export default function RodaDaVidaPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 'bold', color: '#0E1B2C' }}>Ação {i + 1}</span>
                 {acoes.length > 1 && (
-                  <button type="button" onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16 }}>×</button>
+                  <button type="button" onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#B4533A', cursor: 'pointer', fontSize: 16 }}>×</button>
                 )}
               </div>
               <div style={{ marginBottom: 8 }}>

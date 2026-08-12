@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '../../../src/lib/logger'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -11,6 +12,8 @@ import TabFotos from './TabFotos'
 import { CRITERIOS } from '../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../src/lib/comodo-setor'
+import { normalizarChecklist, type ChecklistChi } from '../../../src/lib/fluxo-chi'
+import { Smartphone } from 'lucide-react'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 import { useUrlAssinada } from '../../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../../src/lib/storage-imagens'
@@ -208,7 +211,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
       <div style={{ marginBottom: '10px' }}>
         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Classificação</label>
         <div style={{ display: 'flex', gap: '6px' }}>
-          {([['urgente', 'Urgente', '#DC2626'], ['melhoria', 'Melhoria', '#D97706'], ['manutencao', 'Manutenção', '#15803D']] as const).map(([val, label, color]) => (
+          {([['urgente', 'Urgente', '#B4533A'], ['melhoria', 'Melhoria', '#8A6E2F'], ['manutencao', 'Manutenção', '#2E7D6B']] as const).map(([val, label, color]) => (
             <button type="button" key={val} onClick={() => setTipo(val)} style={{
               padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
               border: 'none', cursor: 'pointer',
@@ -298,7 +301,9 @@ export default function ConsultaDetalhe() {
   const [rodaData, setRodaData] = useState<Record<string, number[] | number>>({})
   const [rodaObservacoes, setRodaObservacoes] = useState<Record<string, string>>({})
   const [rodaObservacaoGeral, setRodaObservacaoGeral] = useState('')
-  const [checklistChi, setChecklistChi] = useState<string[]>([])
+  // Mapa item → estado. `normalizarChecklist` no load reconcilia com o formato
+  // antigo (`string[]` = itens marcados) que ainda está gravado nas consultas.
+  const [checklistChi, setChecklistChi] = useState<ChecklistChi>({})
   const [posicaoComando, setPosicaoComando] = useState<Record<string, string[]>>({})
 
   // Fotos do imóvel
@@ -342,7 +347,7 @@ export default function ConsultaDetalhe() {
       }
       setRodaObservacoes(rawRoda.observacoes || {})
       setRodaObservacaoGeral(rawRoda.observacao_geral || '')
-      setChecklistChi(consulta.checklist_chi || [])
+      setChecklistChi(normalizarChecklist(consulta.checklist_chi))
       setPosicaoComando(consulta.posicao_comando || {})
 
       // Load fotos
@@ -397,9 +402,9 @@ export default function ConsultaDetalhe() {
 
   function scoreColor(pct: number | null) {
     if (pct === null) return '#D1D5DB'
-    if (pct >= 70) return '#15803D'
-    if (pct >= 40) return '#D97706'
-    return '#DC2626'
+    if (pct >= 70) return '#2E7D6B'
+    if (pct >= 40) return '#8A6E2F'
+    return '#B4533A'
   }
 
   // Room favorability check
@@ -407,9 +412,9 @@ export default function ConsultaDetalhe() {
     if (!comodoTipo) return null
     const regra = COMODO_FAVORAVEL[setorNome]
     if (!regra) return null
-    if (regra.favoravel.includes(comodoTipo)) return { label: 'Favorável', cor: '#15803D' }
-    if (regra.problematico.includes(comodoTipo)) return { label: 'Problemático', cor: '#DC2626' }
-    return { label: 'Neutro', cor: '#D97706' }
+    if (regra.favoravel.includes(comodoTipo)) return { label: 'Favorável', cor: '#2E7D6B' }
+    if (regra.problematico.includes(comodoTipo)) return { label: 'Problemático', cor: '#B4533A' }
+    return { label: 'Neutro', cor: '#8A6E2F' }
   }
 
   async function handleSaveSetor(setorId: string) {
@@ -517,7 +522,7 @@ export default function ConsultaDetalhe() {
       fotos_comodos: newFotosComodos,
     }).eq('id', id)
     if (error) {
-      console.error('Error saving fotos:', error.message)
+      logger.error('Falha ao salvar fotos da consulta', { route: '/consultas/[id]', error: error.message })
     } else {
       setConsulta(prev => prev ? { ...prev, foto_geral_url: newFotoGeral, fotos_comodos: newFotosComodos } : prev)
     }
@@ -529,7 +534,7 @@ export default function ConsultaDetalhe() {
       fotos_antes: newFotosAntes,
     }).eq('id', id)
     if (error) {
-      console.error('Error saving fotos_antes:', error.message)
+      logger.error('Falha ao salvar fotos_antes da consulta', { route: '/consultas/[id]', error: error.message })
     } else {
       setConsulta(prev => prev ? { ...prev, fotos_antes: newFotosAntes } : prev)
     }
@@ -541,7 +546,7 @@ export default function ConsultaDetalhe() {
       fotos_depois: newFotosDepois,
     }).eq('id', id)
     if (error) {
-      console.error('Error saving fotos_depois:', error.message)
+      logger.error('Falha ao salvar fotos_depois da consulta', { route: '/consultas/[id]', error: error.message })
     } else {
       setConsulta(prev => prev ? { ...prev, fotos_depois: newFotosDepois } : prev)
     }
@@ -614,12 +619,12 @@ export default function ConsultaDetalhe() {
 
               {rec.urgente.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'inline-block', background: '#DC2626', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
+                  <div style={{ display: 'inline-block', background: '#B4533A', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
                     URGENTE ({rec.urgente.length})
                   </div>
                   {rec.urgente.map((d, i) => (
-                    <div key={i} style={{ padding: '10px 12px', background: '#FEF2F2', borderLeft: '3px solid #DC2626', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
-                      <span style={{ color: '#DC2626', marginRight: '6px' }}>•</span>{d}
+                    <div key={i} style={{ padding: '10px 12px', background: '#FAEEE9', borderLeft: '3px solid #B4533A', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
+                      <span style={{ color: '#B4533A', marginRight: '6px' }}>•</span>{d}
                     </div>
                   ))}
                 </div>
@@ -627,12 +632,12 @@ export default function ConsultaDetalhe() {
 
               {rec.melhoria.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'inline-block', background: '#D97706', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
+                  <div style={{ display: 'inline-block', background: '#8A6E2F', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
                     MELHORIA ({rec.melhoria.length})
                   </div>
                   {rec.melhoria.map((d, i) => (
-                    <div key={i} style={{ padding: '10px 12px', background: '#FFFBEB', borderLeft: '3px solid #D97706', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
-                      <span style={{ color: '#D97706', marginRight: '6px' }}>•</span>{d}
+                    <div key={i} style={{ padding: '10px 12px', background: '#FAF3E0', borderLeft: '3px solid #8A6E2F', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
+                      <span style={{ color: '#8A6E2F', marginRight: '6px' }}>•</span>{d}
                     </div>
                   ))}
                 </div>
@@ -640,12 +645,12 @@ export default function ConsultaDetalhe() {
 
               {rec.manutencao.length > 0 && (
                 <div style={{ marginBottom: '8px' }}>
-                  <div style={{ display: 'inline-block', background: '#15803D', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
+                  <div style={{ display: 'inline-block', background: '#2E7D6B', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 10px', borderRadius: '12px', marginBottom: '10px' }}>
                     MANUTENÇÃO ({rec.manutencao.length})
                   </div>
                   {rec.manutencao.map((d, i) => (
-                    <div key={i} style={{ padding: '10px 12px', background: '#F0FDF4', borderLeft: '3px solid #15803D', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
-                      <span style={{ color: '#15803D', marginRight: '6px' }}>•</span>{d}
+                    <div key={i} style={{ padding: '10px 12px', background: '#F0F6F3', borderLeft: '3px solid #2E7D6B', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
+                      <span style={{ color: '#2E7D6B', marginRight: '6px' }}>•</span>{d}
                     </div>
                   ))}
                 </div>
@@ -663,14 +668,14 @@ export default function ConsultaDetalhe() {
                     {cRecs.map((cr, i) => (
                       <div key={i} style={{
                         padding: '10px 12px', background: '#EAF4F1',
-                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
+                        borderLeft: `3px solid ${cr.tipo === 'urgente' ? '#B4533A' : cr.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'}`,
                         borderRadius: '6px', marginBottom: '6px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                           <span style={{
                             fontSize: '9px', fontWeight: 'bold', color: '#fff',
                             padding: '1px 5px', borderRadius: '6px',
-                            background: cr.tipo === 'urgente' ? '#DC2626' : cr.tipo === 'melhoria' ? '#D97706' : '#15803D'
+                            background: cr.tipo === 'urgente' ? '#B4533A' : cr.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'
                           }}>{cr.tipo === 'urgente' ? 'URGENTE' : cr.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENÇÃO'}</span>
                         </div>
                         <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#374151' }}>{cr.texto}</p>
@@ -783,7 +788,7 @@ export default function ConsultaDetalhe() {
               fontWeight: 'bold', cursor: 'pointer'
             }}>Montar Relatório</button>
             <button type="button" onClick={handleFinalizar} style={{
-              background: '#15803D', color: '#ffffff', border: 'none',
+              background: '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Concluir consulta ✓</button>
@@ -805,7 +810,7 @@ export default function ConsultaDetalhe() {
               fontWeight: 'bold', cursor: 'pointer'
             }}>Montar Relatório</button>
             <button type="button" onClick={handleFinalizar} style={{
-              background: '#15803D', color: '#ffffff', border: 'none',
+              background: '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Concluir consulta ✓</button>
@@ -815,9 +820,9 @@ export default function ConsultaDetalhe() {
         {message && (
           <div style={{
             marginBottom: '16px', padding: '10px 16px', borderRadius: '8px',
-            background: message.includes('Erro') ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${message.includes('Erro') ? '#FECACA' : '#BBF7D0'}`,
-            color: message.includes('Erro') ? '#DC2626' : '#15803D', fontSize: '14px'
+            background: message.includes('Erro') ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${message.includes('Erro') ? '#EBD3C7' : '#DCEAE4'}`,
+            color: message.includes('Erro') ? '#B4533A' : '#2E7D6B', fontSize: '14px'
           }}>{message}</div>
         )}
 
@@ -833,9 +838,9 @@ export default function ConsultaDetalhe() {
           // Helper: deviation color
           function devCor(pct: number | null) {
             if (pct === null) return '#D1D5DB'
-            if (pct >= 70) return '#15803D'
-            if (pct >= 40) return '#D97706'
-            return '#DC2626'
+            if (pct >= 70) return '#2E7D6B'
+            if (pct >= 40) return '#8A6E2F'
+            return '#B4533A'
           }
           // Top 3 worst sectors
           const sorted3 = [...setores].filter(s => s.score_percentual != null)
@@ -899,7 +904,7 @@ export default function ConsultaDetalhe() {
                   {/* Estado 1: Sem planta */}
                   {!plantaUrl && !finalizada && (
                     <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                      style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      style={{ background: '#C9A227', color: '#0E1B2C', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                       + Enviar planta
                     </button>
                   )}
@@ -907,7 +912,7 @@ export default function ConsultaDetalhe() {
                   {emAndamento && (
                     <>
                       <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                        style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        style={{ background: '#C9A227', color: '#0E1B2C', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Continuar análise
                       </button>
                       <button type="button" onClick={alterarPlanta}
@@ -920,7 +925,7 @@ export default function ConsultaDetalhe() {
                   {finalizada && (
                     <>
                       <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                        style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        style={{ background: '#C9A227', color: '#0E1B2C', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Visualizar / Revisar análise
                       </button>
                       <button type="button" onClick={alterarPlanta}
@@ -954,12 +959,12 @@ export default function ConsultaDetalhe() {
                   </div>
                   {/* Top 3 priorities */}
                   {sorted3.length > 0 && (
-                    <div style={{ padding: '12px 14px', background: '#FEF2F2', borderRadius: '8px', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#DC2626', marginBottom: '6px' }}>
+                    <div style={{ padding: '12px 14px', background: '#FAEEE9', borderRadius: '8px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#B4533A', marginBottom: '6px' }}>
                         Prioridades de intervenção
                       </div>
                       {sorted3.map((s, i) => (
-                        <div key={s.id} style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '3px' }}>
+                        <div key={s.id} style={{ fontSize: '12px', color: '#8F3F2C', marginBottom: '3px' }}>
                           {i + 1}. <strong>{s.nome}</strong> — {s.score_percentual}%
                         </div>
                       ))}
@@ -1150,7 +1155,7 @@ export default function ConsultaDetalhe() {
                         <div style={{ display: 'flex', gap: '6px' }}>
                           {[0, 1, 2, 3, 4].map(val => {
                             const LABELS=['-2','-1','0','+1','+2']
-                            const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
+                            const CORES=['#B4533A','#A9613C','#6B7280','#65A30D','#2E7D6B']
                             const cur = criterios[setorAtivoData.id]?.[criterio]
                             return (
                             <button type="button" key={val} onClick={() => {
@@ -1169,11 +1174,11 @@ export default function ConsultaDetalhe() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', fontSize: '11px', color: '#9CA3AF', marginBottom: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#DC2626' }}>-2 Crítico</span>
-                        <span style={{ color: '#EA580C' }}>-1 Ruim</span>
+                        <span style={{ color: '#B4533A' }}>-2 Crítico</span>
+                        <span style={{ color: '#A9613C' }}>-1 Ruim</span>
                         <span style={{ color: '#6B7280' }}>0 Neutro</span>
                         <span style={{ color: '#65A30D' }}>+1 Bom</span>
-                        <span style={{ color: '#15803D' }}>+2 Ótimo</span>
+                        <span style={{ color: '#2E7D6B' }}>+2 Ótimo</span>
                       </div>
                       <input
                         placeholder="Observação (opcional)"
@@ -1202,7 +1207,7 @@ export default function ConsultaDetalhe() {
                       {(customRecs[setorAtivoData.id] || []).map((rec, ri) => (
                         <div key={ri} style={{
                           padding: '10px 12px', background: '#ffffff', borderRadius: '8px',
-                          borderLeft: `3px solid ${rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'}`,
+                          borderLeft: `3px solid ${rec.tipo === 'urgente' ? '#B4533A' : rec.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'}`,
                           display: 'flex', gap: '8px', alignItems: 'flex-start'
                         }}>
                           <div style={{ flex: 1 }}>
@@ -1210,7 +1215,7 @@ export default function ConsultaDetalhe() {
                               <span style={{
                                 fontSize: '10px', fontWeight: 'bold', color: '#fff',
                                 padding: '1px 6px', borderRadius: '8px',
-                                background: rec.tipo === 'urgente' ? '#DC2626' : rec.tipo === 'melhoria' ? '#D97706' : '#15803D'
+                                background: rec.tipo === 'urgente' ? '#B4533A' : rec.tipo === 'melhoria' ? '#8A6E2F' : '#2E7D6B'
                               }}>{rec.tipo === 'urgente' ? 'URGENTE' : rec.tipo === 'melhoria' ? 'MELHORIA' : 'MANUTENÇÃO'}</span>
                             </div>
                             <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#374151' }}>{rec.texto}</p>
@@ -1234,8 +1239,8 @@ export default function ConsultaDetalhe() {
                               [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, i) => i !== ri)
                             }))
                           }} style={{
-                            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px',
-                            padding: '4px 8px', cursor: 'pointer', fontSize: '12px', color: '#DC2626',
+                            background: '#FAEEE9', border: '1px solid #EBD3C7', borderRadius: '6px',
+                            padding: '4px 8px', cursor: 'pointer', fontSize: '12px', color: '#B4533A',
                             flexShrink: 0
                           }}>✕</button>
                         </div>
@@ -1278,6 +1283,28 @@ export default function ConsultaDetalhe() {
 
         {/* ══════ TAB: Fluxo de Chi ══════ */}
         {activeTab === 'fluxo_chi' && (
+          <>
+          {/* A vistoria é a mesma marcação, feita andando pela casa: alvos de
+              44px, uma coluna e fila offline. Ver app/consultas/[id]/vistoria. */}
+          <div style={{
+            background: '#F3EEE4', border: '1px solid #E7E1D6', borderRadius: '12px',
+            padding: '14px 18px', marginBottom: '16px',
+            display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
+          }}>
+            <Smartphone size={22} strokeWidth={1.75} color="#8A6E2F" style={{ flexShrink: 0 }} aria-hidden="true" />
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0E1B2C' }}>Vai marcar andando pela casa?</p>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6B7280' }}>
+                O modo vistoria funciona sem sinal — as marcações ficam guardadas no
+                aparelho e sincronizam sozinhas depois.
+              </p>
+            </div>
+            <a href={`/consultas/${id}/vistoria`} style={{
+              border: '1px solid #D8D0C0', background: '#fff', color: '#0E1B2C',
+              fontSize: '13px', fontWeight: 700, padding: '9px 16px', borderRadius: '8px',
+              textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>Abrir vistoria</a>
+          </div>
           <TabFluxoChi
             checklistChi={checklistChi}
             posicaoComando={posicaoComando}
@@ -1286,6 +1313,7 @@ export default function ConsultaDetalhe() {
             onSave={handleSaveChi}
             saving={saving}
           />
+          </>
         )}
 
         {/* ══════ TAB: Fotos do Imóvel ══════ */}

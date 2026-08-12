@@ -232,12 +232,12 @@ export default function Planos() {
         {subscription && (
           <div style={{ marginBottom: '16px' }}>
             {subscription.cancel_at_period_end && (
-              <p style={{ color: '#DC2626', fontSize: '13px', margin: '4px 0' }}>
+              <p style={{ color: '#B4533A', fontSize: '13px', margin: '4px 0' }}>
                 Cancelamento agendado — acesso até {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString('pt-BR') : 'fim do período'}
               </p>
             )}
             {subscription.status === 'past_due' && (
-              <p style={{ color: '#DC2626', fontSize: '13px', margin: '4px 0' }}>
+              <p style={{ color: '#B4533A', fontSize: '13px', margin: '4px 0' }}>
                 Pagamento pendente — atualize seu meio de pagamento para manter o acesso
               </p>
             )}
@@ -249,8 +249,8 @@ export default function Planos() {
                   cursor: 'pointer'
                 }}>Gerenciar pagamento</button>
                 <button type="button" onClick={handleCancelSubscription} disabled={upgrading} style={{
-                  padding: '6px 16px', background: '#FEF2F2', color: '#DC2626',
-                  border: '1px solid #FECACA', borderRadius: '6px', fontSize: '12px',
+                  padding: '6px 16px', background: '#FAEEE9', color: '#B4533A',
+                  border: '1px solid #EBD3C7', borderRadius: '6px', fontSize: '12px',
                   cursor: 'pointer'
                 }}>Cancelar assinatura</button>
               </div>
@@ -270,7 +270,7 @@ export default function Planos() {
             background: ciclo === 'yearly' ? '#2E7D6B' : 'transparent',
             color: ciclo === 'yearly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
           }}>
-            Anual <span style={{ background: '#15803D', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginLeft: '6px' }}>-30%</span>
+            Anual <span style={{ background: '#2E7D6B', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginLeft: '6px' }}>-30%</span>
           </button>
         </div>
       </div>
@@ -280,9 +280,9 @@ export default function Planos() {
         return (
           <div style={{
             marginBottom: '24px', padding: '12px 16px', borderRadius: '8px',
-            background: isError ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
-            color: isError ? '#DC2626' : '#15803D', fontSize: '14px', textAlign: 'center'
+            background: isError ? '#FAEEE9' : '#F0F6F3',
+            border: `1px solid ${isError ? '#EBD3C7' : '#DCEAE4'}`,
+            color: isError ? '#B4533A' : '#2E7D6B', fontSize: '14px', textAlign: 'center'
           }}>{message}</div>
         )
       })()}
@@ -300,7 +300,7 @@ export default function Planos() {
           return (
             <div key={plano.id} style={{
               background: '#ffffff', borderRadius: '16px', padding: '32px',
-              boxShadow: plano.destaque ? '0 4px 20px rgba(124,58,237,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
+              boxShadow: plano.destaque ? '0 4px 20px rgba(201,162,39,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
               border: plano.destaque ? '2px solid #2E7D6B' : '1px solid #E5E7EB',
               position: 'relative', overflow: 'hidden'
             }}>
@@ -325,7 +325,7 @@ export default function Planos() {
                     <span style={{ color: '#6B7280', fontSize: '13px' }}>
                       {formatCurrency(totalAnual)}/ano
                     </span>
-                    <span style={{ color: '#15803D', fontSize: '12px', fontWeight: 'bold', marginLeft: '8px' }}>
+                    <span style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 'bold', marginLeft: '8px' }}>
                       Economia de {formatCurrency(economiAnual)}
                     </span>
                   </div>
@@ -339,8 +339,8 @@ export default function Planos() {
                   }}>
                     <span style={{
                       width: '20px', height: '20px', borderRadius: '50%',
-                      background: rec.disponivel ? '#F0FDF4' : '#F3F4F6',
-                      color: rec.disponivel ? '#15803D' : '#D1D5DB',
+                      background: rec.disponivel ? '#F0F6F3' : '#F3F4F6',
+                      color: rec.disponivel ? '#2E7D6B' : '#D1D5DB',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0
                     }}>{rec.disponivel ? <Check size={12} strokeWidth={3} aria-hidden="true" /> : <X size={12} strokeWidth={3} aria-hidden="true" />}</span>
@@ -444,7 +444,7 @@ export default function Planos() {
                     const val = feat[plan]
                     return (
                       <td key={plan} style={{ textAlign: 'center', padding: '10px 8px', borderBottom: '1px solid #F3F4F6' }}>
-                        {val === true ? <Check size={16} strokeWidth={3} color="#15803D" style={{ display: 'inline-block', verticalAlign: 'middle' }} aria-hidden="true" />
+                        {val === true ? <Check size={16} strokeWidth={3} color="#2E7D6B" style={{ display: 'inline-block', verticalAlign: 'middle' }} aria-hidden="true" />
                           : val === false ? <span style={{ color: '#D1D5DB' }}>—</span>
                           : <span style={{ color: '#374151', fontSize: '13px' }}>{val}</span>}
                       </td>

@@ -1,5 +1,6 @@
 'use client'
 
+import { mediaDaArea, progressoDaRoda, mediaGeral, type RespostaDeArea, type RespostasDaRoda } from '../../../src/lib/roda-da-vida'
 import { useState } from 'react'
 import type { SetorBagua } from '../../../src/lib/types'
 import { AREAS, CATEGORIAS, AREA_GUA_MAP, avg, defaultRespostas } from '../../../src/lib/roda-da-vida-constants'
@@ -20,11 +21,13 @@ interface Props {
 }
 
 /** Get the display value (0-10) for an area, whether stored as array or single number */
-function areaValue(rodaData: RodaData, key: string): number {
-  const v = rodaData[key]
-  if (Array.isArray(v)) return avg(v)
-  if (typeof v === 'number') return v
-  return 5
+/**
+ * Média da área, ou `null` se não respondida. Devolvia 5 — o meio da escala —,
+ * então uma roda intocada exibia «Média: 5.0» e desenhava um polígono cheio.
+ * A regra agora mora em `src/lib/roda-da-vida.ts`, com teste.
+ */
+function areaValue(rodaData: RodaData, key: string): number | null {
+  return mediaDaArea(rodaData[key] as RespostaDeArea)
 }
 
 /** Get the scores array for an area; if legacy single number, expand to 5 identical values */
@@ -32,7 +35,8 @@ function areaScores(rodaData: RodaData, key: string): number[] {
   const v = rodaData[key]
   if (Array.isArray(v)) return v
   if (typeof v === 'number') return [v, v, v, v, v]
-  return [5, 5, 5, 5, 5]
+  // Vazio, não preenchido: quem edita começa do zero explícito.
+  return []
 }
 
 /** Check if this area uses the new array format */
@@ -51,17 +55,39 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
   const [expandedArea, setExpandedArea] = useState<string | null>(null)
   const [areaAtual, setAreaAtual] = useState(0)
   const [mode, setMode] = useState<'chart' | 'questionnaire'>('chart')
+  const [salvoEm, setSalvoEm] = useState<Date | null>(null)
+
+  /**
+   * Trocar de área salva o que foi respondido. São 60 perguntas em sequência, e
+   * até aqui só existia o botão do fim: fechar a aba antes dele apagava a
+   * sessão inteira. `null` volta para o gráfico.
+   *
+   * O botão «Salvar» continua, como confirmação explícita — o automático não
+   * substitui o gesto de quem quer ter certeza.
+   */
+  function irParaArea(indice: number | null) {
+    onSave()
+    setSalvoEm(new Date())
+    if (indice === null) setMode('chart')
+    else setAreaAtual(indice)
+  }
 
   const cx = 200, cy = 200, maxR = 160
   const n = AREAS.length // 12
 
-  // SVG wheel uses averages
+  // SVG wheel uses averages. Área sem resposta não vira vértice: desenhar um
+  // ponto para ela sugeria diagnóstico que não existe.
   const values = AREAS.map(a => areaValue(rodaData, a.key))
   const points = AREAS.map((_, i) => {
-    const r = (values[i] / 10) * maxR
+    const r = ((values[i] ?? 0) / 10) * maxR
     return polarToXY(cx, cy, r, i, n)
   })
-  const polygonStr = points.map(p => `${p.x},${p.y}`).join(' ')
+  const polygonStr = AREAS
+    .map((_, i) => (values[i] === null ? null : points[i]))
+    .filter((pt): pt is { x: number; y: number } => pt !== null)
+    .map(pt => `${pt.x},${pt.y}`)
+    .join(' ')
+  const progresso = progressoDaRoda(rodaData as RespostasDaRoda, AREAS.map(a => a.key))
 
   // Find matching sector score for correlation display
   function findSetorScore(guaName: string): number | null {
@@ -89,31 +115,34 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
     if (!guaName) return null
     const vidaScore = areaValue(rodaData, areaKey)
     const setorPct = findSetorScore(guaName)
-    if (vidaScore === 0 || setorPct === null) return null
+    // Área não respondida não gera correlação: cruzar o Ba Guá com um número
+    // que ninguém informou produz divergência inventada.
+    if (vidaScore === null || setorPct === null) return null
 
     const vidaNorm = vidaScore * 10
     const diff = Math.abs(vidaNorm - setorPct)
 
-    if (diff <= 15) return { label: 'Correlação alta', cor: '#15803D' }
-    if (diff <= 35) return { label: 'Correlação moderada', cor: '#D97706' }
-    return { label: 'Divergência — investigar', cor: '#DC2626' }
+    if (diff <= 15) return { label: 'Correlação alta', cor: '#2E7D6B' }
+    if (diff <= 35) return { label: 'Correlação moderada', cor: '#8A6E2F' }
+    return { label: 'Divergência — investigar', cor: '#B4533A' }
   }
 
   function classificarDesvio(areaKey: string): { nivel: string; cor: string; bg: string } {
     const val = areaValue(rodaData, areaKey)
-    if (val >= 8) return { nivel: 'Ótimo', cor: '#15803D', bg: '#F0FDF4' }
-    if (val >= 5) return { nivel: 'Leve', cor: '#2563EB', bg: '#EFF6FF' }
-    if (val >= 3) return { nivel: 'Moderado', cor: '#D97706', bg: '#FFFBEB' }
-    if (val >= 1) return { nivel: 'Acentuado', cor: '#DC2626', bg: '#FEF2F2' }
-    return { nivel: 'Ausente', cor: '#7F1D1D', bg: '#FEF2F2' }
+    if (val === null) return { nivel: 'Não respondida', cor: '#6B7280', bg: '#F3EEE4' }
+    if (val >= 8) return { nivel: 'Ótimo', cor: '#2E7D6B', bg: '#F0F6F3' }
+    if (val >= 5) return { nivel: 'Leve', cor: '#1C3A52', bg: '#F3EEE4' }
+    if (val >= 3) return { nivel: 'Moderado', cor: '#8A6E2F', bg: '#FAF3E0' }
+    if (val >= 1) return { nivel: 'Acentuado', cor: '#A9613C', bg: '#FAEEE9' }
+    return { nivel: 'Ausente', cor: '#B4533A', bg: '#FAEEE9' }
   }
 
-  const media = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)
+  // A média conta só o que foi respondido. Somar as ausentes como 5 fazia uma
+  // roda intocada exibir «5.0», que é uma vida mediana — não um formulário vazio.
+  const mediaNum = mediaGeral(rodaData as RespostasDaRoda, AREAS.map(a => a.key))
+  const media = mediaNum === null ? '—' : mediaNum.toFixed(1)
 
-  const catAvg = (keys: string[]) => {
-    const vals = keys.map(k => areaValue(rodaData, k))
-    return vals.reduce((s, v) => s + v, 0) / vals.length
-  }
+  const catAvg = (keys: string[]) => mediaGeral(rodaData as RespostasDaRoda, keys)
 
   // Set a single question score within an area
   function setScore(areaKey: string, qi: number, val: number) {
@@ -176,6 +205,12 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
             padding: '8px 16px', fontSize: '16px', fontWeight: 'bold'
           }}>
             Média: {media}
+            {/* O progresso fica ao lado da média porque é o que a qualifica:
+                «5.0» de 12 áreas e «5.0» de 2 não são o mesmo diagnóstico. */}
+            <span style={{ display: 'block', fontSize: '11px', fontWeight: 400, color: '#C9A227', marginTop: '2px' }}>
+              {progresso.texto}
+              {salvoEm && ` · salvo ${salvoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+            </span>
           </div>
         </div>
       </div>
@@ -193,7 +228,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
           {/* Area navigation pills */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16 }}>
             {AREAS.map((a, i) => (
-              <button type="button" key={a.key} onClick={() => setAreaAtual(i)} style={{
+              <button type="button" key={a.key} onClick={() => irParaArea(i)} style={{
                 padding: '4px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
                 fontSize: 11, fontWeight: i === areaAtual ? 'bold' : 'normal',
                 background: i === areaAtual ? a.cor + '22' : '#F3F4F6',
@@ -212,7 +247,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
               <span style={{ fontSize: 16, fontWeight: 'bold', color: '#0E1B2C' }}>{area.label}</span>
               <span style={{ fontSize: 12, color: area.cor, fontWeight: 'bold', background: area.cor + '18', padding: '3px 10px', borderRadius: 12 }}>{area.categoria}</span>
               <span style={{ marginLeft: 'auto', fontSize: 18, fontWeight: 'bold', color: area.cor }}>
-                {areaValue(rodaData, area.key).toFixed(1)}
+                {areaValue(rodaData, area.key)?.toFixed(1) ?? '—'}
               </span>
             </div>
             {area.perguntas.map((q, qi) => (
@@ -231,10 +266,10 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
 
           {/* Navigation buttons */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-            <button type="button" onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setMode('chart')} style={btnPrimary('#6B7280')}>Anterior</button>
+            <button type="button" onClick={() => irParaArea(areaAtual > 0 ? areaAtual - 1 : null)} style={btnPrimary('#6B7280')}>Anterior</button>
             {areaAtual < n - 1
-              ? <button type="button" onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
-              : <button type="button" onClick={() => setMode('chart')} style={btnPrimary('#15803D')}>Ver Resultados</button>
+              ? <button type="button" onClick={() => irParaArea(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
+              : <button type="button" onClick={() => irParaArea(null)} style={btnPrimary('#2E7D6B')}>Ver Resultados</button>
             }
           </div>
         </div>
@@ -269,9 +304,11 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                   )
                 })}
                 {/* Filled polygon */}
-                <polygon points={polygonStr} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={2} />
+                {progresso.respondidas >= 3 && (
+                  <polygon points={polygonStr} fill="rgba(46,125,107,0.15)" stroke="#2E7D6B" strokeWidth={2} />
+                )}
                 {/* Data points */}
-                {points.map((p, i) => (
+                {points.map((p, i) => values[i] === null ? null : (
                   <g key={AREAS[i].key}
                     onMouseEnter={() => setHovered(AREAS[i].key)}
                     onMouseLeave={() => setHovered(null)}
@@ -326,14 +363,14 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                           borderRadius: '10px', background: desvio.bg, color: desvio.cor
                         }}>{desvio.nivel}</span>
                         <span style={{ fontSize: '18px', fontWeight: 'bold', color: a.cor, minWidth: '28px', textAlign: 'right' }}>
-                          {val.toFixed(1)}
+                          {val?.toFixed(1) ?? '—'}
                         </span>
                       </div>
                     </div>
 
                     {/* Score bar */}
                     <div style={{ height: 6, borderRadius: 3, background: '#E5E7EB', marginBottom: 4 }}>
-                      <div style={{ height: '100%', borderRadius: 3, background: a.cor, width: `${val * 10}%`, transition: 'width 0.2s' }} />
+                      <div style={{ height: '100%', borderRadius: 3, background: a.cor, width: `${(val ?? 0) * 10}%`, transition: 'width 0.2s' }} />
                     </div>
 
                     {/* Show individual question scores if array format */}
@@ -401,15 +438,15 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                 <div key={cat.key} style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 'bold', color: cat.cor, marginBottom: 8 }}>{cat.label}</div>
                   <div style={{ height: 8, borderRadius: 4, background: '#E5E7EB' }}>
-                    <div style={{ height: '100%', borderRadius: 4, background: cat.cor, width: `${v * 10}%` }} />
+                    <div style={{ height: '100%', borderRadius: 4, background: cat.cor, width: `${(v ?? 0) * 10}%` }} />
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 'bold', color: cat.cor, marginTop: 6 }}>{v.toFixed(1)}</div>
+                  <div style={{ fontSize: 20, fontWeight: 'bold', color: cat.cor, marginTop: 6 }}>{v?.toFixed(1) ?? '—'}</div>
                   {cat.areas.map(ak => {
                     const a = AREAS.find(x => x.key === ak)!
                     const av = areaValue(rodaData, ak)
                     return (
                       <div key={ak} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151', marginTop: 4 }}>
-                        <span>{a.label}</span><span style={{ fontWeight: 'bold', color: a.cor }}>{av.toFixed(1)}</span>
+                        <span>{a.label}</span><span style={{ fontWeight: 'bold', color: a.cor }}>{av?.toFixed(1) ?? '—'}</span>
                       </div>
                     )
                   })}
@@ -419,7 +456,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
           </div>
 
           {/* Diagnostic comparison */}
-          {setores.length > 0 && AREAS.some(a => areaValue(rodaData, a.key) > 0) && (
+          {setores.length > 0 && progresso.respondidas > 0 && (
             <div style={{ marginTop: '16px', padding: '16px', background: '#EAF4F1', borderRadius: '10px', border: '1px solid #DCEFE9' }}>
               <h3 style={{ color: '#2E7D6B', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
                 Diagnóstico comparativo: Roda da Vida x Ba Guá
@@ -431,9 +468,9 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                   Este diagnóstico cruza a <strong>percepção subjetiva</strong> do cliente (Roda da Vida) com a <strong>análise objetiva</strong> do imóvel (Ba Guá):
                 </p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ background: '#F0FDF4', color: '#15803D', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação alta = harmonia entre espaço e vida</span>
-                  <span style={{ background: '#FFFBEB', color: '#D97706', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação moderada = monitorar</span>
-                  <span style={{ background: '#FEF2F2', color: '#DC2626', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Divergência = prioridade de intervenção</span>
+                  <span style={{ background: '#F0F6F3', color: '#2E7D6B', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação alta = harmonia entre espaço e vida</span>
+                  <span style={{ background: '#FAF3E0', color: '#8A6E2F', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Correlação moderada = monitorar</span>
+                  <span style={{ background: '#FAEEE9', color: '#B4533A', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>Divergência = prioridade de intervenção</span>
                 </div>
               </div>
 
@@ -448,7 +485,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', marginBottom: '4px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a.cor }} />
                       <span style={{ width: '160px', fontWeight: 'bold', color: '#374151' }}>{a.label}</span>
-                      <span style={{ color: '#6B7280' }}>Vida: {vidaScore.toFixed(1)}/10</span>
+                      <span style={{ color: '#6B7280' }}>Vida: {vidaScore?.toFixed(1) ?? '—'}/10</span>
                       {setorPct !== null && <span style={{ color: '#6B7280' }}>Guá: {setorPct}%</span>}
                       {corr && <span style={{ fontWeight: 'bold', color: corr.cor }}>{corr.label}</span>}
                     </div>
@@ -462,7 +499,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                         style={{
                           width: '100%', padding: '6px 8px', border: '1px solid #E5E7EB', borderRadius: '6px',
                           fontSize: '11px', color: '#374151', resize: 'vertical', boxSizing: 'border-box',
-                          background: observacoes[a.key] ? '#FFFBEB' : '#F9FAFB'
+                          background: observacoes[a.key] ? '#FAF3E0' : '#F9FAFB'
                         }}
                       />
                     )}
@@ -484,7 +521,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                     style={{
                       width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: '8px',
                       fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box',
-                      background: observacaoGeral ? '#FFFBEB' : '#fff'
+                      background: observacaoGeral ? '#FAF3E0' : '#fff'
                     }}
                   />
                 </div>

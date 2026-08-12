@@ -23,9 +23,9 @@ const CURE_TYPES = [
   {
     icon: '\u{1F33F}',
     title: 'Plantas e Elementos Naturais',
-    color: '#15803D',
-    bgColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    color: '#2E7D6B',
+    bgColor: '#F0F6F3',
+    borderColor: '#DCEAE4',
     description:
       'Plantas vivas são poderosas ativadoras do elemento Madeira no Feng Shui. Elas purificam o ar, movem a energia estagnada (Chi) e trazem vitalidade a qualquer ambiente. Plantas saudáveis e bem cuidadas simbolizam crescimento, abundância e renovação.',
     examples: [
@@ -40,9 +40,9 @@ const CURE_TYPES = [
   {
     icon: '\u{1F3EE}',
     title: 'Objetos e Símbolos',
-    color: '#D97706',
-    bgColor: '#FFFBEB',
-    borderColor: '#FDE68A',
+    color: '#8A6E2F',
+    bgColor: '#FAF3E0',
+    borderColor: '#EEDFB4',
     description:
       'Objetos decorativos e simbólicos são ferramentas clássicas do Feng Shui para redirecionar, ativar ou acalmar o fluxo de energia (Chi) nos ambientes. Cada objeto carrega um significado e deve ser posicionado com intenção e conhecimento dos setores do Ba Guá.',
     examples: [
@@ -91,8 +91,8 @@ const CURE_TYPES = [
   {
     icon: '\u{1F549}\u{FE0F}',
     title: 'Mantras',
-    color: '#B45309',
-    bgColor: '#FFF7ED',
+    color: '#8A6E2F',
+    bgColor: '#FAF3E0',
     borderColor: '#FED7AA',
     description:
       'Mantras são sons sagrados que vibram em frequências específicas, capazes de ativar e transformar a energia dos ambientes e das pessoas. No Feng Shui chinês, caracteres específicos carregam significados profundos e são entoados para atrair qualidades como prosperidade, saúde e harmonia.',
@@ -108,7 +108,7 @@ const CURE_TYPES = [
   {
     icon: '\u{1F56F}\u{FE0F}',
     title: 'Aromaterapia',
-    color: '#BE185D',
+    color: '#A9613C',
     bgColor: '#FDF2F8',
     borderColor: '#FBCFE8',
     description:
@@ -125,9 +125,9 @@ const CURE_TYPES = [
   {
     icon: '\u{1F3B5}',
     title: 'Musicoterapia',
-    color: '#1D4ED8',
-    bgColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    color: '#2E7D6B',
+    bgColor: '#F0F6F3',
+    borderColor: '#DCEAE4',
     description:
       'Sons e frequências têm o poder de harmonizar ambientes, dissolver energias estagnadas e ativar setores específicos. No Feng Shui, a musicoterapia inclui desde instrumentos tradicionais como tigelas tibetanas até música ambiente cuidadosamente selecionada.',
     examples: [
