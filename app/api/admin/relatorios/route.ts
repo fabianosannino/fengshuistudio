@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { mensalidadeDaAssinatura } from '../../../../src/lib/plano-utils'
 
 async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -82,11 +83,15 @@ async function generateReportData(supabase: Awaited<ReturnType<typeof createRout
 
   // MRR
   const activeSubs = (allSubs || []).filter(s => s.status === 'active')
+  // MRR sai do que foi cobrado (`price_paid`), não do preço de tabela: quem
+  // assinou por outro valor continua valendo o que pagou. Assinatura sem valor
+  // gravado é contada à parte, porque somar zero mentiria para baixo.
   let mrr = 0
+  let assinaturasSemValor = 0
   for (const sub of activeSubs) {
-    const plan = sub.plans
-    if (!plan) continue
-    mrr += sub.billing_cycle === 'yearly' ? (plan.price_yearly || 0) / 12 : (plan.price_monthly || 0)
+    const mensal = mensalidadeDaAssinatura(sub)
+    if (mensal === null) { assinaturasSemValor++; continue }
+    mrr += mensal
   }
 
   // Invoice stats
@@ -120,6 +125,10 @@ async function generateReportData(supabase: Awaited<ReturnType<typeof createRout
     financeiro: {
       mrr_atual: Math.round(mrr * 100) / 100,
       arr_atual: Math.round(mrr * 12 * 100) / 100,
+      // Assinaturas ativas sem valor gravado. Ficam de fora do MRR e são
+      // declaradas: um total que esconde o que não entrou nele é pior que
+      // um total menor e honesto.
+      assinaturas_sem_valor: assinaturasSemValor,
       receita_semana: Math.round(receitaSemana * 100) / 100,
       inadimplencia_semana: Math.round(inadimplencia * 100) / 100,
       faturas_pagas: paidInvoices.length,

@@ -4,6 +4,7 @@ import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 import stripeClient from '../../../../src/lib/stripe'
+import { enumDoPlano, planoEfetivo, mensalidadeDaAssinatura } from '../../../../src/lib/plano-utils'
 
 const ROUTE = '/api/admin/subscriptions'
 
@@ -100,16 +101,14 @@ export async function GET(request: Request) {
     const gratuidadeSubs = (allSubs || []).filter(s => s.status === 'gratuidade')
 
     // Calculate MRR
+    // Do que foi cobrado, não do preço de tabela — ver `mensalidadeDaAssinatura`.
     let mrr = 0
+    let assinaturasSemValor = 0
     for (const sub of activeSubs) {
       if (sub.status === 'gratuidade') continue
-      const plan = sub.plans
-      if (!plan) continue
-      if (sub.billing_cycle === 'yearly') {
-        mrr += (plan.price_yearly || 0) / 12
-      } else {
-        mrr += plan.price_monthly || 0
-      }
+      const mensal = mensalidadeDaAssinatura(sub)
+      if (mensal === null) { assinaturasSemValor++; continue }
+      mrr += mensal
     }
 
     const pastDueAmount = (allInvoices || [])
@@ -119,6 +118,8 @@ export async function GET(request: Request) {
     const metrics = {
       mrr: Math.round(mrr * 100) / 100,
       arr: Math.round(mrr * 12 * 100) / 100,
+      // Ativas sem `price_paid` — fora do MRR e declaradas, não escondidas.
+      assinaturas_sem_valor: assinaturasSemValor,
       totalActive: activeSubs.length,
       pastDue: pastDueSubs.length,
       pastDueAmount: Math.round(pastDueAmount * 100) / 100,
@@ -230,7 +231,7 @@ export async function POST(request: Request) {
 
         // Update profile plan
         await escreverOuFalhar(
-          supabase.from('profiles').update({ plano: planSlug }).eq('id', targetUserId),
+          supabase.from('profiles').update({ plano: enumDoPlano(planoEfetivo(planSlug)) }).eq('id', targetUserId),
           { rota: ROUTE, operacao: 'update-profile-plano', userId: targetUserId }
         )
 
@@ -283,7 +284,7 @@ export async function POST(request: Request) {
 
         // Update profile
         await escreverOuFalhar(
-          supabase.from('profiles').update({ plano: newPlan }).eq('id', targetUserId),
+          supabase.from('profiles').update({ plano: enumDoPlano(planoEfetivo(newPlan)) }).eq('id', targetUserId),
           { rota: ROUTE, operacao: 'update-profile-plano', userId: targetUserId }
         )
 
@@ -308,7 +309,7 @@ export async function POST(request: Request) {
           // Cancel in Stripe first
           await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
           await escreverOuFalhar(
-            supabase.from('profiles').update({ plano: 'free' }).eq('id', targetUserId),
+            supabase.from('profiles').update({ plano: enumDoPlano('free') }).eq('id', targetUserId),
             { rota: ROUTE, operacao: 'downgrade-profile-free', userId: targetUserId }
           )
         } else {

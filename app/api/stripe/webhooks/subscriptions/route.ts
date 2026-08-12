@@ -27,6 +27,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import stripeClient from '../../../../../src/lib/stripe'
 import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { logger } from '../../../../../src/lib/logger'
+import {
+  reivindicarEvento, marcarProcessado, marcarFalha, houveEventoMaisNovo, objetoDoEvento,
+} from '../../../../../src/lib/eventos-stripe'
+import { enumDoPlano, planoEfetivo } from '../../../../../src/lib/plano-utils'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
@@ -71,6 +75,28 @@ export async function POST(request: Request) {
   // são admin-only no RLS e este handler é o único caminho legítimo de escrita.
   // A assinatura do evento já foi verificada acima.
   const supabase = createSupabaseAdminClient()
+
+  // O Stripe reentrega eventos e não garante ordem. Reivindicar antes de
+  // processar fecha a janela entre o trabalho e a marca — ver `eventos-stripe`.
+  const objetoId = objetoDoEvento(event)
+  const reivindicacao = await reivindicarEvento(supabase, {
+    id: event.id, type: event.type, created: event.created, endpoint: ROUTE, objetoId,
+  })
+
+  if (reivindicacao.situacao === 'repetido') {
+    logger.info('Evento repetido — descartado', { route: ROUTE, eventId: event.id, tipo: event.type })
+    return NextResponse.json({ received: true, repetido: true })
+  }
+
+  // Entrega fora de ordem: aplicar um evento antigo sobre um estado mais novo
+  // faria a assinatura voltar a um passado que já não é verdade.
+  if (objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) {
+    logger.warn('Evento fora de ordem — descartado', {
+      route: ROUTE, eventId: event.id, tipo: event.type, objetoId,
+    })
+    await marcarProcessado(supabase, event.id, ROUTE)
+    return NextResponse.json({ received: true, foraDeOrdem: true })
+  }
 
   try {
     switch (event.type) {
@@ -146,7 +172,7 @@ export async function POST(request: Request) {
         if (planSlug && plan) {
           await logWrite('update-profile-plan', supabase
             .from('profiles')
-            .update({ plano: planSlug })
+            .update({ plano: enumDoPlano(planoEfetivo(planSlug)) })
             .eq('id', profile.id))
         }
 
@@ -206,7 +232,7 @@ export async function POST(request: Request) {
         if (status === 'canceled') {
           await logWrite('downgrade-profile-free', supabase
             .from('profiles')
-            .update({ plano: 'free' })
+            .update({ plano: enumDoPlano('free') })
             .eq('id', profile.id))
         } else {
           // Update plan based on subscription items
@@ -214,7 +240,7 @@ export async function POST(request: Request) {
           if (planSlug) {
             await logWrite('update-profile-plan', supabase
               .from('profiles')
-              .update({ plano: planSlug })
+              .update({ plano: enumDoPlano(planoEfetivo(planSlug)) })
               .eq('id', profile.id))
           }
         }
@@ -259,7 +285,7 @@ export async function POST(request: Request) {
 
         await logWrite('downgrade-profile-free', supabase
           .from('profiles')
-          .update({ plano: 'free' })
+          .update({ plano: enumDoPlano('free') })
           .eq('id', profile.id))
 
         break
@@ -392,7 +418,7 @@ export async function POST(request: Request) {
 
             await logWrite('downgrade-profile-free', supabase
               .from('profiles')
-              .update({ plano: 'free' })
+              .update({ plano: enumDoPlano('free') })
               .eq('id', profile.id))
 
             await logWrite('insert-cancelled-notification', supabase.from('payment_notifications').insert({
@@ -475,8 +501,12 @@ export async function POST(request: Request) {
         logger.info('Unhandled subscription event', { route: '/api/stripe/webhooks/subscriptions', type: event.type })
     }
 
+    await marcarProcessado(supabase, event.id, ROUTE)
     return NextResponse.json({ received: true })
   } catch (err) {
+    // A reivindicação fica sem `processado_em`, então a reentrega do Stripe
+    // refaz em vez de descartar. O motivo fica na própria linha.
+    await marcarFalha(supabase, event.id, ROUTE, String(err))
     logger.error('Subscription webhook handler error', { route: ROUTE, error: String(err) })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }

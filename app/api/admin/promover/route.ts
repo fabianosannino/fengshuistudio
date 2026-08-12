@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { planoEfetivo } from '../../../../src/lib/plano-utils'
+import { enumDoPlano } from '../../../../src/lib/plano-utils'
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
 
   const { error } = await supabase
     .from('profiles')
-    .update({ plano: 'pro' })
+    .update({ plano: enumDoPlano('profissional') })
     .eq('id', body.user_id)
 
   if (error) {

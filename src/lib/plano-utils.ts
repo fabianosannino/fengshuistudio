@@ -331,3 +331,32 @@ export function descontoAnualPercentual(plano: PlanoEfetivo): number | null {
 export function formatarCentavos(centavos: number): string {
   return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`
 }
+
+/**
+ * Quanto uma assinatura vale por mês, em reais.
+ *
+ * ## Por que não sai da tabela `plans`
+ *
+ * O MRR era somado de `plans.price_monthly`, que é o preço **de tabela** — e a
+ * tabela esteve cinco vezes acima do que o Stripe cobrava (R$ 97 contra
+ * R$ 20,00). O painel reportou receita que não existia.
+ *
+ * Mesmo com a tabela corrigida, ela continua sendo a resposta errada: quem
+ * assinou por outro valor — preço antigo, cupom, promoção — segue valendo o
+ * que pagou, não o que a tabela pede hoje. `price_paid` é gravado do
+ * `unit_amount` que o Stripe cobrou, então é o único número que descreve a
+ * assinatura em vez do catálogo.
+ *
+ * `null` quando não há valor gravado: sem saber o que foi cobrado, não dá para
+ * afirmar quanto a assinatura vale, e somar zero mentiria para baixo com a
+ * mesma confiança com que a tabela mentia para cima. Quem chama decide o que
+ * fazer com a ausência — e precisa declarar.
+ */
+export function mensalidadeDaAssinatura(assinatura: {
+  price_paid?: number | null
+  billing_cycle?: string | null
+}): number | null {
+  const pago = assinatura.price_paid
+  if (typeof pago !== 'number' || pago < 0) return null
+  return assinatura.billing_cycle === 'yearly' ? pago / 12 : pago
+}
