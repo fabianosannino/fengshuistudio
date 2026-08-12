@@ -46,6 +46,12 @@ function makeSupabaseMock(handler: Handler) {
       update: (v: Record<string, unknown>) => { q.op = 'update'; q.values = v; return b },
       eq: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
       in: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
+      // `not`, `gt` e `limit` existem para a consulta de ordenação em
+      // `eventos-stripe`. Registram o filtro como os demais para que o teste
+      // possa afirmar sobre eles.
+      not: (k: string, _op: string, v: unknown) => { q.filters.push([k, v]); return b },
+      gt: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
+      limit: () => Promise.resolve(exec()),
       single: () => Promise.resolve(exec()),
       then: (
         onFulfilled: (r: unknown) => unknown,
@@ -208,7 +214,12 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
     const res = await POST(req())
     expect(res.status).toBe(200)
-    expect(supabaseMock.queries.filter(q => q.op !== 'select')).toHaveLength(0)
+    // `eventos_stripe` fica de fora: a reivindicação e a marca de processado
+    // são escritas de controle, não de negócio. O que este teste afirma é que
+    // nenhuma tabela de assinatura, fatura ou perfil foi tocada.
+    const escritasDeNegocio = supabaseMock.queries
+      .filter(q => q.op !== 'select' && q.table !== 'eventos_stripe')
+    expect(escritasDeNegocio).toHaveLength(0)
   })
 
   it('evento não tratado responde 200 received (não quebra o Stripe retry)', async () => {
