@@ -357,6 +357,7 @@ create table if not exists public.prescricoes (
   custo_min numeric,
   custo_max numeric,
   prioridade integer not null,
+  aplicada_em timestamp with time zone,
   criado_em timestamp with time zone default now() not null,
   atualizado_em timestamp with time zone default now() not null
 );

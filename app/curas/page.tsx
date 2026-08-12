@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton'
 import type { SetorBagua } from '../../src/lib/types'
 import { ELEMENTOS } from '../../src/lib/curas'
 import { BookOpen, Gem, Leaf, Amphora, MapPin, Flower2, AudioLines } from 'lucide-react'
+import PlanoDeCuras from './PlanoDeCuras'
 
 interface CuraCustomRef {
   id: string
@@ -47,6 +48,12 @@ function CurasPageContent() {
   const [editForm, setEditForm] = useState({ nome: '', descricao: '', como_utilizar: '' })
   const [userId, setUserId] = useState<string | null>(null)
   const [savingRef, setSavingRef] = useState(false)
+  /**
+   * `plano` é o padrão com uma consulta selecionada: a tela deixou de ser um
+   * catálogo e passou a ser a prescrição daquele imóvel. A biblioteca completa
+   * continua a um clique — ela não some, sai da frente.
+   */
+  const [modo, setModo] = useState<'plano' | 'biblioteca'>('plano')
 
   // Load consultation data (setores + consulta) for a given id
   async function loadConsultaData(cId: string) {
@@ -416,17 +423,30 @@ function CurasPageContent() {
     <AppShell currentPage="curas">
 
       {/* ── PAGE HEADER ──────────────────────────────────────────────── */}
-      <div style={{ marginBottom: '32px' }}>
-        <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Biblioteca</p>
-        <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
-          Curas & Ativações
-        </h1>
-        <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 8px 0' }}>
-          Cristais, plantas, objetos, mudras, meditações e mantras organizados por elemento e Guá do Ba Guá
-        </p>
-        <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <BookOpen size={14} strokeWidth={1.75} aria-hidden="true" /> Entenda mais sobre Curas e Ativações
-        </a>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ color: '#C9A227', fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 6px 0' }}>
+            {consulta
+              ? `${consulta.nome_imovel}${consulta.clientes?.nome_completo ? ` · ${consulta.clientes.nome_completo}` : ''}`
+              : 'Curas'}
+          </p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '26px', fontWeight: 500, margin: '0 0 6px 0', letterSpacing: '-0.01em', fontFamily: 'var(--font-fraunces), serif' }}>
+            Curas e ativações
+          </h1>
+          <a href="/curas/entenda" style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <BookOpen size={14} strokeWidth={1.75} aria-hidden="true" /> Entenda mais sobre curas e ativações
+          </a>
+        </div>
+        {selectedConsultaId && (
+          <button type="button" onClick={() => setModo(m => m === 'plano' ? 'biblioteca' : 'plano')} style={{
+            border: '1px solid #E7E1D6', background: '#fff', borderRadius: '9px',
+            padding: '10px 14px', fontSize: '13px', color: '#4A5A67', cursor: 'pointer',
+            display: 'flex', gap: '8px', alignItems: 'center',
+          }}>
+            <BookOpen size={15} strokeWidth={1.75} aria-hidden="true" />
+            {modo === 'plano' ? 'Biblioteca completa' : 'Voltar ao plano'}
+          </button>
+        )}
       </div>
 
       {/* ── CONSULTATION SELECTOR ────────────────────────────────────── */}
@@ -487,6 +507,12 @@ function CurasPageContent() {
         </div>
       )}
 
+      {modo === 'plano' && (
+        <PlanoDeCuras consultaId={selectedConsultaId} setores={setores} />
+      )}
+
+      {modo === 'biblioteca' && (
+      <>
       {/* ── FILTER BAR ───────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <select value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '13px' }}>
@@ -732,6 +758,9 @@ function CurasPageContent() {
       })}
 
       {/* ── VOLTAR À CONSULTA ────────────────────────────────────────── */}
+      </>
+      )}
+
       {consultaId && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
           <a href={`/consultas/${consultaId}`} style={{ display: 'inline-block', padding: '12px 24px', background: '#2E7D6B', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>

@@ -124,24 +124,46 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
 
       const { data: prescricoes } = await supabase
         .from('prescricoes')
-        .select('id, titulo, prioridade, setores_bagua(numero)')
+        .select('id, titulo, prioridade, aplicada_em, setores_bagua(numero)')
         .eq('consulta_id', consulta.id)
         .order('prioridade', { ascending: true })
 
       setCuras(((prescricoes ?? []) as unknown as {
-        id: string; titulo: string; setores_bagua?: { numero: number | null } | null
+        id: string; titulo: string; aplicada_em: string | null
+        setores_bagua?: { numero: number | null } | null
       }[]).map(p => ({
         id: p.id,
         titulo: p.titulo,
         setor: typeof p.setores_bagua?.numero === 'number' ? LOSHU_ORDER[p.setores_bagua.numero - 1] : null,
-        // A conclusão de cura ainda não é gravada — ver a nota abaixo da lista.
-        concluida: false,
+        concluida: !!p.aplicada_em,
       })))
 
       setLoading(false)
     }
     carregar()
   }, [])
+
+  /**
+   * Otimista de propósito: o morador marca a caixa e o risco aparece na hora.
+   * Se a escrita falhar, o estado volta e a mensagem diz o que houve — o que
+   * não pode acontecer é a caixa ficar marcada com o banco discordando.
+   */
+  async function marcarCura(cura: Cura) {
+    const antes = curas
+    setCuras(cs => cs.map(c => c.id === cura.id ? { ...c, concluida: !c.concluida } : c))
+
+    const { error } = await supabase
+      .from('prescricoes')
+      .update({ aplicada_em: cura.concluida ? null : new Date().toISOString() })
+      .eq('id', cura.id)
+
+    if (error) {
+      logger.error('Falha ao marcar cura como aplicada', {
+        route: '/dashboard', action: 'marcar-cura', error: error.message,
+      })
+      setCuras(antes)
+    }
+  }
 
   if (loading) {
     return (
@@ -281,14 +303,19 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
                 {curas.slice(0, 5).map(cura => (
                   <div key={cura.id} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span style={{
-                      width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
-                      ...(cura.concluida
-                        ? { background: '#2E7D6B', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-                        : { border: '2px solid #D8D0C0' }),
-                    }} aria-hidden="true">
-                      {cura.concluida && <Check size={13} strokeWidth={2.5} color="#fff" />}
-                    </span>
+                    <button type="button"
+                      onClick={() => marcarCura(cura)}
+                      aria-label={cura.concluida ? `Desmarcar ${cura.titulo}` : `Marcar ${cura.titulo} como feita`}
+                      style={{
+                        width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
+                        padding: 0, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        ...(cura.concluida
+                          ? { background: '#2E7D6B', border: 'none' }
+                          : { background: 'transparent', border: '2px solid #D8D0C0' }),
+                      }}>
+                      {cura.concluida && <Check size={13} strokeWidth={2.5} color="#fff" aria-hidden="true" />}
+                    </button>
                     <span style={{
                       fontSize: '13px',
                       color: cura.concluida ? '#9CA3AF' : '#0E1B2C',
@@ -302,9 +329,7 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
               <Link href="/curas" style={{ fontSize: '13px', fontWeight: 700, color: '#2E7D6B', textDecoration: 'none' }}>
                 Ver todas as curas <ArrowRight size={13} strokeWidth={2.25} style={{ verticalAlign: '-2px' }} aria-hidden="true" />
               </Link>
-              {/* Marcar cura como feita ainda não tem coluna no banco. Dizer «0 de 4»
-                  sem meio de marcar seria prometer o que a tela não faz. */}
-              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>Produtos sugeridos na loja</span>
+              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>Toque na caixa ao aplicar</span>
             </div>
           </div>
 
