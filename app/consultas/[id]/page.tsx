@@ -904,7 +904,7 @@ export default function ConsultaDetalhe() {
                   {/* Estado 1: Sem planta */}
                   {!plantaUrl && !finalizada && (
                     <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                      style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      style={{ background: '#C9A227', color: '#0E1B2C', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                       + Enviar planta
                     </button>
                   )}
@@ -912,7 +912,7 @@ export default function ConsultaDetalhe() {
                   {emAndamento && (
                     <>
                       <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                        style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        style={{ background: '#C9A227', color: '#0E1B2C', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Continuar análise
                       </button>
                       <button type="button" onClick={alterarPlanta}
@@ -925,7 +925,7 @@ export default function ConsultaDetalhe() {
                   {finalizada && (
                     <>
                       <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
-                        style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        style={{ background: '#C9A227', color: '#0E1B2C', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Visualizar / Revisar análise
                       </button>
                       <button type="button" onClick={alterarPlanta}

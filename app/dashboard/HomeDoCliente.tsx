@@ -76,18 +76,20 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
   const [curas, setCuras] = useState<Cura[]>([])
 
   useEffect(() => {
+    let ativo = true
     async function carregar() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user || !ativo) return
 
       // O cliente final é o consultor da própria casa: a consulta é dele.
       const { data: consultas, error } = await supabase
         .from('consultas')
-        .select('id, nome_imovel, status, bagua_entrada, setores_bagua(numero, score_percentual)')
+        .select('id, nome_imovel, status, bagua_entrada, setores_bagua(nome, score_percentual)')
         .eq('consultor_id', user.id)
         .not('status', 'in', '(arquivada,deletada)')
         .order('atualizado_em', { ascending: false })
         .limit(1)
+      if (!ativo) return
 
       if (error) {
         // Falha de banco nunca vira «você não tem casa nenhuma».
@@ -101,17 +103,28 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
       const consulta = (consultas ?? [])[0] as unknown as {
         id: string; nome_imovel: string | null
         bagua_entrada: BaguaEntrada | null
-        setores_bagua?: { numero: number | null; score_percentual: number | null }[]
+        setores_bagua?: { nome: string | null; score_percentual: number | null }[]
       } | undefined
 
       if (!consulta) { setLoading(false); return }
 
-      // `numero` é 1..9 na ordem do Lo Shu — a mesma de LOSHU_ORDER.
+      /**
+       * A identidade do setor vem da coluna `nome`, **não** de `numero`.
+       *
+       * `numero` é a célula da grade (`orderIdx + 1` em `salvarSetorDB`), e na
+       * Escola da Bússola a grade é permutada pelo facing: com fachada a 180°,
+       * a célula 1 guarda «Pessoas Úteis». Derivar o nome de `LOSHU_ORDER[numero-1]`
+       * entregaria ao morador os nove scores sob os nomes errados — e o «próximo
+       * passo» apontaria para o setor errado.
+       *
+       * Todos os outros leitores de `setores_bagua` no repositório leem `nome`.
+       */
       const scorePorSetor: Record<string, number | null> = {}
       for (const setor of LOSHU_ORDER) scorePorSetor[setor] = null
       for (const s of consulta.setores_bagua ?? []) {
-        const nomeSetor = typeof s.numero === 'number' ? LOSHU_ORDER[s.numero - 1] : undefined
-        if (nomeSetor) scorePorSetor[nomeSetor] = s.score_percentual
+        if (typeof s.nome === 'string' && s.nome in scorePorSetor) {
+          scorePorSetor[s.nome] = s.score_percentual
+        }
       }
 
       setCasa({
@@ -124,23 +137,26 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
 
       const { data: prescricoes } = await supabase
         .from('prescricoes')
-        .select('id, titulo, prioridade, aplicada_em, setores_bagua(numero)')
+        .select('id, titulo, prioridade, aplicada_em, setores_bagua(nome)')
         .eq('consulta_id', consulta.id)
         .order('prioridade', { ascending: true })
+      if (!ativo) return
 
       setCuras(((prescricoes ?? []) as unknown as {
         id: string; titulo: string; aplicada_em: string | null
-        setores_bagua?: { numero: number | null } | null
+        setores_bagua?: { nome: string | null } | null
       }[]).map(p => ({
         id: p.id,
         titulo: p.titulo,
-        setor: typeof p.setores_bagua?.numero === 'number' ? LOSHU_ORDER[p.setores_bagua.numero - 1] : null,
+        // Pelo mesmo motivo do bloco acima: `nome`, nunca `numero`.
+        setor: p.setores_bagua?.nome ?? null,
         concluida: !!p.aplicada_em,
       })))
 
       setLoading(false)
     }
-    carregar()
+    void carregar()
+    return () => { ativo = false }
   }, [])
 
   /**

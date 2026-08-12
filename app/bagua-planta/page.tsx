@@ -67,15 +67,25 @@ import {
 
 // As dicas de cada setor vêm de SETOR_DICAS (src/lib/constants) via o motor
 // canônico de recomendações — não são duplicadas aqui.
+/**
+ * A cor de cada setor não é decoração: ela segue o **elemento**, e a
+ * correspondência elemento→cor é doutrina, não escolha de interface.
+ *
+ * Madeira é verde (jade), Fogo é vermelho (terracota), Terra é ocre/amarelo
+ * (dourado), Metal é neutro (cinza/tinta) e Água é escura/azul (azul-petróleo).
+ * Setores do mesmo elemento usam tons **diferentes** da mesma família — os nove
+ * precisam ser distinguíveis na grade 3×3, onde a cor é o que identifica a
+ * célula.
+ */
 const SETORES = [
   { nome:'Prosperidade',    elem:'Madeira', dir:'Sudeste',  cor:'#2E7D6B' },
   { nome:'Fama/Reputação',  elem:'Fogo',    dir:'Sul',      cor:'#B4533A' },
   { nome:'Relacionamentos', elem:'Terra',   dir:'Sudoeste', cor:'#A9613C' },
-  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#2E7D6B' },
+  { nome:'Família',         elem:'Madeira', dir:'Leste',    cor:'#245F52' },
   { nome:'Centro/Saúde',    elem:'Terra',   dir:'Centro',   cor:'#8A6E2F' },
-  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#8A6E2F' },
-  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#8A6E2F' },
-  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#2E7D6B' },
+  { nome:'Criatividade',    elem:'Metal',   dir:'Oeste',    cor:'#0E1B2C' },
+  { nome:'Espiritualidade', elem:'Terra',   dir:'Nordeste', cor:'#C9A227' },
+  { nome:'Carreira',        elem:'Água',    dir:'Norte',    cor:'#1C3A52' },
   { nome:'Pessoas Úteis',   elem:'Metal',   dir:'Noroeste', cor:'#6B7280' },
 ]
 
@@ -2416,7 +2426,9 @@ function BaguaPlantaContent() {
                   const LABELS=['-2','-1','0','+1','+2']
                   const NOMES=['Crítico','Ruim','Neutro','Bom','Ótimo']
                   const CORES=['#B4533A','#A9613C','#6B7280','#65A30D','#2E7D6B']
-                  const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#F0F6F3','#F0F6F3']
+                  // Cinco níveis, cinco fundos: os dois últimos ficaram idênticos na varredura
+// de paleta, e o botão selecionado deixava de distinguir «Bom» de «Ótimo».
+const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#EAF1EE','#D9EBE4']
                   // `null` = não avaliado. Antes o default era 2 («Neutro»), o
                   // que impedia distinguir «achei neutro» de «não olhei».
                   const val=scAtivo.criterios[ci]

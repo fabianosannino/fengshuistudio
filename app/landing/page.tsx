@@ -301,7 +301,7 @@ export default function LandingPage() {
                     { nome: 'Amor', cor: '#F9A8D4', elemento: 'Terra', trigram: '☷' },
                     { nome: 'Família', cor: '#4ADE80', elemento: 'Madeira', trigram: '☳' },
                     { nome: 'Centro', cor: '#C9A227', elemento: 'Terra', trigram: '☯' },
-                    { nome: 'Filhos', cor: '#C9A227', elemento: 'Metal', trigram: '☱' },
+                    { nome: 'Filhos', cor: '#8FA3B0', elemento: 'Metal', trigram: '☱' },
                     { nome: 'Saber', cor: '#60A5FA', elemento: 'Terra', trigram: '☶' },
                     { nome: 'Carreira', cor: '#38BDF8', elemento: 'Água', trigram: '☵' },
                     { nome: 'Amigos', cor: '#CBD5E1', elemento: 'Metal', trigram: '☰' },

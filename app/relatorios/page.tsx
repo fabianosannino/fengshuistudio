@@ -755,7 +755,7 @@ export default function Relatorios() {
             </p>
           </div>
           <button type="button" onClick={() => window.location.href = '/planos'} style={{
-            background: '#C9A227', color: '#ffffff', border: 'none',
+            background: '#C9A227', color: '#0E1B2C', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
           }}>

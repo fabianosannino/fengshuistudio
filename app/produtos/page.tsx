@@ -36,7 +36,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'espelhos',
     nome: 'Espelhos',
     iconComp: Sparkle as LucideIcon,
-    cor: '#2E7D6B',
+    cor: '#0E1B2C',
     descricao: 'Espelhos côncavos, convexos e Ba Gua para harmonização',
     produtos: [
       { nome: 'Espelho Côncavo Ba Gua', desc: 'Espelho côncavo octogonal para proteção e desvio de energia negativa', tag: 'Proteção', preco: 'A partir de R$ 29,90' },
@@ -48,7 +48,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'cristais',
     nome: 'Cristais e Pedras',
     iconComp: Gem as LucideIcon,
-    cor: '#2E7D6B',
+    cor: '#7FB8A8',
     descricao: 'Cristais para ativação energética dos setores do Ba Gua',
     produtos: [
       { nome: 'Cristal Multifacetado', desc: 'Cristal de pendurar para dispersar energia estagnada e trazer luz', tag: 'Ativação', preco: 'A partir de R$ 19,90' },
@@ -62,7 +62,7 @@ const CATEGORIAS_PRODUTOS = [
     id: 'fontes',
     nome: 'Fontes de Água',
     iconComp: Droplets as LucideIcon,
-    cor: '#0EA5E9',
+    cor: '#1C3A52',
     descricao: 'Fontes para ativar o elemento água e prosperidade',
     produtos: [
       { nome: 'Fonte de Mesa Bambu', desc: 'Fonte decorativa de mesa com bambu e pedras naturais', tag: 'Prosperidade', preco: 'A partir de R$ 89,90' },

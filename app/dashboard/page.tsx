@@ -138,12 +138,16 @@ export default function Dashboard() {
       const hoje = new Date().toISOString().slice(0, 10)
       const em7dias = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
 
-      const [consultasRes, pagamentosRes, rituaisRes, prescricoesRes, setoresRes, clientesRes] = await Promise.all([
-        supabase
-          .from('consultas')
-          .select('id, nome_imovel, status, criado_em, atualizado_em, finalizada_em, relatorio_gerado_em, ano_construcao, ano_reforma_estrutural, bagua_entrada, clientes(nome_completo)')
-          .eq('consultor_id', user.id)
-          .order('atualizado_em', { ascending: false }),
+      // As consultas primeiro: os ids delas filtram as duas tabelas seguintes.
+      const consultasRes = await supabase
+        .from('consultas')
+        .select('id, nome_imovel, status, criado_em, atualizado_em, finalizada_em, relatorio_gerado_em, ano_construcao, ano_reforma_estrutural, bagua_entrada, clientes(nome_completo)')
+        .eq('consultor_id', user.id)
+        .order('atualizado_em', { ascending: false })
+
+      const idsDasConsultas = (consultasRes.data ?? []).map(c => c.id as string)
+
+      const [pagamentosRes, rituaisRes, prescricoesRes, setoresRes, clientesRes] = await Promise.all([
         supabase
           .from('pagamentos')
           .select('id, descricao, valor, status, data_vencimento, data_pagamento, clientes(nome_completo)')
@@ -156,14 +160,19 @@ export default function Dashboard() {
           .gte('data_ritual', hoje)
           .lte('data_ritual', em7dias)
           .order('data_ritual', { ascending: true }),
-        supabase.from('prescricoes').select('consulta_id'),
-        supabase.from('setores_bagua').select('consulta_id, score_percentual'),
+        // Filtradas pelas consultas do usuário, não varrendo a tabela inteira.
+        // Sem isso o PostgREST corta em 1000 linhas (`max-rows`) — e como
+        // `setores_bagua` tem até 9 por consulta, a partir de ~112 consultas o
+        // corte silencioso faria a etapa do diagnóstico **regredir** conforme a
+        // carteira cresce, que é o oposto do que se espera.
+        supabase.from('prescricoes').select('consulta_id').in('consulta_id', idsDasConsultas),
+        supabase.from('setores_bagua').select('consulta_id, score_percentual').in('consulta_id', idsDasConsultas),
         supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('consultor_id', user.id).eq('ativo', true),
       ])
 
       // Falha de consulta nunca vira «não há nada»: o consultor leria a lista
       // vazia como carteira vazia e tomaria decisão sobre um dado que não veio.
-      const falhou = [consultasRes, pagamentosRes, rituaisRes].find(r => r.error)
+      const falhou = [consultasRes, pagamentosRes, rituaisRes, prescricoesRes, setoresRes].find(r => r.error)
       if (falhou?.error) {
         logger.error('Falha ao carregar a home do consultor', {
           route: '/dashboard', userId: user.id, error: falhou.error.message,

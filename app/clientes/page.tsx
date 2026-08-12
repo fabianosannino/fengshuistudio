@@ -164,7 +164,7 @@ export default function Clientes() {
     }
 
     // Uma consulta por tabela para a página inteira, não uma por linha.
-    const [consultasRes, pagamentosRes, setoresRes, prescricoesRes] = await Promise.all([
+    const [consultasRes, pagamentosRes] = await Promise.all([
       supabase
         .from('consultas')
         .select('id, cliente_id, nome_imovel, status, atualizado_em, criado_em, finalizada_em, relatorio_gerado_em, bagua_entrada')
@@ -175,15 +175,25 @@ export default function Clientes() {
         .from('pagamentos')
         .select('cliente_id, valor, status, data_vencimento')
         .in('cliente_id', clientIds),
-      supabase.from('setores_bagua').select('consulta_id, score_percentual'),
-      supabase.from('prescricoes').select('consulta_id'),
+      // Sem filtro, o PostgREST corta em 1000 linhas e a etapa do diagnóstico
+      // passa a regredir conforme a carteira cresce. O `.in` precisa dos ids
+      // das consultas, então essas duas saem depois — ver abaixo.
     ])
 
-    if (consultasRes.error) {
+    const idsDasConsultas = ((consultasRes.data ?? []) as { id: string }[]).map(c => c.id)
+    const [setoresRes, prescricoesRes] = idsDasConsultas.length === 0
+      ? [{ data: [], error: null }, { data: [], error: null }]
+      : await Promise.all([
+          supabase.from('setores_bagua').select('consulta_id, score_percentual').in('consulta_id', idsDasConsultas),
+          supabase.from('prescricoes').select('consulta_id').in('consulta_id', idsDasConsultas),
+        ])
+
+    const falhou = [consultasRes, setoresRes, prescricoesRes].find(r => r.error)
+    if (falhou?.error) {
       // Falha de banco nunca vira lista sem informação: o consultor leria as
       // linhas em branco como «este cliente não tem nada».
       logger.error('Falha ao carregar o estado das consultas dos clientes', {
-        route: '/clientes', error: consultasRes.error.message,
+        route: '/clientes', error: falhou.error.message,
       })
     }
 
