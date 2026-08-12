@@ -53,6 +53,9 @@ function makeSupabaseMock(handler: Handler) {
       gt: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
       limit: () => Promise.resolve(exec()),
       single: () => Promise.resolve(exec()),
+      // `maybeSingle` é o que `sincronizar-assinatura` usa para procurar a
+      // linha existente: ausência é resposta válida, não erro.
+      maybeSingle: () => Promise.resolve(exec()),
       then: (
         onFulfilled: (r: unknown) => unknown,
         onRejected?: (e: unknown) => unknown

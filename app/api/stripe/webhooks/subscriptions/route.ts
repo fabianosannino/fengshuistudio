@@ -31,6 +31,9 @@ import {
   reivindicarEvento, marcarProcessado, marcarFalha, houveEventoMaisNovo, objetoDoEvento,
 } from '../../../../../src/lib/eventos-stripe'
 import { enumDoPlano, planoEfetivo } from '../../../../../src/lib/plano-utils'
+import {
+  sincronizarAssinatura, statusDaAssinatura, planoDaAssinatura,
+} from '../../../../../src/lib/sincronizar-assinatura'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
@@ -106,75 +109,16 @@ export async function POST(request: Request) {
           current_period_start?: number
           current_period_end?: number
         }
-        const customerId = resolveCustomerId(subscription.customer)
-        const status = subscription.status
 
+        // A criação da linha vive em `sincronizar-assinatura`, compartilhada
+        // com a reconciliação: duas respostas para «como nasce uma assinatura»
+        // divergiriam, e a segunda envelheceria calada.
+        const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
         logger.info('Subscription created', {
-          route: '/api/stripe/webhooks/subscriptions',
+          route: ROUTE,
           subscriptionId: subscription.id,
-          customerId,
-          status,
+          situacao: resultado.situacao,
         })
-
-        const profile = await findProfileByCustomerId(supabase, customerId)
-        if (!profile) break
-
-        // Determine plan from subscription items
-        const planSlug = await resolvePlanSlug(supabase, subscription)
-
-        // Check idempotency — avoid duplicate subscriptions
-        const { data: existingSub } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('gateway_subscription_id', subscription.id)
-          .single()
-
-        if (existingSub) {
-          logger.info('Subscription already exists, skipping', { subscriptionId: subscription.id })
-          break
-        }
-
-        // Cancel any existing active subscriptions for this user
-        await logWrite('cancel-previous-subscriptions', supabase
-          .from('subscriptions')
-          .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-          .eq('user_id', profile.id)
-          .in('status', ['active', 'past_due', 'gratuidade']))
-
-        // Find the plan in DB
-        const { data: plan } = planSlug
-          ? await supabase
-              .from('plans')
-              .select('id, slug')
-              .eq('slug', planSlug)
-              .single()
-          : { data: null }
-
-        const billingCycle = resolveBillingCycle(subscription)
-
-        // Create new subscription record
-        await logWrite('insert-subscription', supabase.from('subscriptions').insert({
-          user_id: profile.id,
-          plan_id: plan?.id || null,
-          billing_cycle: billingCycle,
-          status: mapStripeStatus(status),
-          price_paid: subscription.items?.data?.[0]?.price?.unit_amount
-            ? subscription.items.data[0].price.unit_amount / 100
-            : 0,
-          started_at: subscription.start_date ? new Date(subscription.start_date * 1000).toISOString() : new Date().toISOString(),
-          current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : new Date().toISOString(),
-          current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
-          next_billing_date: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
-          gateway_subscription_id: subscription.id,
-        }))
-
-        // Update profile plan
-        if (planSlug && plan) {
-          await logWrite('update-profile-plan', supabase
-            .from('profiles')
-            .update({ plano: enumDoPlano(planoEfetivo(planSlug)) })
-            .eq('id', profile.id))
-        }
 
         break
       }
@@ -535,55 +479,9 @@ async function findProfileByCustomerId(
   return profile
 }
 
-function mapStripeStatus(stripeStatus: string): string {
-  switch (stripeStatus) {
-    case 'active': return 'active'
-    case 'past_due': return 'past_due'
-    case 'canceled': return 'cancelled'
-    case 'trialing': return 'trial'
-    case 'paused': return 'paused'
-    case 'incomplete': return 'past_due'
-    case 'incomplete_expired': return 'cancelled'
-    default: return 'active'
-  }
-}
+// Delegam ao módulo compartilhado. Manter cópias aqui recriaria a divergência
+// que a extração acabou de fechar — o `updated` ainda tem lógica própria, mas
+// a tradução de status e a descoberta do plano são as mesmas em todo lugar.
+const mapStripeStatus = statusDaAssinatura
 
-function resolveBillingCycle(subscription: Stripe.Subscription): string {
-  const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-  if (interval === 'year') return 'yearly'
-  return 'monthly'
-}
-
-async function resolvePlanSlug(
-  supabase: SupabaseClient,
-  subscription: Stripe.Subscription
-): Promise<string | null> {
-  // Try to get plan slug from subscription metadata
-  const metadata = subscription.metadata
-  if (metadata?.plan_slug) return metadata.plan_slug
-
-  // Try to match by price amount
-  const priceAmount = subscription.items?.data?.[0]?.price?.unit_amount
-  const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-
-  if (priceAmount) {
-    const amountBRL = priceAmount / 100
-    const { data: plans } = await supabase.from('plans').select('slug, price_monthly, price_yearly')
-
-    if (plans) {
-      for (const plan of plans) {
-        if (interval === 'year' && plan.price_yearly === amountBRL) return plan.slug
-        if (interval === 'month' && plan.price_monthly === amountBRL) return plan.slug
-      }
-    }
-  }
-
-  // Preço desconhecido: nunca conceder plano por padrão — logar e não mudar.
-  logger.error('Unable to resolve plan for subscription', {
-    route: ROUTE,
-    subscriptionId: subscription.id,
-    priceAmount,
-    interval,
-  })
-  return null
-}
+const resolvePlanSlug = planoDaAssinatura
