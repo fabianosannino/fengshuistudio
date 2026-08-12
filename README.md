@@ -35,6 +35,17 @@ Veja `.env.example` para a lista completa. As essenciais:
 | `STRIPE_WEBHOOK_SECRET` / `STRIPE_SUBSCRIPTION_WEBHOOK_SECRET` | Verificação de assinatura dos webhooks |
 | `STRIPE_PRICE_*` | Prices dos planos da plataforma |
 
+Os `STRIPE_PRICE_*` são a fonte mais comum de checkout quebrado: o ID não diz a
+que modo pertence, e um preço de teste com chave de produção só falha quando um
+cliente real tenta assinar. Confira antes de publicar:
+
+```bash
+STRIPE_SECRET_KEY=sk_... npx vite-node scripts/stripe/conferir-precos.mts
+```
+
+Ele pergunta ao Stripe, com a mesma chave que o app usa, se cada preço existe
+naquele modo, se está ativo e se o intervalo bate com o nome da variável. Só lê.
+
 ## Scripts
 
 ```bash
