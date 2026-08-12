@@ -19,6 +19,7 @@ import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
 import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/lib/sintese-metodos'
 import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
+import { logger } from '../../../../src/lib/logger'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
 import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
@@ -254,10 +255,16 @@ export default function Relatorio() {
   async function handleDownloadPDF() {
     if (!printRef.current) return
     setDownloading(true)
+    // A geração tem seis etapas e qualquer uma pode falhar. Sem saber qual,
+    // «Erro ao gerar PDF» manda o consultor adivinhar e não dá o que investigar.
+    let etapa = 'preparar'
     try {
+      etapa = 'aguardar imagens'
       await waitForImages(printRef.current)
+      etapa = 'carregar bibliotecas'
       const html2canvas = (await import('html2canvas')).default
       const { jsPDF } = await import('jspdf')
+      etapa = 'capturar a tela'
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
@@ -279,6 +286,7 @@ export default function Relatorio() {
           noPrint.forEach(el => el.remove())
         }
       })
+      etapa = 'montar o PDF'
       const imgWidth = 210
       const pageHeight = 297
       const imgHeight = (canvas.height * imgWidth) / canvas.width
@@ -312,6 +320,7 @@ export default function Relatorio() {
         pdf.setTextColor(170, 170, 170)
         pdf.text(`Página ${i} de ${totalPages}`, 105, 290, { align: 'center' })
       }
+      etapa = 'salvar o arquivo'
       const nomeArquivo = `relatorio-${consulta!.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
       pdf.save(nomeArquivo)
 
@@ -331,8 +340,19 @@ export default function Relatorio() {
         }
       } catch { /* persistência é best-effort; não atrapalha o download */ }
     } catch (err) {
-      console.error('Erro ao gerar PDF:', err)
-      alert('Erro ao gerar PDF. Tente usar a opção Imprimir.')
+      // Detalhe técnico na tela de propósito: quem vê isto é o consultor, dono
+      // da consulta, e é ele quem vai reportar. Mensagem genérica aqui esconde
+      // a informação de quem poderia agir sobre ela (mesma razão do ADR 0019,
+      // aplicada na direção oposta — ali o risco era vazar, aqui é omitir).
+      const nome = err instanceof Error ? err.name : 'Erro'
+      const detalhe = err instanceof Error ? err.message : String(err)
+      logger.error('Falha ao gerar PDF do relatório', {
+        route: 'relatorio', action: etapa, consultaId: id, error: `${nome}: ${detalhe}`,
+      })
+      alert(
+        `Erro ao gerar o PDF na etapa «${etapa}».\n\n${nome}: ${detalhe}\n\n` +
+        'Use a opção Imprimir enquanto isso, e envie esta mensagem para o suporte.'
+      )
     } finally {
       setDownloading(false)
     }
