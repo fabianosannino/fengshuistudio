@@ -70,3 +70,47 @@ export function redirecionarParaLogin(): void {
   if (typeof window === 'undefined') return
   window.location.href = ROTA_LOGIN
 }
+
+// ── O que um visitante alcança sem sessão ────────────────────────────────────
+
+/**
+ * As páginas de marketing — o site que existe para quem ainda não é usuário.
+ *
+ * ## O defeito que isto corrige
+ *
+ * Todas estavam **atrás do login**. A Navbar e o rodapé da home pública
+ * linkavam para `/precos`, `/recursos`, `/sobre`, `/para-consultores` e
+ * `/rede-de-parceiros`, e cada um desses cliques levava o visitante a
+ * `/login?redirect=…`. Ou seja: para saber quanto custa, era preciso ter conta;
+ * para decidir criar conta, era preciso saber quanto custa.
+ *
+ * O `sitemap.xml` reforçava o engano ao anunciar `/planos` — que é tela de app
+ * autenticada — enquanto omitia `/precos`, a página que o Google deveria
+ * indexar.
+ *
+ * ## Por que uma constante e não uma lista no middleware
+ *
+ * O middleware decide o acesso e o sitemap decide o que o buscador indexa. As
+ * duas listas discordavam, e a discordância era invisível: uma página podia
+ * estar no sitemap e fechada, como estava. Uma fonte só torna isso impossível.
+ *
+ * Só entra aqui página que não lê dado de usuário. `/produtos` e
+ * `/demonstracao` continuam fechadas porque montam o `AppShell`.
+ */
+export const ROTAS_MARKETING = [
+  '/precos',
+  '/recursos',
+  '/sobre',
+  '/para-consultores',
+  '/rede-de-parceiros',
+  '/minha-casa',
+] as const
+
+/** Subpáginas de recurso — `/recursos/bagua`, `/recursos/calendario`, … */
+export const PREFIXO_RECURSOS = '/recursos/'
+
+/** `true` quando a rota é do site público e dispensa sessão. */
+export function ehRotaDeMarketing(pathname: string): boolean {
+  return (ROTAS_MARKETING as readonly string[]).includes(pathname)
+    || pathname.startsWith(PREFIXO_RECURSOS)
+}

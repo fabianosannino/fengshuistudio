@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createSupabaseMiddlewareClient } from './lib/supabase-server'
-import { ROTA_CALLBACK_AUTH, ehCaminhoRelativoSeguro } from './lib/auth-rotas'
+import { ROTA_CALLBACK_AUTH, ehCaminhoRelativoSeguro, ehRotaDeMarketing } from './lib/auth-rotas'
 
 // `/auth/callback` é público por necessidade: é ele quem cria a sessão a
 // partir do link de e-mail. Exigir sessão ali tornaria o fluxo impossível.
@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes
-  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/loja') || pathname === '/consultores') {
+  if (PUBLIC_ROUTES.includes(pathname) || ehRotaDeMarketing(pathname) || pathname.startsWith('/loja') || pathname === '/consultores') {
     return NextResponse.next()
   }
 
