@@ -4,15 +4,22 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import { falhaAuth } from '../../src/lib/auth-erros'
-import { MailCheck, Building2, Compass, Palette, Briefcase } from 'lucide-react'
+import { MailCheck, ClipboardList, Home as HomeIcon } from 'lucide-react'
+import { OPCOES_DE_PAPEL, metadadosDoPapel, type Papel } from '../../src/lib/papel-do-usuario'
 
-const TIPOS_USUARIO = [
-  { id: 'pessoal', label: 'Pessoal', desc: 'Uso para minha residência' },
-  { id: 'arquiteto', label: 'Arquiteto(a)', desc: 'Profissional de arquitetura' },
-  { id: 'feng_shui', label: 'Profissional de Feng Shui', desc: 'Consultor(a) de Feng Shui' },
-  { id: 'decorador', label: 'Decorador(a)', desc: 'Profissional de decoração' },
-  { id: 'outro_profissional', label: 'Outro profissional', desc: 'Outro tipo de profissional' },
-]
+/**
+ * O cadastro pedia profissão, área de atuação, registro e duas redes sociais
+ * **antes** de deixar o profissional ver qualquer tela. Nada disso decidia nada
+ * no produto — `isProfissional` sempre olhou o plano, não a profissão. O que
+ * muda de fato é o papel, e ele agora é a única pergunta que precede a entrada.
+ *
+ * Profissão, registro e redes passam a ser pedidos no momento em que fazem
+ * diferença: quando o consultor opta por aparecer na rede de parceiros.
+ */
+const ICONE_DO_PAPEL: Record<Papel, typeof ClipboardList> = {
+  consultor: ClipboardList,
+  pessoal: HomeIcon,
+}
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB',
@@ -34,24 +41,15 @@ function LoginForm() {
   const [signUpDone, setSignUpDone] = useState(false)
   const [resending, setResending] = useState(false)
 
-  // New: user type & professional fields
-  const [tipoUsuario, setTipoUsuario] = useState('pessoal')
-  const [signUpStep, setSignUpStep] = useState(1) // 1 = basic, 2 = professional details
-  const [profForm, setProfForm] = useState({
-    profissao: '',
-    area_atuacao: '',
-    registro_profissional: '',
-    linkedin: '',
-    instagram: '',
-  })
+  // Passo 1 = nome/e-mail/senha, passo 2 = papel. A conta só é criada no fim.
+  const [papel, setPapel] = useState<Papel>('consultor')
+  const [signUpStep, setSignUpStep] = useState(1)
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const rawRedirect = searchParams.get('redirect') || '/dashboard'
   // Prevent open redirect — only allow relative paths
   const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') && !rawRedirect.includes('://') ? rawRedirect : '/dashboard'
-
-  const isProfessional = tipoUsuario !== 'pessoal'
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -103,12 +101,8 @@ function LoginForm() {
 
   function handleStep1(e: React.FormEvent) {
     e.preventDefault()
-    if (isProfessional) {
-      setSignUpStep(2)
-      limparMensagem()
-    } else {
-      doSignUp()
-    }
+    setSignUpStep(2)
+    limparMensagem()
   }
 
   function handleStep2(e: React.FormEvent) {
@@ -121,15 +115,7 @@ function LoginForm() {
     limparMensagem()
     const metadata: Record<string, string> = {
       nome_completo: name,
-      tipo_usuario: tipoUsuario,
-      role: isProfessional ? 'consultor' : 'pessoal',
-    }
-    if (isProfessional) {
-      metadata.profissao = profForm.profissao
-      metadata.area_atuacao = profForm.area_atuacao
-      metadata.registro_profissional = profForm.registro_profissional
-      metadata.linkedin = profForm.linkedin
-      metadata.instagram = profForm.instagram
+      ...metadadosDoPapel(papel),
     }
 
     const { error, data } = await supabase.auth.signUp({
@@ -187,7 +173,7 @@ function LoginForm() {
     }}>
       <div style={{
         background: '#ffffff', borderRadius: '16px', padding: '40px 36px',
-        width: '100%', maxWidth: isSignUp && signUpStep === 2 ? '520px' : '420px',
+        width: '100%', maxWidth: '420px',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         transition: 'max-width 0.3s ease'
       }}>
@@ -195,7 +181,7 @@ function LoginForm() {
           <img src="/marketing/logo-fengshui.png" alt="" width={48} height={48} style={{ marginBottom: '8px', display: 'inline-block' }} />
           <h1 style={{ color: '#0E1B2C', fontSize: '26px', fontWeight: 600, margin: '0', fontFamily: 'var(--font-fraunces), serif' }}>FengShui Studio</h1>
           <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '4px 0 0 0' }}>
-            {isSignUp ? (signUpStep === 2 ? 'Dados profissionais' : 'Crie sua conta') : 'Plataforma para Consultores e Usuários'}
+            {isSignUp ? (signUpStep === 2 ? 'Falta uma pergunta' : 'Leva menos de um minuto') : 'Plataforma para Consultores e Usuários'}
           </p>
         </div>
 
@@ -319,36 +305,6 @@ function LoginForm() {
                 placeholder="Mínimo 6 caracteres" required style={inputStyle} />
             </div>
 
-            {/* User type selector */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Tipo de usuário</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {TIPOS_USUARIO.map(tipo => (
-                  <label key={tipo.id} onClick={() => setTipoUsuario(tipo.id)} style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
-                    border: `2px solid ${tipoUsuario === tipo.id ? '#2E7D6B' : '#E5E7EB'}`,
-                    background: tipoUsuario === tipo.id ? '#EAF4F1' : '#ffffff',
-                    transition: 'all 0.2s'
-                  }}>
-                    <div style={{
-                      width: '18px', height: '18px', borderRadius: '50%',
-                      border: `2px solid ${tipoUsuario === tipo.id ? '#2E7D6B' : '#D1D5DB'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                    }}>
-                      {tipoUsuario === tipo.id && (
-                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2E7D6B' }} />
-                      )}
-                    </div>
-                    <div>
-                      <span style={{ color: '#111827', fontSize: '14px', fontWeight: 'bold' }}>{tipo.label}</span>
-                      <span style={{ color: '#9CA3AF', fontSize: '12px', marginLeft: '6px' }}>{tipo.desc}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             <button type="submit" disabled={loading} style={{
               width: '100%', padding: '14px',
               background: loading ? '#9CA3AF' : '#2E7D6B',
@@ -356,78 +312,72 @@ function LoginForm() {
               fontSize: '16px', fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer'
             }}>
-              {loading ? 'Aguarde...' : isProfessional ? 'Próximo: dados profissionais' : 'Criar conta'}
+              Continuar
             </button>
           </form>
 
-        /* ── SIGN UP STEP 2: Professional Details ────────── */
+        /* ── SIGN UP PASSO 2: papel ──────────────────────── */
         ) : (
           <form onSubmit={handleStep2}>
-            <div style={{
-              background: '#EAF4F1', borderRadius: '8px', padding: '10px 14px',
-              marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'
-            }}>
-              {(() => {
-                const Icon = tipoUsuario === 'arquiteto' ? Building2 : tipoUsuario === 'feng_shui' ? Compass : tipoUsuario === 'decorador' ? Palette : Briefcase
-                return <Icon size={18} strokeWidth={1.75} color="#2E7D6B" aria-hidden="true" />
-              })()}
-              <span style={{ color: '#2E7D6B', fontSize: '13px', fontWeight: 'bold' }}>
-                {TIPOS_USUARIO.find(t => t.id === tipoUsuario)?.label}
-              </span>
-            </div>
+            <p style={{
+              color: '#C9A227', fontSize: '11px', fontWeight: 700,
+              letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 10px',
+            }}>Passo 2 de 2</p>
+            <h2 style={{
+              color: '#0E1B2C', fontSize: '22px', fontWeight: 500, margin: '0 0 6px',
+              fontFamily: 'var(--font-fraunces), serif', letterSpacing: '-0.01em',
+            }}>Como você vai usar?</h2>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6B7280' }}>
+              Isso define sua tela inicial. Dá para mudar depois, no Perfil.
+            </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <div>
-                <label htmlFor="signup-profissao" style={labelStyle}>Profissão *</label>
-                <input id="signup-profissao" type="text" value={profForm.profissao}
-                  onChange={e => setProfForm({ ...profForm, profissao: e.target.value })}
-                  placeholder="Ex: Arquiteto, Consultor" required style={inputStyle} />
-              </div>
-              <div>
-                <label htmlFor="signup-area-atuacao" style={labelStyle}>Área de atuação *</label>
-                <input id="signup-area-atuacao" type="text" value={profForm.area_atuacao}
-                  onChange={e => setProfForm({ ...profForm, area_atuacao: e.target.value })}
-                  placeholder="Ex: Residencial, Comercial" required style={inputStyle} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label htmlFor="signup-registro" style={labelStyle}>Registro profissional</label>
-              <input id="signup-registro" type="text" value={profForm.registro_profissional}
-                onChange={e => setProfForm({ ...profForm, registro_profissional: e.target.value })}
-                placeholder="Ex: CAU A12345-6, CREA 12345" style={inputStyle} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-              <div>
-                <label htmlFor="signup-linkedin" style={labelStyle}>LinkedIn (portfolio)</label>
-                <input id="signup-linkedin" type="url" value={profForm.linkedin}
-                  onChange={e => setProfForm({ ...profForm, linkedin: e.target.value })}
-                  placeholder="https://linkedin.com/in/..." style={inputStyle} />
-              </div>
-              <div>
-                <label htmlFor="signup-instagram" style={labelStyle}>Instagram (portfolio)</label>
-                <input id="signup-instagram" type="text" value={profForm.instagram}
-                  onChange={e => setProfForm({ ...profForm, instagram: e.target.value })}
-                  placeholder="@seuperfil" style={inputStyle} />
-              </div>
+            <div role="radiogroup" aria-label="Como você vai usar" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              {OPCOES_DE_PAPEL.map(opcao => {
+                const escolhido = papel === opcao.id
+                const Icon = ICONE_DO_PAPEL[opcao.id]
+                return (
+                  <button type="button" key={opcao.id} role="radio" aria-checked={escolhido}
+                    onClick={() => setPapel(opcao.id)} style={{
+                      textAlign: 'left', cursor: 'pointer', padding: '16px',
+                      borderRadius: '12px', background: escolhido ? '#FAF3E0' : '#ffffff',
+                      border: escolhido ? '2px solid #C9A227' : '1px solid #E7E1D6',
+                    }}>
+                    <span style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{
+                        width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+                        background: escolhido ? 'rgba(201,162,39,0.18)' : '#F3EEE4',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Icon size={19} strokeWidth={1.75} color={escolhido ? '#8A6E2F' : '#6B7280'} aria-hidden="true" />
+                      </span>
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#0E1B2C' }}>{opcao.titulo}</span>
+                    </span>
+                    <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', lineHeight: 1.5 }}>
+                      {opcao.descricao}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="button" onClick={() => setSignUpStep(1)} style={{
-                padding: '14px 20px', background: '#F3F4F6', color: '#374151',
-                border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
+                padding: '14px 20px', background: '#F3EEE4', color: '#0E1B2C',
+                border: 'none', borderRadius: '9px', fontSize: '14px', cursor: 'pointer'
               }}>Voltar</button>
               <button type="submit" disabled={loading} style={{
                 flex: 1, padding: '14px',
                 background: loading ? '#9CA3AF' : '#2E7D6B',
-                color: '#ffffff', border: 'none', borderRadius: '8px',
+                color: '#ffffff', border: 'none', borderRadius: '9px',
                 fontSize: '16px', fontWeight: 'bold',
                 cursor: loading ? 'not-allowed' : 'pointer'
               }}>
                 {loading ? 'Aguarde...' : 'Criar conta'}
               </button>
             </div>
+            <p style={{ margin: '14px 0 0', fontSize: '12px', color: '#9CA3AF', textAlign: 'center' }}>
+              Profissão, registro e redes só quando você optar por aparecer na rede de parceiros.
+            </p>
           </form>
         )}
 
