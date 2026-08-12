@@ -20,16 +20,18 @@
  *
  * ## Sobre correção automática
  *
- * Só corrige o que é cópia de valor: status, valor pago, ciclo, cancelamento
- * agendado. Os dois casos de ausência ficam **de fora** e são relatados:
+ * O `POST` corrige duas coisas:
  *
- * - `ausente_no_banco` exige criar a linha, o que envolve resolver perfil e
- *   plano — lógica que o webhook já tem. Reescrever aqui criaria uma segunda
- *   verdade sobre como uma assinatura nasce, que é justamente o defeito que
- *   este projeto vem perseguindo. Extrair aquele caminho para um módulo comum
- *   é o passo seguinte, e merece o próprio PR.
- * - `ausente_no_stripe` não é dado velho, é dado inventado. Apagar em silêncio
- *   esconderia a pergunta de onde a linha veio.
+ * - **cópia de valor** — status, valor pago, ciclo, cancelamento agendado;
+ * - **assinatura ausente no banco** — cria a linha pelo mesmo caminho do
+ *   webhook, em `sincronizar-assinatura`. É o caso de 12/08: paga no Stripe e
+ *   invisível para o app. A criação vive lá, e não aqui, porque duas respostas
+ *   para «como nasce uma assinatura» divergiriam, e a segunda envelheceria
+ *   calada.
+ *
+ * Um caso continua fora, e é decisão: `ausente_no_stripe` não é dado velho, é
+ * dado inventado. Apagar ou cancelar em silêncio esconderia a pergunta de onde
+ * a linha veio, e é a única divergência que pede olho humano.
  */
 
 import { NextResponse } from 'next/server'
@@ -39,6 +41,7 @@ import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { sincronizarAssinatura } from '../../../../src/lib/sincronizar-assinatura'
 import {
   compararAssinaturas, resumirDivergencias,
   type AssinaturaNoStripe, type AssinaturaNoBanco, type Divergencia,
@@ -64,8 +67,15 @@ async function autorizado(request: Request): Promise<boolean> {
 }
 
 /** Lê a conta inteira, paginando. O Stripe devolve 100 por página. */
-async function assinaturasDoStripe(): Promise<{ lista: AssinaturaNoStripe[]; truncado: boolean }> {
+async function assinaturasDoStripe(): Promise<{
+  lista: AssinaturaNoStripe[]
+  brutas: Map<string, Stripe.Subscription>
+  truncado: boolean
+}> {
   const lista: AssinaturaNoStripe[] = []
+  // O objeto original fica guardado: recriar a linha ausente exige o que o
+  // Stripe mandou, não o resumo que a comparação usa.
+  const brutas = new Map<string, Stripe.Subscription>()
   let cursor: string | undefined
 
   while (lista.length < LIMITE_DE_ASSINATURAS) {
@@ -76,6 +86,7 @@ async function assinaturasDoStripe(): Promise<{ lista: AssinaturaNoStripe[]; tru
     })
 
     for (const s of pagina.data) {
+      brutas.set(s.id, s)
       const item = s.items?.data?.[0]
       lista.push({
         id: s.id,
@@ -89,18 +100,44 @@ async function assinaturasDoStripe(): Promise<{ lista: AssinaturaNoStripe[]; tru
       })
     }
 
-    if (!pagina.has_more || pagina.data.length === 0) return { lista, truncado: false }
+    if (!pagina.has_more || pagina.data.length === 0) return { lista, brutas, truncado: false }
     cursor = pagina.data[pagina.data.length - 1].id
   }
 
-  return { lista, truncado: true }
+  return { lista, brutas, truncado: true }
 }
 
 /** Aplica no banco o que o Stripe diz. Devolve quantas linhas mudaram. */
 async function corrigir(
   admin: ReturnType<typeof createSupabaseAdminClient>,
-  divergencias: Divergencia[]
-): Promise<{ corrigidas: number; falhas: number }> {
+  divergencias: Divergencia[],
+  brutas: Map<string, Stripe.Subscription>
+): Promise<{ corrigidas: number; falhas: number; recriadas: number }> {
+  let recriadas = 0
+  let falhasAoRecriar = 0
+
+  // Assinatura que existe no Stripe e não aqui: criar a linha pelo mesmo
+  // caminho do webhook, em `sincronizar-assinatura`. É o caso da compra de
+  // 12/08 — paga, e invisível para o app.
+  for (const d of divergencias) {
+    if (d.tipo !== 'ausente_no_banco') continue
+    const bruta = brutas.get(d.gatewaySubscriptionId)
+    if (!bruta) continue
+
+    const r = await sincronizarAssinatura(admin, bruta, ROUTE)
+    if (r.situacao === 'criada' || r.situacao === 'atualizada') {
+      recriadas++
+      logger.info('Assinatura recriada pela reconciliação', {
+        route: ROUTE, subscriptionId: d.gatewaySubscriptionId, situacao: r.situacao,
+      })
+    } else {
+      falhasAoRecriar++
+      logger.error('Reconciliação não conseguiu recriar a assinatura', {
+        route: ROUTE, subscriptionId: d.gatewaySubscriptionId, situacao: r.situacao,
+      })
+    }
+  }
+
   const porLinha = new Map<string, Record<string, unknown>>()
 
   for (const d of divergencias) {
@@ -134,7 +171,7 @@ async function corrigir(
     logger.info('Assinatura reconciliada com o Stripe', { route: ROUTE, linhaId, campos })
   }
 
-  return { corrigidas, falhas }
+  return { corrigidas, falhas: falhas + falhasAoRecriar, recriadas }
 }
 
 async function executar(request: Request, aplicar: boolean) {
@@ -153,7 +190,7 @@ async function executar(request: Request, aplicar: boolean) {
 
   const admin = createSupabaseAdminClient()
 
-  let doStripe: { lista: AssinaturaNoStripe[]; truncado: boolean }
+  let doStripe: Awaited<ReturnType<typeof assinaturasDoStripe>>
   try {
     doStripe = await assinaturasDoStripe()
   } catch (err) {
@@ -184,8 +221,8 @@ async function executar(request: Request, aplicar: boolean) {
   }
 
   const correcao = aplicar
-    ? await corrigir(admin, divergencias)
-    : { corrigidas: 0, falhas: 0 }
+    ? await corrigir(admin, divergencias, doStripe.brutas)
+    : { corrigidas: 0, falhas: 0, recriadas: 0 }
 
   return NextResponse.json({
     aplicado: aplicar,
@@ -197,6 +234,7 @@ async function executar(request: Request, aplicar: boolean) {
     total_de_divergencias: divergencias.length,
     resumo,
     corrigidas: correcao.corrigidas,
+    recriadas: correcao.recriadas,
     falhas_ao_corrigir: correcao.falhas,
     // As não corrigíveis vão inteiras: são as que exigem decisão humana.
     exigem_analise: divergencias.filter(d => !d.corrigivel),

@@ -70,11 +70,13 @@ log em nível de erro.
 Para o cron autenticar, defina `CRON_SECRET` na Vercel; a rota também aceita
 sessão de admin.
 
-Dois casos ficam fora da correção automática e são relatados em
-`exigem_analise`: assinatura que existe no Stripe e não aqui (criar a linha
-envolve resolver perfil e plano — lógica que o webhook já tem, e duplicá-la
-criaria uma segunda verdade) e assinatura que existe aqui e não lá, que não é
-dado velho e sim dado inventado.
+Assinatura que existe no Stripe e não aqui é **recriada** pelo mesmo caminho do
+webhook (`src/lib/sincronizar-assinatura.ts`), que é onde vive a resposta para
+«como nasce uma assinatura».
+
+Um caso fica fora da correção e sai em `exigem_analise`: assinatura que existe
+aqui e não no Stripe. Não é dado velho, é dado inventado — apagar em silêncio
+esconderia a pergunta de onde a linha veio.
 
 ## Scripts
 
