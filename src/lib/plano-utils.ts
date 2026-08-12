@@ -220,3 +220,79 @@ export function podeMultiplasAnalises(plano: PlanoEfetivo): boolean {
 export function podeHistorico(plano: PlanoEfetivo): boolean {
   return REGRAS_DE_PLANO[plano].historico
 }
+
+// ── Preço ────────────────────────────────────────────────────────────────────
+
+/**
+ * O preço de cada plano, em centavos.
+ *
+ * ## Por que centavos
+ *
+ * É a unidade do Stripe (`unit_amount`), e é o que evita que R$ 49,90 vire
+ * `49.9` e volte a ser exibido como «R$ 49,9» — ou pior, arredondado para 49.
+ *
+ * ## Por que aqui
+ *
+ * Estes números estavam escritos à mão em `/precos` e em `/planos`, e as duas
+ * páginas discordavam entre si **e** do Stripe. O Profissional mensal era
+ * anunciado como «R$ 49» nas duas e o cartão do cliente era debitado em
+ * R$ 49,90. A página `/precos` ainda calculava o anual sozinha, assumindo dois
+ * meses grátis (`49 × 10 ÷ 12 = 40,83`), enquanto o desconto real é de ~30%.
+ *
+ * Preço é dinheiro cobrado: não pode ter duas fontes, e a fonte não pode ser a
+ * página. Estes valores são os do catálogo de produção do Stripe, que é quem
+ * debita — a página anuncia, o Stripe cobra, e quem discorda dele mente ao
+ * cliente.
+ *
+ * ## Ao mudar preço
+ *
+ * Mude no Stripe primeiro, depois aqui, e confira com:
+ *
+ *     STRIPE_SECRET_KEY=rk_... npx vite-node scripts/stripe/conferir-precos.mts
+ *
+ * Os IDs de preço correspondentes vivem nas variáveis `STRIPE_PRICE_*` — este
+ * módulo guarda só o valor exibido, nunca o ID, porque ID de preço muda de
+ * ambiente e valor não.
+ */
+export interface PrecoDoPlano {
+  /** Cobrança mensal, em centavos. `0` no Free. */
+  mensalCentavos: number
+  /** Cobrança anual **total**, em centavos. `0` no Free. */
+  anualCentavos: number
+}
+
+export const PRECOS_DOS_PLANOS: Record<PlanoEfetivo, PrecoDoPlano> = {
+  free: { mensalCentavos: 0, anualCentavos: 0 },
+  simples: { mensalCentavos: 2000, anualCentavos: 16800 },
+  profissional: { mensalCentavos: 4990, anualCentavos: 41160 },
+}
+
+/**
+ * Quanto sai por mês quem paga o ano inteiro, em centavos.
+ *
+ * Arredonda para baixo de propósito: exibir um centavo a mais do que o cliente
+ * vai pagar por mês é anunciar acima do cobrado, que é justamente o defeito
+ * que esta seção corrige.
+ */
+export function mensalEquivalenteCentavos(plano: PlanoEfetivo): number {
+  return Math.floor(PRECOS_DOS_PLANOS[plano].anualCentavos / 12)
+}
+
+/**
+ * Desconto do plano anual em pontos percentuais inteiros, ou `null` quando não
+ * há preço (Free).
+ *
+ * `null` e não `0`: «sem desconto» e «não se aplica» são coisas diferentes, e
+ * um selo de «0% de desconto» no Free seria ruído.
+ */
+export function descontoAnualPercentual(plano: PlanoEfetivo): number | null {
+  const { mensalCentavos, anualCentavos } = PRECOS_DOS_PLANOS[plano]
+  if (mensalCentavos === 0) return null
+  const cheio = mensalCentavos * 12
+  return Math.round((1 - anualCentavos / cheio) * 100)
+}
+
+/** `4990` → `'R$ 49,90'`. Centavos sempre com duas casas — preço não abrevia. */
+export function formatarCentavos(centavos: number): string {
+  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`
+}

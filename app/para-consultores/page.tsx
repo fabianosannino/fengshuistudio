@@ -9,12 +9,13 @@ import Footer from '../components/marketing/Footer'
 import FadeUp from '../components/marketing/FadeUp'
 import CtaBand from '../components/marketing/CtaBand'
 import { ASSETS, REGISTER_URL } from '../components/marketing/assets'
+import { PRECOS_DOS_PLANOS, formatarCentavos } from '../../src/lib/plano-utils'
 
 export default function ParaConsultores() {
   const [consultas, setConsultas] = useState(4)
   const [ticket, setTicket] = useState(700)
   const receitaMes = consultas * ticket
-  const custoAno = 49 * 12
+  const custoAno = (PRECOS_DOS_PLANOS.profissional.mensalCentavos * 12) / 100
   const horasEconomizadas = consultas * 5
 
   return (
@@ -154,10 +155,10 @@ export default function ParaConsultores() {
                   </div>
                   <div className="rounded-xl bg-paper/5 border border-paper/15 px-6 py-4 flex items-baseline justify-between">
                     <p className="text-sm text-paper/70">Plataforma no ano</p>
-                    <p className="font-display text-2xl text-paper">R$ {custoAno.toLocaleString('pt-BR')}</p>
+                    <p className="font-display text-2xl text-paper">{formatarCentavos(PRECOS_DOS_PLANOS.profissional.mensalCentavos * 12)}</p>
                   </div>
                   <p className="text-xs text-paper/50 leading-relaxed">
-                    Estimativa com base em 5h economizadas por consulta e plano Profissional mensal (R$ 49). A sua primeira consulta do ano já cobre {Math.floor((ticket / custoAno) * 100)}% do custo anual.
+                    Estimativa com base em 5h economizadas por consulta e plano Profissional mensal ({formatarCentavos(PRECOS_DOS_PLANOS.profissional.mensalCentavos)}). A sua primeira consulta do ano já cobre {Math.floor((ticket / custoAno) * 100)}% do custo anual.
                   </p>
                 </div>
               </div>
