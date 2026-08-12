@@ -13,7 +13,10 @@ import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional a
 
 function NovaConsultaContent() {
   const searchParams = useSearchParams()
-  const preSelectedClientId = searchParams.get('clienteId')
+  // O card do cliente navega com `cliente_id`; esta tela lia `clienteId`. Os
+  // nomes nunca bateram, então a pré-seleção jamais funcionou. Fica o nome que
+  // já é enviado, e o antigo segue aceito para não quebrar link salvo.
+  const preSelectedClientId = searchParams.get('cliente_id') ?? searchParams.get('clienteId')
 
   const [user, setUser] = useState<User | null>(null)
   const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo'>[]>([])
@@ -244,7 +247,7 @@ function NovaConsultaContent() {
         {plano === 'free' && !freeLimitReached && (
           <div style={{
             marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#EAF4F1', border: '1px solid #DCEFE9', color: '#6B21A8', fontSize: '13px'
+            background: '#EAF4F1', border: '1px solid #DCEFE9', color: '#0E1B2C', fontSize: '13px'
           }}>
             Plano {planoLabel(profile?.plano)}: {totalConsultas}/3 imóveis cadastrados.
           </div>

@@ -216,7 +216,7 @@ export default function Perfil() {
             <p style={{ color: '#0E1B2C', fontWeight: 'bold', fontSize: '18px', margin: '0 0 4px 0' }}>{form.nome_completo || 'Seu nome'}</p>
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 4px 0' }}>{user?.email}</p>
             <span style={{
-              background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(124,58,237,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
+              background: (isProfessional || planoEfetivo(plano) === 'profissional') ? 'rgba(201,162,39,0.1)' : planoEfetivo(plano) === 'simples' ? 'rgba(59,130,246,0.1)' : 'rgba(184,134,11,0.1)',
               color: (isProfessional || planoEfetivo(plano) === 'profissional') ? '#2E7D6B' : planoEfetivo(plano) === 'simples' ? '#3B82F6' : '#C9A227',
               padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold'
             }}>

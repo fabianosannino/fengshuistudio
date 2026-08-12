@@ -70,6 +70,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [totalClientes, setTotalClientes] = useState(0)
   const [totalConsultas, setTotalConsultas] = useState(0)
+  const [relatoriosEntregues, setRelatoriosEntregues] = useState(0)
   const [totalRituais, setTotalRituais] = useState(0)
 
   // Chart data
@@ -124,11 +125,12 @@ export default function Dashboard() {
           .select('*', { count: 'exact', head: true })
           .eq('consultor_id', user.id)
           .eq('ativo', true),
-        // 1 - KPI: Total consultas
+        // 1 - KPI: Consultas ativas (o que está em cima da mesa hoje)
         supabase
           .from('consultas')
           .select('*', { count: 'exact', head: true })
-          .eq('consultor_id', user.id),
+          .eq('consultor_id', user.id)
+          .eq('status', 'em_andamento'),
         // 2 - KPI: Rituais pendentes
         supabase
           .from('rituais')
@@ -189,6 +191,14 @@ export default function Dashboard() {
           .not('bagua_entrada', 'is', null)
           .order('criado_em', { ascending: false })
           .limit(20),
+        // 11 - KPI: Relatórios entregues — a métrica de negócio. Antes o número
+        // exibido como «Consultas realizadas» não filtrava status nenhum, então
+        // um rascunho aberto e esquecido contava como trabalho entregue.
+        supabase
+          .from('consultas')
+          .select('*', { count: 'exact', head: true })
+          .eq('consultor_id', user.id)
+          .eq('status', 'finalizada'),
       ])
 
       // ── Extract results with graceful fallbacks ──
@@ -203,10 +213,12 @@ export default function Dashboard() {
       const consultasAndamentoRes = results[8].status === 'fulfilled' ? results[8].value : { data: [], error: null }
       const pagProximosRes = results[9].status === 'fulfilled' ? results[9].value : { data: [], error: null }
       const consultasBaguaRes = results[10].status === 'fulfilled' ? results[10].value : { data: [], error: null }
+      const consultasFinalizadasRes = results[11].status === 'fulfilled' ? results[11].value : { count: 0, data: null, error: null }
 
       // ── Process KPI results ──
       setTotalClientes(clientesCountRes.count || 0)
       setTotalConsultas(consultasCountRes.count || 0)
+      setRelatoriosEntregues(consultasFinalizadasRes.count || 0)
       setTotalRituais(rituaisCountRes.count || 0)
 
       // ── CHART 1: Status das consultas (Pie) ──
@@ -474,19 +486,22 @@ export default function Dashboard() {
         gap: '20px', marginBottom: '32px'
       }}>
         {[
-          { label: 'Clientes ativos', value: String(totalClientes), icon: Users, color: '#1D4ED8', link: '/clientes' },
-          { label: 'Consultas realizadas', value: String(totalConsultas), icon: ClipboardList, color: '#15803D', link: '/consultas' },
-          { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#2E7D6B', link: '/calendario' },
+          { label: 'Clientes ativos', value: String(totalClientes), icon: Users, color: '#1C3A52', link: '/clientes' },
+          { label: 'Consultas ativas', value: String(totalConsultas), icon: ClipboardList, color: '#C9A227', link: '/consultas' },
+          { label: 'Relatórios entregues', value: String(relatoriosEntregues), icon: FileText, color: '#2E7D6B', link: '/consultas' },
+          { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#1C3A52', link: '/calendario' },
           { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: Star, color: '#C9A227', link: '/planos' },
         ].map((kpi, i) => (
-          <div key={i} className="panel panel-interactive" onClick={() => window.location.href = kpi.link} style={{
+          // `<a>` em vez de `<div onClick>`: é navegação, então precisa de
+          // teclado, foco e menu de contexto — WCAG 2.1.1.
+          <a key={i} href={kpi.link} className="panel panel-interactive" style={{
             padding: '24px', borderLeft: `4px solid ${kpi.color}`,
-            cursor: 'pointer',
+            textDecoration: 'none', display: 'block',
           }}>
             <div style={{ marginBottom: '8px' }}><kpi.icon size={26} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
             <div style={{ fontSize: '28px', fontWeight: 'bold', color: kpi.color, marginBottom: '4px' }}>{kpi.value}</div>
             <div style={{ color: '#6B7280', fontSize: '13px' }}>{kpi.label}</div>
-          </div>
+          </a>
         ))}
       </div>
 
@@ -657,10 +672,10 @@ export default function Dashboard() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {analisesBagua.map(a => (
-                <div key={a.id} className="panel panel-interactive" onClick={() => window.location.href = `/consultas/${a.id}`} style={{
-                  padding: '14px 18px', cursor: 'pointer',
+                <a key={a.id} href={`/consultas/${a.id}`} className="panel panel-interactive" style={{
+                  padding: '14px 18px', textDecoration: 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                borderLeft: `4px solid ${a.status_bagua==='concluida'?'#15803D':'#D97706'}`
+                borderLeft: `4px solid ${a.status_bagua==='concluida'?'#2E7D6B':'#C9A227'}`
               }}>
                 <div>
                   <p style={{ color: '#111827', fontWeight: 'bold', fontSize: '14px', margin: '0 0 2px 0' }}>{a.nome_imovel}</p>
@@ -682,7 +697,7 @@ export default function Dashboard() {
                     ? <><Check size={12} strokeWidth={2.5} aria-hidden="true" /> Concluída</>
                     : <><Clock size={12} strokeWidth={2.5} aria-hidden="true" /> Em andamento</>}
                 </span>
-              </div>
+              </a>
             ))}
           </div>
         </div>
@@ -701,14 +716,14 @@ export default function Dashboard() {
             { label: 'Ver relatórios', desc: 'Consultas finalizadas e PDFs', icon: FileText, color: '#15803D', link: '/consultas' },
             { label: 'Calendário lunar', desc: 'Próximos rituais agendados', icon: Moon, color: '#C9A227', link: '/calendario' },
           ].map((kpi, i) => (
-                <div key={i} className="panel panel-interactive" onClick={() => window.location.href = kpi.link} style={{
-                  padding: '20px', cursor: 'pointer',
+                <a key={i} href={kpi.link} className="panel panel-interactive" style={{
+                  padding: '20px', textDecoration: 'none', display: 'block',
               borderTop: `3px solid ${kpi.color}`,
             }}>
               <div style={{ marginBottom: '8px' }}><kpi.icon size={24} strokeWidth={1.75} color={kpi.color} aria-hidden="true" /></div>
               <div style={{ color: '#111827', fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>{kpi.label}</div>
               <div style={{ color: '#9CA3AF', fontSize: '13px' }}>{kpi.desc}</div>
-            </div>
+            </a>
           ))}
         </div>
       </div>

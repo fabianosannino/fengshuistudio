@@ -1010,7 +1010,7 @@ export default function Relatorio() {
                           </g>
                         )
                       })}
-                      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={1.5} />
+                      <polygon points={poly} fill="rgba(46,125,107,0.15)" stroke="#2E7D6B" strokeWidth={1.5} />
                       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill={RODA_12_AREAS[i].cor} />)}
                     </svg>
                   </div>

@@ -134,7 +134,7 @@ export default function RosaDosVentos({
 
       {/* Faixa da Montanha corrente (15°) */}
       {destacarMontanha && (
-        <path d={arcoMontanha(montanha.faixaInicio)} fill="rgba(124,58,237,0.35)" data-testid="rosa-montanha-atual" />
+        <path d={arcoMontanha(montanha.faixaInicio)} fill="rgba(201,162,39,0.35)" data-testid="rosa-montanha-atual" />
       )}
 
       {/* Anel das 24 Montanhas: um tique por faixa de 15°, maiores nos 45° */}

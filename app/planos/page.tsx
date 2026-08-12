@@ -300,7 +300,7 @@ export default function Planos() {
           return (
             <div key={plano.id} style={{
               background: '#ffffff', borderRadius: '16px', padding: '32px',
-              boxShadow: plano.destaque ? '0 4px 20px rgba(124,58,237,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
+              boxShadow: plano.destaque ? '0 4px 20px rgba(201,162,39,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
               border: plano.destaque ? '2px solid #2E7D6B' : '1px solid #E5E7EB',
               position: 'relative', overflow: 'hidden'
             }}>

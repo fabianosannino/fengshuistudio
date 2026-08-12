@@ -142,7 +142,7 @@ export default function EditorPoligonoTaiJi({
       >
         <polygon
           points={pontos.map(p => `${p.x},${p.y}`).join(' ')}
-          fill={transparente ? 'rgba(124,58,237,0.15)' : '#E6F2EF'}
+          fill={transparente ? 'rgba(46,125,107,0.15)' : '#E6F2EF'}
           stroke="#2E7D6B"
           strokeWidth={larguraTraco * 1.3}
         />
@@ -221,8 +221,8 @@ export default function EditorPoligonoTaiJi({
           </p>
         )}
         <p style={{ margin: '0 0 8px' }}>
-          Arraste os pontos roxos para desenhar o contorno real do imóvel. Clique nos pontos brancos menores para
-          adicionar um vértice; duplo-clique num vértice roxo para removê-lo (mínimo {MINIMO_VERTICES}).
+          Arraste os pontos jade para desenhar o contorno real do imóvel. Clique nos pontos brancos menores para
+          adicionar um vértice; duplo-clique num vértice para removê-lo (mínimo {MINIMO_VERTICES}).
         </p>
         <button
           type="button"

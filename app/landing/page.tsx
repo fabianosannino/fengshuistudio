@@ -207,7 +207,7 @@ export default function LandingPage() {
         <div style={{
           position: 'absolute', top: '-20%', right: '-10%',
           width: '700px', height: '700px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(201,162,39,0.12) 0%, transparent 70%)',
           animation: 'pulse 6s ease-in-out infinite',
         }} />
         <div style={{
@@ -228,7 +228,7 @@ export default function LandingPage() {
             <div style={{ flex: 1 }}>
               <div className="fade-up" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
+                background: 'rgba(201,162,39,0.15)', border: '1px solid rgba(201,162,39,0.3)',
                 borderRadius: '100px', padding: '8px 20px', marginBottom: '24px',
               }}>
                 <span style={{ fontSize: '12px' }}>✨</span>
@@ -536,7 +536,7 @@ export default function LandingPage() {
         <div style={{
           position: 'absolute', top: '10%', right: '5%',
           width: '400px', height: '400px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(201,162,39,0.08) 0%, transparent 70%)',
         }} />
 
         <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
@@ -660,8 +660,8 @@ export default function LandingPage() {
 
             {/* Profissional */}
             <div className="pricing-card" style={{
-              background: 'linear-gradient(145deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05))',
-              border: '2px solid rgba(124,58,237,0.4)',
+              background: 'linear-gradient(145deg, rgba(201,162,39,0.15), rgba(201,162,39,0.05))',
+              border: '2px solid rgba(201,162,39,0.4)',
               borderRadius: '24px', padding: '40px 32px',
               position: 'relative', overflow: 'hidden',
             }}>

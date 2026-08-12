@@ -269,7 +269,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                   )
                 })}
                 {/* Filled polygon */}
-                <polygon points={polygonStr} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={2} />
+                <polygon points={polygonStr} fill="rgba(46,125,107,0.15)" stroke="#2E7D6B" strokeWidth={2} />
                 {/* Data points */}
                 {points.map((p, i) => (
                   <g key={AREAS[i].key}

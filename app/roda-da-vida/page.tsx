@@ -53,7 +53,7 @@ function RadarChart({ respostas }: { respostas: Record<string, number[]> }) {
           <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" fontSize={8} fill={a.cor} fontWeight="bold">{a.label}</text>
         </g>
       })}
-      <polygon points={poly} fill="rgba(124,58,237,0.15)" stroke="#2E7D6B" strokeWidth={2} />
+      <polygon points={poly} fill="rgba(46,125,107,0.15)" stroke="#2E7D6B" strokeWidth={2} />
       {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={4} fill={AREAS[i].cor} />)}
       {pts.map((p, i) => <text key={'t'+i} x={p.x} y={p.y - 8} textAnchor="middle" fontSize={8} fill={AREAS[i].cor} fontWeight="bold">{values[i].toFixed(1)}</text>)}
     </svg>
