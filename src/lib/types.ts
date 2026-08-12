@@ -1,3 +1,5 @@
+import type { ChecklistChi } from './fluxo-chi'
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SHARED TYPES — FengShui Studio
 // ══════════════════════════════════════════════════════════════════════════════
@@ -182,7 +184,13 @@ export interface Consulta {
   relatorio_pdf_path?: string | null
   relatorio_gerado_em?: string | null
   roda_da_vida?: Record<string, unknown> | null
-  checklist_chi?: string[] | null
+  /**
+   * Dois formatos convivem no banco: `string[]` (legado, = itens marcados) e o
+   * mapa item → estado. Passe sempre por `normalizarChecklist` de
+   * `src/lib/fluxo-chi.ts` — a união existe justamente para que ler `.length`
+   * direto não compile.
+   */
+  checklist_chi?: string[] | ChecklistChi | null
   posicao_comando?: Record<string, string[]> | null
   criado_em: string
   atualizado_em?: string

@@ -156,4 +156,6 @@ export function usePreferenciaLista<T>(
 
 export const PREFERENCIA_TEMA_ESCURO = 'fengshui-dark'
 export const PREFERENCIA_SIDEBAR_ABERTA = 'fengshui-sidebar'
-export const PREFERENCIA_ITENS_CHI = 'fengshui-custom-chi-items'
+// `fengshui-custom-chi-items` foi removido: os pontos personalizados do
+// checklist de Chi vivem no banco (`consultor_checklist_chi_custom`). O que
+// sobrou em localStorage é inerte — não é lido por nada.

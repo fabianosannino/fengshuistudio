@@ -11,6 +11,7 @@ import TabFotos from './TabFotos'
 import { CRITERIOS } from '../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../src/lib/comodo-setor'
+import { normalizarChecklist, type ChecklistChi } from '../../../src/lib/fluxo-chi'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 import { useUrlAssinada } from '../../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../../src/lib/storage-imagens'
@@ -298,7 +299,9 @@ export default function ConsultaDetalhe() {
   const [rodaData, setRodaData] = useState<Record<string, number[] | number>>({})
   const [rodaObservacoes, setRodaObservacoes] = useState<Record<string, string>>({})
   const [rodaObservacaoGeral, setRodaObservacaoGeral] = useState('')
-  const [checklistChi, setChecklistChi] = useState<string[]>([])
+  // Mapa item → estado. `normalizarChecklist` no load reconcilia com o formato
+  // antigo (`string[]` = itens marcados) que ainda está gravado nas consultas.
+  const [checklistChi, setChecklistChi] = useState<ChecklistChi>({})
   const [posicaoComando, setPosicaoComando] = useState<Record<string, string[]>>({})
 
   // Fotos do imóvel
@@ -342,7 +345,7 @@ export default function ConsultaDetalhe() {
       }
       setRodaObservacoes(rawRoda.observacoes || {})
       setRodaObservacaoGeral(rawRoda.observacao_geral || '')
-      setChecklistChi(consulta.checklist_chi || [])
+      setChecklistChi(normalizarChecklist(consulta.checklist_chi))
       setPosicaoComando(consulta.posicao_comando || {})
 
       // Load fotos

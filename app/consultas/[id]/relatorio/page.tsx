@@ -20,6 +20,7 @@ import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
 import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/lib/sintese-metodos'
 import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
+import { normalizarChecklist, resumirChi } from '../../../../src/lib/fluxo-chi'
 import { logger } from '../../../../src/lib/logger'
 import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
@@ -145,9 +146,10 @@ export default function Relatorio() {
   // Editable fields for the consultant
   const [textoIntroducao, setTextoIntroducao] = useState('Este relatório apresenta o diagnóstico completo de Feng Shui do imóvel, baseado na Escola Budista da Seita Negra (Black Hat Sect). A análise integra o mapa Ba Guá, a Roda da Vida, o fluxo de Chi e recomendações de curas e ativações para harmonização dos ambientes.')
   const [textoCuras, setTextoCuras] = useState('As curas e ativações abaixo são recomendadas com base no diagnóstico energético de cada setor do Ba Guá. Cada elemento — cristais, plantas, objetos, mudras, meditações e mantras — atua em uma frequência específica para reequilibrar a energia do ambiente.')
-  const [textoChi, setTextoChi] = useState('O Fluxo de Chi (energia vital) foi avaliado em 11 pontos essenciais do imóvel. Os itens marcados indicam pontos onde a circulação energética está adequada. Os itens pendentes requerem atenção para melhorar o fluxo de energia no ambiente.')
+  const [textoChi, setTextoChi] = useState('O Fluxo de Chi (energia vital) foi avaliado ponto a ponto no imóvel. «✓» indica onde a circulação energética está adequada e «✕» onde há um ponto a tratar. «–» marca o que não foi verificado nesta visita — é uma lacuna do levantamento, não um problema encontrado.')
   const [textoConclusao, setTextoConclusao] = useState('As recomendações apresentadas neste relatório visam promover o equilíbrio energético do imóvel e o bem-estar de seus ocupantes. Recomenda-se a implementação gradual das sugestões, começando pelas áreas de maior urgência.')
   const [recsAdicionais, setRecsAdicionais] = useState<Record<string, string>>({})
+  const [chiCustom, setChiCustom] = useState<{ id: string; label: string }[]>([])
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
@@ -191,6 +193,21 @@ export default function Relatorio() {
         .eq('consulta_id', id)
         .order('criado_em', { ascending: true })
       setSnapshots(snapsData || [])
+
+      // Pontos personalizados do checklist de Chi. Viviam em `localStorage` e
+      // por isso nunca chegavam ao relatório — que é o entregável ao cliente.
+      const { data: custom, error: erroCustom } = await supabase
+        .from('consultor_checklist_chi_custom')
+        .select('item_id, label')
+        .order('criado_em', { ascending: true })
+      if (erroCustom) {
+        logger.error('Falha ao carregar pontos personalizados do Chi no relatório', {
+          route: 'relatorio', action: 'load-chi-custom', error: erroCustom.message,
+        })
+      } else {
+        setChiCustom((custom ?? []).map(r => ({ id: r.item_id as string, label: r.label as string })))
+      }
+
       setLoading(false)
     }
     load()
@@ -445,11 +462,16 @@ export default function Relatorio() {
   const geralLevel = scoreLevelLabel(geral)
   const top3 = getTop3()
   const rodaData = (consulta.roda_da_vida || {}) as Record<string, number>
-  const checklistChi: string[] = consulta.checklist_chi || []
   const posicaoComando: Record<string, string[]> = consulta.posicao_comando || {}
   const hasRoda = Object.keys(rodaData).length > 0
-  const hasChi = checklistChi.length > 0
-  const chiScore = Math.round((checklistChi.length / CHI_ITEMS.length) * 100)
+  // Três estados: conforme, problema e — pela ausência da chave — não
+  // verificado. O score é sobre o que foi olhado, e `null` quando nada foi.
+  // Ver src/lib/fluxo-chi.ts.
+  const chi = normalizarChecklist(consulta.checklist_chi)
+  const chiItens = [...CHI_ITEMS, ...chiCustom]
+  const resumoChi = resumirChi(chi, chiItens.map(i => i.id))
+  const chiScore = resumoChi.score
+  const hasChi = resumoChi.conforme + resumoChi.problema > 0
 
   // Sorted sectors for Ki Flow
   const sortedSetores = [...setores]
@@ -582,7 +604,7 @@ export default function Relatorio() {
               {[
                 { label: 'Ba Guá', ok: setores.length > 0 },
                 { label: 'Roda da Vida', ok: !!(consulta?.roda_da_vida && (consulta.roda_da_vida as Record<string, unknown>)?.respostas) },
-                { label: 'Checklist Chi', ok: !!(consulta?.checklist_chi && (consulta.checklist_chi as string[]).length > 0) },
+                { label: 'Checklist Chi', ok: hasChi },
                 { label: 'Foto geral', ok: !!consulta?.foto_geral_url },
                 { label: 'Fotos antes', ok: ((consulta?.fotos_antes as string[] | undefined)?.length ?? 0) > 0 },
                 { label: 'Fotos depois', ok: ((consulta?.fotos_depois as string[] | undefined)?.length ?? 0) > 0 },
@@ -1114,22 +1136,37 @@ export default function Relatorio() {
                     <span style={{ fontSize: '18px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>氣</span>
                     Checklist de Chi
                   </div>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: scoreColor(chiScore) }}>{chiScore}%</span>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: chiScore === null ? '#6B7280' : scoreColor(chiScore) }}>
+                    {chiScore === null ? '—' : `${chiScore}%`}
+                  </span>
                 </div>
-                {CHI_ITEMS.map(item => {
-                  const ok = checklistChi.includes(item.id)
+                {chiItens.map(item => {
+                  // Três símbolos para três estados. Antes, «✕» dizia ao cliente que
+                  // o ponto estava errado quando o consultor apenas não o olhou.
+                  const estado = chi[item.id]
+                  const visual = estado === 'conforme' ? { marca: '✓', cor: '#16A34A' }
+                    : estado === 'problema' ? { marca: '✕', cor: '#DC2626' }
+                    : { marca: '–', cor: '#9CA3AF' }
                   return (
                     <div key={item.id} style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
                       fontSize: '11px', padding: '3px 0', fontFamily: 'Helvetica Neue, Arial, sans-serif'
                     }}>
-                      <span style={{ fontWeight: 700, fontSize: '12px', color: ok ? '#16A34A' : '#DC2626', width: '14px' }}>
-                        {ok ? '✓' : '✕'}
+                      <span style={{ fontWeight: 700, fontSize: '12px', color: visual.cor, width: '14px' }}>
+                        {visual.marca}
                       </span>
-                      <span style={{ color: ink }}>{item.label}</span>
+                      <span style={{ color: estado === undefined ? '#6B7280' : ink }}>{item.label}</span>
                     </div>
                   )
                 })}
+                {/* Lacuna declarada, não omitida — ADR 0020. */}
+                <div style={{
+                  marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${border}`,
+                  fontSize: '10px', color: '#6B7280', fontFamily: 'Helvetica Neue, Arial, sans-serif'
+                }}>
+                  {resumoChi.texto}
+                  {resumoChi.naoVerificado > 0 && ' — «–» marca o que não foi verificado nesta visita.'}
+                </div>
               </div>
               {/* Command position */}
               <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: '4px', padding: '1rem' }}>
