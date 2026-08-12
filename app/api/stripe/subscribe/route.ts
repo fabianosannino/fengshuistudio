@@ -20,6 +20,7 @@ import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { logger } from '../../../../src/lib/logger'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 // Map of plan + cycle to Stripe Price IDs
 function getStripePriceId(planSlug: string, cycle: string): string | null {
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const origin = origemDaAplicacao(request)
 
   try {
     const session = await stripeClient.checkout.sessions.create({

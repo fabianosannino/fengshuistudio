@@ -11,8 +11,9 @@ import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { logger } from '../../../../src/lib/logger'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,7 +31,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Nenhum cliente Stripe vinculado. Assine um plano primeiro.' }, { status: 400 })
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const origin = origemDaAplicacao(request)
 
   try {
     const session = await stripeClient.billingPortal.sessions.create({
