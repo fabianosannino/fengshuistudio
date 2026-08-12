@@ -23,6 +23,7 @@ import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/l
 import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
 import { normalizarChecklist, resumirChi } from '../../../../src/lib/fluxo-chi'
+import { CHECKLIST_CHI } from '../../../../src/lib/checklist-chi'
 import { faseLunar } from '../../../../src/lib/lunar'
 import { logger } from '../../../../src/lib/logger'
 import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
@@ -35,19 +36,10 @@ import type { Consulta, SetorBagua, DiagnosticoCriterio, Profile } from '../../.
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
 // Chi Flow items
-const CHI_ITEMS = [
-  { id: 'porta_abre', label: 'Porta principal abre completamente' },
-  { id: 'entrada_livre', label: 'Entrada livre e acolhedora' },
-  { id: 'sem_corredor_longo', label: 'Sem corredores longos e estreitos' },
-  { id: 'sem_portas_alinhadas', label: 'Sem portas alinhadas (porta-a-porta)' },
-  { id: 'sem_escada_porta', label: 'Sem escada frente à porta principal' },
-  { id: 'banheiro_fora_centro', label: 'Banheiro fora do centro da casa' },
-  { id: 'sem_vigas_expostas', label: 'Sem vigas expostas sobre áreas de estar' },
-  { id: 'espelhos_ok', label: 'Espelhos não refletem a porta de entrada' },
-  { id: 'sem_cantos_agressivos', label: 'Sem cantos agressivos para áreas de estar' },
-  { id: 'fluxo_suave', label: 'Fluxo de circulação suave' },
-  { id: 'luz_natural', label: 'Iluminação natural adequada' },
-]
+// Os onze pontos vêm de `src/lib/checklist-chi.ts` — a cópia local aqui tinha
+// os mesmos ids por sorte, e divergir faria o relatório mostrar «não
+// verificado» num ponto que o consultor marcou.
+const CHI_ITEMS = CHECKLIST_CHI.map(i => ({ id: i.id, label: i.labelCurto }))
 
 const COMODO_LABELS: Record<string, string> = {
   sala: 'Sala de Estar', quarto_casal: 'Quarto do Casal', quarto_filho: 'Quarto de Filho(a)',

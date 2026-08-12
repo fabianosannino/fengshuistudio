@@ -175,7 +175,8 @@ create table if not exists public.consultas (
   modelo_pontuacao text,
   peso_geo numeric(3,2),
   ano_construcao integer,
-  ano_reforma_estrutural integer
+  ano_reforma_estrutural integer,
+  vistoria_notas jsonb
 );
 
 create table if not exists public.consultor_checklist_chi_custom (

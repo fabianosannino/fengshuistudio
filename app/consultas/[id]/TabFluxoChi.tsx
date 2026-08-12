@@ -8,28 +8,9 @@ import {
 import { supabase } from '../../../src/lib/supabase'
 import { logger } from '../../../src/lib/logger'
 import { BedDouble, Laptop, CookingPot, Sofa } from 'lucide-react'
-
-// ── Chi Flow checklist (11 items) ───────────────────────────────────────
-const CHECKLIST_CHI = [
-  { id: 'porta_abre', label: 'Porta principal abre completamente (sem obstruções)', categoria: 'entrada' },
-  { id: 'entrada_livre', label: 'Entrada livre e acolhedora (sem objetos acumulados)', categoria: 'entrada' },
-  { id: 'sem_corredor_longo', label: 'Não há corredores longos e estreitos sem tratamento', categoria: 'circulacao' },
-  { id: 'sem_portas_alinhadas', label: 'Não há portas alinhadas diretamente (porta-a-porta)', categoria: 'circulacao' },
-  { id: 'sem_escada_porta', label: 'Não há escada diretamente voltada para a porta principal', categoria: 'circulacao' },
-  { id: 'banheiro_fora_centro', label: 'Banheiro não está localizado no centro da casa', categoria: 'estrutura' },
-  { id: 'sem_vigas_expostas', label: 'Não há vigas expostas sobre cama, sofá ou mesa de trabalho', categoria: 'estrutura' },
-  { id: 'espelhos_ok', label: 'Espelhos não refletem diretamente a porta de entrada', categoria: 'elementos' },
-  { id: 'sem_cantos_agressivos', label: 'Não há cantos/quinas apontados para áreas de estar ou descanso', categoria: 'elementos' },
-  { id: 'fluxo_suave', label: 'Fluxo de circulação suave entre cômodos (sem bloqueios)', categoria: 'circulacao' },
-  { id: 'luz_natural', label: 'Iluminação natural adequada nos principais ambientes', categoria: 'elementos' },
-]
-
-const CATEGORIAS_CHI: Record<string, { label: string; cor: string }> = {
-  entrada: { label: 'Entrada / Boca do Chi', cor: '#2E7D6B' },
-  circulacao: { label: 'Circulação', cor: '#2E7D6B' },
-  estrutura: { label: 'Estrutura', cor: '#8A6E2F' },
-  elementos: { label: 'Elementos', cor: '#2E7D6B' },
-}
+// A lista dos onze pontos vive em `src/lib/checklist-chi.ts`: estava copiada
+// aqui e no relatório, e é o `id` que liga o estado gravado ao ponto.
+import { CHECKLIST_CHI, CATEGORIAS_CHI } from '../../../src/lib/checklist-chi'
 
 // ── Command Position checklist per room type ───────────────────────────
 // Ícones `lucide`, não emoji: emoji renderiza diferente em cada sistema, muda
@@ -184,7 +165,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
   }
 
   // Group chi items by category
-  const categorias = Object.keys(CATEGORIAS_CHI)
+  const categorias = Object.keys(CATEGORIAS_CHI) as (keyof typeof CATEGORIAS_CHI)[]
 
   const comProblema = allItems.filter(i => chi[i.id] === 'problema')
   const naoVerificados = allItems.filter(i => chi[i.id] === undefined)

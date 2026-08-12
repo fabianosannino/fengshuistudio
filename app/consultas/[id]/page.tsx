@@ -13,6 +13,7 @@ import { CRITERIOS } from '../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../src/lib/comodo-setor'
 import { normalizarChecklist, type ChecklistChi } from '../../../src/lib/fluxo-chi'
+import { Smartphone } from 'lucide-react'
 import type { Consulta, SetorBagua, DiagnosticoCriterio, FotoComodo } from '../../../src/lib/types'
 import { useUrlAssinada } from '../../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../../src/lib/storage-imagens'
@@ -1282,6 +1283,28 @@ export default function ConsultaDetalhe() {
 
         {/* ══════ TAB: Fluxo de Chi ══════ */}
         {activeTab === 'fluxo_chi' && (
+          <>
+          {/* A vistoria é a mesma marcação, feita andando pela casa: alvos de
+              44px, uma coluna e fila offline. Ver app/consultas/[id]/vistoria. */}
+          <div style={{
+            background: '#F3EEE4', border: '1px solid #E7E1D6', borderRadius: '12px',
+            padding: '14px 18px', marginBottom: '16px',
+            display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
+          }}>
+            <Smartphone size={22} strokeWidth={1.75} color="#8A6E2F" style={{ flexShrink: 0 }} aria-hidden="true" />
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0E1B2C' }}>Vai marcar andando pela casa?</p>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6B7280' }}>
+                O modo vistoria funciona sem sinal — as marcações ficam guardadas no
+                aparelho e sincronizam sozinhas depois.
+              </p>
+            </div>
+            <a href={`/consultas/${id}/vistoria`} style={{
+              border: '1px solid #D8D0C0', background: '#fff', color: '#0E1B2C',
+              fontSize: '13px', fontWeight: 700, padding: '9px 16px', borderRadius: '8px',
+              textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>Abrir vistoria</a>
+          </div>
           <TabFluxoChi
             checklistChi={checklistChi}
             posicaoComando={posicaoComando}
@@ -1290,6 +1313,7 @@ export default function ConsultaDetalhe() {
             onSave={handleSaveChi}
             saving={saving}
           />
+          </>
         )}
 
         {/* ══════ TAB: Fotos do Imóvel ══════ */}
