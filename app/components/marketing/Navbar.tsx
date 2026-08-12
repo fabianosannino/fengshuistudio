@@ -53,7 +53,7 @@ export default function Navbar() {
         {/* Desktop */}
         <nav className="hidden lg:flex items-center gap-7" aria-label="Navegação principal">
           <div className="relative group">
-            <button className={`${linkCls('/recursos')} inline-flex items-center gap-1`}>
+            <button type="button" className={`${linkCls('/recursos')} inline-flex items-center gap-1`}>
               Recursos <ChevronDown className="h-3.5 w-3.5" />
             </button>
             <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200">
@@ -70,7 +70,7 @@ export default function Navbar() {
             </div>
           </div>
           <div className="relative group">
-            <button className={`${linkCls('/para-consultores')} inline-flex items-center gap-1`}>
+            <button type="button" className={`${linkCls('/para-consultores')} inline-flex items-center gap-1`}>
               Para quem <ChevronDown className="h-3.5 w-3.5" />
             </button>
             <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200">
@@ -103,7 +103,7 @@ export default function Navbar() {
           </Link>
         </div>
 
-        <button
+        <button type="button"
           className="lg:hidden p-2 text-ink"
           onClick={() => setOpen(!open)}
           aria-label={open ? 'Fechar menu' : 'Abrir menu'}

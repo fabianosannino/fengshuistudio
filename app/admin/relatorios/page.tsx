@@ -124,7 +124,7 @@ export default function AdminRelatorios() {
     <AppShell currentPage="admin/relatorios">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Relatórios Semanais</h1>
-        <button onClick={() => generateReport(false)} disabled={generating}
+        <button type="button" onClick={() => generateReport(false)} disabled={generating}
           style={{ padding: '10px 20px', background: generating ? '#9CA3AF' : '#2E7D6B', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: generating ? 'not-allowed' : 'pointer' }}>
           {generating ? 'Gerando...' : 'Gerar Relatório da Semana Anterior'}
         </button>
@@ -148,7 +148,7 @@ export default function AdminRelatorios() {
             <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
               style={{ display: 'block', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '8px', marginTop: '4px' }} />
           </label>
-          <button onClick={() => generateReport(true)} disabled={generating || !customStart || !customEnd}
+          <button type="button" onClick={() => generateReport(true)} disabled={generating || !customStart || !customEnd}
             style={{ padding: '10px 20px', background: (!customStart || !customEnd) ? '#D1D5DB' : '#0E1B2C', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: (!customStart || !customEnd) ? 'not-allowed' : 'pointer' }}>
             Gerar
           </button>
@@ -163,11 +163,11 @@ export default function AdminRelatorios() {
               Semana {selectedReport.data.periodo.semana} — {fmtDate(selectedReport.data.periodo.inicio)} a {fmtDate(selectedReport.data.periodo.fim)}
             </h2>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => exportCSV(selectedReport.data)}
+              <button type="button" onClick={() => exportCSV(selectedReport.data)}
                 style={{ padding: '8px 16px', background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
                 Exportar CSV
               </button>
-              <button onClick={() => setSelectedReport(null)}
+              <button type="button" onClick={() => setSelectedReport(null)}
                 style={{ padding: '8px 16px', background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
                 Fechar
               </button>
@@ -274,11 +274,11 @@ export default function AdminRelatorios() {
                 </td>
                 <td style={{ padding: '12px', textAlign: 'center' }}>
                   <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                    <button onClick={() => setSelectedReport(r)}
+                    <button type="button" onClick={() => setSelectedReport(r)}
                       style={{ padding: '6px 12px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
                       Ver
                     </button>
-                    <button onClick={() => exportCSV(r.data)}
+                    <button type="button" onClick={() => exportCSV(r.data)}
                       style={{ padding: '6px 12px', background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
                       CSV
                     </button>

@@ -77,7 +77,7 @@ function ComodoAutocomplete({ selected, onChange }: { selected: string[]; onChan
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto'
         }}>
           {filtered.slice(0, 8).map(s => (
-            <button key={s} onClick={() => addItem(s)} style={{
+            <button type="button" key={s} onClick={() => addItem(s)} style={{
               display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
               border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px',
               color: '#374151'
@@ -89,7 +89,7 @@ function ComodoAutocomplete({ selected, onChange }: { selected: string[]; onChan
             </button>
           ))}
           {input.trim() && !COMODO_SUGGESTIONS.includes(input.trim()) && (
-            <button onClick={addCustom} style={{
+            <button type="button" onClick={addCustom} style={{
               display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
               border: 'none', borderTop: '1px solid #E5E7EB', background: '#EAF4F1',
               cursor: 'pointer', fontSize: '13px', color: '#2E7D6B', fontWeight: 'bold'
@@ -194,7 +194,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} style={{
+      <button type="button" onClick={() => setOpen(true)} style={{
         width: '100%', padding: '10px', background: '#2E7D6B', color: '#fff',
         border: 'none', borderRadius: '8px', cursor: 'pointer',
         fontSize: '13px', fontWeight: 'bold'
@@ -209,7 +209,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Classificação</label>
         <div style={{ display: 'flex', gap: '6px' }}>
           {([['urgente', 'Urgente', '#DC2626'], ['melhoria', 'Melhoria', '#D97706'], ['manutencao', 'Manutenção', '#15803D']] as const).map(([val, label, color]) => (
-            <button key={val} onClick={() => setTipo(val)} style={{
+            <button type="button" key={val} onClick={() => setTipo(val)} style={{
               padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
               border: 'none', cursor: 'pointer',
               background: tipo === val ? color : '#F3F4F6',
@@ -241,7 +241,7 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>Produtos sugeridos (opcional)</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {PRODUTO_CATEGORIAS.map(cat => (
-            <button key={cat.value} onClick={() => toggleProduto(cat.value)} style={{
+            <button type="button" key={cat.value} onClick={() => toggleProduto(cat.value)} style={{
               padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold',
               border: produtos.includes(cat.value) ? '2px solid #2E7D6B' : '1px solid #D1D5DB',
               background: produtos.includes(cat.value) ? '#E6F2EF' : '#fff',
@@ -254,12 +254,12 @@ function NewRecForm({ onAdd }: { onAdd: (rec: CustomRec) => void }) {
 
       {/* Ações */}
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={handleAdd} disabled={!texto.trim()} style={{
+        <button type="button" onClick={handleAdd} disabled={!texto.trim()} style={{
           flex: 1, padding: '10px', background: texto.trim() ? '#2E7D6B' : '#D1D5DB',
           color: '#fff', border: 'none', borderRadius: '8px', cursor: texto.trim() ? 'pointer' : 'not-allowed',
           fontSize: '13px', fontWeight: 'bold'
         }}>Adicionar</button>
-        <button onClick={() => { setOpen(false); setTexto(''); setProdutos([]) }} style={{
+        <button type="button" onClick={() => { setOpen(false); setTexto(''); setProdutos([]) }} style={{
           padding: '10px 16px', background: '#F3F4F6', color: '#6B7280',
           border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px'
         }}>Cancelar</button>
@@ -599,7 +599,7 @@ export default function ConsultaDetalhe() {
                     {recSetorData.elemento} · Score: {pct}%
                   </p>
                 </div>
-                <button onClick={() => setRecModal(null)} style={{
+                <button type="button" onClick={() => setRecModal(null)} style={{
                   background: '#F3F4F6', border: 'none', borderRadius: '8px',
                   padding: '8px 12px', cursor: 'pointer', fontSize: '16px'
                 }}>✕</button>
@@ -772,17 +772,17 @@ export default function ConsultaDetalhe() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
+            <button type="button" onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
               background: '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>治 Curas & Ativações</button>
-            <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
+            <button type="button" onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
               background: '#0E1B2C', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Montar Relatório</button>
-            <button onClick={handleFinalizar} style={{
+            <button type="button" onClick={handleFinalizar} style={{
               background: '#15803D', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
@@ -794,17 +794,17 @@ export default function ConsultaDetalhe() {
         {/* Action buttons (when foto geral is shown) */}
         {fotoGeral && (
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
+            <button type="button" onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
               background: '#2E7D6B', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>治 Curas & Ativações</button>
-            <button onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
+            <button type="button" onClick={() => router.push(`/consultas/${id}/relatorio`)} style={{
               background: '#0E1B2C', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
             }}>Montar Relatório</button>
-            <button onClick={handleFinalizar} style={{
+            <button type="button" onClick={handleFinalizar} style={{
               background: '#15803D', color: '#ffffff', border: 'none',
               padding: '10px 24px', borderRadius: '8px', fontSize: '14px',
               fontWeight: 'bold', cursor: 'pointer'
@@ -898,7 +898,7 @@ export default function ConsultaDetalhe() {
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {/* Estado 1: Sem planta */}
                   {!plantaUrl && !finalizada && (
-                    <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                    <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
                       style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                       + Enviar planta
                     </button>
@@ -906,11 +906,11 @@ export default function ConsultaDetalhe() {
                   {/* Estado 2: Em andamento */}
                   {emAndamento && (
                     <>
-                      <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                      <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
                         style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Continuar análise
                       </button>
-                      <button onClick={alterarPlanta}
+                      <button type="button" onClick={alterarPlanta}
                         style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Alterar planta
                       </button>
@@ -919,11 +919,11 @@ export default function ConsultaDetalhe() {
                   {/* Estado 3: Diagnóstico finalizado */}
                   {finalizada && (
                     <>
-                      <button onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
+                      <button type="button" onClick={() => router.push(`/bagua-planta?consultaId=${id}`)}
                         style={{ background: '#C9A227', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Visualizar / Revisar análise
                       </button>
-                      <button onClick={alterarPlanta}
+                      <button type="button" onClick={alterarPlanta}
                         style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                         Alterar planta
                       </button>
@@ -988,7 +988,7 @@ export default function ConsultaDetalhe() {
           {TABS.map(tab => {
             const isActive = activeTab === tab.id
             return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+              <button type="button" key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
                 flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none',
                 cursor: 'pointer', fontSize: '14px', fontWeight: 'bold',
                 background: isActive ? '#ffffff' : 'transparent',
@@ -1050,7 +1050,7 @@ export default function ConsultaDetalhe() {
                           fontSize: '12px', fontWeight: 'bold'
                         }}>{pct}%</div>
                       )}
-                      <button
+                      <button type="button"
                         onClick={e => { e.stopPropagation(); setRecModal(setor.id) }}
                         title="Ver recomendações"
                         style={{
@@ -1084,7 +1084,7 @@ export default function ConsultaDetalhe() {
                         fontSize: '20px', fontWeight: 'bold'
                       }}>{getScore(setorAtivoData.id)}%</div>
                     )}
-                    <button
+                    <button type="button"
                       onClick={() => setRecModal(setorAtivoData.id)}
                       style={{
                         background: '#E6F2EF', color: '#2E7D6B', border: 'none',
@@ -1120,7 +1120,7 @@ export default function ConsultaDetalhe() {
                                 color: fav.cor
                               }}>({fav.label})</span>
                             )}
-                            <button onClick={() => {
+                            <button type="button" onClick={() => {
                               setComodoMap(prev => ({
                                 ...prev,
                                 [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, idx) => idx !== i)
@@ -1153,7 +1153,7 @@ export default function ConsultaDetalhe() {
                             const CORES=['#DC2626','#EA580C','#6B7280','#65A30D','#15803D']
                             const cur = criterios[setorAtivoData.id]?.[criterio]
                             return (
-                            <button key={val} onClick={() => {
+                            <button type="button" key={val} onClick={() => {
                               setCriterios(prev => ({
                                 ...prev,
                                 [setorAtivoData.id]: { ...prev[setorAtivoData.id], [criterio]: val }
@@ -1228,7 +1228,7 @@ export default function ConsultaDetalhe() {
                               </div>
                             )}
                           </div>
-                          <button onClick={() => {
+                          <button type="button" onClick={() => {
                             setCustomRecs(prev => ({
                               ...prev,
                               [setorAtivoData.id]: (prev[setorAtivoData.id] || []).filter((_, i) => i !== ri)
@@ -1251,7 +1251,7 @@ export default function ConsultaDetalhe() {
                   }} />
                 </div>
 
-                <button onClick={() => handleSaveSetor(setorAtivoData.id)} disabled={saving} style={{
+                <button type="button" onClick={() => handleSaveSetor(setorAtivoData.id)} disabled={saving} style={{
                   width: '100%', padding: '14px', background: saving ? '#9CA3AF' : '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '15px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer'

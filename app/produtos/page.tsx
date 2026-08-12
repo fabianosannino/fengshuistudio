@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
@@ -143,7 +144,7 @@ function ProdutosContent() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
 
       // Try to load custom affiliate products from database
       const { data, error } = await supabase
@@ -303,7 +304,7 @@ function ProdutosContent() {
 
         {/* Clear filters button */}
         {(searchProd || filtroTag !== 'todos' || filtroCategoria !== 'todos') && (
-          <button
+          <button type="button"
             onClick={() => { setSearchProd(''); setFiltroTag('todos'); setFiltroCategoria('todos') }}
             style={{
               padding: '10px 16px', background: '#F3F4F6', color: '#6B7280',
@@ -321,7 +322,7 @@ function ProdutosContent() {
         {/* Category sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {categoriasVisiveis.map(cat => (
-            <button key={cat.id} onClick={() => { setCategoriaAtiva(cat.id); setFiltroBusca('') }} style={{
+            <button type="button" key={cat.id} onClick={() => { setCategoriaAtiva(cat.id); setFiltroBusca('') }} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '12px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer',
               background: categoriaSelecionada === cat.id ? '#0E1B2C' : '#ffffff',

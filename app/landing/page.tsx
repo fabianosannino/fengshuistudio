@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { useMontado } from '../components/hooks-cliente'
 
@@ -180,8 +181,8 @@ export default function LandingPage() {
             <a href="#depoimentos" className="nav-link">Depoimentos</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => window.location.href = '/login'} className="nav-link hide-mobile">Entrar</button>
-            <button onClick={() => window.location.href = '/login'} style={{
+            <button type="button" onClick={() => redirecionarParaLogin()} className="nav-link hide-mobile">Entrar</button>
+            <button type="button" onClick={() => redirecionarParaLogin()} style={{
               background: 'linear-gradient(135deg, #2E7D6B, #1D4D43)',
               color: '#fff', border: 'none', padding: '10px 24px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 700,
@@ -189,7 +190,7 @@ export default function LandingPage() {
               transition: 'all 0.3s ease'
             }}>Começar grátis</button>
             {/* Mobile menu */}
-            <button onClick={() => setMenuOpen(!menuOpen)} className="hide-mobile" style={{ display: 'none' }}>☰</button>
+            <button type="button" onClick={() => setMenuOpen(!menuOpen)} className="hide-mobile" style={{ display: 'none' }}>☰</button>
           </div>
         </div>
       </nav>
@@ -258,7 +259,7 @@ export default function LandingPage() {
               </p>
 
               <div className="fade-up fade-up-d3 hero-buttons" style={{ display: 'flex', gap: '16px', marginBottom: '48px' }}>
-                <button className="btn-primary" onClick={() => window.location.href = '/login'}>
+                <button type="button" className="btn-primary" onClick={() => redirecionarParaLogin()}>
                   Começar gratuitamente
                 </button>
                 <a href="#como-funciona" className="btn-secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
@@ -595,7 +596,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} style={{
+              <button type="button" onClick={() => redirecionarParaLogin()} style={{
                 width: '100%', padding: '14px',
                 background: 'rgba(255,255,255,0.1)', color: '#ffffff',
                 border: '1px solid rgba(255,255,255,0.2)',
@@ -645,7 +646,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} style={{
+              <button type="button" onClick={() => redirecionarParaLogin()} style={{
                 width: '100%', padding: '14px',
                 background: 'rgba(59,130,246,0.2)', color: '#93C5FD',
                 border: '1px solid rgba(59,130,246,0.4)',
@@ -695,7 +696,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => window.location.href = '/login'} className="btn-primary" style={{ width: '100%' }}>
+              <button type="button" onClick={() => redirecionarParaLogin()} className="btn-primary" style={{ width: '100%' }}>
                 Assinar Profissional
               </button>
             </div>
@@ -787,7 +788,7 @@ export default function LandingPage() {
                 background: activeFaq === i ? '#FAFAF9' : '#ffffff',
                 transition: 'all 0.3s ease',
               }}>
-                <button
+                <button type="button"
                   onClick={() => setActiveFaq(activeFaq === i ? null : i)}
                   aria-expanded={activeFaq === i}
                   aria-controls={`faq-answer-${i}`}
@@ -844,7 +845,7 @@ export default function LandingPage() {
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '17px', lineHeight: 1.7, marginBottom: '36px' }}>
             Junte-se a centenas de consultores que já usam o FengShui Studio para elevar a qualidade do seu trabalho.
           </p>
-          <button onClick={() => window.location.href = '/login'} style={{
+          <button type="button" onClick={() => redirecionarParaLogin()} style={{
             background: '#ffffff', color: '#2E7D6B', border: 'none',
             padding: '16px 48px', borderRadius: '12px', fontSize: '17px',
             fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",

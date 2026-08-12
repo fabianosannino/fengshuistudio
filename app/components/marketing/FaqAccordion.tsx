@@ -14,7 +14,7 @@ export default function FaqAccordion({ items }: { items: { q: string; a: string 
         return (
           <div key={f.q}>
             <h3>
-              <button
+              <button type="button"
                 onClick={() => setOpen(isOpen ? null : i)}
                 aria-expanded={isOpen}
                 className="flex w-full items-center justify-between gap-4 py-5 text-left font-sans font-semibold text-ink hover:text-jade transition-colors"

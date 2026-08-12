@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -80,7 +81,7 @@ export default function RodaDaVidaPage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
       const [c, cl] = await Promise.all([
         supabase.from('consultas').select('id, nome_imovel, criado_em, cliente_id, roda_da_vida, clientes(nome_completo)').eq('consultor_id', user.id).neq('status', 'deletada').order('criado_em', { ascending: false }),
@@ -198,7 +199,7 @@ export default function RodaDaVidaPage() {
             <h1 style={{ color: '#0E1B2C', fontSize: 24, fontWeight: 'bold', margin: 0 }}>Roda da Vida</h1>
             <p style={{ color: '#6B7280', fontSize: 14, margin: '4px 0 0' }}>Questionário com 12 áreas da vida — 60 perguntas</p>
           </div>
-          <button onClick={startNew} style={btnPrimary()}>+ Criar Roda da Vida</button>
+          <button type="button" onClick={startNew} style={btnPrimary()}>+ Criar Roda da Vida</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
           {consultas.filter(c => c.roda_da_vida?.respostas).map(c => (
@@ -229,7 +230,7 @@ export default function RodaDaVidaPage() {
             <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Selecione um cliente existente</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {clientes.map(cl => (
-                <button key={cl.id} onClick={() => { setClienteId(cl.id); setPessoaNome(cl.nome_completo); setSelectedConsultaId(null) }}
+                <button type="button" key={cl.id} onClick={() => { setClienteId(cl.id); setPessoaNome(cl.nome_completo); setSelectedConsultaId(null) }}
                   style={{ padding: '6px 14px', borderRadius: 20, border: clienteId === cl.id ? '2px solid #2E7D6B' : '1px solid #D1D5DB', background: clienteId === cl.id ? '#EAF4F1' : '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>
                   {cl.nome_completo}
                 </button>
@@ -242,13 +243,13 @@ export default function RodaDaVidaPage() {
             <label style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: 6 }}>Vincular a uma consulta existente?</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {consultasDoCliente.map(c => (
-                <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes((c.roda_da_vida.acoes as unknown as Acao[]) || defaultAcoes()) } }}
+                <button type="button" key={c.id} onClick={() => { setSelectedConsultaId(c.id); if (c.roda_da_vida?.respostas) { setRespostas(c.roda_da_vida.respostas); setAcoes((c.roda_da_vida.acoes as unknown as Acao[]) || defaultAcoes()) } }}
                   style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === c.id ? '2px solid #2E7D6B' : '1px solid #D1D5DB', background: selectedConsultaId === c.id ? '#EAF4F1' : '#fff', cursor: 'pointer' }}>
                   <div style={{ fontSize: 14, fontWeight: 'bold', color: '#0E1B2C' }}>{c.nome_imovel}</div>
                   <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>{fmtDate(c.criado_em)} {c.roda_da_vida?.respostas ? <><span aria-hidden="true">—</span><CheckCircle2 size={12} strokeWidth={2} color="#2E7D6B" aria-hidden="true" /> Já tem Roda da Vida</> : ''}</div>
                 </button>
               ))}
-              <button onClick={() => setSelectedConsultaId(null)}
+              <button type="button" onClick={() => setSelectedConsultaId(null)}
                 style={{ textAlign: 'left', padding: '10px 14px', borderRadius: 8, border: selectedConsultaId === null ? '2px solid #2E7D6B' : '1px dashed #D1D5DB', background: selectedConsultaId === null ? '#EAF4F1' : '#fff', cursor: 'pointer', fontSize: 13, color: '#2E7D6B', fontWeight: 'bold' }}>
                 + Criar nova consulta para este cliente
               </button>
@@ -268,8 +269,8 @@ export default function RodaDaVidaPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-            <button onClick={() => setStep('list')} style={{ ...btnPrimary('#6B7280') }}>Voltar</button>
-            <button onClick={beginQuestionnaire} style={btnPrimary()}>
+            <button type="button" onClick={() => setStep('list')} style={{ ...btnPrimary('#6B7280') }}>Voltar</button>
+            <button type="button" onClick={beginQuestionnaire} style={btnPrimary()}>
               {selectedConsultaId && consultas.find(c => c.id === selectedConsultaId)?.roda_da_vida?.respostas ? 'Editar Roda da Vida' : 'Iniciar Questionário'}
             </button>
           </div>
@@ -301,10 +302,10 @@ export default function RodaDaVidaPage() {
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
-          <button onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setStep('select_client')} style={btnPrimary('#6B7280')}>Anterior</button>
+          <button type="button" onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setStep('select_client')} style={btnPrimary('#6B7280')}>Anterior</button>
           {areaAtual < 11
-            ? <button onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
-            : <button onClick={() => setStep('results')} style={btnPrimary('#15803D')}>Ver Resultados</button>
+            ? <button type="button" onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
+            : <button type="button" onClick={() => setStep('results')} style={btnPrimary('#15803D')}>Ver Resultados</button>
           }
         </div>
       </>}
@@ -317,9 +318,9 @@ export default function RodaDaVidaPage() {
             <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6B7280' }}>Média geral: <b style={{ color: '#2E7D6B' }}>{totalAvg.toFixed(1)}</b></p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setAreaAtual(0); setStep('questionnaire') }} style={btnPrimary('#6B7280')}>Editar</button>
-            <button onClick={salvar} disabled={saving} style={btnPrimary()}>{saving ? 'Salvando...' : 'Salvar'}</button>
-            <button onClick={() => setStep('list')} style={btnPrimary('#0E1B2C')}>Voltar</button>
+            <button type="button" onClick={() => { setAreaAtual(0); setStep('questionnaire') }} style={btnPrimary('#6B7280')}>Editar</button>
+            <button type="button" onClick={salvar} disabled={saving} style={btnPrimary()}>{saving ? 'Salvando...' : 'Salvar'}</button>
+            <button type="button" onClick={() => setStep('list')} style={btnPrimary('#0E1B2C')}>Voltar</button>
           </div>
         </div>
 
@@ -368,7 +369,7 @@ export default function RodaDaVidaPage() {
                   <span style={{ fontSize: 16, fontWeight: 'bold', color: a.cor }}>{areaAvg.toFixed(1)}</span>
                 </div>
                 <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{a.categoria}</div>
-                <button onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#2E7D6B', cursor: 'pointer', padding: 0, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button type="button" onClick={() => setExpandedArea(expanded ? null : a.key)} style={{ background: 'none', border: 'none', fontSize: 11, color: '#2E7D6B', cursor: 'pointer', padding: 0, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   {expanded ? <ChevronDown size={13} strokeWidth={2.5} aria-hidden="true" /> : <ChevronRight size={13} strokeWidth={2.5} aria-hidden="true" />} Detalhes das 5 perguntas
                 </button>
                 {expanded && (
@@ -417,14 +418,14 @@ export default function RodaDaVidaPage() {
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 16, color: '#0E1B2C' }}>Plano de Ação</h3>
-            <button onClick={() => setAcoes(prev => [...prev, novaAcao()])} style={{ padding: '6px 16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 'bold', cursor: 'pointer' }}>+ Nova Ação</button>
+            <button type="button" onClick={() => setAcoes(prev => [...prev, novaAcao()])} style={{ padding: '6px 16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 'bold', cursor: 'pointer' }}>+ Nova Ação</button>
           </div>
           {acoes.map((a, i) => (
             <div key={i} style={{ padding: 14, marginBottom: 12, borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 'bold', color: '#0E1B2C' }}>Ação {i + 1}</span>
                 {acoes.length > 1 && (
-                  <button onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16 }}>×</button>
+                  <button type="button" onClick={() => setAcoes(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16 }}>×</button>
                 )}
               </div>
               <div style={{ marginBottom: 8 }}>

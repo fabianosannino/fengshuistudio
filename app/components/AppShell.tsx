@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
@@ -115,7 +116,7 @@ export default function AppShell({
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    window.location.href = '/login'
+    redirecionarParaLogin()
   }
 
   const t = {
@@ -221,7 +222,7 @@ export default function AppShell({
           borderTop: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', flexDirection: 'column', gap: '4px'
         }}>
-          <button onClick={toggleDark} aria-label={darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'} style={{
+          <button type="button" onClick={toggleDark} aria-label={darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'} style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
@@ -232,7 +233,7 @@ export default function AppShell({
             {sidebarOpen && <span>{darkMode ? 'Modo claro' : 'Modo escuro'}</span>}
           </button>
 
-          <button onClick={toggleSidebar} aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'} style={{
+          <button type="button" onClick={toggleSidebar} aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'} style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
@@ -243,7 +244,7 @@ export default function AppShell({
             {sidebarOpen && <span>Recolher</span>}
           </button>
 
-          <button onClick={handleLogout} aria-label="Sair da conta" style={{
+          <button type="button" onClick={handleLogout} aria-label="Sair da conta" style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
@@ -266,7 +267,7 @@ export default function AppShell({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid ' + t.border, position: 'sticky', top: 0, zIndex: 30,
         }}>
-          <button onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" className="mobile-menu-btn" style={{
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" className="mobile-menu-btn" style={{
             background: 'none', border: 'none', fontSize: '24px',
             cursor: 'pointer', padding: '8px',
             display: isMobile ? 'block' : 'none'
@@ -289,7 +290,7 @@ export default function AppShell({
               }}>{plano === 'profissional' ? 'PRO' : 'SIMPLES'}</span>
             )}
             <NotificationBell />
-            <button onClick={handleLogout} title="Sair da conta" style={{
+            <button type="button" onClick={handleLogout} title="Sair da conta" style={{
               background: 'none', border: '1px solid ' + t.border, borderRadius: '8px',
               padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
               color: t.textSoft, fontSize: '13px',

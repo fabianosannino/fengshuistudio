@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
@@ -84,7 +85,7 @@ export default function Planos() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(data)
@@ -242,12 +243,12 @@ export default function Planos() {
             )}
             {subscription.status === 'active' && !subscription.cancel_at_period_end && planoAtualEfetivo !== 'free' && (
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
-                <button onClick={handleManageBilling} disabled={upgrading} style={{
+                <button type="button" onClick={handleManageBilling} disabled={upgrading} style={{
                   padding: '6px 16px', background: '#F3F4F6', color: '#374151',
                   border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '12px',
                   cursor: 'pointer'
                 }}>Gerenciar pagamento</button>
-                <button onClick={handleCancelSubscription} disabled={upgrading} style={{
+                <button type="button" onClick={handleCancelSubscription} disabled={upgrading} style={{
                   padding: '6px 16px', background: '#FEF2F2', color: '#DC2626',
                   border: '1px solid #FECACA', borderRadius: '6px', fontSize: '12px',
                   cursor: 'pointer'
@@ -259,12 +260,12 @@ export default function Planos() {
 
         {/* Toggle Mensal / Anual */}
         <div style={{ display: 'inline-flex', background: '#F3F4F6', borderRadius: '10px', padding: '4px' }}>
-          <button onClick={() => setCiclo('monthly')} style={{
+          <button type="button" onClick={() => setCiclo('monthly')} style={{
             padding: '10px 24px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: 'bold',
             background: ciclo === 'monthly' ? '#2E7D6B' : 'transparent',
             color: ciclo === 'monthly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
           }}>Mensal</button>
-          <button onClick={() => setCiclo('yearly')} style={{
+          <button type="button" onClick={() => setCiclo('yearly')} style={{
             padding: '10px 24px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: 'bold',
             background: ciclo === 'yearly' ? '#2E7D6B' : 'transparent',
             color: ciclo === 'yearly' ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.2s'
@@ -351,18 +352,18 @@ export default function Planos() {
 
               {/* Action buttons */}
               {isAtual ? (
-                <button disabled style={{
+                <button type="button" disabled style={{
                   width: '100%', padding: '14px', background: '#E5E7EB', color: '#9CA3AF',
                   border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold', cursor: 'default'
                 }}>Plano atual</button>
               ) : plano.id === 'free' ? (
-                <button onClick={() => handleSelectPlan('free')} style={{
+                <button type="button" onClick={() => handleSelectPlan('free')} style={{
                   width: '100%', padding: '14px', background: '#ffffff', color: '#6B7280',
                   border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
                 }}>Mudar para Free</button>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button onClick={() => handleStripeCheckout(plano.id)} disabled={upgrading} style={{
+                  <button type="button" onClick={() => handleStripeCheckout(plano.id)} disabled={upgrading} style={{
                     width: '100%', padding: '14px',
                     background: upgrading ? '#9CA3AF' : plano.destaque ? '#2E7D6B' : '#ffffff',
                     color: upgrading ? '#fff' : plano.destaque ? '#ffffff' : '#2E7D6B',
@@ -370,7 +371,7 @@ export default function Planos() {
                     borderRadius: '10px', fontSize: '15px', fontWeight: 'bold',
                     cursor: upgrading ? 'not-allowed' : 'pointer'
                   }}>{upgrading ? 'Redirecionando...' : `Assinar ${ciclo === 'yearly' ? 'Anual' : 'Mensal'}`}</button>
-                  <button onClick={() => handleSelectPlan(plano.id)} style={{
+                  <button type="button" onClick={() => handleSelectPlan(plano.id)} style={{
                     width: '100%', padding: '8px', background: 'transparent', color: '#9CA3AF',
                     border: 'none', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline'
                   }}>Tenho uma chave de ativação</button>
@@ -406,13 +407,13 @@ export default function Planos() {
                   flex: 1, padding: '12px 16px', border: '2px solid #E5E7EB', borderRadius: '8px',
                   fontSize: '15px', outline: 'none', textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold'
                 }} />
-              <button onClick={handleActivateKey} disabled={upgrading} style={{
+              <button type="button" onClick={handleActivateKey} disabled={upgrading} style={{
                 padding: '12px 24px', background: upgrading ? '#9CA3AF' : targetCor, color: '#ffffff',
                 border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold',
                 cursor: upgrading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap'
               }}>{upgrading ? 'Ativando...' : 'Ativar'}</button>
             </div>
-            <button onClick={() => { setShowKeyInput(false); setSelectedPlanId(''); setChaveAtivacao(''); setMessage('') }}
+            <button type="button" onClick={() => { setShowKeyInput(false); setSelectedPlanId(''); setChaveAtivacao(''); setMessage('') }}
               style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: '13px', cursor: 'pointer' }}>
               Cancelar
             </button>

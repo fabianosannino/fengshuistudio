@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { supabase } from '../../src/lib/supabase'
@@ -100,7 +101,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadAll() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
 
       // Profile (loaded first -- needed for plan checks)
@@ -442,7 +443,7 @@ export default function Dashboard() {
             Gerencie seus clientes e consultas de Feng Shui
           </p>
         </div>
-        <button onClick={() => setShowSettings(!showSettings)} style={{
+        <button type="button" onClick={() => setShowSettings(!showSettings)} style={{
           background: 'none', border: '1px solid #D1D5DB', borderRadius: '8px',
           padding: '6px 12px', cursor: 'pointer', fontSize: '13px', color: '#6B7280',
           display: 'inline-flex', alignItems: 'center', gap: '6px'
@@ -518,7 +519,7 @@ export default function Dashboard() {
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Pagamentos
             </h3>
-            <button onClick={() => window.location.href = '/pagamentos'} style={{
+            <button type="button" onClick={() => window.location.href = '/pagamentos'} style={{
               background: 'none', border: 'none', color: '#2E7D6B',
               fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
             }}>Ver todos →</button>
@@ -729,7 +730,7 @@ export default function Dashboard() {
               Faça upgrade para acessar relatórios PDF, cronograma lunar e clientes ilimitados
             </p>
           </div>
-          <button onClick={() => window.location.href = '/planos'} style={{
+          <button type="button" onClick={() => window.location.href = '/planos'} style={{
             background: '#C9A227', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'

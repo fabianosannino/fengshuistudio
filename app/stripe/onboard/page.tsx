@@ -195,7 +195,7 @@ function StripeOnboard() {
             <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px 0' }}>
               Conecte sua conta Stripe para receber pagamentos e assinar um plano.
             </p>
-            <button onClick={createAccount} disabled={creating} style={{
+            <button type="button" onClick={createAccount} disabled={creating} style={{
               padding: '14px 32px', background: creating ? '#9CA3AF' : '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold',
               cursor: creating ? 'not-allowed' : 'pointer'
@@ -251,7 +251,7 @@ function StripeOnboard() {
             {/* Action Buttons */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
               {!status.onboarding_complete && (
-                <button onClick={startOnboarding} style={{
+                <button type="button" onClick={startOnboarding} style={{
                   padding: '16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '12px',
                   fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', gridColumn: '1 / -1'
                 }}>
@@ -259,28 +259,28 @@ function StripeOnboard() {
                 </button>
               )}
 
-              <button onClick={openSubscription} style={{
+              <button type="button" onClick={openSubscription} style={{
                 padding: '16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
               }}>
                 Assinar Plano
               </button>
 
-              <button onClick={openBillingPortal} style={{
+              <button type="button" onClick={openBillingPortal} style={{
                 padding: '16px', background: '#0E1B2C', color: '#fff', border: 'none', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
               }}>
                 Gerenciar Assinatura
               </button>
 
-              <button onClick={() => window.location.href = '/stripe/products'} style={{
+              <button type="button" onClick={() => window.location.href = '/stripe/products'} style={{
                 padding: '16px', background: '#fff', color: '#2E7D6B', border: '2px solid #2E7D6B', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
               }}>
                 Gerenciar Produtos
               </button>
 
-              <button onClick={loadStatus} style={{
+              <button type="button" onClick={loadStatus} style={{
                 padding: '16px', background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB', borderRadius: '12px',
                 fontSize: '14px', cursor: 'pointer'
               }}>

@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -62,7 +63,7 @@ export default function Consultas() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
 
       setUserId(user.id)
 
@@ -142,7 +143,7 @@ export default function Consultas() {
             {totalCount} {isProfessional ? 'consulta(s) registrada(s)' : 'imóvel(is) cadastrado(s)'}
           </p>
         </div>
-        <button onClick={() => window.location.href = '/consultas/nova'} style={{
+        <button type="button" onClick={() => window.location.href = '/consultas/nova'} style={{
           background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer'
@@ -199,7 +200,7 @@ export default function Consultas() {
               ? 'Clique em "Nova consulta" para começar um diagnóstico Ba Gua'
               : 'Cadastre seu imóvel para receber o diagnóstico Feng Shui personalizado'}
           </p>
-          <button onClick={() => window.location.href = '/consultas/nova'} style={{
+          <button type="button" onClick={() => window.location.href = '/consultas/nova'} style={{
             background: '#2E7D6B', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
@@ -247,19 +248,19 @@ export default function Consultas() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => window.location.href = `/consultas/${consulta.id}`} style={{
+                <button type="button" onClick={() => window.location.href = `/consultas/${consulta.id}`} style={{
                   padding: '8px 20px', background: '#2E7D6B', color: '#fff',
                   border: 'none', borderRadius: '6px', fontSize: '13px',
                   fontWeight: 'bold', cursor: 'pointer'
                 }}>Abrir</button>
                 {consulta.status === 'finalizada' && (
-                  <button onClick={() => window.location.href = `/consultas/${consulta.id}/relatorio`} style={{
+                  <button type="button" onClick={() => window.location.href = `/consultas/${consulta.id}/relatorio`} style={{
                     padding: '8px 20px', background: '#0E1B2C', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
                   }}>Relatório</button>
                 )}
-                <button onClick={() => setDeleteTarget(consulta.id)} style={{
+                <button type="button" onClick={() => setDeleteTarget(consulta.id)} style={{
                   padding: '8px 16px', background: '#FEF2F2', color: '#DC2626',
                   border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px',
                   cursor: 'pointer'
@@ -275,7 +276,7 @@ export default function Consultas() {
           display: 'flex', justifyContent: 'center', alignItems: 'center',
           gap: '8px', marginTop: '24px',
         }}>
-          <button
+          <button type="button"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 0}
             style={{
@@ -289,7 +290,7 @@ export default function Consultas() {
           <span style={{ color: '#6B7280', fontSize: '13px' }}>
             Página {currentPage + 1} de {totalPages}
           </span>
-          <button
+          <button type="button"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage + 1 >= totalPages}
             style={{

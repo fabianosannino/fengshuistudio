@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -99,7 +100,7 @@ export default function Calendario() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
       const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
       setProfile(prof)
@@ -213,7 +214,7 @@ export default function Calendario() {
             <p style={{ color: '#6B7280', fontSize: '15px', margin: '0 0 24px 0' }}>
               O Calendário Lunar está disponível nos planos Simples e Profissional.
             </p>
-            <button onClick={() => window.location.href = '/planos'} style={{
+            <button type="button" onClick={() => window.location.href = '/planos'} style={{
               padding: '14px 32px', background: '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '10px', fontSize: '16px',
               fontWeight: 'bold', cursor: 'pointer'
@@ -253,9 +254,9 @@ export default function Calendario() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <button onClick={() => mudarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#2E7D6B' }}>◀</button>
+            <button type="button" onClick={() => mudarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#2E7D6B' }}>◀</button>
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{MESES[mesAtual]} {anoAtual}</h3>
-            <button onClick={() => mudarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#2E7D6B' }}>▶</button>
+            <button type="button" onClick={() => mudarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#2E7D6B' }}>▶</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center' }}>
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
@@ -316,14 +317,14 @@ export default function Calendario() {
             <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0' }}>
               Rituais sugeridos para Lua {faseSelecionada === 'nova' ? 'Nova' : faseSelecionada === 'crescente' ? 'Crescente' : faseSelecionada === 'cheia' ? 'Cheia' : 'Minguante'}
             </h3>
-            <button onClick={() => setFaseSelecionada(null)} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: '14px' }}>✕ Fechar</button>
+            <button type="button" onClick={() => setFaseSelecionada(null)} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: '14px' }}>✕ Fechar</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
             {RITUAIS_SUGERIDOS[faseSelecionada]?.map((ritual, i) => (
               <div key={i} style={{ padding: '16px', borderRadius: '8px', background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
                 <h4 style={{ color: COR_FASE[faseSelecionada], fontSize: '14px', fontWeight: 'bold', margin: '0 0 6px 0' }}>{ritual.titulo}</h4>
                 <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 12px 0' }}>{ritual.descricao}</p>
-                <button onClick={() => preencherSugerido(ritual.titulo, ritual.descricao, faseSelecionada)} style={{
+                <button type="button" onClick={() => preencherSugerido(ritual.titulo, ritual.descricao, faseSelecionada)} style={{
                   padding: '6px 16px', background: COR_FASE[faseSelecionada], color: '#fff',
                   border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer'
                 }}>+ Agendar</button>
@@ -336,12 +337,12 @@ export default function Calendario() {
       {/* Visão por cliente / geral */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '3px' }}>
-          <button onClick={() => { setVisao('geral'); setFiltroCliente('todos') }} style={{
+          <button type="button" onClick={() => { setVisao('geral'); setFiltroCliente('todos') }} style={{
             padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 'bold',
             background: visao === 'geral' ? '#2E7D6B' : 'transparent',
             color: visao === 'geral' ? '#fff' : '#6B7280', cursor: 'pointer'
           }}>Visão geral</button>
-          <button onClick={() => setVisao('cliente')} style={{
+          <button type="button" onClick={() => setVisao('cliente')} style={{
             padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 'bold',
             background: visao === 'cliente' ? '#2E7D6B' : 'transparent',
             color: visao === 'cliente' ? '#fff' : '#6B7280', cursor: 'pointer'
@@ -361,7 +362,7 @@ export default function Calendario() {
         <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0' }}>
           Rituais agendados ({filtroCliente !== 'todos' ? rituais.filter(r => r.cliente_id === filtroCliente).length : rituais.length})
         </h2>
-        <button onClick={() => { setShowForm(!showForm); setMessage('') }} style={{
+        <button type="button" onClick={() => { setShowForm(!showForm); setMessage('') }} style={{
           background: '#2E7D6B', color: '#fff', border: 'none',
           padding: '10px 20px', borderRadius: '8px', fontSize: '14px',
           fontWeight: 'bold', cursor: 'pointer'
@@ -470,12 +471,12 @@ export default function Calendario() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => toggleStatus(r.id, r.status)} style={{
+                  <button type="button" onClick={() => toggleStatus(r.id, r.status)} style={{
                     padding: '6px 14px', background: r.status === 'concluido' ? '#FFF7ED' : '#F0FDF4',
                     color: r.status === 'concluido' ? '#D97706' : '#15803D',
                     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
                   }}>{r.status === 'concluido' ? 'Reabrir' : '✓ Concluir'}</button>
-                  <button onClick={() => deleteRitual(r.id)} style={{
+                  <button type="button" onClick={() => deleteRitual(r.id)} style={{
                     padding: '6px 12px', background: '#FEF2F2', color: '#DC2626',
                     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
                   }}>🗑️</button>

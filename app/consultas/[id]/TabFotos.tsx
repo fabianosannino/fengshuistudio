@@ -259,7 +259,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                 <input ref={geralInputRef} type="file" accept="image/jpeg,image/png,image/webp"
                   onChange={handleGeralUpload} disabled={uploading} style={{ display: 'none' }} />
               </label>
-              <button onClick={handleGeralRemove} disabled={uploading} style={{
+              <button type="button" onClick={handleGeralRemove} disabled={uploading} style={{
                 padding: '8px 12px', background: 'transparent', color: '#DC2626',
                 border: 'none', fontSize: '13px', cursor: 'pointer',
               }}>Remover</button>
@@ -301,7 +301,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
             </p>
           </div>
           {!showNovoComodo && (
-            <button onClick={() => setShowNovoComodo(true)} style={{
+            <button type="button" onClick={() => setShowNovoComodo(true)} style={{
               padding: '10px 20px', background: '#2E7D6B', color: '#fff',
               border: 'none', borderRadius: '8px', fontSize: '13px',
               fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -345,12 +345,12 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                 </div>
               )}
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={handleAddComodo} style={{
+                <button type="button" onClick={handleAddComodo} style={{
                   padding: '10px 20px', background: '#2E7D6B', color: '#fff',
                   border: 'none', borderRadius: '8px', fontSize: '13px',
                   fontWeight: 'bold', cursor: 'pointer',
                 }}>Adicionar</button>
-                <button onClick={() => { setShowNovoComodo(false); setNovoComodo(''); setNovoComodoCustom('') }} style={{
+                <button type="button" onClick={() => { setShowNovoComodo(false); setNovoComodo(''); setNovoComodoCustom('') }} style={{
                   padding: '10px 16px', background: '#F3F4F6', color: '#6B7280',
                   border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
                 }}>Cancelar</button>
@@ -404,7 +404,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                       }}>{comodo.fotos.length}/{MAX_FOTOS_COMODO}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button
+                      <button type="button"
                         onClick={e => { e.stopPropagation(); handleRemoveComodo(idx) }}
                         title="Remover cômodo"
                         style={{
@@ -434,7 +434,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                                 onClick={() => setLightbox({ url, comodo: comodo.comodo })}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
                               />
-                              <button
+                              <button type="button"
                                 onClick={() => handleComodoFotoRemove(idx, fi)}
                                 disabled={uploading}
                                 style={{
@@ -499,7 +499,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                 <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #E5E7EB' }}>
                   <img src={resolver(url) ?? ''} alt={`Antes ${i + 1}`} onClick={() => setLightbox({ url })}
                     style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
-                  <button onClick={() => onUpdateAntes(fotosAntes.filter((_, idx) => idx !== i))} style={{
+                  <button type="button" onClick={() => onUpdateAntes(fotosAntes.filter((_, idx) => idx !== i))} style={{
                     position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff',
                     border: 'none', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '14px',
                   }}>×</button>
@@ -575,7 +575,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
                 <div key={i} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #BBF7D0' }}>
                   <img src={resolver(url) ?? ''} alt={`Depois ${i + 1}`} onClick={() => setLightbox({ url })}
                     style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
-                  <button onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
+                  <button type="button" onClick={() => onUpdateDepois(fotosDepois.filter((_, idx) => idx !== i))} style={{
                     position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff',
                     border: 'none', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '14px',
                   }}>×</button>
@@ -654,7 +654,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               alt="Foto ampliada"
               style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain' }}
             />
-            <button
+            <button type="button"
               onClick={() => setLightbox(null)}
               style={{
                 position: 'absolute', top: '-8px', right: '-8px',

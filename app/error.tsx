@@ -86,7 +86,7 @@ export default function Error({
         )}
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
+          <button type="button"
             onClick={() => reset()}
             style={{
               background: '#2E7D6B',

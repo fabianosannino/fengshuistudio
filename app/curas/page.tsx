@@ -188,7 +188,7 @@ function CurasPageContent() {
 
     return (
       <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-        <button
+        <button type="button"
           onClick={() => setExpandedRefs(prev => ({ ...prev, [key]: !isExpanded }))}
           style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0',
@@ -230,7 +230,7 @@ function CurasPageContent() {
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px', resize: 'vertical' }}
                     />
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
+                      <button type="button"
                         onClick={() => updateCustomRef(ref.id, elId, tipo)}
                         disabled={savingRef}
                         style={{
@@ -240,7 +240,7 @@ function CurasPageContent() {
                       >
                         {savingRef ? 'Salvando...' : 'Salvar'}
                       </button>
-                      <button
+                      <button type="button"
                         onClick={() => setEditingRef(null)}
                         style={{
                           padding: '6px 14px', borderRadius: '6px', border: '1px solid #D1D5DB',
@@ -256,13 +256,13 @@ function CurasPageContent() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 4px 0' }}>{ref.nome}</p>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                        <button
+                        <button type="button"
                           onClick={() => { setEditingRef(ref.id); setEditForm({ nome: ref.nome, descricao: ref.descricao || '', como_utilizar: ref.como_utilizar || '' }) }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#2E7D6B', padding: '2px 4px' }}
                         >
                           {'\u270F\uFE0F'}
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => deleteCustomRef(ref.id, elId, tipo)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#DC2626', padding: '2px 4px' }}
                         >
@@ -303,7 +303,7 @@ function CurasPageContent() {
                   style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '12px', resize: 'vertical' }}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
+                  <button type="button"
                     onClick={() => saveCustomRef(elId, tipo)}
                     disabled={savingRef || !refForm.nome.trim()}
                     style={{
@@ -314,7 +314,7 @@ function CurasPageContent() {
                   >
                     {savingRef ? 'Salvando...' : 'Salvar'}
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => { setShowAddRef(null); setRefForm({ nome: '', descricao: '', como_utilizar: '' }) }}
                     style={{
                       padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB',
@@ -326,7 +326,7 @@ function CurasPageContent() {
                 </div>
               </div>
             ) : (
-              <button
+              <button type="button"
                 onClick={() => { setShowAddRef(key); setRefForm({ nome: '', descricao: '', como_utilizar: '' }) }}
                 style={{
                   background: 'none', border: '1px dashed #A7D3C9', borderRadius: '6px',
@@ -442,7 +442,7 @@ function CurasPageContent() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
             {consultasList.map(c => (
-              <button key={c.id} onClick={() => { setSelectedConsultaId(c.id); loadConsultaData(c.id) }}
+              <button type="button" key={c.id} onClick={() => { setSelectedConsultaId(c.id); loadConsultaData(c.id) }}
                 style={{
                   background: '#fff', borderRadius: '10px', padding: '16px', border: '1px solid #E5E7EB',
                   cursor: 'pointer', textAlign: 'left', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
@@ -464,7 +464,7 @@ function CurasPageContent() {
       {/* ── SELECTED CONSULTATION CONTENT ────────────────────────────── */}
       {selectedConsultaId && (
       <>
-        <button onClick={() => { setSelectedConsultaId(null); setSetores([]); setConsulta(null) }} style={{
+        <button type="button" onClick={() => { setSelectedConsultaId(null); setSetores([]); setConsulta(null) }} style={{
           marginBottom: '16px', padding: '8px 16px', background: '#F3F4F6', color: '#6B7280',
           border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
         }}>← Trocar consulta</button>
@@ -514,7 +514,7 @@ function CurasPageContent() {
           const score = findScore(el.gua)
           const isPriority = score !== null && score < 40
           return (
-            <button key={el.id} onClick={() => scrollTo(el.id)} style={{
+            <button type="button" key={el.id} onClick={() => scrollTo(el.id)} style={{
               padding: '8px 16px', borderRadius: '20px', cursor: 'pointer',
               fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
               background: isActive ? '#2E7D6B' : '#F3F4F6',

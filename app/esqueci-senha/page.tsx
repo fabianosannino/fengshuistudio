@@ -79,7 +79,7 @@ export default function EsqueciSenha() {
             <p style={{ color: '#374151', fontSize: '15px', marginBottom: '24px' }}>
               Enviamos um link para <strong>{email}</strong>. Clique no link do e-mail para criar uma nova senha.
             </p>
-            <button onClick={() => { setSent(false); setEmail(''); setMessage(''); setMessageIsError(false) }} style={{
+            <button type="button" onClick={() => { setSent(false); setEmail(''); setMessage(''); setMessageIsError(false) }} style={{
               padding: '10px 24px', background: '#F3F4F6', color: '#374151',
               border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer'
             }}>Reenviar para outro e-mail</button>

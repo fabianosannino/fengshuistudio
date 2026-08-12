@@ -167,7 +167,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {mode === 'questionnaire' && (
-            <button onClick={() => setMode('chart')} style={btnPrimary('#6B7280')}>
+            <button type="button" onClick={() => setMode('chart')} style={btnPrimary('#6B7280')}>
               Voltar ao Gráfico
             </button>
           )}
@@ -193,7 +193,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
           {/* Area navigation pills */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16 }}>
             {AREAS.map((a, i) => (
-              <button key={a.key} onClick={() => setAreaAtual(i)} style={{
+              <button type="button" key={a.key} onClick={() => setAreaAtual(i)} style={{
                 padding: '4px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
                 fontSize: 11, fontWeight: i === areaAtual ? 'bold' : 'normal',
                 background: i === areaAtual ? a.cor + '22' : '#F3F4F6',
@@ -231,10 +231,10 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
 
           {/* Navigation buttons */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-            <button onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setMode('chart')} style={btnPrimary('#6B7280')}>Anterior</button>
+            <button type="button" onClick={() => areaAtual > 0 ? setAreaAtual(areaAtual - 1) : setMode('chart')} style={btnPrimary('#6B7280')}>Anterior</button>
             {areaAtual < n - 1
-              ? <button onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
-              : <button onClick={() => setMode('chart')} style={btnPrimary('#15803D')}>Ver Resultados</button>
+              ? <button type="button" onClick={() => setAreaAtual(areaAtual + 1)} style={btnPrimary()}>Próxima Área</button>
+              : <button type="button" onClick={() => setMode('chart')} style={btnPrimary('#15803D')}>Ver Resultados</button>
             }
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
               </svg>
 
               {/* Start questionnaire button */}
-              <button onClick={startQuestionnaire} style={{
+              <button type="button" onClick={startQuestionnaire} style={{
                 ...btnPrimary(), width: '100%', marginTop: 8, padding: '12px 20px'
               }}>
                 Responder Questionário (60 perguntas)
@@ -339,7 +339,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                     {/* Show individual question scores if array format */}
                     {isArray && (
                       <div style={{ marginTop: 4 }}>
-                        <button onClick={() => setExpandedArea(expandedArea === a.key ? null : a.key)} style={{
+                        <button type="button" onClick={() => setExpandedArea(expandedArea === a.key ? null : a.key)} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
                           fontSize: '11px', color: '#2E7D6B', fontWeight: 'bold', padding: '2px 0'
                         }}>
@@ -384,7 +384,7 @@ export default function TabRodaDaVida({ rodaData, onChange, onSave, saving, seto
                 )
               })}
 
-              <button onClick={onSave} disabled={saving} style={{
+              <button type="button" onClick={onSave} disabled={saving} style={{
                 width: '100%', padding: '14px', marginTop: '8px',
                 background: saving ? '#9CA3AF' : '#2E7D6B',
                 color: '#ffffff', border: 'none', borderRadius: '8px',

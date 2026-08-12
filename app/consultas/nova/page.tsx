@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -43,7 +44,7 @@ function NovaConsultaContent() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
 
       const { data: prof } = await supabase
