@@ -193,7 +193,11 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     expect(cancel?.filters).toContainEqual(['id', 'sub-row-1'])
 
     const downgrade = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
-    expect(downgrade?.values).toEqual({ plano: 'free' })
+    // `freemium`, não `free`: a coluna é do enum `plano_tipo`, e gravar o
+    // vocabulário do app derruba a escrita com `invalid input value for enum`.
+    // Este teste afirmava `'free'` — ou seja, afirmava o defeito, e passava
+    // porque o mock não valida enum. Em produção o rebaixamento nunca ocorria.
+    expect(downgrade?.values).toEqual({ plano: 'freemium' })
   })
 
   it('evento sem perfil correspondente não escreve nada', async () => {

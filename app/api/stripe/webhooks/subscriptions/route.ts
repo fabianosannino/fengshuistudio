@@ -27,6 +27,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import stripeClient from '../../../../../src/lib/stripe'
 import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { logger } from '../../../../../src/lib/logger'
+import { enumDoPlano, planoEfetivo } from '../../../../../src/lib/plano-utils'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
@@ -146,7 +147,7 @@ export async function POST(request: Request) {
         if (planSlug && plan) {
           await logWrite('update-profile-plan', supabase
             .from('profiles')
-            .update({ plano: planSlug })
+            .update({ plano: enumDoPlano(planoEfetivo(planSlug)) })
             .eq('id', profile.id))
         }
 
@@ -206,7 +207,7 @@ export async function POST(request: Request) {
         if (status === 'canceled') {
           await logWrite('downgrade-profile-free', supabase
             .from('profiles')
-            .update({ plano: 'free' })
+            .update({ plano: enumDoPlano('free') })
             .eq('id', profile.id))
         } else {
           // Update plan based on subscription items
@@ -214,7 +215,7 @@ export async function POST(request: Request) {
           if (planSlug) {
             await logWrite('update-profile-plan', supabase
               .from('profiles')
-              .update({ plano: planSlug })
+              .update({ plano: enumDoPlano(planoEfetivo(planSlug)) })
               .eq('id', profile.id))
           }
         }
@@ -259,7 +260,7 @@ export async function POST(request: Request) {
 
         await logWrite('downgrade-profile-free', supabase
           .from('profiles')
-          .update({ plano: 'free' })
+          .update({ plano: enumDoPlano('free') })
           .eq('id', profile.id))
 
         break
@@ -392,7 +393,7 @@ export async function POST(request: Request) {
 
             await logWrite('downgrade-profile-free', supabase
               .from('profiles')
-              .update({ plano: 'free' })
+              .update({ plano: enumDoPlano('free') })
               .eq('id', profile.id))
 
             await logWrite('insert-cancelled-notification', supabase.from('payment_notifications').insert({
