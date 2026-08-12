@@ -7,6 +7,7 @@ import { logger } from '../../src/lib/logger'
 import Skeleton from '../components/Skeleton'
 import { LOSHU_ORDER, AREA_META } from '../../src/lib/constants'
 import { leituraDoSetor, resumoDaCasa } from '../../src/lib/leitura-do-cliente'
+import { scorePorSetor, setorCanonico } from '../../src/lib/nome-do-setor'
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import type { BaguaEntrada } from '../../src/lib/types'
 import {
@@ -114,25 +115,21 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
        * `numero` é a célula da grade (`orderIdx + 1` em `salvarSetorDB`), e na
        * Escola da Bússola a grade é permutada pelo facing: com fachada a 180°,
        * a célula 1 guarda «Pessoas Úteis». Derivar o nome de `LOSHU_ORDER[numero-1]`
-       * entregaria ao morador os nove scores sob os nomes errados — e o «próximo
-       * passo» apontaria para o setor errado.
+       * entregaria ao morador os nove scores sob os nomes errados.
        *
-       * Todos os outros leitores de `setores_bagua` no repositório leem `nome`.
+       * E `nome` precisa passar por `scorePorSetor`: o banco tem quinze grafias
+       * para nove setores («Centro/Saúde», «Familia» sem acento, «Espiritualidade»
+       * e «Conhecimento» para o mesmo Guá). Comparação exata perderia a maior
+       * parte das linhas em silêncio.
        */
-      const scorePorSetor: Record<string, number | null> = {}
-      for (const setor of LOSHU_ORDER) scorePorSetor[setor] = null
-      for (const s of consulta.setores_bagua ?? []) {
-        if (typeof s.nome === 'string' && s.nome in scorePorSetor) {
-          scorePorSetor[s.nome] = s.score_percentual
-        }
-      }
+      const scores = scorePorSetor(consulta.setores_bagua ?? [])
 
       setCasa({
         consultaId: consulta.id,
         nome: consulta.nome_imovel?.trim() || 'Minha casa',
         orientacaoGraus: typeof consulta.bagua_entrada?.orientacao_graus === 'number'
           ? consulta.bagua_entrada.orientacao_graus : null,
-        scorePorSetor,
+        scorePorSetor: scores,
       })
 
       const { data: prescricoes } = await supabase
@@ -148,8 +145,8 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
       }[]).map(p => ({
         id: p.id,
         titulo: p.titulo,
-        // Pelo mesmo motivo do bloco acima: `nome`, nunca `numero`.
-        setor: p.setores_bagua?.nome ?? null,
+        // Pelo mesmo motivo do bloco acima: `nome` resolvido, nunca `numero`.
+        setor: setorCanonico(p.setores_bagua?.nome),
         concluida: !!p.aplicada_em,
       })))
 

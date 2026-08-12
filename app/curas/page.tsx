@@ -9,6 +9,7 @@ import type { SetorBagua } from '../../src/lib/types'
 import { ELEMENTOS } from '../../src/lib/curas'
 import { BookOpen, Gem, Leaf, Amphora, MapPin, Flower2, AudioLines } from 'lucide-react'
 import PlanoDeCuras from './PlanoDeCuras'
+import { setorCanonico } from '../../src/lib/nome-do-setor'
 
 interface CuraCustomRef {
   id: string
@@ -372,19 +373,11 @@ function CurasPageContent() {
 
   // Find sector score for a guá name
   function findScore(guaName: string): number | null {
-    const mappings: Record<string, string[]> = {
-      'Carreira': ['Carreira'],
-      'Família / Saúde': ['Família', 'Família/Saúde'],
-      'Prosperidade': ['Prosperidade'],
-      'Fama / Reputação': ['Fama', 'Fama/Reputação'],
-      'Relacionamentos': ['Relacionamentos', 'Amor'],
-      'Criatividade / Filhos': ['Criatividade', 'Filhos'],
-      'Pessoas Úteis': ['Pessoas Úteis', 'Pessoas Uteis', 'Mentores'],
-      'Espiritualidade': ['Espiritualidade', 'Conhecimento', 'Sabedoria'],
-      'Saúde / Centro': ['Centro', 'Centro/Saúde', 'Saúde'],
-    }
-    const names = mappings[guaName] || [guaName]
-    const setor = setores.find(s => names.some(n => s.nome === n))
+    // Esta tabela de apelidos virou `src/lib/nome-do-setor.ts`, que também
+    // resolve acento e caixa e é usada pelas outras telas que leem `nome`.
+    const alvo = setorCanonico(guaName)
+    if (!alvo) return null
+    const setor = setores.find(s => setorCanonico(s.nome) === alvo)
     return setor?.score_percentual ?? null
   }
 

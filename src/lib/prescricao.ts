@@ -23,8 +23,14 @@
 
 import { ELEMENTOS, type ElementData } from './curas'
 import { LIMIAR_SCORE_BOM, LIMIAR_SCORE_CRITICO } from './constants'
+import { setorCanonico } from './nome-do-setor'
 
-/** Como o setor é nomeado no diagnóstico → como aparece em `ELEMENTOS.gua`. */
+/**
+ * Nome canônico do setor → como aparece em `ELEMENTOS.gua`.
+ *
+ * A chave é sempre o nome de `LOSHU_ORDER`; quem chama passa o valor do banco
+ * por `setorCanonico` antes, porque lá existem quinze grafias para nove setores.
+ */
 const GUA_POR_SETOR: Record<string, string> = {
   'Carreira': 'Carreira',
   'Família': 'Família / Saúde',
@@ -38,7 +44,8 @@ const GUA_POR_SETOR: Record<string, string> = {
 }
 
 export function elementoDoSetor(nomeSetor: string): ElementData | null {
-  const gua = GUA_POR_SETOR[nomeSetor]
+  const canonico = setorCanonico(nomeSetor)
+  const gua = canonico ? GUA_POR_SETOR[canonico] : undefined
   if (!gua) return null
   return ELEMENTOS.find(e => e.gua === gua) ?? null
 }
@@ -146,11 +153,14 @@ export function setoresParaPrescrever(
   setores: { nome: string; score_percentual?: number | null }[]
 ): SetorPrescricao[] {
   return setores
+    // Linha com nome irreconhecível sai: prescrever para um setor que não dá
+    // para identificar é prescrever no escuro.
+    .filter(s => setorCanonico(s.nome) !== null)
     .map(s => {
       const score = typeof s.score_percentual === 'number' ? s.score_percentual : null
       const urgencia = urgenciaDoScore(score)
       return {
-        nome: s.nome,
+        nome: setorCanonico(s.nome)!,
         score,
         urgencia,
         rotulo: ROTULO_DA_URGENCIA[urgencia],

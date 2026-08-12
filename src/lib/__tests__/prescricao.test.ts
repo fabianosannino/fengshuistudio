@@ -43,23 +43,34 @@ describe('curasDoSetor', () => {
 })
 
 describe('setoresParaPrescrever', () => {
+  it('descarta linha com nome que não dá para identificar', () => {
+    // Prescrever para um setor irreconhecível é prescrever no escuro. E o banco
+    // tem quinze grafias para nove setores — ver `nome-do-setor.ts`.
+    const r = setoresParaPrescrever([
+      { nome: 'Garagem', score_percentual: 10 },
+      { nome: 'Centro/Saúde', score_percentual: 40 },
+    ])
+    expect(r.map(s => s.nome)).toEqual(['Centro'])
+  })
+
   it('pior primeiro', () => {
     const ordenado = setoresParaPrescrever([
-      { nome: 'A', score_percentual: 80 },
-      { nome: 'B', score_percentual: 28 },
-      { nome: 'C', score_percentual: 52 },
+      { nome: 'Prosperidade', score_percentual: 80 },
+      { nome: 'Carreira', score_percentual: 28 },
+      { nome: 'Fama/Reputação', score_percentual: 52 },
     ])
-    expect(ordenado.map(s => s.nome)).toEqual(['B', 'C', 'A'])
+    // Repare que «Fama/Reputação» volta canônico como «Fama».
+    expect(ordenado.map(s => s.nome)).toEqual(['Carreira', 'Fama', 'Prosperidade'])
   })
 
   it('não avaliado vai para o fim, não para o topo', () => {
     // Sem score não dá para afirmar que o setor precisa de algo. No topo, o
     // consultor prescreveria para um ambiente que ninguém olhou.
     const ordenado = setoresParaPrescrever([
-      { nome: 'sem score', score_percentual: null },
-      { nome: 'ruim', score_percentual: 10 },
+      { nome: 'Prosperidade', score_percentual: null },
+      { nome: 'Carreira', score_percentual: 10 },
     ])
-    expect(ordenado.map(s => s.nome)).toEqual(['ruim', 'sem score'])
+    expect(ordenado.map(s => s.nome)).toEqual(['Carreira', 'Prosperidade'])
     expect(ordenado[1].urgencia).toBe('nao_avaliado')
     expect(ordenado[1].prioridade).toBe(99)
   })
@@ -73,8 +84,8 @@ describe('setoresParaPrescrever', () => {
 
   it('prioridade menor para score pior', () => {
     const [pior, melhor] = setoresParaPrescrever([
-      { nome: 'pior', score_percentual: 5 },
-      { nome: 'melhor', score_percentual: 90 },
+      { nome: 'Carreira', score_percentual: 5 },
+      { nome: 'Prosperidade', score_percentual: 90 },
     ])
     expect(pior.prioridade).toBeLessThan(melhor.prioridade)
     expect(pior.prioridade).toBeGreaterThanOrEqual(1)

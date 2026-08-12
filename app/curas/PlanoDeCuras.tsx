@@ -5,6 +5,7 @@ import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
 import Skeleton from '../components/Skeleton'
 import { AREA_META } from '../../src/lib/constants'
+import { setorCanonico } from '../../src/lib/nome-do-setor'
 import { formatarData, formatarMoeda } from '../../src/lib/formato'
 import {
   curasDoSetor, setoresParaPrescrever, montarPrescricao, chaveDaPrescricao,
@@ -117,7 +118,11 @@ export default function PlanoDeCuras({
   /** Chaves já prescritas, no formato «setor|chave». */
   const jaPrescritas = new Set(prescritas.map(p => p.objeto).filter((o): o is string => typeof o === 'string'))
 
-  const setorPorNome = new Map(setores.map(s => [s.nome, s]))
+  // Chaveado pelo nome **canônico**: `setoresParaPrescrever` devolve canônicos,
+  // e o banco tem quinze grafias para nove setores.
+  const setorPorNome = new Map(
+    setores.map(s => [setorCanonico(s.nome), s] as const).filter(([n]) => n !== null)
+  )
 
   async function prescrever(setor: SetorPrescricao, cura: CuraDisponivel) {
     const chaveCompleta = `${setor.nome}|${cura.chave}`
