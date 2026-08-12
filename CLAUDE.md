@@ -110,7 +110,7 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   (0017), Ba Guá fixo no BTB (0018), erro genérico ≠ erro enganoso (0019), lacuna declarada em auditoria (0020), modelos de pontuação escolhidos pelo consultor (0021), fotos por URL assinada (0022), rate limit com degradação declarada (0023),
   papel do usuário separado do plano (0024), cliente final recebe julgamento e
   não score (0025), fila offline da vistoria (0026), estado derivado em vez de
-  status gravado (0027).
+  status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
 - `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).

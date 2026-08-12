@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { logger } from '../../../../src/lib/logger'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
-import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
+import { origemDaAplicacao, ehCaminhoRelativoSeguro } from '../../../../src/lib/auth-rotas'
 
 // Percentual que a plataforma retém em cada venda (direct charge).
 const APPLICATION_FEE_PERCENT = 10
@@ -59,6 +59,28 @@ export async function POST(request: Request) {
 
   const origin = origemDaAplicacao(request)
 
+  /**
+   * O destino pós-pagamento vinha do body sem checagem.
+   *
+   * Esta rota é **pública** — compradores anônimos —, então qualquer um podia
+   * montar um link de loja cujo `success_url` apontasse para fora. O comprador
+   * pagava de verdade, na conta certa, e caía num site escolhido pelo
+   * atacante, já convencido de que estava no meio de uma compra legítima. É o
+   * momento perfeito para pedir «confirme seus dados».
+   *
+   * Só caminho relativo à própria aplicação, pelo mesmo `ehCaminhoRelativoSeguro`
+   * que o login usa: `//evil.com` e `https://evil.com` são recusados.
+   */
+  const destino = (doCliente: string | undefined, padrao: string): string => {
+    if (doCliente && ehCaminhoRelativoSeguro(doCliente)) return `${origin}${doCliente}`
+    if (doCliente) {
+      logger.warn('URL de retorno recusada no checkout da loja', {
+        route: '/api/stripe/checkout', recebido: doCliente,
+      })
+    }
+    return `${origin}${padrao}`
+  }
+
   try {
     // O preço é lido da conta conectada — buscar o price_id lá garante,
     // ao mesmo tempo, que ele pertence àquela conta e qual é o valor real.
@@ -76,8 +98,8 @@ export async function POST(request: Request) {
         application_fee_amount: applicationFee,
       },
       mode: 'payment',
-      success_url: body.success_url || `${origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: body.cancel_url || `${origin}/store/${accountId}`,
+      success_url: destino(body.success_url, '/stripe/success?session_id={CHECKOUT_SESSION_ID}'),
+      cancel_url: destino(body.cancel_url, `/store/${accountId}`),
     }, {
       stripeAccount: accountId, // Direct charge on the connected account
     })

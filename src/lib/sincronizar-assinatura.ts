@@ -176,7 +176,7 @@ export async function sincronizarAssinatura(
       logger.error('Não foi possível atualizar a assinatura', { origem, subscriptionId: assinatura.id, error: error.message })
       return { situacao: 'falhou', motivo: error.message }
     }
-    await aplicarPlanoNoPerfil(supabase, perfil.id, slug, origem)
+    await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, origem)
     return { situacao: 'atualizada', linhaId: existente.id }
   }
 
@@ -205,7 +205,7 @@ export async function sincronizarAssinatura(
     return { situacao: 'falhou', motivo: error.message }
   }
 
-  await aplicarPlanoNoPerfil(supabase, perfil.id, slug, origem)
+  await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, origem)
   logger.info('Assinatura sincronizada', {
     origem, subscriptionId: assinatura.id, linhaId: criada?.id, plano: slug,
   })
@@ -215,19 +215,32 @@ export async function sincronizarAssinatura(
 /**
  * Escreve o plano no perfil, no vocabulário do enum.
  *
- * Sem `slug` o perfil não é tocado: rebaixar por não ter sabido identificar o
- * plano tiraria recurso de quem pagou.
+ * ## Duas ausências diferentes
+ *
+ * **Assinatura cancelada rebaixa** para o gratuito. É o desfecho, e vale para
+ * qualquer caminho que chegue aqui — webhook de cancelamento, fim de período,
+ * reconciliação que descobre uma assinatura já encerrada no Stripe. A regra
+ * vivia só dentro do `customer.subscription.updated`; fora dali, uma
+ * assinatura cancelada deixava o plano pago de pé.
+ *
+ * **Plano não identificado não muda nada.** Rebaixar por não ter sabido
+ * reconhecer o preço tiraria recurso de quem pagou — é o oposto do caso
+ * acima, e por isso os dois estão escritos lado a lado.
  */
 async function aplicarPlanoNoPerfil(
   supabase: SupabaseClient,
   perfilId: string,
   slug: string | null,
+  statusNoBanco: string,
   origem: string
 ): Promise<void> {
-  if (!slug) return
+  const cancelada = statusNoBanco === 'cancelled'
+  if (!cancelada && !slug) return
+
+  const valor = cancelada ? enumDoPlano('free') : enumDoPlano(planoEfetivo(slug!))
   const { error } = await supabase
     .from('profiles')
-    .update({ plano: enumDoPlano(planoEfetivo(slug)) })
+    .update({ plano: valor })
     .eq('id', perfilId)
 
   if (error) {

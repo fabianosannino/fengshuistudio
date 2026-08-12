@@ -30,10 +30,8 @@ import { logger } from '../../../../../src/lib/logger'
 import {
   reivindicarEvento, marcarProcessado, marcarFalha, houveEventoMaisNovo, objetoDoEvento,
 } from '../../../../../src/lib/eventos-stripe'
-import { enumDoPlano, planoEfetivo } from '../../../../../src/lib/plano-utils'
-import {
-  sincronizarAssinatura, statusDaAssinatura, planoDaAssinatura,
-} from '../../../../../src/lib/sincronizar-assinatura'
+import { enumDoPlano } from '../../../../../src/lib/plano-utils'
+import { sincronizarAssinatura } from '../../../../../src/lib/sincronizar-assinatura'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
@@ -128,66 +126,24 @@ export async function POST(request: Request) {
           current_period_start?: number
           current_period_end?: number
         }
-        const customerId = resolveCustomerId(subscription.customer)
-        const status = subscription.status
-        const cancelAtPeriodEnd = subscription.cancel_at_period_end
 
+        // Mesmo caminho da criação. O que este trecho fazia à mão —  atualizar
+        // a linha, aplicar o plano, rebaixar quando cancelada — agora vive em
+        // `sincronizar-assinatura`, junto da criação e da reconciliação.
+        //
+        // Uma diferença de comportamento, deliberada: quando não existe linha
+        // com este `gateway_subscription_id`, antes o código atualizava
+        // *qualquer* assinatura ativa do usuário, no escuro. Agora cria a
+        // linha certa. Assinatura que o app não conhece é falha de entrega, e
+        // a resposta é registrá-la, não sobrescrever a vizinha.
+        const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
         logger.info('Subscription updated', {
-          route: '/api/stripe/webhooks/subscriptions',
+          route: ROUTE,
           subscriptionId: subscription.id,
-          customerId,
-          status,
-          cancelAtPeriodEnd,
+          status: subscription.status,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          situacao: resultado.situacao,
         })
-
-        const profile = await findProfileByCustomerId(supabase, customerId)
-        if (!profile) break
-
-        // Update by gateway_subscription_id for accuracy, fallback to user_id + status
-        const { data: existingSub } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('gateway_subscription_id', subscription.id)
-          .single()
-
-        const updateData = {
-          status: mapStripeStatus(status),
-          cancel_at_period_end: cancelAtPeriodEnd,
-          current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : undefined,
-          current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : undefined,
-          next_billing_date: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : undefined,
-          updated_at: new Date().toISOString(),
-        }
-
-        if (existingSub) {
-          await logWrite('update-subscription', supabase
-            .from('subscriptions')
-            .update(updateData)
-            .eq('id', existingSub.id))
-        } else {
-          await logWrite('update-subscription-fallback', supabase
-            .from('subscriptions')
-            .update(updateData)
-            .eq('user_id', profile.id)
-            .in('status', ['active', 'past_due', 'trial', 'gratuidade']))
-        }
-
-        // If canceled, downgrade to free
-        if (status === 'canceled') {
-          await logWrite('downgrade-profile-free', supabase
-            .from('profiles')
-            .update({ plano: enumDoPlano('free') })
-            .eq('id', profile.id))
-        } else {
-          // Update plan based on subscription items
-          const planSlug = await resolvePlanSlug(supabase, subscription)
-          if (planSlug) {
-            await logWrite('update-profile-plan', supabase
-              .from('profiles')
-              .update({ plano: enumDoPlano(planoEfetivo(planSlug)) })
-              .eq('id', profile.id))
-          }
-        }
 
         break
       }
@@ -592,9 +548,3 @@ async function findProfileByCustomerId(
   return profile
 }
 
-// Delegam ao módulo compartilhado. Manter cópias aqui recriaria a divergência
-// que a extração acabou de fechar — o `updated` ainda tem lógica própria, mas
-// a tradução de status e a descoberta do plano são as mesmas em todo lugar.
-const mapStripeStatus = statusDaAssinatura
-
-const resolvePlanSlug = planoDaAssinatura
