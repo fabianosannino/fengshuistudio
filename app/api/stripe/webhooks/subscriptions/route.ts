@@ -235,69 +235,29 @@ export async function POST(request: Request) {
         break
       }
 
+      // `invoice_payment.paid` é a versão nova do mesmo fato. A partir da
+      // versão de API 2026-03-25 o Stripe passou a emitir os dois, e o
+      // endpoint desta conta está nela — escutar só `invoice.paid` deixaria a
+      // renovação de assinatura passar em branco se um dia o antigo sair.
+      //
+      // O objeto do evento novo é um `invoice_payment`, não uma fatura: traz o
+      // id da fatura, e é preciso buscá-la para ter os campos que gravamos.
+      case 'invoice_payment.paid': {
+        const pagamento = event.data.object as { invoice?: string | null }
+        const faturaId = typeof pagamento.invoice === 'string' ? pagamento.invoice : null
+
+        if (!faturaId) {
+          logger.warn('invoice_payment.paid sem id de fatura', { route: ROUTE, eventId: event.id })
+          break
+        }
+
+        const fatura = await stripeClient.invoices.retrieve(faturaId)
+        await registrarFaturaPaga(supabase, fatura as Stripe.Invoice & FaturaExtra)
+        break
+      }
+
       case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice & {
-          subscription?: string | null
-          due_date?: number | null
-          attempt_count?: number
-          number?: string | null
-          amount_paid?: number
-        }
-        const customerId = typeof invoice.customer === 'string'
-          ? invoice.customer
-          : invoice.customer?.id
-
-        logger.info('Invoice paid', {
-          route: '/api/stripe/webhooks/subscriptions',
-          invoiceId: invoice.id,
-          customerId: customerId || 'unknown',
-          amount: invoice.amount_paid,
-        })
-
-        if (!customerId) break
-
-        const profile = await findProfileByCustomerId(supabase, customerId)
-        if (!profile) break
-
-        // Idempotency: check if invoice already recorded
-        const { data: existingInvoice } = await supabase
-          .from('invoices')
-          .select('id')
-          .eq('gateway_invoice_id', invoice.id)
-          .single()
-
-        if (existingInvoice) {
-          // Update to paid if not already
-          await logWrite('mark-invoice-paid', supabase
-            .from('invoices')
-            .update({ status: 'paid', paid_at: new Date().toISOString(), amount_paid: (invoice.amount_paid || 0) / 100 })
-            .eq('id', existingInvoice.id))
-        } else {
-          // Calculate due_date safely
-          const dueDate = invoice.due_date
-            ? new Date(invoice.due_date * 1000)
-            : new Date()
-
-          await logWrite('insert-invoice', supabase.from('invoices').insert({
-            user_id: profile.id,
-            amount: (invoice.amount_paid || 0) / 100,
-            amount_paid: (invoice.amount_paid || 0) / 100,
-            status: 'paid',
-            due_date: dueDate.toISOString().split('T')[0],
-            paid_at: new Date().toISOString(),
-            gateway_invoice_id: invoice.id,
-            description: `Fatura Stripe ${invoice.number || invoice.id}`,
-            billing_cycle: invoice.subscription ? 'recurring' : 'one_time',
-          }))
-        }
-
-        // Reactivate subscription if it was past_due
-        await logWrite('reactivate-subscription', supabase
-          .from('subscriptions')
-          .update({ status: 'active', updated_at: new Date().toISOString() })
-          .eq('user_id', profile.id)
-          .eq('status', 'past_due'))
-
+        await registrarFaturaPaga(supabase, event.data.object as Stripe.Invoice & FaturaExtra)
         break
       }
 
@@ -441,8 +401,17 @@ export async function POST(request: Request) {
         break
       }
 
+      // Contestação de cobrança. O Stripe retém o valor na abertura e cobra
+      // uma taxa; sem escutar isto, a primeira notícia viria pelo extrato.
+      case 'charge.dispute.created':
+      case 'charge.dispute.updated':
+      case 'charge.dispute.closed': {
+        await registrarDisputa(supabase, event)
+        break
+      }
+
       default:
-        logger.info('Unhandled subscription event', { route: '/api/stripe/webhooks/subscriptions', type: event.type })
+        logger.info('Unhandled subscription event', { route: ROUTE, type: event.type })
     }
 
     await marcarProcessado(supabase, event.id, ROUTE)
@@ -457,6 +426,150 @@ export async function POST(request: Request) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Registra a contestação e o que aconteceu com ela.
+ *
+ * ## Por que não rebaixa o plano
+ *
+ * Disputa aberta **não** é venda perdida: pode ser ganha, e tirar o acesso de
+ * quem contestou por engano — ou de quem teve o cartão usado por terceiro —
+ * seria punir antes do veredito.
+ *
+ * Disputa **perdida** é dinheiro que foi embora, e aí rebaixar seria
+ * defensável. Continua não sendo automático de propósito: é decisão de
+ * política comercial, não de código, e o log em nível de erro existe para que
+ * ela seja tomada por gente. Quando a política estiver escrita, o gancho é
+ * esta função.
+ */
+async function registrarDisputa(supabase: SupabaseClient, event: Stripe.Event): Promise<void> {
+  const disputa = event.data.object as Stripe.Dispute
+  const chargeId = typeof disputa.charge === 'string' ? disputa.charge : disputa.charge?.id ?? null
+  const fechada = disputa.status === 'won' || disputa.status === 'lost'
+
+  // A disputa não traz o cliente; quem sabe é o `charge`.
+  let clienteDoStripe: string | null = null
+  if (chargeId) {
+    try {
+      const charge = await stripeClient.charges.retrieve(chargeId)
+      clienteDoStripe = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id ?? null
+    } catch (err) {
+      logger.warn('Não foi possível ler o charge da disputa', { route: ROUTE, chargeId, error: String(err) })
+    }
+  }
+
+  const perfil = clienteDoStripe ? await findProfileByCustomerId(supabase, clienteDoStripe) : null
+
+  // Nível de erro mesmo quando é só abertura: contestação é a classe de evento
+  // que ninguém deve descobrir tarde.
+  logger.error('Contestação de cobrança', {
+    route: ROUTE,
+    disputaId: disputa.id,
+    chargeId,
+    status: disputa.status,
+    motivo: disputa.reason,
+    valor: (disputa.amount || 0) / 100,
+    fechada,
+  })
+
+  await logWrite('upsert-disputa', supabase.from('disputas_stripe').upsert({
+    id: disputa.id,
+    charge_id: chargeId ?? '',
+    customer_id: clienteDoStripe,
+    user_id: perfil?.id ?? null,
+    valor: (disputa.amount || 0) / 100,
+    moeda: disputa.currency || 'brl',
+    status: disputa.status,
+    motivo: disputa.reason ?? null,
+    responder_ate: disputa.evidence_details?.due_by
+      ? new Date(disputa.evidence_details.due_by * 1000).toISOString()
+      : null,
+    aberta_em: new Date((disputa.created || event.created) * 1000).toISOString(),
+    fechada_em: fechada ? new Date(event.created * 1000).toISOString() : null,
+    desfecho: fechada ? disputa.status : null,
+    event_id: event.id,
+    atualizada_em: new Date().toISOString(),
+  }, { onConflict: 'id' }))
+
+  if (perfil && disputa.status === 'lost') {
+    await logWrite('insert-disputa-notification', supabase.from('payment_notifications').insert({
+      user_id: perfil.id,
+      type: 'dispute_lost',
+      channel: 'in_app',
+      sent_at: new Date().toISOString(),
+      content: `Uma contestação de ${((disputa.amount || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} foi decidida em favor do portador do cartão.`,
+    }))
+  }
+}
+
+/** Campos que o tipo do SDK não expõe mas o payload traz. */
+type FaturaExtra = {
+  subscription?: string | null
+  due_date?: number | null
+  attempt_count?: number
+  number?: string | null
+  amount_paid?: number
+}
+
+/**
+ * Registra uma fatura paga.
+ *
+ * Compartilhada por `invoice.paid` e `invoice_payment.paid`: são o mesmo fato
+ * em duas versões da API do Stripe, e duas cópias divergiriam.
+ *
+ * É idempotente — procura pelo `gateway_invoice_id` e atualiza, ou insere.
+ */
+async function registrarFaturaPaga(
+  supabase: SupabaseClient,
+  invoice: Stripe.Invoice & FaturaExtra
+): Promise<void> {
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+
+  logger.info('Invoice paid', {
+    route: ROUTE, invoiceId: invoice.id, customerId: customerId || 'unknown', amount: invoice.amount_paid,
+  })
+
+  if (!customerId) return
+
+  const profile = await findProfileByCustomerId(supabase, customerId)
+  if (!profile) return
+
+  const valor = (invoice.amount_paid || 0) / 100
+
+  const { data: existente } = await supabase
+    .from('invoices')
+    .select('id')
+    .eq('gateway_invoice_id', invoice.id)
+    .maybeSingle()
+
+  if (existente) {
+    await logWrite('mark-invoice-paid', supabase
+      .from('invoices')
+      .update({ status: 'paid', paid_at: new Date().toISOString(), amount_paid: valor })
+      .eq('id', existente.id))
+  } else {
+    const vencimento = invoice.due_date ? new Date(invoice.due_date * 1000) : new Date()
+    await logWrite('insert-invoice', supabase.from('invoices').insert({
+      user_id: profile.id,
+      amount: valor,
+      amount_paid: valor,
+      status: 'paid',
+      due_date: vencimento.toISOString().split('T')[0],
+      paid_at: new Date().toISOString(),
+      gateway_invoice_id: invoice.id,
+      description: `Fatura Stripe ${invoice.number || invoice.id}`,
+      billing_cycle: invoice.subscription ? 'recurring' : 'one_time',
+    }))
+  }
+
+  // Fatura paga tira a assinatura de `past_due` — é o fim da inadimplência.
+  await logWrite('reactivate-subscription', supabase
+    .from('subscriptions')
+    .update({ status: 'active', updated_at: new Date().toISOString() })
+    .eq('user_id', profile.id)
+    .eq('status', 'past_due'))
+}
+
 
 function resolveCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer): string {
   return typeof customer === 'string' ? customer : customer.id
