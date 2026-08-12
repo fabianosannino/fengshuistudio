@@ -8,6 +8,8 @@ import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import PrimeiroUso from './PrimeiroUso'
+import HomeDoCliente from './HomeDoCliente'
+import { ehClienteFinal } from '../../src/lib/papel-do-usuario'
 import type { Profile, BaguaEntrada } from '../../src/lib/types'
 import { montarPendencias, type Pendencia, type TipoDePendencia } from '../../src/lib/pendencias'
 import { progressoDoDiagnostico, coresDaBarra, type ProgressoDoDiagnostico } from '../../src/lib/etapa-do-diagnostico'
@@ -123,6 +125,11 @@ export default function Dashboard() {
 
       const { data: perfil } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(perfil)
+
+      // O cliente final tem outra home (`HomeDoCliente`), que busca o próprio
+      // dado. Seguir com as consultas de carteira aqui gastaria seis queries
+      // cujo resultado ninguém veria.
+      if (ehClienteFinal(perfil)) { setLoading(false); return }
 
       const inicioDoMes = new Date()
       inicioDoMes.setDate(1)
@@ -285,6 +292,14 @@ export default function Dashboard() {
 
   // Consultor sem nenhum dado recebe a tela de primeiro uso inteira, não quatro
   // painéis vazios com mensagens negativas.
+  if (ehClienteFinal(profile)) {
+    return (
+      <AppShell currentPage="dashboard">
+        <HomeDoCliente nome={profile?.nome_completo ?? null} />
+      </AppShell>
+    )
+  }
+
   if (!temAlgumDado) {
     return (
       <AppShell currentPage="dashboard">

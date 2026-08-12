@@ -18,9 +18,10 @@ import {
 import {
   LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
   Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard,
-  BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu,
+  BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu, Grid3x3,
   type LucideIcon,
 } from 'lucide-react'
+import { ehClienteFinal } from '../../src/lib/papel-do-usuario'
 
 type NavItem = { label: string; icon: LucideIcon; href: string; bloqueado?: boolean }
 
@@ -57,13 +58,49 @@ export default function AppShell({
   const isAdmin = profile?.role === 'admin'
   const plano = planoUsuario(profile)
 
+  const clienteFinal = ehClienteFinal(profile)
+
   // Fora de grupo: é a porta de entrada, não uma categoria.
-  const itemInicio: NavItem = { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' }
+  const itemInicio: NavItem = clienteFinal
+    ? { label: 'Minha casa', icon: HomeIcon, href: '/dashboard' }
+    : { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' }
+
+  /**
+   * O menu do cliente final não é o do consultor com itens desabilitados: é
+   * outro menu. Carteira de clientes, cobrança e relatórios de negócio não
+   * existem para quem cuida da própria casa — mostrá-los cinzentos só ensinaria
+   * que metade do produto não é para ele.
+   */
+  const gruposDoCliente: GrupoDeNav[] = [
+    {
+      titulo: 'Minha casa',
+      itens: [
+        { label: 'Mapa Ba Guá', icon: Grid3x3, href: '/bagua-planta' },
+        { label: 'Minhas curas', icon: Sparkles, href: '/curas' },
+        { label: 'Roda da Vida', icon: CircleDot, href: '/roda-da-vida' },
+        ...(podeCalendario(plano) ? [{ label: 'Calendário lunar', icon: Moon, href: '/calendario' }] : []),
+      ],
+    },
+    {
+      titulo: 'Ajuda e loja',
+      itens: [
+        { label: 'Encontrar consultor', icon: Handshake, href: '/parceiros' },
+        { label: 'Loja', icon: ShoppingCart, href: '/produtos' },
+      ],
+    },
+    {
+      titulo: 'Conta',
+      itens: [
+        { label: 'Meu plano', icon: Star, href: '/planos' },
+        { label: 'Perfil', icon: Settings, href: '/perfil' },
+      ],
+    },
+  ]
 
   // Item escondido por plano continua escondido; a mudança é só de arrumação.
   // Um grupo que ficar vazio some inteiro — cabeçalho sem item embaixo é pior
   // que grupo nenhum.
-  const grupos: GrupoDeNav[] = [
+  const gruposDoConsultor: GrupoDeNav[] = [
     {
       titulo: 'Atendimento',
       itens: [
@@ -108,6 +145,23 @@ export default function AppShell({
       ],
     }] : []),
   ].filter(g => g.itens.length > 0)
+
+  const grupos = clienteFinal ? gruposDoCliente : gruposDoConsultor
+
+  /**
+   * Barra inferior do celular — quatro destinos, só para o cliente final.
+   *
+   * Quatro porque é o que cabe com alvo de 44px numa tela de 390px sem os
+   * rótulos encolherem abaixo de 11px. O consultor continua com o hambúrguer:
+   * o menu dele tem quinze itens e nenhum recorte de quatro seria honesto.
+   */
+  const barraInferior: NavItem[] = [
+    { label: 'Minha casa', icon: HomeIcon, href: '/dashboard' },
+    { label: 'Ba Guá', icon: Grid3x3, href: '/bagua-planta' },
+    { label: 'Curas', icon: Sparkles, href: '/curas' },
+    { label: 'Perfil', icon: Settings, href: '/perfil' },
+  ]
+  const mostrarBarraInferior = clienteFinal && isMobile
 
   /** `currentPage` chega como o caminho sem a barra inicial ('admin/chaves'). */
   function estaAtivo(href: string) {
@@ -352,11 +406,41 @@ export default function AppShell({
           </div>
         </header>
 
-        <main id="main-content" role="main" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <main id="main-content" role="main" style={{
+          padding: '24px', maxWidth: '1200px', margin: '0 auto',
+          // A barra é fixa: sem esta folga ela cobriria o último elemento.
+          paddingBottom: mostrarBarraInferior ? '84px' : '24px',
+        }}>
           <PaymentBanner />
           {children}
         </main>
       </div>
+
+      {mostrarBarraInferior && (
+        <nav aria-label="Navegação rápida" style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
+          background: t.card, borderTop: `1px solid ${t.border}`,
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}>
+          {barraInferior.map(item => {
+            const ativo = estaAtivo(item.href)
+            const Icon = item.icon
+            return (
+              <a key={item.href} href={item.href} aria-current={ativo ? 'page' : undefined} style={{
+                // 48px, acima do mínimo de 44 exigido para alvo de toque.
+                minHeight: '48px', padding: '8px 4px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: '3px', textDecoration: 'none',
+                color: ativo ? jade : t.textSoft,
+              }}>
+                <Icon size={20} strokeWidth={ativo ? 2.25 : 1.75} aria-hidden="true" />
+                <span style={{ fontSize: '11px', fontWeight: ativo ? 700 : 400, whiteSpace: 'nowrap' }}>{item.label}</span>
+              </a>
+            )
+          })}
+        </nav>
+      )}
 
       <style>{`
         @media print {

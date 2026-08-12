@@ -59,7 +59,7 @@ export default function MinhaCasa() {
                 />
                 <div className="absolute -bottom-5 left-6 bg-paper rounded-xl shadow-lg border border-border px-5 py-4">
                   <p className="text-xs text-ink/60">Sua casa</p>
-                  <p className="font-display text-2xl text-jade">72% em harmonia</p>
+                  <p className="font-display text-2xl text-jade">7 dos 9 setores em harmonia</p>
                 </div>
               </div>
             </FadeUp>
