@@ -46,6 +46,10 @@ STRIPE_SECRET_KEY=sk_... npx vite-node scripts/stripe/conferir-precos.mts
 Ele pergunta ao Stripe, com a mesma chave que o app usa, se cada preço existe
 naquele modo, se está ativo e se o intervalo bate com o nome da variável. Só lê.
 
+Prefira uma **chave restrita** (`rk_...`) com leitura de produtos e preços: ela
+serve para esta conferência e não cobra nem reembolsa se vazar. A secret key de
+produção também não é revelável depois de criada — o Stripe a mostra uma vez só.
+
 ## Scripts
 
 ```bash
