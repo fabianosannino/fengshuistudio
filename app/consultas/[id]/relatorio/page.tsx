@@ -24,6 +24,7 @@ import { gerarRemedios } from '../../../../src/lib/remedios'
 import { useUrlsAssinadas } from '../../../components/useUrlsAssinadas'
 import { normalizarChecklist, resumirChi } from '../../../../src/lib/fluxo-chi'
 import { CHECKLIST_CHI } from '../../../../src/lib/checklist-chi'
+import { FORMATOS, secoesDoFormato, formatoCorrespondente, paginasEstimadas } from '../../../../src/lib/formato-do-relatorio'
 import { faseLunar } from '../../../../src/lib/lunar'
 import { logger } from '../../../../src/lib/logger'
 import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
@@ -145,6 +146,13 @@ export default function Relatorio() {
   const [textoConclusao, setTextoConclusao] = useState('As recomendações apresentadas neste relatório visam promover o equilíbrio energético do imóvel e o bem-estar de seus ocupantes. Recomenda-se a implementação gradual das sugestões, começando pelas áreas de maior urgência.')
   const [recsAdicionais, setRecsAdicionais] = useState<Record<string, string>>({})
   const [chiCustom, setChiCustom] = useState<{ id: string; label: string }[]>([])
+
+  /**
+   * `null` quando o consultor ajustou as caixas à mão. Sem isso o seletor
+   * mentiria: com «Resumo» destacado e uma seção extra ligada, ele entregaria
+   * um dossiê achando que mandou o resumo.
+   */
+  const formatoAtual = formatoCorrespondente(selectedSections)
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
@@ -494,17 +502,55 @@ export default function Relatorio() {
   return (
     <>
       <style>{`
+        .print-only { display: none; }
+
         @media print {
           .no-print { display: none !important; }
+          .print-only { display: block !important; }
           body { margin: 0; background: #fff; }
           .print-area { padding: 0 !important; box-shadow: none !important; max-width: 100% !important; }
-          .print-only { display: none; }
-          @page { size: A4 portrait; margin: 1.5cm; }
-        }
-        @media print {
-          .print-only { display: block !important; }
+
+          @page { size: A4 portrait; margin: 1.6cm 1.5cm 2.2cm; }
+
+          /* ── Quebras controladas ────────────────────────────────────────
+           * Sem isto o navegador corta onde calhar: um título na última linha
+           * de uma página com o conteúdo na seguinte, uma linha de tabela
+           * partida ao meio, uma foto cortada na horizontal.
+           */
+          h1, h2, h3, h4 { break-after: avoid-page; }
+          img, table, figure { break-inside: avoid; }
+          tr, li { break-inside: avoid; }
+          /* Duas linhas órfãs/viúvas no mínimo — uma linha sozinha no pé ou no
+           * topo da página é o defeito tipográfico que mais salta à vista. */
+          p, li { orphans: 2; widows: 2; }
+
+          /* O fundo dos selos e das faixas some na impressão padrão, e com ele
+           * some a distinção entre «em harmonia» e «precisa de cuidado». */
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+          /* Rodapé repetido. O número da página fica com o navegador: o Chrome
+           * não implementa as margin boxes do CSS Paged Media, então contar
+           * páginas aqui daria um número que só existiria no Firefox. */
+          .rodape-impressao {
+            display: block !important;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding-top: 6px; border-top: 1px solid #E7E1D6;
+            font-size: 9px; color: #6B7280;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex; justify-content: space-between;
+          }
+
+          /* Link impresso não é clicável; o endereço em si raramente ajuda. */
+          a { text-decoration: none; color: inherit; }
         }
       `}</style>
+
+      {/* Rodapé que se repete em toda página impressa — quem assina o
+          diagnóstico e de quando ele é. Invisível na tela. */}
+      <div className="rodape-impressao print-only" aria-hidden="true">
+        <span>{profile?.nome_completo || 'FengShui Studio'}{profile?.nome_empresa ? ` · ${profile.nome_empresa}` : ''}</span>
+        <span>{consulta?.nome_imovel || ''} · {new Date().toLocaleDateString('pt-BR')}</span>
+      </div>
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <div className="no-print" style={{
@@ -531,16 +577,27 @@ export default function Relatorio() {
             background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
             color: '#C9A227', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
           }}>Curas</button>
-          <button type="button" onClick={handlePrint} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
-            color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
-            cursor: 'pointer', fontSize: '14px'
-          }}>Imprimir</button>
-          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens} style={{
-            background: (downloading || assinandoImagens) ? '#9CA3AF' : gold, border: 'none',
-            color: '#ffffff', padding: '6px 20px', borderRadius: '6px',
-            cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
-          }}>{downloading ? 'Gerando PDF...' : assinandoImagens ? 'Carregando fotos...' : 'Baixar PDF'}</button>
+          {/* Impressão do navegador é o caminho principal: gera texto
+              selecionável, respeita as quebras do CSS de impressão e não
+              depende de o html2canvas entender a função de cor da vez.
+              «Salvar como PDF» no diálogo produz o arquivo. */}
+          <button type="button" onClick={handlePrint} title="Abre o diálogo de impressão — escolha «Salvar como PDF»" style={{
+            background: gold, border: 'none', color: '#0E1B2C',
+            padding: '6px 20px', borderRadius: '6px',
+            cursor: 'pointer', fontSize: '14px', fontWeight: 600,
+          }}>Imprimir / Salvar PDF</button>
+          {/* O caminho antigo continua, e agora diz o que é: fotografa a tela e
+              recorta em páginas. Texto vira imagem — não dá para copiar nem
+              buscar —, mas sai sem passar pelo diálogo do navegador. */}
+          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens}
+            title="Gera o arquivo direto, mas o texto vira imagem"
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.25)',
+              color: (downloading || assinandoImagens) ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.7)',
+              padding: '6px 14px', borderRadius: '6px',
+              cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px',
+            }}>{downloading ? 'Gerando…' : assinandoImagens ? 'Carregando fotos…' : 'Baixar como imagem'}</button>
           {savedRelatorioEm && (
             <button type="button"
               onClick={baixarVersaoSalva}
@@ -609,7 +666,36 @@ export default function Relatorio() {
               ))}
             </div>
           </div>
-          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>Selecione as seções que deseja incluir:</p>
+          {/* Dois formatos em vez de onze caixas em branco. As caixas continuam
+              embaixo: a escolha é ponto de partida, não camisa de força. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+            {(['resumo', 'dossie'] as const).map(formatoId => {
+              const f = FORMATOS[formatoId]
+              const escolhido = formatoAtual === formatoId
+              return (
+                <button type="button" key={formatoId}
+                  onClick={() => setSelectedSections(prev => ({ ...prev, ...secoesDoFormato(formatoId) }))}
+                  aria-pressed={escolhido}
+                  style={{
+                    textAlign: 'left', padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                    background: escolhido ? '#FAF3E0' : '#fff',
+                    border: escolhido ? '2px solid #C9A227' : '1px solid #E7E1D6',
+                  }}>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0E1B2C', marginBottom: '4px' }}>{f.titulo}</span>
+                  <span style={{ display: 'block', fontSize: '12px', color: '#6B7280', lineHeight: 1.5 }}>{f.subtitulo}</span>
+                  <span style={{ display: 'block', fontSize: '12px', color: '#8A6E2F', fontWeight: 700, marginTop: '6px' }}>
+                    cerca de {paginasEstimadas(f.secoes)} páginas
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
+            {formatoAtual
+              ? `Formato ${FORMATOS[formatoAtual].titulo.toLowerCase()} · cerca de ${paginasEstimadas(selectedSections)} páginas`
+              : `Ajustado à mão · cerca de ${paginasEstimadas(selectedSections)} páginas`}
+          </p>
           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid #E5E7EB', marginBottom: '8px', paddingBottom: '12px' }}>
             <input type="checkbox" checked={selectedSections.completo}
               onChange={e => {
