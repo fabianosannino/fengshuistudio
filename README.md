@@ -50,6 +50,32 @@ Prefira uma **chave restrita** (`rk_...`) com leitura de produtos e preços: ela
 serve para esta conferência e não cobra nem reembolsa se vazar. A secret key de
 produção também não é revelável depois de criada — o Stripe a mostra uma vez só.
 
+## Reconciliação com o Stripe
+
+Webhook é entrega best-effort: endpoint mal configurado, fora do ar ou segredo
+trocado deixam o banco para trás **em silêncio**. Já aconteceu — uma compra real
+foi paga e o app não soube.
+
+`/api/admin/reconciliacao` compara a conta Stripe com a tabela `subscriptions`:
+
+- `GET` relata as divergências e não toca em nada;
+- `POST` relata e corrige o que é cópia de valor (status, valor pago, ciclo,
+  cancelamento agendado).
+
+Um cron diário às 6h UTC chama o `GET` — ver `vercel.json`. Ele **detecta e
+alarma**; a correção é um `POST` deliberadamente manual, porque as primeiras
+execuções merecem ser vistas antes de virarem automáticas. Divergência sai no
+log em nível de erro.
+
+Para o cron autenticar, defina `CRON_SECRET` na Vercel; a rota também aceita
+sessão de admin.
+
+Dois casos ficam fora da correção automática e são relatados em
+`exigem_analise`: assinatura que existe no Stripe e não aqui (criar a linha
+envolve resolver perfil e plano — lógica que o webhook já tem, e duplicá-la
+criaria uma segunda verdade) e assinatura que existe aqui e não lá, que não é
+dado velho e sim dado inventado.
+
 ## Scripts
 
 ```bash
