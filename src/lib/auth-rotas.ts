@@ -51,3 +51,22 @@ export function urlCallbackAuth(origin: string, destino: string): string {
   url.searchParams.set('next', destino)
   return url.toString()
 }
+
+/**
+ * Manda o visitante não autenticado para o login.
+ *
+ * Existia em 23 telas, escrito de duas formas que **não são equivalentes**:
+ * 21 usavam `window.location.href` e 2 usavam `router.push`. A diferença
+ * importa: `router.push` navega dentro da SPA e **preserva a árvore React em
+ * memória** — inclusive componentes que já buscaram dados com a sessão que
+ * acabou de ser recusada. `window.location.href` recarrega a página e descarta
+ * tudo.
+ *
+ * Para um guard de autenticação, descartar é o comportamento correto: se a
+ * sessão não vale, nada que foi carregado sob ela deveria continuar na tela.
+ * Por isso a forma unificada é a recarga, que também era a maioria.
+ */
+export function redirecionarParaLogin(): void {
+  if (typeof window === 'undefined') return
+  window.location.href = ROTA_LOGIN
+}

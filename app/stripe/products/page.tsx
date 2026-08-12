@@ -110,7 +110,7 @@ export default function StripeProducts() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h1 style={{ color: '#0E1B2C', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Meus Produtos</h1>
-          <button onClick={() => setShowForm(!showForm)} style={{
+          <button type="button" onClick={() => setShowForm(!showForm)} style={{
             padding: '10px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
             borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
           }}>{showForm ? 'Cancelar' : '+ Novo Produto'}</button>

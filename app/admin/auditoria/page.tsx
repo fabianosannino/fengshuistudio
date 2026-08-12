@@ -135,7 +135,7 @@ export default function AdminAuditoria() {
 
         {totalPages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
-            <button
+            <button type="button"
               onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               style={{
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
@@ -145,7 +145,7 @@ export default function AdminAuditoria() {
               }}
             ><ArrowLeft size={13} strokeWidth={2} aria-hidden="true" /> Anterior</button>
             <span style={{ color: '#6B7280', fontSize: '12px' }}>Página {page} de {totalPages}</span>
-            <button
+            <button type="button"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
               style={{
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',

@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -117,7 +118,7 @@ export default function Pagamentos() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
       setUserId(user.id)
 
@@ -316,7 +317,7 @@ export default function Pagamentos() {
           <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Pagamentos</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{allCount} pagamento(s) registrado(s)</p>
         </div>
-        <button onClick={openNew} style={{
+        <button type="button" onClick={openNew} style={{
           background: '#2E7D6B', color: '#ffffff', border: 'none',
           padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
           fontWeight: 'bold', cursor: 'pointer',
@@ -342,7 +343,7 @@ export default function Pagamentos() {
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {['todos', 'pendente', 'pago', 'atrasado', 'cancelado'].map(f => (
-          <button key={f} onClick={() => handleFiltroChange(f)} style={{
+          <button type="button" key={f} onClick={() => handleFiltroChange(f)} style={{
             padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold',
             cursor: 'pointer', border: 'none',
             background: filtroStatus === f ? '#0E1B2C' : '#F3F4F6',
@@ -372,7 +373,7 @@ export default function Pagamentos() {
           <Wallet size={44} strokeWidth={1.5} color="#2E7D6B" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
           <h3 style={{ color: '#0E1B2C', fontSize: '18px', marginBottom: '8px' }}>Nenhum pagamento encontrado</h3>
           <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>Registre pagamentos para controlar seu financeiro</p>
-          <button onClick={openNew} style={{
+          <button type="button" onClick={openNew} style={{
             background: '#2E7D6B', color: '#ffffff', border: 'none',
             padding: '12px 24px', borderRadius: '8px', fontSize: '15px',
             fontWeight: 'bold', cursor: 'pointer'
@@ -426,19 +427,19 @@ export default function Pagamentos() {
                 {/* Ações */}
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                   {(pag.status === 'pendente' || pag.status === 'atrasado' || vencido) && (
-                    <button onClick={() => handleMarcarPago(pag)} style={{
+                    <button type="button" onClick={() => handleMarcarPago(pag)} style={{
                       padding: '6px 14px', background: '#F0FDF4', color: '#15803D',
                       border: '1px solid #BBF7D0', borderRadius: '6px',
                       fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '4px',
                     }}><Check size={13} strokeWidth={2.5} aria-hidden="true" /> Pago</button>
                   )}
-                  <button onClick={() => openEdit(pag)} style={{
+                  <button type="button" onClick={() => openEdit(pag)} style={{
                     padding: '6px 14px', background: '#F3F4F6', color: '#374151',
                     border: '1px solid #E5E7EB', borderRadius: '6px',
                     fontSize: '12px', cursor: 'pointer',
                   }}>Editar</button>
-                  <button onClick={() => setDeleteTarget(pag.id)} style={{
+                  <button type="button" onClick={() => setDeleteTarget(pag.id)} style={{
                     padding: '6px 14px', background: '#FEF2F2', color: '#DC2626',
                     border: '1px solid #FECACA', borderRadius: '6px',
                     fontSize: '12px', cursor: 'pointer',
@@ -455,7 +456,7 @@ export default function Pagamentos() {
           display: 'flex', justifyContent: 'center', alignItems: 'center',
           gap: '8px', marginTop: '24px',
         }}>
-          <button
+          <button type="button"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 0}
             style={{
@@ -469,7 +470,7 @@ export default function Pagamentos() {
           <span style={{ color: '#6B7280', fontSize: '13px' }}>
             Página {currentPage + 1} de {totalPages}
           </span>
-          <button
+          <button type="button"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage + 1 >= totalPages}
             style={{
@@ -499,7 +500,7 @@ export default function Pagamentos() {
               <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
                 {editingId ? 'Editar Pagamento' : 'Novo Pagamento'}
               </h2>
-              <button onClick={() => { setShowModal(false); resetForm() }} style={{
+              <button type="button" onClick={() => { setShowModal(false); resetForm() }} style={{
                 background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#9CA3AF',
               }}>×</button>
             </div>

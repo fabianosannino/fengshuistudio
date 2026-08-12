@@ -103,7 +103,7 @@ export default function ConfirmModal({
         </p>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button
+          <button type="button"
             ref={cancelRef}
             onClick={onCancel}
             style={{
@@ -115,7 +115,7 @@ export default function ConfirmModal({
           >
             {cancelLabel}
           </button>
-          <button
+          <button type="button"
             onClick={onConfirm}
             style={{
               flex: 1, padding: '12px',

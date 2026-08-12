@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
@@ -235,7 +236,7 @@ function BaguaPlantaContent() {
 
   useEffect(()=>{
     supabase.auth.getUser().then(({data:{user}})=>{
-      if(!user){router.push('/login');return}
+      if(!user){redirecionarParaLogin();return}
       supabase.from('consultas').select('id,nome_imovel').eq('consultor_id',user.id)
         .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>console.error('Erro ao carregar consultas:',e))
       // Se veio com consultaId, carrega nome e dados existentes
@@ -1474,11 +1475,11 @@ function BaguaPlantaContent() {
               }
             </p>
             <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
-              <button onClick={restaurarRascunho}
+              <button type="button" onClick={restaurarRascunho}
                 style={{background:'#15803D',color:'#fff',border:'none',padding:'10px 24px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                 Continuar análise
               </button>
-              <button onClick={()=>{
+              <button type="button" onClick={()=>{
                 if(confirm('Tem certeza que deseja recomecar do zero? Todos os dados salvos serão apagados.')){
                   recomecarAnalise()
                 }
@@ -1497,7 +1498,7 @@ function BaguaPlantaContent() {
             <h3 style={{color:'#0E1B2C',fontSize:'16px',marginBottom:'6px'}}>Upload da planta baixa</h3>
             <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>JPG ou PNG · fundo branco com paredes escuras</p>
             <input ref={fileRef} type="file" accept="image/*" onChange={onUpload} style={{display:'none'}}/>
-            <button onClick={()=>fileRef.current?.click()}
+            <button type="button" onClick={()=>fileRef.current?.click()}
               style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'10px 28px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
               Selecionar arquivo
             </button>
@@ -1527,11 +1528,11 @@ function BaguaPlantaContent() {
               </p>
             </div>
             <div style={{display:'flex',gap:'10px'}}>
-              <button onClick={()=>setStep('upload')}
+              <button type="button" onClick={()=>setStep('upload')}
                 style={{flex:1,padding:'10px',background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:'8px',fontSize:'14px',cursor:'pointer'}}>
                 ← Voltar
               </button>
-              <button onClick={()=>setStep('configurar')}
+              <button type="button" onClick={()=>setStep('configurar')}
                 style={{flex:2,padding:'10px',background:metragemReal>0?'#0E1B2C':'#93C5FD',color:'#fff',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:metragemReal>0?'pointer':'not-allowed',opacity:metragemReal>0?1:0.6}}
                 disabled={metragemReal<=0}>
                 Continuar → Configurar planta
@@ -1586,7 +1587,7 @@ function BaguaPlantaContent() {
                   </label>
                   <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
                     {Object.values(MODELOS).map(m=>(
-                      <button key={m.id} onClick={()=>setModeloPontuacao(m.id)} title={m.descricao} style={{
+                      <button type="button" key={m.id} onClick={()=>setModeloPontuacao(m.id)} title={m.descricao} style={{
                         padding:'5px 9px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
                         borderColor:modeloPontuacao===m.id?'#2E7D6B':'#D1D5DB',
                         background:modeloPontuacao===m.id?'#E6F2EF':'#fff',
@@ -1729,7 +1730,7 @@ function BaguaPlantaContent() {
                       <label style={{display:'block',color:'#374151',fontSize:'12px',fontWeight:'bold',marginBottom:'7px'}}>1️⃣ Método</label>
                       <div style={{display:'flex',gap:'7px'}}>
                         {METODOLOGIAS.map(m=>(
-                          <button key={m.id}
+                          <button type="button" key={m.id}
                             onClick={()=>m.disponivel&&setEscola(m.id)}
                             title={m.disponivel?m.nome:`${m.nome} — em breve disponível`}
                             disabled={!m.disponivel}
@@ -1748,7 +1749,7 @@ function BaguaPlantaContent() {
                           </label>
                           <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
                             {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
-                              <button key={lbl} onClick={()=>setOrientacaoGraus(g as number)} style={{
+                              <button type="button" key={lbl} onClick={()=>setOrientacaoGraus(g as number)} style={{
                                 padding:'3px 7px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
                                 borderColor:orientacaoGraus===g?'#2E7D6B':'#D1D5DB',background:orientacaoGraus===g?'#2E7D6B':'#fff',color:orientacaoGraus===g?'#fff':'#6B7280',
                               }}>{lbl}</button>
@@ -1939,13 +1940,13 @@ function BaguaPlantaContent() {
                         2️⃣ Rotação <span style={{color:'#2E7D6B',fontWeight:'normal'}}>{rot}°</span>
                       </label>
                       <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'6px'}}>
-                        <button onClick={()=>setRot(r=>(r-90+360)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↺</button>
+                        <button type="button" onClick={()=>setRot(r=>(r-90+360)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↺</button>
                         <input id="input-rotacao" type="range" min={0} max={359} value={rot} onChange={e=>setRot(Number(e.target.value))} style={{flex:1}}/>
-                        <button onClick={()=>setRot(r=>(r+90)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↻</button>
+                        <button type="button" onClick={()=>setRot(r=>(r+90)%360)} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:'5px',cursor:'pointer'}}>↻</button>
                       </div>
                       <div style={{display:'flex',gap:'4px'}}>
                         {[0,90,180,270].map(r=>(
-                          <button key={r} onClick={()=>setRot(r)} style={{
+                          <button type="button" key={r} onClick={()=>setRot(r)} style={{
                             flex:1,padding:'3px 0',fontSize:'11px',border:'1px solid',borderRadius:'4px',cursor:'pointer',
                             borderColor:rot===r?'#2E7D6B':'#D1D5DB',background:rot===r?'#E6F2EF':'#fff',color:rot===r?'#2E7D6B':'#6B7280',
                           }}>{r}°</button>
@@ -1953,7 +1954,7 @@ function BaguaPlantaContent() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={()=>setStep('entrada')}
+                  <button type="button" onClick={()=>setStep('entrada')}
                     style={{width:'100%',background:'#0E1B2C',color:'#fff',border:'none',padding:'10px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                     Continuar → Marcar entrada principal
                   </button>
@@ -1963,7 +1964,7 @@ function BaguaPlantaContent() {
               {/* Controles ENTRADA */}
               {step==='entrada'&&(
                 <div style={{marginTop:'10px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
-                  <button onClick={()=>setStep('configurar')}
+                  <button type="button" onClick={()=>setStep('configurar')}
                     style={{padding:'6px 14px',background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:'6px',fontSize:'14px',fontWeight:400,cursor:'pointer'}}>
                     ← Voltar
                   </button>
@@ -1973,7 +1974,7 @@ function BaguaPlantaContent() {
                     </div>
                   )}
                   {entrada&&(
-                    <button onClick={calcular}
+                    <button type="button" onClick={calcular}
                       style={{padding:'8px 20px',background:'#0E1B2C',color:'#fff',border:'none',borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       Calcular Ba Gua →
                     </button>
@@ -1984,7 +1985,7 @@ function BaguaPlantaContent() {
               {/* Instrução explicativa (resultado) — accordion */}
               {step==='resultado'&&(
                 <div style={{marginTop:'10px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:'10px',overflow:'hidden'}}>
-                  <button onClick={()=>setInstrucaoAberta(!instrucaoAberta)} style={{
+                  <button type="button" onClick={()=>setInstrucaoAberta(!instrucaoAberta)} style={{
                     width:'100%',padding:'12px 18px',background:'transparent',border:'none',cursor:'pointer',
                     display:'flex',alignItems:'center',justifyContent:'space-between'
                   }}>
@@ -2020,7 +2021,7 @@ function BaguaPlantaContent() {
                           <p style={{color:'#6B7280',fontSize:'10px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
                         </div>
                       </div>
-                      <button onClick={()=>{setInstrucaoAberta(false);setModo('bordas')}} style={{
+                      <button type="button" onClick={()=>{setInstrucaoAberta(false);setModo('bordas')}} style={{
                         width:'100%',padding:'10px',background:'#1D4ED8',color:'#fff',border:'none',
                         borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
                       }}>Entendido — ajustar bordas</button>
@@ -2033,28 +2034,28 @@ function BaguaPlantaContent() {
               {step==='resultado'&&(
                 <>
                   <div style={{marginTop:'9px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                    <button onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
+                    <button type="button" onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
                       style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='bordas'?'🔒 Finalizar':'⬜ Bordas'}
                     </button>
-                    <button onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
+                    <button type="button" onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
                       style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarFalta'?'🔒 Finalizar':'▭ Marcar Falta'}
                     </button>
-                    <button onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
+                    <button type="button" onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
                       style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Marcar Excesso'}
                     </button>
-                    <button onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
+                    <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
                       style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                         animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                       🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
-                    <button onClick={()=>setFullscreen(true)}
+                    <button type="button" onClick={()=>setFullscreen(true)}
                       style={{background:'#15803D',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer'}}>
                       🔍 Tela cheia
                     </button>
-                    <button onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null);setMarcacoes([])}}
+                    <button type="button" onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null);setMarcacoes([])}}
                       style={{background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>
                       ↩ Nova planta
                     </button>
@@ -2151,7 +2152,7 @@ function BaguaPlantaContent() {
                             </p>
                             <div style={{display:'flex',gap:'4px',marginBottom:'8px',flexWrap:'wrap'}}>
                               {(['cama','fogao','mesa'] as const).map(t=>(
-                                <button key={t} onClick={()=>setMobiliarioTipo(t)} style={{
+                                <button type="button" key={t} onClick={()=>setMobiliarioTipo(t)} style={{
                                   padding:'4px 10px',borderRadius:'5px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
                                   borderColor:mobiliarioTipo===t?'#2E7D6B':'#D1D5DB',background:mobiliarioTipo===t?'#2E7D6B':'#fff',color:mobiliarioTipo===t?'#fff':'#6B7280',
                                 }}>{t==='cama'?'Cama':t==='fogao'?'Fogão':'Mesa'}</button>
@@ -2255,7 +2256,7 @@ function BaguaPlantaContent() {
 
                   {/* Salvar e continuar */}
                   {setores.length===9&&consultaId&&(
-                    <button onClick={finalizarAnalise} disabled={salvandoTudo}
+                    <button type="button" onClick={finalizarAnalise} disabled={salvandoTudo}
                       style={{
                         marginTop:'14px',width:'100%',padding:'12px',
                         background:salvandoTudo?'#93C5FD':'linear-gradient(135deg, #0E1B2C, #163A52)',
@@ -2279,7 +2280,7 @@ function BaguaPlantaContent() {
                     <span style={{fontSize:'14px',fontWeight:'bold',color:'#0E1B2C'}}>{stAtivo.nome}</span>
                     <div style={{fontSize:'10px',color:'#6B7280'}}>{stAtivo.elem} · {stAtivo.dir}</div>
                   </div>
-                  <button onClick={()=>setAtivo(null)} style={{background:'transparent',border:'none',fontSize:'18px',cursor:'pointer',color:'#9CA3AF'}}>×</button>
+                  <button type="button" onClick={()=>setAtivo(null)} style={{background:'transparent',border:'none',fontSize:'18px',cursor:'pointer',color:'#9CA3AF'}}>×</button>
                 </div>
 
                 {/* Cores / Elemento */}
@@ -2352,7 +2353,7 @@ function BaguaPlantaContent() {
                       </span>
                     </div>
                     <div style={{display:'flex',gap:'3px'}}>
-                      <button
+                      <button type="button"
                         onClick={()=>setCrit(ativo!,ci,null)}
                         title="Não avaliado"
                         style={{
@@ -2362,7 +2363,7 @@ function BaguaPlantaContent() {
                           color:val===null?'#374151':'#9CA3AF',
                         }}>—</button>
                       {[0,1,2,3,4].map(v=>(
-                        <button key={v} onClick={()=>setCrit(ativo!,ci,v as NotaCriterio)} style={{
+                        <button type="button" key={v} onClick={()=>setCrit(ativo!,ci,v as NotaCriterio)} style={{
                           flex:1,padding:'4px 0',borderRadius:'4px',border:'1px solid',fontSize:'10px',fontWeight:'bold',cursor:'pointer',
                           borderColor:val===v?CORES[v]:'#D1D5DB',
                           background:val===v?BGS[v]:'#fff',
@@ -2408,7 +2409,7 @@ function BaguaPlantaContent() {
                       style={{width:'100%',padding:'6px',borderRadius:'4px',border:'1px solid #D1D5DB',fontSize:'10px',resize:'vertical',minHeight:'36px',boxSizing:'border-box'}}
                     />
                     {scAtivo.ajusteManual!==null&&(
-                      <button onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'10px',color:'#6B7280',cursor:'pointer'}}>
+                      <button type="button" onClick={()=>resetAjuste(ativo!)} style={{marginTop:'4px',padding:'4px 10px',background:'transparent',border:'1px solid #D1D5DB',borderRadius:'4px',fontSize:'10px',color:'#6B7280',cursor:'pointer'}}>
                         ↺ Usar valor calculado
                       </button>
                     )}
@@ -2491,7 +2492,7 @@ function BaguaPlantaContent() {
                   )
                 })()}
 
-                <button onClick={()=>salvarSetorDB(ativo!)}
+                <button type="button" onClick={()=>salvarSetorDB(ativo!)}
                   style={{width:'100%',marginTop:'8px',background:consultaId?'#2E7D6B':'#0E1B2C',color:'#fff',border:'none',padding:'9px',borderRadius:'7px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   💾 Salvar avaliação{consultaId?' no banco':''}
                 </button>
@@ -2519,24 +2520,24 @@ function BaguaPlantaContent() {
                 <span style={{color:'rgba(255,255,255,0.5)',fontSize:'12px'}}>— Tela cheia</span>
               </div>
               <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-                <button onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
+                <button type="button" onClick={()=>setModo(modo==='bordas'?'nenhum':'bordas')}
                   style={{background:modo==='bordas'?'#DC2626':'#D97706',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='bordas'?'🔒 Finalizar bordas':'⬜ Ajustar bordas'}
                 </button>
-                <button onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
+                <button type="button" onClick={()=>setModo(modo==='marcarFalta'?'nenhum':'marcarFalta')}
                   style={{background:modo==='marcarFalta'?'#DC2626':'#EF4444',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarFalta'?'🔒 Finalizar':'▭ Falta'}
                 </button>
-                <button onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
+                <button type="button" onClick={()=>setModo(modo==='marcarExcesso'?'nenhum':'marcarExcesso')}
                   style={{background:modo==='marcarExcesso'?'#DC2626':'#F59E0B',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                   {modo==='marcarExcesso'?'🔒 Finalizar':'▭ Excesso'}
                 </button>
-                <button onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
+                <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
                   style={{background:recalculoPendente?'#EA580C':bordaModificada?'#1D4ED8':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                     animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                   🔄 Recalcular{recalculoPendente?' (pendente)':''}
                 </button>
-                <button onClick={()=>{setModo('nenhum');setFullscreen(false)}}
+                <button type="button" onClick={()=>{setModo('nenhum');setFullscreen(false)}}
                   style={{background:'#15803D',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                   ✓ OK — Voltar
                 </button>

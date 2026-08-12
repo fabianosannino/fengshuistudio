@@ -227,7 +227,7 @@ export default function AdminPagamentos() {
                     {fmtDate(activeSub?.next_billing_date || activeSub?.current_period_end)}
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <button onClick={e => { e.stopPropagation(); setSelectedUser(u) }}
+                    <button type="button" onClick={e => { e.stopPropagation(); setSelectedUser(u) }}
                       style={{ padding: '6px 12px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
                       Detalhes
                     </button>
@@ -242,12 +242,12 @@ export default function AdminPagamentos() {
       {/* Pagination */}
       {pageCount > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+          <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
             style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', cursor: page === 1 ? 'default' : 'pointer', color: page === 1 ? '#D1D5DB' : '#374151' }}>
             Anterior
           </button>
           <span style={{ padding: '8px 16px', color: '#6B7280' }}>Página {page} de {pageCount}</span>
-          <button onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={page === pageCount}
+          <button type="button" onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={page === pageCount}
             style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', cursor: page === pageCount ? 'default' : 'pointer', color: page === pageCount ? '#D1D5DB' : '#374151' }}>
             Próxima
           </button>
@@ -262,7 +262,7 @@ export default function AdminPagamentos() {
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ color: '#0E1B2C', fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Detalhes do Usuário</h2>
-              <button onClick={() => setSelectedUser(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'inline-flex', alignItems: 'center' }}><X size={20} strokeWidth={2} aria-hidden="true" /></button>
+              <button type="button" onClick={() => setSelectedUser(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'inline-flex', alignItems: 'center' }}><X size={20} strokeWidth={2} aria-hidden="true" /></button>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -301,19 +301,19 @@ export default function AdminPagamentos() {
             {/* Admin Actions */}
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Ações</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <button onClick={() => { setActionModal('gratuidade'); setActionForm({}) }}
+              <button type="button" onClick={() => { setActionModal('gratuidade'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #1D4ED820', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Conceder Gratuidade
               </button>
-              <button onClick={() => { setActionModal('change_plan'); setActionForm({}) }}
+              <button type="button" onClick={() => { setActionModal('change_plan'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#EEF6F3', color: '#2E7D6B', border: '1px solid #2E7D6B20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Alterar Plano
               </button>
-              <button onClick={() => { setActionModal('cancel_subscription'); setActionForm({}) }}
+              <button type="button" onClick={() => { setActionModal('cancel_subscription'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #DC262620', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Cancelar Assinatura
               </button>
-              <button onClick={() => { setActionModal('mark_paid'); setActionForm({}) }}
+              <button type="button" onClick={() => { setActionModal('mark_paid'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#F0FDF4', color: '#15803D', border: '1px solid #15803D20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Marcar Fatura Paga
               </button>
@@ -357,8 +357,8 @@ export default function AdminPagamentos() {
               </label>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
-              <button disabled={actionLoading || !actionForm.motivo} onClick={() => execAction('gratuidade', {
+              <button type="button" onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+              <button type="button" disabled={actionLoading || !actionForm.motivo} onClick={() => execAction('gratuidade', {
                 plan_slug: actionForm.plan_slug || 'profissional',
                 duration_months: actionForm.duration_months ? parseInt(actionForm.duration_months) : null,
                 motivo: actionForm.motivo,
@@ -396,8 +396,8 @@ export default function AdminPagamentos() {
               </label>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
-              <button disabled={actionLoading || !actionForm.plan_slug || !actionForm.motivo} onClick={() => execAction('change_plan', {
+              <button type="button" onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+              <button type="button" disabled={actionLoading || !actionForm.plan_slug || !actionForm.motivo} onClick={() => execAction('change_plan', {
                 plan_slug: actionForm.plan_slug,
                 motivo: actionForm.motivo,
               })} style={{
@@ -437,8 +437,8 @@ export default function AdminPagamentos() {
               </label>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Voltar</button>
-              <button disabled={actionLoading || !actionForm.motivo} onClick={() => {
+              <button type="button" onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Voltar</button>
+              <button type="button" disabled={actionLoading || !actionForm.motivo} onClick={() => {
                 setConfirmModal({
                   title: 'Confirmar Cancelamento',
                   message: `Tem certeza que deseja cancelar a assinatura de ${selectedUser.nome_completo}? ${actionForm.immediate !== 'false' ? 'O acesso será cortado imediatamente.' : 'O acesso continua até o final do período.'}`,
@@ -487,8 +487,8 @@ export default function AdminPagamentos() {
               Nota: para usar esta função, primeiro crie uma fatura para o usuário na tabela invoices.
             </p>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
-              <button disabled={actionLoading} onClick={() => execAction('mark_paid', {
+              <button type="button" onClick={() => setActionModal(null)} style={{ padding: '10px 20px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+              <button type="button" disabled={actionLoading} onClick={() => execAction('mark_paid', {
                 invoice_id: actionForm.invoice_id,
                 paid_date: actionForm.paid_date || new Date().toISOString(),
                 paid_method: actionForm.paid_method || 'pix_manual',

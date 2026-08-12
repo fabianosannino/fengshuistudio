@@ -109,7 +109,7 @@ export default function RedefinirSenha() {
                 <p style={{ color: '#374151', fontSize: '15px', marginBottom: '24px' }}>
                   Agora você pode fazer login com sua nova senha.
                 </p>
-                <button onClick={() => window.location.href = ROTA_LOGIN} style={{
+                <button type="button" onClick={() => window.location.href = ROTA_LOGIN} style={{
                   width: '100%', padding: '14px', background: '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'
@@ -121,7 +121,7 @@ export default function RedefinirSenha() {
                   Links de recuperação valem por pouco tempo e só podem ser usados uma vez.
                   Peça um novo link para continuar.
                 </p>
-                <button onClick={() => window.location.href = ROTA_ESQUECI_SENHA} style={{
+                <button type="button" onClick={() => window.location.href = ROTA_ESQUECI_SENHA} style={{
                   width: '100%', padding: '14px', background: '#2E7D6B',
                   color: '#ffffff', border: 'none', borderRadius: '8px',
                   fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'

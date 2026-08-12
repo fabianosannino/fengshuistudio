@@ -201,12 +201,12 @@ function LoginForm() {
 
         {!isSignUp && (
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
-            <button onClick={() => { setIsSignUp(false); limparMensagem() }} style={{
+            <button type="button" onClick={() => { setIsSignUp(false); limparMensagem() }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
               background: '#ffffff', color: '#0E1B2C', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
             }}>Entrar</button>
-            <button onClick={() => { setIsSignUp(true); limparMensagem(); setSignUpStep(1) }} style={{
+            <button type="button" onClick={() => { setIsSignUp(true); limparMensagem(); setSignUpStep(1) }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
               background: 'transparent', color: '#6B7280'
@@ -216,12 +216,12 @@ function LoginForm() {
 
         {isSignUp && !signUpDone && (
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '8px', padding: '4px', marginBottom: '24px' }}>
-            <button onClick={() => { setIsSignUp(false); limparMensagem(); setSignUpStep(1) }} style={{
+            <button type="button" onClick={() => { setIsSignUp(false); limparMensagem(); setSignUpStep(1) }} style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
               fontSize: '14px', fontWeight: 'bold',
               background: 'transparent', color: '#6B7280'
             }}>Entrar</button>
-            <button style={{
+            <button type="button" style={{
               flex: 1, padding: '8px', border: 'none', borderRadius: '6px',
               fontSize: '14px', fontWeight: 'bold',
               background: '#ffffff', color: '#0E1B2C', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
@@ -255,7 +255,7 @@ function LoginForm() {
                 <li>Confirme se o e-mail digitado está correto</li>
               </ul>
             </div>
-            <button onClick={handleResendConfirmation} disabled={resending} style={{
+            <button type="button" onClick={handleResendConfirmation} disabled={resending} style={{
               width: '100%', padding: '12px',
               background: resending ? '#9CA3AF' : '#2E7D6B',
               color: '#ffffff', border: 'none', borderRadius: '8px',
@@ -264,7 +264,7 @@ function LoginForm() {
             }}>
               {resending ? 'Reenviando...' : 'Reenviar e-mail de confirmação'}
             </button>
-            <button onClick={resetSignUp} style={{
+            <button type="button" onClick={resetSignUp} style={{
               width: '100%', padding: '12px', background: '#F3F4F6',
               color: '#374151', border: 'none', borderRadius: '8px',
               fontSize: '14px', cursor: 'pointer'

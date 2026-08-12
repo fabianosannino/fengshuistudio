@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import { useMontado, usePreferenciaBooleana, PREFERENCIA_TEMA_ESCURO } from './hooks-cliente'
@@ -68,7 +69,7 @@ export default function FlowLayout({
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    window.location.href = '/login'
+    redirecionarParaLogin()
   }
 
   function handleBack() {
@@ -101,7 +102,7 @@ export default function FlowLayout({
   }
 
   const backButton = (
-    <button
+    <button type="button"
       onClick={handleBack}
       style={{
         display: 'inline-flex',
@@ -132,7 +133,7 @@ export default function FlowLayout({
 
   const gearButton = (
     <div ref={gearRef} style={{ position: 'relative' }}>
-      <button
+      <button type="button"
         onClick={() => setGearOpen(!gearOpen)}
         aria-label="Menu de configurações"
         style={{
@@ -242,7 +243,7 @@ export default function FlowLayout({
 
           <div style={{ height: '1px', background: t.border }} />
 
-          <button onClick={handleLogout} style={{
+          <button type="button" onClick={handleLogout} style={{
             display: 'block',
             width: '100%',
             padding: '10px 16px',
@@ -282,7 +283,7 @@ export default function FlowLayout({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {headerExtra}
-            <button
+            <button type="button"
               onClick={handleBack}
               style={{
                 display: 'inline-flex',
@@ -310,7 +311,7 @@ export default function FlowLayout({
               <span style={{ fontSize: '14px' }}>←</span> {backLabel}
             </button>
             <div ref={gearRef} style={{ position: 'relative' }}>
-              <button
+              <button type="button"
                 onClick={() => setGearOpen(!gearOpen)}
                 aria-label="Menu de configurações"
                 style={{
@@ -375,7 +376,7 @@ export default function FlowLayout({
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >Planos</a>
                   <div style={{ height: '1px', background: '#E5E7EB' }} />
-                  <button onClick={handleLogout} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', color: '#DC2626', fontSize: '14px', cursor: 'pointer', textAlign: 'left' }}
+                  <button type="button" onClick={handleLogout} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', color: '#DC2626', fontSize: '14px', cursor: 'pointer', textAlign: 'left' }}
                     onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >Sair</button>

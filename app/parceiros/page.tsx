@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -30,7 +31,7 @@ export default function Parceiros() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
 
       // Get user plan
       const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
@@ -277,7 +278,7 @@ export default function Parceiros() {
 
       {hasMore && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <button onClick={loadMore} style={{
+          <button type="button" onClick={loadMore} style={{
             padding: '10px 32px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '14px',
             fontWeight: 'bold', cursor: 'pointer'

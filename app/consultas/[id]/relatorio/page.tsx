@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../../../src/lib/auth-rotas'
 import { Fragment, useEffect, useState, useRef } from 'react'
 import { CORTE_URGENTE, CORTE_ATENCAO } from '../../../../src/lib/modelos-pontuacao'
 import { supabase } from '../../../../src/lib/supabase'
@@ -162,7 +163,7 @@ export default function Relatorio() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+      if (!user) { redirecionarParaLogin(); return }
 
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(prof)
@@ -425,11 +426,11 @@ export default function Relatorio() {
             Relatório PDF disponível nos planos pagos.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button onClick={() => router.push('/planos')} style={{
+            <button type="button" onClick={() => router.push('/planos')} style={{
               background: '#2E7D6B', color: '#fff', border: 'none', padding: '10px 28px',
               borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
             }}>Ver planos</button>
-            <button onClick={() => router.push(`/consultas/${id}`)} style={{
+            <button type="button" onClick={() => router.push(`/consultas/${id}`)} style={{
               display: 'inline-flex', alignItems: 'center', gap: '4px',
               background: 'transparent', color: '#6B7280', border: '1px solid #E5E7EB', padding: '6px 14px',
               borderRadius: '6px', fontSize: '14px', fontWeight: 400, cursor: 'pointer'
@@ -506,28 +507,28 @@ export default function Relatorio() {
               Plano Simples — PDF com marca d&apos;água
             </span>
           )}
-          <button onClick={() => router.push(`/consultas/${id}`)} style={{
+          <button type="button" onClick={() => router.push(`/consultas/${id}`)} style={{
             display: 'inline-flex', alignItems: 'center', gap: '4px',
             background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
             color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
             cursor: 'pointer', fontSize: '14px', fontWeight: 400,
           }}>← Voltar</button>
-          <button onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
+          <button type="button" onClick={() => router.push(`/curas?consultaId=${id}`)} style={{
             background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
             color: '#C9A227', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
           }}>Curas</button>
-          <button onClick={handlePrint} style={{
+          <button type="button" onClick={handlePrint} style={{
             background: 'transparent', border: '1px solid rgba(255,255,255,0.25)',
             color: 'rgba(255,255,255,0.7)', padding: '6px 14px', borderRadius: '6px',
             cursor: 'pointer', fontSize: '14px'
           }}>Imprimir</button>
-          <button onClick={handleDownloadPDF} disabled={downloading || assinandoImagens} style={{
+          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens} style={{
             background: (downloading || assinandoImagens) ? '#9CA3AF' : gold, border: 'none',
             color: '#ffffff', padding: '6px 20px', borderRadius: '6px',
             cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600',
           }}>{downloading ? 'Gerando PDF...' : assinandoImagens ? 'Carregando fotos...' : 'Baixar PDF'}</button>
           {savedRelatorioEm && (
-            <button
+            <button type="button"
               onClick={baixarVersaoSalva}
               className="no-print"
               title={`Última versão salva em ${new Date(savedRelatorioEm).toLocaleString('pt-BR')}`}
@@ -555,11 +556,11 @@ export default function Relatorio() {
             </span>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setShowConcluirNudge(false)} style={{
+            <button type="button" onClick={() => setShowConcluirNudge(false)} style={{
               background: 'transparent', border: '1px solid #D1D5DB', color: '#6B7280',
               padding: '8px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
             }}>Agora não</button>
-            <button onClick={marcarConsultaConcluida} disabled={concluindo} style={{
+            <button type="button" onClick={marcarConsultaConcluida} disabled={concluindo} style={{
               background: concluindo ? '#9CA3AF' : '#16A34A', border: 'none', color: '#fff',
               padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 600,
               cursor: concluindo ? 'not-allowed' : 'pointer',
@@ -635,7 +636,7 @@ export default function Relatorio() {
               <span style={{ fontSize: '13px', color: '#374151' }}>{s.label}</span>
             </label>
           ))}
-          <button onClick={() => setShowSelector(false)} style={{
+          <button type="button" onClick={() => setShowSelector(false)} style={{
             width: '100%', marginTop: '16px', padding: '12px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
           }}>Visualizar Relatório</button>
@@ -645,7 +646,7 @@ export default function Relatorio() {
       {/* ── Back to Selector Button ──────────────────────────────────────── */}
       {!showSelector && (
         <div className="no-print" style={{ maxWidth: '980px', margin: '24px auto 0' }}>
-          <button onClick={() => setShowSelector(true)} style={{
+          <button type="button" onClick={() => setShowSelector(true)} style={{
             marginBottom: '16px', padding: '8px 16px', background: '#F3F4F6', color: '#6B7280',
             border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
           }}>← Alterar seções</button>

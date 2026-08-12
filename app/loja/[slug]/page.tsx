@@ -126,7 +126,7 @@ export default function LojaConsultor() {
                     <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#0E1B2C' }}>
                       {(p.price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
-                    <button onClick={() => handleBuy(p)} style={{
+                    <button type="button" onClick={() => handleBuy(p)} style={{
                       padding: '8px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
                       borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer'
                     }}>Comprar</button>

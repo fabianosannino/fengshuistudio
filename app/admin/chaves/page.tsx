@@ -260,7 +260,7 @@ export default function AdminChaves() {
             <label style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Quantidade</label>
             <div style={{ display: 'flex', gap: '4px' }}>
               {[1, 5, 10, 25].map(n => (
-                <button key={n} onClick={() => setGenQty(n)} style={{
+                <button type="button" key={n} onClick={() => setGenQty(n)} style={{
                   padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
                   background: genQty === n ? '#2E7D6B' : '#F3F4F6', color: genQty === n ? '#fff' : '#374151',
                   border: genQty === n ? '2px solid #2E7D6B' : '1px solid #D1D5DB',
@@ -327,7 +327,7 @@ export default function AdminChaves() {
             />
           </div>
 
-          <button onClick={handleGenerate} disabled={generating} style={{
+          <button type="button" onClick={handleGenerate} disabled={generating} style={{
             padding: '10px 24px', background: '#2E7D6B', color: '#fff', border: 'none',
             borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: generating ? 'wait' : 'pointer',
             opacity: generating ? 0.6 : 1, whiteSpace: 'nowrap',
@@ -355,7 +355,7 @@ export default function AdminChaves() {
               {generatedKeys.map(k => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{k}</span>
-                  <button onClick={() => copyToClipboard(k)} style={{
+                  <button type="button" onClick={() => copyToClipboard(k)} style={{
                     background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280',
                     display: 'inline-flex', alignItems: 'center',
                   }} title="Copiar" aria-label="Copiar chave"><Copy size={15} strokeWidth={1.75} aria-hidden="true" /></button>
@@ -363,17 +363,17 @@ export default function AdminChaves() {
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button onClick={() => copyToClipboard(generatedKeys.join('\n'))} style={{
+              <button type="button" onClick={() => copyToClipboard(generatedKeys.join('\n'))} style={{
                 padding: '8px 16px', background: '#2E7D6B', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
               }}><Copy size={14} strokeWidth={1.75} aria-hidden="true" /> Copiar todas</button>
-              <button onClick={() => downloadKeys(generatedKeys)} style={{
+              <button type="button" onClick={() => downloadKeys(generatedKeys)} style={{
                 padding: '8px 16px', background: '#0E1B2C', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
               }}><Download size={14} strokeWidth={1.75} aria-hidden="true" /> Baixar .txt</button>
-              <button onClick={() => setShowGenModal(false)} style={{
+              <button type="button" onClick={() => setShowGenModal(false)} style={{
                 padding: '8px 16px', background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB',
                 borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
               }}>Fechar</button>
@@ -460,17 +460,17 @@ export default function AdminChaves() {
                       </td>
                       <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <button onClick={() => copyToClipboard(k.key)} title="Copiar chave" aria-label="Copiar chave" style={{
+                          <button type="button" onClick={() => copyToClipboard(k.key)} title="Copiar chave" aria-label="Copiar chave" style={{
                             padding: '4px 8px', background: '#F3F4F6', border: '1px solid #D1D5DB',
                             borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
                           }}><Copy size={13} strokeWidth={1.75} aria-hidden="true" /></button>
                           {k.status === 'available' && (
-                            <button onClick={() => setCancelTarget(k.id)} title="Cancelar chave" aria-label="Cancelar chave" style={{
+                            <button type="button" onClick={() => setCancelTarget(k.id)} title="Cancelar chave" aria-label="Cancelar chave" style={{
                               padding: '4px 8px', background: '#FEF2F2', border: '1px solid #FECACA',
                               borderRadius: '4px', cursor: 'pointer', color: '#DC2626', display: 'inline-flex', alignItems: 'center',
                             }}><X size={13} strokeWidth={2} aria-hidden="true" /></button>
                           )}
-                          <button onClick={() => setExpandedRow(expanded ? null : k.id)} title="Ver detalhes" aria-label="Ver detalhes" style={{
+                          <button type="button" onClick={() => setExpandedRow(expanded ? null : k.id)} title="Ver detalhes" aria-label="Ver detalhes" style={{
                             padding: '4px 8px', background: '#F3F4F6', border: '1px solid #D1D5DB',
                             borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
                           }}>{expanded ? <ChevronUp size={13} strokeWidth={2} aria-hidden="true" /> : <ChevronDown size={13} strokeWidth={2} aria-hidden="true" />}</button>
@@ -500,7 +500,7 @@ export default function AdminChaves() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
-            <button
+            <button type="button"
               onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               style={{
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
@@ -510,7 +510,7 @@ export default function AdminChaves() {
               }}
             ><ArrowLeft size={13} strokeWidth={2} aria-hidden="true" /> Anterior</button>
             <span style={{ color: '#6B7280', fontSize: '12px' }}>Página {page} de {totalPages}</span>
-            <button
+            <button type="button"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
               style={{
                 padding: '6px 14px', borderRadius: '6px', border: '1px solid #E5E7EB',
@@ -550,7 +550,7 @@ export default function AdminChaves() {
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: '200px', overflowY: 'auto',
             }}>
               {resultadosVisiveis.map(u => (
-                <button key={u.id} onClick={() => { setPromoteTarget(u); setPromoteSearch(u.nome_completo); setPromoteResults([]) }}
+                <button type="button" key={u.id} onClick={() => { setPromoteTarget(u); setPromoteSearch(u.nome_completo); setPromoteResults([]) }}
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%',
                     padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: '1px solid #F3F4F6',
@@ -588,7 +588,7 @@ export default function AdminChaves() {
             {planoEfetivo(promoteTarget.plano) === 'profissional' ? (
               <div style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>Este usuário já possui o plano Pro.</div>
             ) : (
-              <button onClick={() => setShowPromoteModal(true)} style={{
+              <button type="button" onClick={() => setShowPromoteModal(true)} style={{
                 padding: '8px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -624,11 +624,11 @@ export default function AdminChaves() {
               Promover <strong>{promoteTarget.nome_completo}</strong> para o plano <strong>Pro</strong>?
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowPromoteModal(false)} style={{
+              <button type="button" onClick={() => setShowPromoteModal(false)} style={{
                 padding: '8px 16px', background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB',
                 borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
               }}>Cancelar</button>
-              <button onClick={handlePromote} disabled={promoting} style={{
+              <button type="button" onClick={handlePromote} disabled={promoting} style={{
                 padding: '8px 20px', background: '#2E7D6B', color: '#fff', border: 'none',
                 borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
                 cursor: promoting ? 'wait' : 'pointer', opacity: promoting ? 0.6 : 1,

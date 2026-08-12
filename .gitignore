@@ -54,3 +54,14 @@ supabase/.temp/
 /*.docx
 /*.pdf
 /*.png
+
+# ── Corpus de referência ─────────────────────────────────────────────────────
+# As obras que `scripts/citacoes/` usa para conferir as citações são material
+# protegido por direito autoral. Ficam no disco de quem trabalha no projeto,
+# nunca no repositório — que é público.
+#
+# Elas estiveram versionadas até 12/08/2026. Remover daqui em diante impede que
+# novas entrem, mas NÃO as tira do histórico do git: para isso é preciso
+# reescrever o histórico (`git filter-repo`) e forçar o push, operação que
+# depende de decisão do dono. Ver o item 03 da fila de pendências.
+docs/Books/

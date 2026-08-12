@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
 import { useParams } from 'next/navigation'
@@ -66,7 +67,7 @@ export default function ClienteDetalhe() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
 
       // Run both queries in parallel (both use params.id, not each other's results)
       const [cliRes, consRes] = await Promise.all([
@@ -314,7 +315,7 @@ export default function ClienteDetalhe() {
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         <div style={{ marginBottom: '24px' }}>
-          <button onClick={() => window.location.href = '/clientes'} style={{
+          <button type="button" onClick={() => window.location.href = '/clientes'} style={{
             display: 'inline-flex', alignItems: 'center', gap: '4px',
             padding: '6px 14px', background: 'transparent', border: '1px solid #E5E7EB',
             borderRadius: '6px', color: '#6B7280', fontSize: '14px', fontWeight: 400, cursor: 'pointer',
@@ -359,11 +360,11 @@ export default function ClienteDetalhe() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => setEditing(true)} style={{
+                <button type="button" onClick={() => setEditing(true)} style={{
                   padding: '8px 20px', background: '#F3F4F6', color: '#374151',
                   border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}>✏️ Editar</button>
-                <button onClick={() => setDeleteTarget(params.id as string)} style={{
+                <button type="button" onClick={() => setDeleteTarget(params.id as string)} style={{
                   padding: '8px 20px', background: '#FEF2F2', color: '#DC2626',
                   border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}>🗑️ Excluir</button>
@@ -410,7 +411,7 @@ export default function ClienteDetalhe() {
             </div>
 
             <div style={{ marginTop: '20px' }}>
-              <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
+              <button type="button" onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
                 padding: '10px 24px', background: '#2E7D6B', color: '#fff',
                 border: 'none', borderRadius: '8px', fontSize: '14px',
                 fontWeight: 'bold', cursor: 'pointer'
@@ -592,7 +593,7 @@ export default function ClienteDetalhe() {
           <h2 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
             Consultas ({consultasVisiveis.length})
           </h2>
-          <button onClick={() => window.location.href = `/consultas/nova?clienteId=${cliente.id}`} style={{
+          <button type="button" onClick={() => window.location.href = `/consultas/nova?clienteId=${cliente.id}`} style={{
             padding: '8px 20px', background: '#2E7D6B', color: '#fff',
             border: 'none', borderRadius: '8px', fontSize: '13px',
             fontWeight: 'bold', cursor: 'pointer'
@@ -645,7 +646,7 @@ export default function ClienteDetalhe() {
                       padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
                     }}>{statusInfo.icon} {statusInfo.label}</span>
                     {c.status === 'em_andamento' && (
-                      <button
+                      <button type="button"
                         onClick={(e) => { e.stopPropagation(); setFinalizarConsultaId(c.id) }}
                         title="Concluir consulta"
                         style={{
@@ -655,7 +656,7 @@ export default function ClienteDetalhe() {
                         }}
                       >✅ Concluir</button>
                     )}
-                    <button
+                    <button type="button"
                       onClick={(e) => { e.stopPropagation(); setDeleteConsultaId(c.id) }}
                       title="Deletar consulta"
                       style={{

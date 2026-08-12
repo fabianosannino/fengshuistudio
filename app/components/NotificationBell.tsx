@@ -55,7 +55,7 @@ export default function NotificationBell() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(!open)} style={{
+      <button type="button" onClick={() => setOpen(!open)} style={{
         background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: '4px'
       }}>
         <span style={{ fontSize: '18px' }}>🔔</span>
@@ -78,7 +78,7 @@ export default function NotificationBell() {
               <div>{n.content}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                 <span style={{ color: '#9CA3AF', fontSize: '10px' }}>{new Date(n.created_at).toLocaleDateString('pt-BR')}</span>
-                <button onClick={() => markRead(n.id)} style={{ background: 'none', border: 'none', color: '#2E7D6B', fontSize: '10px', cursor: 'pointer' }}>Marcar como lida</button>
+                <button type="button" onClick={() => markRead(n.id)} style={{ background: 'none', border: 'none', color: '#2E7D6B', fontSize: '10px', cursor: 'pointer' }}>Marcar como lida</button>
               </div>
             </div>
           ))}

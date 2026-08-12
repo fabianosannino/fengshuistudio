@@ -193,7 +193,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                         {item.label}
                       </span>
                       {isCustom && isHovered && (
-                        <button
+                        <button type="button"
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteCustomItem(item.id) }}
                           style={{
                             marginLeft: 'auto', background: '#FEE2E2', border: 'none',
@@ -226,7 +226,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
         {/* Add custom checklist point */}
         <div style={{ marginTop: '12px', padding: '12px', background: '#F9FAFB', borderRadius: '8px', border: '1px dashed #D1D5DB' }}>
           {!showAddForm ? (
-            <button onClick={() => setShowAddForm(true)} style={{
+            <button type="button" onClick={() => setShowAddForm(true)} style={{
               background: 'none', border: 'none', color: '#2E7D6B', fontSize: '13px',
               fontWeight: 'bold', cursor: 'pointer', width: '100%', textAlign: 'center'
             }}>+ Adicionar ponto personalizado</button>
@@ -242,7 +242,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                     <option key={k} value={k}>{v.label}</option>
                   ))}
                 </select>
-                <button onClick={() => {
+                <button type="button" onClick={() => {
                   if (!newItemLabel.trim()) return
                   const item = { id: `custom_${Date.now()}`, label: newItemLabel.trim(), categoria: newItemCategoria }
                   const updated = [...customItems, item]
@@ -253,7 +253,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
                 }} style={{ padding: '8px 16px', background: '#2E7D6B', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Adicionar
                 </button>
-                <button onClick={() => { setShowAddForm(false); setNewItemLabel('') }}
+                <button type="button" onClick={() => { setShowAddForm(false); setNewItemLabel('') }}
                   style={{ padding: '8px 12px', background: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
                   Cancelar
                 </button>
@@ -281,7 +281,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
             const score = posicaoScore(comodo.id)
             const cor = score >= 70 ? '#15803D' : score >= 40 ? '#D97706' : '#DC2626'
             return (
-              <button key={comodo.id} onClick={() => setComodoAtivo(comodo.id)} style={{
+              <button type="button" key={comodo.id} onClick={() => setComodoAtivo(comodo.id)} style={{
                 padding: '10px 16px', borderRadius: '8px', border: 'none',
                 cursor: 'pointer', fontSize: '13px', fontWeight: 'bold',
                 background: ativo ? '#0E1B2C' : '#F3F4F6',
@@ -367,7 +367,7 @@ export default function TabFluxoChi({ checklistChi, posicaoComando, onChangeChi,
       </div>
 
       {/* Save button */}
-      <button onClick={onSave} disabled={saving} style={{
+      <button type="button" onClick={onSave} disabled={saving} style={{
         width: '100%', padding: '14px',
         background: saving ? '#9CA3AF' : '#2E7D6B',
         color: '#ffffff', border: 'none', borderRadius: '8px',

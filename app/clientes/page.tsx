@@ -1,5 +1,6 @@
 'use client'
 
+import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
@@ -115,7 +116,7 @@ export default function Clientes() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      if (!user) { redirecionarParaLogin(); return }
       setUser(user)
       setUserId(user.id)
       const { data: prof } = await supabase
@@ -250,7 +251,7 @@ export default function Clientes() {
           <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Meus Clientes</h1>
           <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{totalCount} cliente(s) cadastrado(s)</p>
         </div>
-        <button onClick={() => {
+        <button type="button" onClick={() => {
           const p = planoEfetivo(profile?.plano)
           if (!podeClientes(p)) {
             setMessage('Cadastro de clientes disponível no plano Profissional.')
@@ -307,7 +308,7 @@ export default function Clientes() {
               (status === 'ativos' && !showInactive) ||
               false
             return (
-              <button
+              <button type="button"
                 key={status}
                 onClick={() => {
                   if (status === 'todos' && !showInactive) {
@@ -553,12 +554,12 @@ export default function Clientes() {
                   )}
                 </div>
                 <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                  <button onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
+                  <button type="button" onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
                     flex: 1, padding: '8px', background: '#2E7D6B', color: '#fff',
                     border: 'none', borderRadius: '6px', fontSize: '13px',
                     fontWeight: 'bold', cursor: 'pointer'
                   }}>Nova consulta</button>
-                  <button onClick={() => window.location.href = `/clientes/${cliente.id}`} style={{
+                  <button type="button" onClick={() => window.location.href = `/clientes/${cliente.id}`} style={{
                     padding: '8px 12px', background: '#F3F4F6', color: '#374151',
                     border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                   }}>Ver</button>
@@ -574,7 +575,7 @@ export default function Clientes() {
           display: 'flex', justifyContent: 'center', alignItems: 'center',
           gap: '8px', marginTop: '24px',
         }}>
-          <button
+          <button type="button"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 0}
             style={{
@@ -588,7 +589,7 @@ export default function Clientes() {
           <span style={{ color: '#6B7280', fontSize: '13px' }}>
             Página {currentPage + 1} de {totalPages}
           </span>
-          <button
+          <button type="button"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage + 1 >= totalPages}
             style={{

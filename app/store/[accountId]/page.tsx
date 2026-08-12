@@ -129,7 +129,7 @@ export default function Storefront() {
                       {product.price ? formatPrice(product.price.unit_amount, product.price.currency) : 'Preço sob consulta'}
                     </span>
                     {product.price && (
-                      <button onClick={() => handleBuy(product)} disabled={purchasing === product.id} style={{
+                      <button type="button" onClick={() => handleBuy(product)} disabled={purchasing === product.id} style={{
                         padding: '10px 24px', background: purchasing === product.id ? '#9CA3AF' : '#2E7D6B',
                         color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold',
                         cursor: purchasing === product.id ? 'not-allowed' : 'pointer', fontSize: '14px'
