@@ -4,7 +4,7 @@ import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoEfetivo } from '../../../src/lib/plano-utils'
+import { planoEfetivo, enumDoPlano } from '../../../src/lib/plano-utils'
 
 const VALID_PLANOS = ['freemium', 'free', 'simples', 'pro', 'profissional'] as const
 
@@ -137,9 +137,13 @@ export async function POST(request: Request) {
     }
   }
 
+  // Grava o valor do enum, não o que veio no body. A coluna é `plano_tipo`
+  // (`freemium | starter | pro | agencia`) e a tela manda o vocabulário do app
+  // (`free | simples | profissional`) — gravar cru derrubava toda troca de
+  // plano com `invalid input value for enum plano_tipo: "free"`.
   const { error } = await admin
     .from('profiles')
-    .update({ plano })
+    .update({ plano: enumDoPlano(planoAlvo) })
     .eq('id', user.id)
 
   if (error) {
@@ -147,5 +151,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao atualizar plano. Tente novamente.' }, { status: 500 })
   }
 
-  return NextResponse.json({ plano })
+  return NextResponse.json({ plano: planoAlvo })
 }

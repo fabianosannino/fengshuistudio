@@ -79,6 +79,24 @@ export async function POST(request: Request) {
 
   let customerId = profile?.stripe_customer_id
 
+  // Um `customer` pertence ao modo em que foi criado. Trocar a chave de teste
+  // para a de produção deixa o ID gravado apontando para o catálogo errado, e
+  // o Stripe recusa o checkout com «No such customer: … a similar object
+  // exists in test mode». O ID não diz o modo, então a única forma de saber é
+  // perguntar — e a resposta vale para todo usuário que existia antes da troca.
+  if (customerId) {
+    try {
+      const existente = await stripeClient.customers.retrieve(customerId)
+      if ('deleted' in existente && existente.deleted) customerId = null
+    } catch {
+      logger.warn('Stripe customer não existe neste modo — será recriado', {
+        route: '/api/stripe/subscribe',
+        customerId,
+      })
+      customerId = null
+    }
+  }
+
   if (!customerId) {
     try {
       const customer = await stripeClient.customers.create({

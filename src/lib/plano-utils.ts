@@ -28,15 +28,50 @@ export function planoUsuario(profile?: { plano?: string | null; tipo_usuario?: s
 }
 
 /**
- * Resolve the effective plan from the stored value.
- * Handles backward compatibility: 'freemium' → 'free', 'pro' → 'profissional'
+ * O vocabulário do banco não é o do app.
+ *
+ * A coluna `profiles.plano` é do enum `plano_tipo`, cujos valores são
+ * `freemium | starter | pro | agencia` — nomes de uma versão anterior do
+ * produto. O app fala `free | simples | profissional`. Os dois precisam se
+ * encontrar em algum lugar, e é aqui.
+ *
+ * Escrever no banco um valor do vocabulário do app derruba a transação:
+ * `invalid input value for enum plano_tipo: "free"`. Use `enumDoPlano`.
+ */
+const ENUM_PARA_PLANO: Record<string, PlanoEfetivo> = {
+  freemium: 'free',
+  free: 'free',
+  starter: 'simples',
+  simples: 'simples',
+  pro: 'profissional',
+  profissional: 'profissional',
+  // `agencia` não tem correspondente no app. Vira 'profissional' porque é o
+  // teto: quem paga por agência não pode acordar com menos do que já tinha.
+  agencia: 'profissional',
+}
+
+/**
+ * Resolve o plano efetivo a partir do valor gravado.
+ *
+ * `starter` mapeava para 'free' por omissão — o usuário pagava o Simples e o
+ * app lhe entregava o gratuito. `agencia` tinha o mesmo destino.
  */
 export function planoEfetivo(plano?: string | null): PlanoEfetivo {
   if (!plano) return 'free'
-  const p = plano.toLowerCase().trim()
-  if (p === 'pro' || p === 'profissional') return 'profissional'
-  if (p === 'simples') return 'simples'
-  return 'free' // 'freemium', 'free', or any unknown value
+  return ENUM_PARA_PLANO[plano.toLowerCase().trim()] ?? 'free'
+}
+
+/**
+ * O valor do enum que a coluna `profiles.plano` aceita.
+ *
+ * Sem esta tradução, `update({ plano: 'free' })` falha e a troca de plano
+ * inteira volta 500 — foi o que aconteceu com todo clique em «mudar plano»,
+ * porque a tela manda o vocabulário do app e a rota gravava o valor cru.
+ */
+export function enumDoPlano(plano: PlanoEfetivo): 'freemium' | 'starter' | 'pro' {
+  if (plano === 'profissional') return 'pro'
+  if (plano === 'simples') return 'starter'
+  return 'freemium'
 }
 
 /**
