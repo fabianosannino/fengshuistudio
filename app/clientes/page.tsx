@@ -6,14 +6,76 @@ import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
 import Skeleton from '../components/Skeleton'
 import Image from 'next/image'
+import Link from 'next/link'
 import type { Cliente, Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, podeClientes, mensagemLimiteClientes } from '../../src/lib/plano-utils'
-import { Camera, Users, Search, Mail, Phone, MapPin, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Camera, Users, Search } from 'lucide-react'
 import { useUrlsAssinadas } from '../components/useUrlsAssinadas'
 import { BUCKET_CLIENTES } from '../../src/lib/storage-imagens'
+import { logger } from '../../src/lib/logger'
+import { progressoDoDiagnostico, type ProgressoDoDiagnostico } from '../../src/lib/etapa-do-diagnostico'
+import { calcularMingGua } from '../../src/lib/ming-gua'
+import { montanhaDoGrau } from '../../src/lib/montanhas'
+import { formatarMoeda, formatarData } from '../../src/lib/formato'
+import type { BaguaEntrada } from '../../src/lib/types'
 
 const PAGE_SIZE = 10
+
+/** Os três estados são exclusivos — ver a nota em `filtroEstado`. */
+type FiltroEstado = 'ativos' | 'inativos' | 'todos'
+
+const ROTULO_DO_FILTRO: Record<FiltroEstado, string> = {
+  ativos: 'Ativos', inativos: 'Inativos', todos: 'Todos',
+}
+
+interface ConsultaDoCliente {
+  id: string
+  cliente_id: string
+  nome_imovel: string | null
+  status: string | null
+  atualizado_em: string | null
+  criado_em: string | null
+  finalizada_em: string | null
+  relatorio_gerado_em: string | null
+  bagua_entrada: BaguaEntrada | null
+}
+
+interface ResumoDoCliente {
+  totalConsultas: number
+  consulta: ConsultaDoCliente | null
+  progresso: ProgressoDoDiagnostico | null
+  financeiro: { vencido: number; aberto: number }
+}
+
+/** Iniciais para o avatar — duas no máximo, sem inventar quando não há nome. */
+function iniciaisDe(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean)
+  if (partes.length === 0) return '—'
+  return (partes[0][0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase()
+}
+
+/**
+ * A ação que a linha oferece depende de onde a consulta parou. Uma linha com
+ * «Retomar» ao lado de um relatório já entregue mandaria o consultor para o
+ * lugar errado.
+ */
+function acaoDaLinha(resumo: ResumoDoCliente | undefined, clienteId: string): { texto: string; href: string; primaria: boolean } {
+  if (resumo?.financeiro.vencido) {
+    return { texto: 'Cobrar', href: '/pagamentos', primaria: false }
+  }
+  const consulta = resumo?.consulta
+  if (!consulta) {
+    return { texto: 'Nova consulta', href: `/consultas/nova?cliente_id=${clienteId}`, primaria: true }
+  }
+  if (resumo?.progresso?.completo) {
+    return { texto: 'Ver relatório', href: `/consultas/${consulta.id}/relatorio`, primaria: false }
+  }
+  if (resumo?.progresso?.atual === 'relatorio') {
+    return { texto: 'Emitir PDF', href: `/consultas/${consulta.id}/relatorio`, primaria: false }
+  }
+  return { texto: 'Retomar', href: `/consultas/${consulta.id}`, primaria: true }
+}
 
 export default function Clientes() {
   const [user, setUser] = useState<User | null>(null)
@@ -49,12 +111,17 @@ export default function Clientes() {
   // Filter & sort state
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'nome_asc'|'nome_desc'|'recente'|'antigo'|'cidade'>('recente')
-  const [showInactive, setShowInactive] = useState(false)
+  /**
+   * Os três filtros passam a ser exclusivos. Antes, «Inativos» só ligava
+   * `showInactive` — exatamente o que «Todos» fazia —, então os dois botões
+   * mostravam a mesma lista e um deles mentia.
+   */
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('ativos')
 
-  // Consultation stats per client
-  const [consultaStats, setConsultaStats] = useState<Record<string, { total: number; lastStatus: string }>>({})
+  // O que a linha de cada cliente precisa saber para responder «em que pé está?».
+  const [resumos, setResumos] = useState<Record<string, ResumoDoCliente>>({})
 
-  const loadClientes = useCallback(async (pageNum: number, uid?: string, overrideSortBy?: string, overrideShowInactive?: boolean) => {
+  const loadClientes = useCallback(async (pageNum: number, uid?: string, overrideSortBy?: string, overrideFiltro?: FiltroEstado) => {
     const id = uid || userId
     if (!id) return
 
@@ -63,7 +130,7 @@ export default function Clientes() {
     const to = from + PAGE_SIZE - 1
 
     const activeSortBy = overrideSortBy ?? sortBy
-    const activeShowInactive = overrideShowInactive ?? showInactive
+    const activeFiltro = (overrideFiltro ?? filtroEstado) as FiltroEstado
 
     let orderCol = 'criado_em'
     let ascending = false
@@ -78,9 +145,8 @@ export default function Clientes() {
       .select('*', { count: 'exact' })
       .eq('consultor_id', id)
 
-    if (!activeShowInactive) {
-      query = query.eq('ativo', true)
-    }
+    if (activeFiltro === 'ativos') query = query.eq('ativo', true)
+    else if (activeFiltro === 'inativos') query = query.eq('ativo', false)
 
     query = query.order(orderCol, { ascending }).range(from, to)
 
@@ -90,30 +156,97 @@ export default function Clientes() {
     setTotalCount(count || 0)
     setCurrentPage(pageNum)
 
-    // Load consultation stats for loaded clients
     const clientIds = (data || []).map(c => c.id)
-    if (clientIds.length > 0) {
-      const { data: consultaData } = await supabase
-        .from('consultas')
-        .select('cliente_id, status, criado_em')
-        .in('cliente_id', clientIds)
-        .neq('status', 'deletada')
-        .order('criado_em', { ascending: false })
-
-      const statsMap: Record<string, { total: number; lastStatus: string }> = {}
-      for (const c of consultaData || []) {
-        if (!statsMap[c.cliente_id]) {
-          statsMap[c.cliente_id] = { total: 0, lastStatus: c.status }
-        }
-        statsMap[c.cliente_id].total++
-      }
-      setConsultaStats(statsMap)
-    } else {
-      setConsultaStats({})
+    if (clientIds.length === 0) {
+      setResumos({})
+      setLoading(false)
+      return
     }
 
+    // Uma consulta por tabela para a página inteira, não uma por linha.
+    const [consultasRes, pagamentosRes, setoresRes, prescricoesRes] = await Promise.all([
+      supabase
+        .from('consultas')
+        .select('id, cliente_id, nome_imovel, status, atualizado_em, criado_em, finalizada_em, relatorio_gerado_em, bagua_entrada')
+        .in('cliente_id', clientIds)
+        .neq('status', 'deletada')
+        .order('atualizado_em', { ascending: false }),
+      supabase
+        .from('pagamentos')
+        .select('cliente_id, valor, status, data_vencimento')
+        .in('cliente_id', clientIds),
+      supabase.from('setores_bagua').select('consulta_id, score_percentual'),
+      supabase.from('prescricoes').select('consulta_id'),
+    ])
+
+    if (consultasRes.error) {
+      // Falha de banco nunca vira lista sem informação: o consultor leria as
+      // linhas em branco como «este cliente não tem nada».
+      logger.error('Falha ao carregar o estado das consultas dos clientes', {
+        route: '/clientes', error: consultasRes.error.message,
+      })
+    }
+
+    const setoresPorConsulta = new Map<string, number>()
+    for (const s of (setoresRes.data ?? []) as { consulta_id: string; score_percentual: number | null }[]) {
+      if (s.score_percentual == null) continue
+      setoresPorConsulta.set(s.consulta_id, (setoresPorConsulta.get(s.consulta_id) ?? 0) + 1)
+    }
+    const prescricoesPorConsulta = new Map<string, number>()
+    for (const p of (prescricoesRes.data ?? []) as { consulta_id: string }[]) {
+      prescricoesPorConsulta.set(p.consulta_id, (prescricoesPorConsulta.get(p.consulta_id) ?? 0) + 1)
+    }
+
+    const hoje = new Date().toISOString().slice(0, 10)
+    const financeiroPorCliente = new Map<string, { vencido: number; aberto: number }>()
+    for (const p of (pagamentosRes.data ?? []) as { cliente_id: string | null; valor: number | string | null; status: string | null; data_vencimento: string | null }[]) {
+      if (!p.cliente_id) continue
+      const st = (p.status ?? '').toLowerCase()
+      if (st === 'pago' || st === 'cancelado') continue
+      const valor = Number(p.valor)
+      if (!Number.isFinite(valor)) continue
+      const atual = financeiroPorCliente.get(p.cliente_id) ?? { vencido: 0, aberto: 0 }
+      // Vencido é derivado da data, como no resto do produto.
+      if (p.data_vencimento && p.data_vencimento < hoje) atual.vencido += valor
+      else atual.aberto += valor
+      financeiroPorCliente.set(p.cliente_id, atual)
+    }
+
+    const consultasPorCliente = new Map<string, ConsultaDoCliente[]>()
+    for (const c of (consultasRes.data ?? []) as unknown as ConsultaDoCliente[]) {
+      const lista = consultasPorCliente.get(c.cliente_id) ?? []
+      lista.push(c)
+      consultasPorCliente.set(c.cliente_id, lista)
+    }
+
+    const mapa: Record<string, ResumoDoCliente> = {}
+    for (const clienteId of clientIds) {
+      const consultas = consultasPorCliente.get(clienteId) ?? []
+      // A «em curso» é a viva mais recente; sem nenhuma viva, a última que houve.
+      const emCurso = consultas.find(c => {
+        const st = (c.status ?? '').toLowerCase()
+        return st !== 'arquivada' && st !== 'finalizada'
+      }) ?? consultas[0] ?? null
+
+      mapa[clienteId] = {
+        totalConsultas: consultas.length,
+        consulta: emCurso,
+        progresso: emCurso
+          ? progressoDoDiagnostico({
+              orientacaoGraus: emCurso.bagua_entrada?.orientacao_graus,
+              baguaFinalizadaEm: emCurso.bagua_entrada?.finalizada_em,
+              setoresComScore: setoresPorConsulta.get(emCurso.id) ?? 0,
+              prescricoes: prescricoesPorConsulta.get(emCurso.id) ?? 0,
+              relatorioGeradoEm: emCurso.relatorio_gerado_em,
+            })
+          : null,
+        financeiro: financeiroPorCliente.get(clienteId) ?? { vencido: 0, aberto: 0 },
+      }
+    }
+    setResumos(mapa)
+
     setLoading(false)
-  }, [userId, sortBy, showInactive])
+  }, [userId, sortBy, filtroEstado])
 
   useEffect(() => {
     async function load() {
@@ -220,9 +353,23 @@ export default function Clientes() {
   }
 
   // Client-side search filter
-  const filteredClientes = clientes.filter(c =>
-    !search || c.nome_completo.toLowerCase().includes(search.toLowerCase())
-  )
+  // A busca cobre o que o campo promete. Antes só o nome era comparado, então
+  // procurar pela cidade ou pelo nome do imóvel devolvia lista vazia — e lista
+  // vazia se lê como «não existe», não como «não procurei aí».
+  const filteredClientes = clientes.filter(c => {
+    const termo = search.trim().toLowerCase()
+    if (!termo) return true
+    const campos = [
+      c.nome_completo, c.email, c.cidade, c.estado, c.telefone,
+      resumos[c.id]?.consulta?.nome_imovel,
+    ]
+    return campos.some(campo => typeof campo === 'string' && campo.toLowerCase().includes(termo))
+  })
+
+  const comConsultaEmAndamento = filteredClientes.filter(c => {
+    const p = resumos[c.id]?.progresso
+    return p !== null && p !== undefined && !p.completo
+  }).length
 
   // Um lote de assinaturas para a página inteira, não uma por card.
   const { resolver: resolverFoto } = useUrlsAssinadas(
@@ -250,8 +397,13 @@ export default function Clientes() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Clientes</p>
-          <h1 style={{ color: '#0E1B2C', fontSize: '30px', fontWeight: 600, margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>Meus Clientes</h1>
-          <p style={{ color: '#6B7280', fontSize: '15px', margin: '0' }}>{totalCount} cliente(s) cadastrado(s)</p>
+          <h1 style={{ color: '#0E1B2C', fontSize: '26px', fontWeight: 500, margin: '0 0 6px 0', letterSpacing: '-0.01em', fontFamily: 'var(--font-fraunces), serif' }}>Clientes</h1>
+          <p style={{ color: '#6B7280', fontSize: '13px', margin: '0' }}>
+            {/* O número é do filtro corrente, e o rótulo diz qual — «12 clientes»
+                sob o filtro «Inativos» seria lido como a carteira inteira. */}
+            {totalCount} {totalCount === 1 ? 'cliente' : 'clientes'} · {ROTULO_DO_FILTRO[filtroEstado].toLowerCase()}
+            {comConsultaEmAndamento > 0 && ` · ${comConsultaEmAndamento} com consulta em andamento`}
+          </p>
         </div>
         <button type="button" onClick={() => {
           const p = planoEfetivo(profile?.plano)
@@ -303,40 +455,22 @@ export default function Clientes() {
           <option value="nome_desc">Nome Z-A</option>
           <option value="cidade">Cidade</option>
         </select>
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {(['todos', 'ativos', 'inativos'] as const).map(status => {
-            const isActive =
-              (status === 'todos' && showInactive) ||
-              (status === 'ativos' && !showInactive) ||
-              false
+        {/* Um grupo de botões, exclusivos entre si. Antes «Inativos» ligava o
+            mesmo estado que «Todos» e as duas listas eram idênticas. */}
+        <div role="radiogroup" aria-label="Filtrar por estado" style={{ display: 'flex', border: '1px solid #E7E1D6', borderRadius: '9px', overflow: 'hidden', background: '#fff' }}>
+          {(['ativos', 'inativos', 'todos'] as const).map((estado, i) => {
+            const ativo = filtroEstado === estado
             return (
-              <button type="button"
-                key={status}
-                onClick={() => {
-                  if (status === 'todos' && !showInactive) {
-                    setShowInactive(true)
-                    loadClientes(0, undefined, undefined, true)
-                  } else if (status === 'ativos' && showInactive) {
-                    setShowInactive(false)
-                    loadClientes(0, undefined, undefined, false)
-                  } else if (status === 'inativos') {
-                    // For "Inativos" - toggle to show all (including inactive)
-                    if (!showInactive) {
-                      setShowInactive(true)
-                      loadClientes(0, undefined, undefined, true)
-                    }
-                  }
-                }}
+              <button type="button" key={estado} role="radio" aria-checked={ativo}
+                onClick={() => { setFiltroEstado(estado); loadClientes(0, undefined, undefined, estado) }}
                 style={{
-                  padding: '8px 14px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                  fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal',
-                  cursor: 'pointer',
-                  background: isActive ? '#2E7D6B' : '#ffffff',
-                  color: isActive ? '#ffffff' : '#374151',
+                  padding: '10px 16px', border: 'none', cursor: 'pointer', fontSize: '13px',
+                  borderLeft: i > 0 ? '1px solid #E7E1D6' : 'none',
+                  fontWeight: ativo ? 700 : 400,
+                  background: ativo ? '#0E1B2C' : '#fff',
+                  color: ativo ? '#fff' : '#4A5A67',
                 }}
-              >
-                {status === 'todos' ? 'Todos' : status === 'ativos' ? 'Ativos' : 'Inativos'}
-              </button>
+              >{ROTULO_DO_FILTRO[estado]}</button>
             )
           })}
         </div>
@@ -540,68 +674,145 @@ export default function Clientes() {
           <p style={{ color: '#6B7280', fontSize: '14px' }}>Tente ajustar o filtro de busca.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-          {filteredClientes.map(cliente => {
-            const stats = consultaStats[cliente.id]
-            const isActive = (cliente as Cliente & { ativo?: boolean }).ativo !== false
+        // Linhas, não cards: cabem quatro vezes mais clientes na tela e cada
+        // linha responde «em que pé está?», que era a pergunta sem resposta.
+        <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="linha-cliente cabecalho-lista" style={{
+            padding: '12px 18px', borderBottom: '1px solid #F1EEE6', background: '#FBF9F4',
+          }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280' }}>Cliente</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280' }}>Imóvel em curso</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280' }}>Etapa do diagnóstico</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280' }}>Financeiro</span>
+            <span />
+          </div>
+
+          {filteredClientes.map((cliente, indice) => {
+            const resumo = resumos[cliente.id]
+            const consulta = resumo?.consulta ?? null
+            const ativo = (cliente as Cliente & { ativo?: boolean }).ativo !== false
+            const mingGua = calcularMingGua(cliente.data_nascimento, (cliente as Cliente & { genero?: string | null }).genero)
+            const graus = consulta?.bagua_entrada?.orientacao_graus
+            const acao = acaoDaLinha(resumo, cliente.id)
+            const foto = resolverFoto(cliente.foto_url)
+
             return (
-              <div key={cliente.id} className="panel panel-interactive" style={{
-                padding: '20px', borderLeft: `4px solid ${isActive ? '#2E7D6B' : '#9CA3AF'}`
+              <div key={cliente.id} className="linha-cliente" style={{
+                padding: '14px 18px', alignItems: 'center',
+                borderBottom: indice < filteredClientes.length - 1 ? '1px solid #F1EEE6' : 'none',
+                opacity: ativo ? 1 : 0.7,
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                {/* ── Cliente ────────────────────────────────────────── */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
                   <div style={{
-                    width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden',
-                    background: isActive ? '#2E7D6B' : '#9CA3AF', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '16px',
-                    flexShrink: 0, position: 'relative' as const,
+                    width: '38px', height: '38px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                    background: '#E4F1EC', color: '#2E7D6B', fontSize: '13px', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
                   }}>
-                    {resolverFoto(cliente.foto_url) ? (
-                      <Image src={resolverFoto(cliente.foto_url)!} alt={cliente.nome_completo} fill unoptimized style={{ objectFit: 'cover' }} />
-                    ) : (
-                      cliente.nome_completo.charAt(0).toUpperCase()
-                    )}
+                    {foto
+                      ? <Image src={foto} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
+                      : iniciaisDe(cliente.nome_completo)}
                   </div>
-                  <span style={{
-                    background: isActive ? '#F0FDF4' : '#F3F4F6',
-                    color: isActive ? '#15803D' : '#6B7280',
-                    padding: '2px 10px',
-                    borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
-                  }}>{isActive ? 'Ativo' : 'Inativo'}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <Link href={`/clientes/${cliente.id}`} style={{
+                      display: 'block', fontSize: '14px', fontWeight: 600, color: '#0E1B2C', textDecoration: 'none',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{cliente.nome_completo}</Link>
+                    {/* Lacuna é informação, não silêncio: «sem data de nascimento»
+                        explica por que o Ming Gua não aparece no relatório. */}
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cliente.cidade
+                        ? `${cliente.cidade}${cliente.estado ? ` · ${cliente.estado}` : ''}`
+                        : 'Sem endereço cadastrado'}
+                      {' · '}
+                      {mingGua ? `Ming Gua ${mingGua.kua}` : 'sem data de nascimento'}
+                    </p>
+                  </div>
                 </div>
-                <h3 style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-                  {cliente.nome_completo}
-                </h3>
-                {cliente.email && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.email}</p>}
-                {cliente.telefone && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.telefone}</p>}
-                {cliente.cidade && <p style={{ color: '#6B7280', fontSize: '13px', margin: '2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={13} strokeWidth={1.75} aria-hidden="true" /> {cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</p>}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
-                  <span>{stats?.total || 0} consulta(s)</span>
-                  {stats?.lastStatus && (
-                    <span style={{ color: stats.lastStatus === 'finalizada' ? '#15803D' : stats.lastStatus === 'em_andamento' ? '#D97706' : '#6B7280', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      {stats.lastStatus === 'finalizada'
-                        ? <><CheckCircle2 size={13} strokeWidth={2} aria-hidden="true" /> Concluída</>
-                        : stats.lastStatus === 'em_andamento'
-                        ? <><RefreshCw size={13} strokeWidth={2} aria-hidden="true" /> Em andamento</>
-                        : stats.lastStatus}
-                    </span>
+
+                {/* ── Imóvel em curso ────────────────────────────────── */}
+                <div style={{ minWidth: 0 }}>
+                  {consulta ? (
+                    <>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#0E1B2C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {consulta.nome_imovel?.trim() || 'Imóvel sem nome'}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: typeof graus === 'number' ? '#9CA3AF' : '#B4533A' }}>
+                        {typeof graus === 'number'
+                          ? `${montanhaDoGrau(graus).nome} · ${graus.toFixed(1).replace('.', ',')}°`
+                          : 'Sem leitura de fachada'}
+                        {consulta.finalizada_em && ` · concluída em ${formatarData(consulta.finalizada_em)}`}
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '13px', color: '#9CA3AF' }}>Nenhuma consulta ainda</p>
                   )}
                 </div>
-                <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => window.location.href = `/consultas/nova?cliente_id=${cliente.id}`} style={{
-                    flex: 1, padding: '8px', background: '#2E7D6B', color: '#fff',
-                    border: 'none', borderRadius: '6px', fontSize: '13px',
-                    fontWeight: 'bold', cursor: 'pointer'
-                  }}>Nova consulta</button>
-                  <button type="button" onClick={() => window.location.href = `/clientes/${cliente.id}`} style={{
-                    padding: '8px 12px', background: '#F3F4F6', color: '#374151',
-                    border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
-                  }}>Ver</button>
+
+                {/* ── Etapa do diagnóstico ───────────────────────────── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: 0 }}>
+                  {resumo?.progresso ? (
+                    <>
+                      <div role="img" aria-label={`Etapa: ${resumo.progresso.rotulo}`} style={{ display: 'flex', gap: '3px' }}>
+                        {resumo.progresso.cumpridas.map((cumprida, i) => (
+                          <span key={i} style={{
+                            height: '5px', flex: 1, borderRadius: '99px',
+                            // Fundo claro aqui: a barra do dashboard vive sobre
+                            // tinta e usa branco translúcido, que sumiria nesta.
+                            background: cumprida ? '#2E7D6B' : i === resumo.progresso!.indice ? '#C9A227' : '#EAE5DA',
+                          }} />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: resumo.progresso.completo ? '#2E7D6B' : '#8A6E2F' }}>
+                        {resumo.progresso.completo
+                          ? 'Entregue'
+                          : `${resumo.progresso.rotulo.replace('Etapa ', '')} · ${resumo.progresso.cumpridas.filter(Boolean).length} de 5`}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#9CA3AF' }}>—</span>
+                  )}
                 </div>
+
+                {/* ── Financeiro ─────────────────────────────────────── */}
+                <div style={{ minWidth: 0 }}>
+                  {resumo?.financeiro.vencido
+                    ? <span style={{ fontSize: '13px', color: '#B4533A', fontWeight: 700 }}>{formatarMoeda(resumo.financeiro.vencido)} vencido</span>
+                    : resumo?.financeiro.aberto
+                      ? <span style={{ fontSize: '13px', color: '#2E7D6B', fontWeight: 600 }}>Em dia</span>
+                      : <span style={{ fontSize: '13px', color: '#9CA3AF' }}>—</span>}
+                </div>
+
+                {/* ── Ação ───────────────────────────────────────────── */}
+                <Link href={acao.href} style={{
+                  fontSize: '13px', fontWeight: 700, padding: '8px 14px', borderRadius: '8px',
+                  textAlign: 'center', textDecoration: 'none', whiteSpace: 'nowrap',
+                  ...(acao.primaria
+                    ? { background: '#2E7D6B', color: '#fff' }
+                    : { border: '1px solid #D8D0C0', color: '#0E1B2C' }),
+                }}>{acao.texto}</Link>
               </div>
             )
           })}
         </div>
       )}
+
+      <style>{`
+        .linha-cliente {
+          display: grid;
+          grid-template-columns: 2fr 1.6fr 1.5fr 1fr 128px;
+          gap: 14px;
+        }
+        /* Abaixo de 1000px as cinco colunas não cabem: viram duas, e o
+           cabeçalho some porque deixa de rotular coluna nenhuma. */
+        @media (max-width: 1000px) {
+          .linha-cliente { grid-template-columns: 1fr 1fr; }
+          .cabecalho-lista { display: none; }
+        }
+        @media (max-width: 600px) {
+          .linha-cliente { grid-template-columns: 1fr; }
+        }
+      `}</style>
 
       {totalPages > 1 && (
         <div style={{

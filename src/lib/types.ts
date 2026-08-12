@@ -190,6 +190,7 @@ export interface Consulta {
   /** Caminho do PDF salvo no bucket privado 'relatorios' (persistência do relatório). */
   relatorio_pdf_path?: string | null
   relatorio_gerado_em?: string | null
+  finalizada_em?: string | null
   roda_da_vida?: Record<string, unknown> | null
   /**
    * Dois formatos convivem no banco: `string[]` (legado, = itens marcados) e o
