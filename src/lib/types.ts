@@ -176,6 +176,13 @@ export interface Consulta {
   fotos_depois?: string[] | null
   bagua_entrada?: BaguaEntrada | null
   num_moradores?: number | null
+  /**
+   * Ano civil, não data: o dia da obra é o dado que ninguém tem, e inventá-lo
+   * muda o período (o ano solar vira no Li Chun). Ver `src/lib/periodo-do-imovel.ts`.
+   */
+  ano_construcao?: number | null
+  /** Última reforma estrutural. Quando posterior à construção, é ela que dá o período. */
+  ano_reforma_estrutural?: number | null
   historico_imovel?: string | null
   observacoes_topograficas?: string | null
   dados_adicionais?: string | null

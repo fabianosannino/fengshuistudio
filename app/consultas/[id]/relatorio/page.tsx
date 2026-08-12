@@ -12,7 +12,8 @@ import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/l
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
 import { calcularMingGua } from '../../../../src/lib/ming-gua'
 import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
-import { periodoDaConstrucao, calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
+import { calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
+import { periodoDaConsulta, faixaDoPeriodo } from '../../../../src/lib/periodo-do-imovel'
 import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
 import { dataSolar } from '../../../../src/lib/data-solar'
 import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario'
@@ -820,9 +821,12 @@ export default function Relatorio() {
         {/* ══════ ESTRELAS VOADORAS — só com Bússola + data de construção ══════ */}
         {(() => {
           const be = consulta.bagua_entrada
-          if (be?.escola !== 'bussola' || !be.data_construcao) return null
-          const periodo = periodoDaConstrucao(be.data_construcao)
-          const mapa = periodo != null ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus ?? 0, periodo }) : null
+          if (be?.escola !== 'bussola') return null
+          // Colunas primeiro, `data_construcao` como fallback das consultas
+          // antigas — ver src/lib/periodo-do-imovel.ts.
+          const doImovel = periodoDaConsulta(consulta)
+          if (!doImovel) return null
+          const mapa = calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus ?? 0, periodo: doImovel.periodo })
           if (!mapa) return null
           const porPalacio = Object.fromEntries(mapa.palacios.map(p => [p.palacio, p]))
           const linhas: Palacio[][] = [['SE', 'S', 'SW'], ['E', 'C', 'W'], ['NE', 'N', 'NW']]
@@ -831,6 +835,13 @@ export default function Relatorio() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: 700, color: ink, marginBottom: '0.6rem', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                 <span style={{ fontSize: '18px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>飛星</span>
                 Estrelas Voadoras — Período {mapa.periodo}
+              </div>
+              {/* De onde saiu o período. Sem isto o cliente vê um número de 1 a 9
+                  sem meio de conferir de que ano ele veio. */}
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '0.5rem', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Carta natal do Período {mapa.periodo} ({faixaDoPeriodo(doImovel.anoUsado).inicio}–{faixaDoPeriodo(doImovel.anoUsado).fim}),
+                {doImovel.daReforma ? ' pela reforma estrutural de ' : ' pela construção de '}{doImovel.anoUsado}.
+                {doImovel.ambiguo && ` Como ${doImovel.anoUsado} é ano de virada, uma conclusão de obra anterior a 4 de fevereiro corresponderia ao Período ${doImovel.periodoAnterior}.`}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: '4px' }}>
                 {linhas.flat().map(p => {
@@ -1809,8 +1820,8 @@ export default function Relatorio() {
           // de domínio (ADR 0013), então não há síntese a fazer.
           if (be?.escola !== 'bussola' || typeof be.orientacao_graus !== 'number') return null
 
-          const periodo = be.data_construcao ? periodoDaConstrucao(be.data_construcao) : null
-          const mapa = periodo != null ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus, periodo }) : null
+          const doImovel = periodoDaConsulta(consulta)
+          const mapa = doImovel ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus, periodo: doImovel.periodo }) : null
           const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
           const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
           const favoraveis = mg ? setoresFavoraveis(mg.direcoes) : null

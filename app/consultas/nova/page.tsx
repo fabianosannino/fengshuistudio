@@ -1,5 +1,6 @@
 'use client'
 
+import CamposAnoDoImovel from '../../components/CamposAnoDoImovel'
 import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -37,6 +38,8 @@ function NovaConsultaContent() {
     area_total_m2: '',
     endereco_imovel: '',
     num_moradores: '',
+    ano_construcao: '',
+    ano_reforma_estrutural: '',
     historico_imovel: '',
     observacoes_topograficas: '',
     dados_adicionais: '',
@@ -146,6 +149,8 @@ function NovaConsultaContent() {
           area_total_m2: form.area_total_m2 ? parseFloat(form.area_total_m2) : null,
           endereco_imovel: form.endereco_imovel,
           num_moradores: form.num_moradores ? parseInt(form.num_moradores) : null,
+          ano_construcao: form.ano_construcao ? parseInt(form.ano_construcao) : null,
+          ano_reforma_estrutural: form.ano_reforma_estrutural ? parseInt(form.ano_reforma_estrutural) : null,
           historico_imovel: form.historico_imovel || null,
           observacoes_topograficas: form.observacoes_topograficas || null,
           dados_adicionais: form.dados_adicionais || null,
@@ -348,6 +353,15 @@ function NovaConsultaContent() {
                 <label htmlFor="input-endereco-imovel" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Endereço do imóvel</label>
                 <input id="input-endereco-imovel" name="endereco_imovel" value={form.endereco_imovel} onChange={handleChange} placeholder="Rua, número, bairro, cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Idade do imóvel — o período (Yun) da carta natal sai daqui. */}
+              <div style={{ marginBottom: '20px' }}>
+                <CamposAnoDoImovel
+                  anoConstrucao={form.ano_construcao}
+                  anoReformaEstrutural={form.ano_reforma_estrutural}
+                  onChange={(campo, valor) => setForm(f => ({ ...f, [campo]: valor }))}
+                />
               </div>
 
               {/* Dados Adicionais do Imóvel */}

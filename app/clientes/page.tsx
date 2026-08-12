@@ -28,6 +28,8 @@ export default function Clientes() {
   const [userId, setUserId] = useState<string | null>(null)
   const [form, setForm] = useState({
     nome_completo: '',
+    data_nascimento: '',
+    genero: '',
     email: '',
     telefone: '',
     cep: '',
@@ -158,7 +160,7 @@ export default function Clientes() {
           await fetch('/api/clientes/foto', { method: 'POST', body: fd })
         }
         setMessage('Cliente cadastrado com sucesso!')
-        setForm({ nome_completo: '', email: '', telefone: '', cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil', notas: '' })
+        setForm({ nome_completo: '', data_nascimento: '', genero: '', email: '', telefone: '', cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil', notas: '' })
         setFotoFile(null)
         setFotoPreview(null)
         setShowForm(false)
@@ -414,27 +416,58 @@ export default function Clientes() {
                 <input id="input-telefone" name="telefone" value={form.telefone} onChange={handleChange} placeholder="(11) 99999-9999"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
+              {/* Data de nascimento e gênero são as entradas do Ming Gua
+                  (`calcularMingGua`), que o relatório usa para as direções
+                  favoráveis. Sem eles a seção simplesmente não aparece, e o
+                  consultor descobria isso só no fim — o campo não existia aqui,
+                  só no editor do cliente. */}
+              <div>
+                <label htmlFor="input-data-nascimento" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Data de nascimento</label>
+                <input id="input-data-nascimento" name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange}
+                  max={new Date().toISOString().slice(0, 10)}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>Habilita o Ming Gua e as direções favoráveis no relatório.</p>
+              </div>
+              <div>
+                <label htmlFor="select-genero" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Gênero</label>
+                <select id="select-genero" name="genero" value={form.genero} onChange={handleChange}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
+                  <option value="">Não informado</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="masculino">Masculino</option>
+                </select>
+                {/* O cálculo clássico do Ming Gua tem só duas fórmulas. «Não
+                    informado» é resposta válida: o relatório omite a seção em vez
+                    de escolher uma fórmula por conta própria. */}
+              </div>
             </div>
 
             {/* Endereço */}
-            <h3 style={{ color: '#0E1B2C', fontSize: '15px', fontWeight: 'bold', margin: '20px 0 12px 0', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>Endereço</h3>
+            {/* Endereço deixou de ser obrigatório: o imóvel analisado tem
+                endereço próprio (`consultas.endereco_imovel`), e exigir os sete
+                campos do cliente travava o cadastro de quem só tinha nome e
+                telefone — o caso comum de um primeiro contato. Nenhum deles é
+                usado em cálculo. */}
+            <h3 style={{ color: '#0E1B2C', fontSize: '15px', fontWeight: 'bold', margin: '20px 0 12px 0', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
+              Endereço <span style={{ fontWeight: 'normal', color: '#9CA3AF', fontSize: '13px' }}>— opcional</span>
+            </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label htmlFor="input-cep" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>CEP *</label>
+                <label htmlFor="input-cep" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>CEP</label>
                 <div style={{ position: 'relative' }}>
-                  <input id="input-cep" name="cep" value={form.cep} onChange={handleChange} onBlur={handleCepBlur} required placeholder="00000-000" maxLength={9}
+                  <input id="input-cep" name="cep" value={form.cep} onChange={handleChange} onBlur={handleCepBlur} placeholder="00000-000" maxLength={9}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                   {cepLoading && <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#2E7D6B', fontSize: '12px' }}>Buscando...</span>}
                 </div>
               </div>
               <div>
-                <label htmlFor="input-rua" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Rua / Logradouro *</label>
-                <input id="input-rua" name="rua" value={form.rua} onChange={handleChange} required placeholder="Rua, Avenida, etc."
+                <label htmlFor="input-rua" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Rua / Logradouro</label>
+                <input id="input-rua" name="rua" value={form.rua} onChange={handleChange} placeholder="Rua, Avenida, etc."
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label htmlFor="input-numero" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Número *</label>
-                <input id="input-numero" name="numero" value={form.numero} onChange={handleChange} required placeholder="Nº"
+                <label htmlFor="input-numero" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Número</label>
+                <input id="input-numero" name="numero" value={form.numero} onChange={handleChange} placeholder="Nº"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
@@ -445,18 +478,18 @@ export default function Clientes() {
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label htmlFor="input-bairro" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bairro *</label>
-                <input id="input-bairro" name="bairro" value={form.bairro} onChange={handleChange} required placeholder="Bairro"
+                <label htmlFor="input-bairro" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Bairro</label>
+                <input id="input-bairro" name="bairro" value={form.bairro} onChange={handleChange} placeholder="Bairro"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade *</label>
-                <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange} required placeholder="Cidade"
+                <label htmlFor="input-cidade" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Cidade</label>
+                <input id="input-cidade" name="cidade" value={form.cidade} onChange={handleChange} placeholder="Cidade"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado *</label>
-                <select id="select-estado" name="estado" value={form.estado} onChange={handleChange} required
+                <label htmlFor="select-estado" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>Estado</label>
+                <select id="select-estado" name="estado" value={form.estado} onChange={handleChange}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
                   <option value="">UF</option>
                   {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
@@ -467,8 +500,8 @@ export default function Clientes() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
-                <label htmlFor="input-pais" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>País *</label>
-                <input id="input-pais" name="pais" value={form.pais} onChange={handleChange} required placeholder="Brasil"
+                <label htmlFor="input-pais" style={{ display: 'block', color: '#374151', fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>País</label>
+                <input id="input-pais" name="pais" value={form.pais} onChange={handleChange} placeholder="Brasil"
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>

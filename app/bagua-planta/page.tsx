@@ -12,7 +12,8 @@ import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/l
 import { calcularGridOrder, guaDaPorta } from '../../src/lib/bagua-grid'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
 import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
-import { periodoDaConstrucao, calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
+import { calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
+import { periodoDoImovel, reformaIncoerente, faixaDoPeriodo, ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../src/lib/periodo-do-imovel'
 import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/graus'
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
@@ -43,6 +44,12 @@ import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
 import QuestionarioFacing from '../components/QuestionarioFacing'
+
+/** Campo vazio vira `null` na coluna — string vazia viraria 0 e 0 não é um ano. */
+function anoParaBanco(valor:string):number|null{
+  const n=Number(valor)
+  return valor.trim()!==''&&Number.isInteger(n)?n:null
+}
 import RosaDosVentos from '../components/RosaDosVentos'
 import {
   converterLeitura, declinacaoPlausivel, rotuloReferencia,
@@ -150,7 +157,11 @@ function BaguaPlantaContent() {
   const [declinacaoAuto, setDeclinacaoAuto] = useState<{modelo:string;validoAte:string}|null>(null)
   const [declinacaoCarregando, setDeclinacaoCarregando] = useState(false)
   const [declinacaoErro, setDeclinacaoErro] = useState<string>('')
-  const [dataConstrucao, setDataConstrucao] = useState<string>('')
+  // Ano, não data: o dia da obra é o dado que ninguém tem, e o 01/01 que o campo
+  // de data obrigava a inventar jogava o imóvel para o período anterior (o ano
+  // solar vira no Li Chun). Ver src/lib/periodo-do-imovel.ts.
+  const [anoConstrucao, setAnoConstrucao] = useState<string>('')
+  const [anoReforma, setAnoReforma] = useState<string>('')
   // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
   const [leiturasAbertas, setLeiturasAbertas] = useState(false)
@@ -241,9 +252,13 @@ function BaguaPlantaContent() {
         .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>console.error('Erro ao carregar consultas:',e))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
-        supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo').eq('id',consultaId).single()
+        supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo,ano_construcao,ano_reforma_estrutural').eq('id',consultaId).single()
           .then(({data})=>{
             if(data) setConsultaNome(data.nome_imovel)
+            // Colunas primeiro; o `be.data_construcao` abaixo é o fallback das
+            // consultas anteriores à migration 20260812140000.
+            if(typeof data?.ano_construcao==='number') setAnoConstrucao(String(data.ano_construcao))
+            if(typeof data?.ano_reforma_estrutural==='number') setAnoReforma(String(data.ano_reforma_estrutural))
             // A escolha vive na consulta: reabrir uma análise antiga não a
             // repontua sob o padrão vigente hoje.
             if(data?.modelo_pontuacao) setModeloPontuacao(modeloValido(data.modelo_pontuacao))
@@ -282,7 +297,9 @@ function BaguaPlantaContent() {
                 setDeclinacaoAuto(null)
               }
               if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
-              if(be.data_construcao) setDataConstrucao(be.data_construcao)
+              // Fallback do campo legado: só o ano, pelo mesmo motivo do backfill
+              // da migration 20260812140000.
+              if(be.data_construcao) setAnoConstrucao(atual=>atual||be.data_construcao!.slice(0,4))
             }
           }).then(null,(e: Error)=>console.error('Erro ao carregar consulta:',e))
         supabase.from('setores_bagua')
@@ -331,7 +348,7 @@ function BaguaPlantaContent() {
       setOrientacaoReferencia(be.orientacao_referencia==='verdadeiro'?'verdadeiro':'magnetico')
       setDeclinacao(typeof be.declinacao_magnetica==='number'?String(be.declinacao_magnetica):'')
       setDeclinacaoAuto(null) // ver nota no outro ponto de restauração
-      setDataConstrucao(be.data_construcao||'')
+      setAnoConstrucao(atual=>atual||(be.data_construcao?be.data_construcao.slice(0,4):''))
       if(typeof be.x==='number'&&typeof be.y==='number') setEntrada({x:be.x,y:be.y})
       // Defer bounds/setores restoration after image+rotation effect runs
       setTimeout(()=>{
@@ -1015,7 +1032,6 @@ function BaguaPlantaContent() {
       orientacao_graus:orientacaoGraus,
       orientacao_referencia:orientacaoReferencia,
       declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
-      data_construcao:dataConstrucao||undefined,
       metragem_real:metragemRef.current||undefined,
     }
     if(overrides?.entradaV??entrada){
@@ -1045,7 +1061,7 @@ function BaguaPlantaContent() {
     // rascunho se perdia em silêncio (RLS, rede, linha inexistente) e o consultor seguia
     // achando que o trabalho estava salvo. Ver CLAUDE.md: nunca engolir falha de escrita.
     const {error:eRascunho}=await supabase.from('consultas')
-      .update({bagua_entrada:draft,modelo_pontuacao:modeloPontuacao,peso_geo:pesoGeo})
+      .update({bagua_entrada:draft,modelo_pontuacao:modeloPontuacao,peso_geo:pesoGeo,ano_construcao:anoParaBanco(anoConstrucao),ano_reforma_estrutural:anoParaBanco(anoReforma)})
       .eq('id',consultaId)
     if(eRascunho){
       logger.error('Falha ao salvar rascunho do Ba Guá',{action:'salvarRascunho',consultaId,erro:eRascunho.message})
@@ -1355,8 +1371,7 @@ function BaguaPlantaContent() {
         escola, orientacao_graus:orientacaoGraus,
         orientacao_referencia:orientacaoReferencia,
         declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
-        data_construcao:dataConstrucao||undefined,
-        bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
+          bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
         tai_ji_poligono:poligonoTaiJiRef.current,
         finalizada_em:new Date().toISOString(),
         lh:lhRef.current, lv:lvRef.current,
@@ -1384,6 +1399,8 @@ function BaguaPlantaContent() {
       const {error:eFinal}=await supabase.from('consultas').update({
         bagua_imagem:dataUrl,
         bagua_entrada:finalizacao,
+        ano_construcao:anoParaBanco(anoConstrucao),
+        ano_reforma_estrutural:anoParaBanco(anoReforma),
         status:'em_andamento',
       }).eq('id',consultaId)
       if(eFinal){
@@ -1926,12 +1943,30 @@ function BaguaPlantaContent() {
                           {facingAberto&&(
                             <QuestionarioFacing onAceitar={g=>{setOrientacaoGraus(g);setFacingAberto(false)}}/>
                           )}
-                          <label htmlFor="input-data-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
-                            📅 Data de construção/reforma <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
+                          <label htmlFor="input-ano-construcao" style={{display:'block',color:'#374151',fontSize:'11px',fontWeight:'bold',margin:'8px 0 5px'}}>
+                            📅 Idade do imóvel <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
                           </label>
-                          <input id="input-data-construcao" type="date" value={dataConstrucao}
-                            onChange={e=>setDataConstrucao(e.target.value)}
-                            style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px'}}/>
+                          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                            <div>
+                              <label htmlFor="input-ano-construcao" style={{display:'block',color:'#6B7280',fontSize:'10px',marginBottom:'3px'}}>Ano de construção</label>
+                              <input id="input-ano-construcao" type="number" inputMode="numeric"
+                                min={ANO_MINIMO_CONSTRUCAO} max={ANO_MAXIMO_CONSTRUCAO}
+                                value={anoConstrucao} onChange={e=>setAnoConstrucao(e.target.value)} placeholder="1998"
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',width:'82px'}}/>
+                            </div>
+                            <div>
+                              <label htmlFor="input-ano-reforma" style={{display:'block',color:'#6B7280',fontSize:'10px',marginBottom:'3px'}}>Reforma estrutural</label>
+                              <input id="input-ano-reforma" type="number" inputMode="numeric"
+                                min={ANO_MINIMO_CONSTRUCAO} max={ANO_MAXIMO_CONSTRUCAO}
+                                value={anoReforma} onChange={e=>setAnoReforma(e.target.value)} placeholder="2015"
+                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'11px',width:'82px'}}/>
+                            </div>
+                          </div>
+                          {reformaIncoerente({anoConstrucao:anoParaBanco(anoConstrucao),anoReformaEstrutural:anoParaBanco(anoReforma)})&&(
+                            <p style={{fontSize:'10px',color:'#B4533A',margin:'5px 0 0'}}>
+                              Reforma anterior à construção — os campos podem estar trocados. O período segue a construção.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2086,9 +2121,10 @@ function BaguaPlantaContent() {
                   })()}
 
                   {/* Estrelas Voadoras — só na Bússola com data de construção informada */}
-                  {escola==='bussola'&&dataConstrucao&&(()=>{
-                    const periodo=periodoDaConstrucao(dataConstrucao)
-                    const mapa=periodo?calcularEstrelasVoadoras({facingGraus:orientacaoGraus,periodo}):null
+                  {escola==='bussola'&&(()=>{
+                    const doImovel=periodoDoImovel({anoConstrucao:anoParaBanco(anoConstrucao),anoReformaEstrutural:anoParaBanco(anoReforma)})
+                    if(!doImovel) return null
+                    const mapa=calcularEstrelasVoadoras({facingGraus:orientacaoGraus,periodo:doImovel.periodo})
                     if(!mapa) return null
                     const porPalacio=Object.fromEntries(mapa.palacios.map(p=>[p.palacio,p]))
                     const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
@@ -2100,6 +2136,20 @@ function BaguaPlantaContent() {
                         <div style={{fontSize:'11px',fontWeight:'bold',color:'#92400E',marginBottom:'6px'}}>
                           ⭐ Estrelas Voadoras — Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
                         </div>
+                        <div style={{fontSize:'10px',color:'#92400E',marginBottom:'6px'}}>
+                          Período {mapa.periodo} ({faixaDoPeriodo(doImovel.anoUsado).inicio}–{faixaDoPeriodo(doImovel.anoUsado).fim}),
+                          {doImovel.daReforma?' pela reforma estrutural de ':' pela construção de '}{doImovel.anoUsado}.
+                        </div>
+                        {/* A virada do período é o Li Chun (~4/fev), não 1º de janeiro:
+                            o ano sozinho não decide, e decidir em silêncio trocaria a
+                            carta inteira. */}
+                        {doImovel.ambiguo&&(
+                          <div style={{fontSize:'10px',color:'#B4533A',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'5px',padding:'5px 7px',marginBottom:'6px'}}>
+                            {doImovel.anoUsado} é ano de virada de período. Se a obra foi concluída
+                            antes de 4 de fevereiro, a carta correta é a do Período {doImovel.periodoAnterior} —
+                            confirme o mês antes de usar este mapa.
+                          </div>
+                        )}
                         {liuFa&&(
                           <div style={{fontSize:'10px',color:'#92400E',marginBottom:'6px'}}>
                             Zheng Shen (busque solidez): <strong>{NOME_SETOR[liuFa.zhengShen]}</strong> · Ling Shen (busque água/vazio): <strong>{NOME_SETOR[liuFa.lingShen]}</strong>
