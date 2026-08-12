@@ -14,6 +14,7 @@ import { calcularMingGua } from '../../../../src/lib/ming-gua'
 import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
 import { calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
 import { periodoDaConsulta, faixaDoPeriodo } from '../../../../src/lib/periodo-do-imovel'
+import { RESSALVA_XUAN_KONG } from '../../../../src/lib/sustentacao-do-diagnostico'
 import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
 import { dataSolar } from '../../../../src/lib/data-solar'
 import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario'
@@ -854,11 +855,16 @@ export default function Relatorio() {
                   )
                 })}
               </div>
-              <p style={{ margin: '0.6rem 0 0', fontSize: '10px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                Montanha / Período / Fachada. Base do método San Yuan Xuan Kong — não inclui estrela de substituição
-                para fachadas de borda, sobreposição anual/mensal nem teoria de combinações. Recomendado validar com
-                um consultor formado em Xuan Kong antes de decisões importantes.
+              <p style={{ margin: '0.6rem 0 0', fontSize: '11px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                Montanha / Período / Fachada.
               </p>
+              {/* A ressalva vive em `sustentacao-do-diagnostico.ts` para sair
+                  idêntica aqui e na bancada — e em caixa, não em rodapé de 10px. */}
+              <div style={{ marginTop: '0.5rem', background: '#FAF3E0', border: '1px solid #EEDFB4', borderRadius: '8px', padding: '11px 13px' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#6B5220', lineHeight: 1.55, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  {RESSALVA_XUAN_KONG}
+                </p>
+              </div>
             </div>
           )
         })()}
