@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../src/lib/supabase'
+import ServicosDoParceiro, {
+  agruparPorParceiro, COLUNAS_DA_VITRINE, type ServicoVisivel,
+} from '../components/ServicosDoParceiro'
 
 type Consultor = {
   id: string
@@ -19,16 +22,36 @@ export default function Consultores() {
   const [consultores, setConsultores] = useState<Consultor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [servicos, setServicos] = useState<Record<string, ServicoVisivel[]>>({})
 
   useEffect(() => {
     async function load() {
+      /*
+       * O filtro `store_slug not null` saiu: ele escondia da vitrine pública
+       * todo consultor que ainda não tinha escolhido um apelido de loja —
+       * inclusive quem já vendia por `/store/acct_...`. Quem optou por
+       * aparecer, aparece; o link da loja é que fica condicionado ao slug.
+       */
       const { data } = await supabase
         .from('perfis_publicos')
         .select('id, nome_completo, profissao, bio, cidade, estado, instagram, store_slug')
         .eq('parceiro_visivel', true)
-        .not('store_slug', 'is', null)
         .order('nome_completo')
-      setConsultores((data || []) as Consultor[])
+      const lista = (data || []) as Consultor[]
+      setConsultores(lista)
+
+      // Mesma vitrine de `/parceiros`, e é o ponto de ela ser componente
+      // compartilhado: esta é a página que o visitante sem conta vê.
+      if (lista.length > 0) {
+        const { data: doBanco } = await supabase
+          .from('servicos_do_parceiro')
+          .select(COLUNAS_DA_VITRINE)
+          .in('perfil_id', lista.map(c => c.id))
+          .eq('ativo', true)
+          .order('ordem')
+        setServicos(agruparPorParceiro((doBanco ?? []) as ServicoVisivel[]))
+      }
+
       setLoading(false)
     }
     load()
@@ -65,10 +88,13 @@ export default function Consultores() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: '16px' }}>
             {filtered.map(c => (
-              <a key={c.id} href={c.store_slug ? `/loja/${c.store_slug}` : '#'} style={{
-                background: '#fff', borderRadius: '12px', padding: '20px', textDecoration: 'none',
+              /* Card é `div`, não `a`: sem loja não há para onde levar, e um
+                 link que não vai a lugar nenhum promete o que não cumpre. O
+                 link mora no botão da loja, quando ela existe. */
+              <div key={c.id} style={{
+                background: '#fff', borderRadius: '12px', padding: '20px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #E5E7EB',
-                transition: 'transform 0.2s, box-shadow 0.2s', display: 'block'
+                display: 'block'
               }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#0E1B2C', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', marginBottom: '12px' }}>
                   {c.nome_completo?.charAt(0) || '?'}
@@ -77,8 +103,11 @@ export default function Consultores() {
                 {c.profissao && <p style={{ color: '#2E7D6B', fontSize: '13px', margin: '0 0 8px', fontWeight: 'bold' }}>{c.profissao}</p>}
                 {c.bio && <p style={{ color: '#6B7280', fontSize: '12px', margin: '0 0 8px', lineHeight: 1.5, maxHeight: '48px', overflow: 'hidden' }}>{c.bio}</p>}
                 {c.cidade && <p style={{ color: '#9CA3AF', fontSize: '12px', margin: 0 }}>{c.cidade}{c.estado ? `, ${c.estado}` : ''}</p>}
-                {c.store_slug && <div style={{ marginTop: '10px', padding: '6px 12px', background: '#EAF4F1', borderRadius: '6px', fontSize: '12px', color: '#2E7D6B', fontWeight: 'bold', textAlign: 'center' }}>Ver serviços →</div>}
-              </a>
+                <ServicosDoParceiro servicos={servicos[c.id] ?? []} />
+                {c.store_slug && (
+                  <a href={`/loja/${c.store_slug}`} style={{ display: 'block', marginTop: '10px', padding: '6px 12px', background: '#EAF4F1', borderRadius: '6px', fontSize: '12px', color: '#2E7D6B', fontWeight: 'bold', textAlign: 'center', textDecoration: 'none' }}>Ver loja →</a>
+                )}
+              </div>
             ))}
           </div>
         )}

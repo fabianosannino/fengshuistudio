@@ -6,6 +6,7 @@ import { redirecionarParaLogin, SENHA_MIN_CARACTERES } from '../../src/lib/auth-
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import VitrineDeServicos from '../components/VitrineDeServicos'
 import Skeleton from '../components/Skeleton'
 import { planoEfetivo, planoLabel, isProfissional as isProfissionalFn, PROF_TYPES } from '../../src/lib/plano-utils'
 import type { User } from '@supabase/supabase-js'
@@ -408,6 +409,12 @@ export default function Perfil() {
                   </p>
                 </div>
               </div>
+
+              {/* A vitrine só faz sentido para quem optou por aparecer — sem
+                  isso, seriam serviços cadastrados que ninguém vê. */}
+              {form.parceiro_visivel && user?.id && (
+                <VitrineDeServicos perfilId={user.id} />
+              )}
             </div>
           )}
 

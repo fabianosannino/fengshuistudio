@@ -197,6 +197,24 @@ export default function PedidoDoComprador() {
           </div>
         )}
 
+        {/* O convite substitui o cadastro obrigatório no checkout.
+            Exigir conta antes de pagar é causa clássica de carrinho
+            abandonado; aqui a conta é oferecida a quem já comprou — e, criada
+            com este mesmo e-mail, o pedido aparece em «Minhas compras»
+            sozinho, porque aquela tela casa por e-mail confirmado. */}
+        <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '16px', textAlign: 'center' }}>
+          <p style={{ color: '#374151', fontSize: '14px', margin: '0 0 12px', lineHeight: 1.5 }}>
+            Quer acompanhar esta e as próximas compras num lugar só?
+          </p>
+          <a href="/login?cadastro=1" style={{
+            display: 'inline-block', padding: '10px 20px', background: '#2E7D6B', color: '#fff',
+            borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none',
+          }}>Criar minha conta</a>
+          <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '10px 0 0' }}>
+            Use o mesmo e-mail da compra e este pedido aparece lá automaticamente.
+          </p>
+        </div>
+
         <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '12px', marginTop: '20px' }}>
           Guarde este link: é por ele que você acompanha o pedido.
         </p>

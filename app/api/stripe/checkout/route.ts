@@ -128,13 +128,31 @@ export async function POST(request: Request) {
      */
     const { data: vendedor, error: erroDoVendedor } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, loja_ativa')
       .eq('stripe_account_id', accountId)
       .maybeSingle()
 
     if (erroDoVendedor || !vendedor) {
       logger.error('Checkout da loja para conta sem perfil correspondente', {
         route: '/api/stripe/checkout', accountId, error: erroDoVendedor?.message,
+      })
+      return NextResponse.json({ error: 'Loja indisponível para compra.' }, { status: 400 })
+    }
+
+    /*
+     * A loja nasce fechada e é liberada por vendedor (`loja_ativa`).
+     *
+     * A conferência é **aqui**, no servidor, e não em esconder o botão: esta
+     * rota é pública, e quem tiver o link `/store/acct_...` compraria sem ver
+     * tela nenhuma. Esconder da interface não desabilita nada.
+     *
+     * A mensagem é a mesma de conta sem perfil, de propósito: para quem está
+     * de fora, «esta loja não vende» é a informação inteira, e distinguir os
+     * motivos só contaria quem tem conta conectada e ainda não foi aprovado.
+     */
+    if (!vendedor.loja_ativa) {
+      logger.info('Checkout recusado: loja do vendedor não está ativa', {
+        route: '/api/stripe/checkout', accountId,
       })
       return NextResponse.json({ error: 'Loja indisponível para compra.' }, { status: 400 })
     }

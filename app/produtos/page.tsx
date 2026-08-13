@@ -140,11 +140,20 @@ function ProdutosContent() {
   const [searchProd, setSearchProd] = useState('')
   const [filtroTag, setFiltroTag] = useState('todos')
   const [filtroCategoria, setFiltroCategoria] = useState('todos')
+  const [logado, setLogado] = useState(false)
 
   useEffect(() => {
     async function load() {
+      /*
+       * A loja é vitrine: quem chega pela home precisa ver o que ela tem
+       * **antes** de criar conta. Pedir cadastro para depois mostrar o motivo
+       * de se cadastrar é a ordem invertida.
+       *
+       * A policy de `produtos_afiliados` já libera `anon` para os itens
+       * ativos, então o visitante enxerga o mesmo catálogo.
+       */
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { redirecionarParaLogin(); return }
+      setLogado(Boolean(user))
 
       // Try to load custom affiliate products from database
       const { data, error } = await supabase
@@ -220,8 +229,13 @@ function ProdutosContent() {
     )
   }
 
-  return (
-    <AppShell currentPage="produtos">
+  /*
+   * Mesma página para os dois públicos: com menu para quem tem conta, sem
+   * menu para quem chegou de fora. Duas URLs diferentes para o mesmo catálogo
+   * dividiriam links compartilhados e buscas — e uma das duas envelheceria.
+   */
+  const conteudo = (
+    <>
 
       <div style={{ marginBottom: '24px' }}>
         <p style={{ color: '#2E7D6B', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Catálogo</p>
@@ -406,8 +420,23 @@ function ProdutosContent() {
         </div>
       </div>
 
-    </AppShell>
+    </>
   )
+
+  if (!logado) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F9FAFB', padding: '32px 20px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>{conteudo}</div>
+        <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '13px', marginTop: '32px' }}>
+          <a href="/login" style={{ color: '#2E7D6B', fontWeight: 'bold', textDecoration: 'none' }}>
+            Entre ou crie sua conta
+          </a>{' '}para acompanhar suas compras.
+        </p>
+      </div>
+    )
+  }
+
+  return <AppShell currentPage="produtos">{conteudo}</AppShell>
 }
 
 export default function Produtos() {
