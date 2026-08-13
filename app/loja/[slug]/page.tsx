@@ -69,7 +69,9 @@ export default function LojaConsultor() {
       body: JSON.stringify({
         account_id: profile.stripe_account_id,
         price_id: price.id,
-        success_url: `${window.location.origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+        // Sem `success_url`: o padrão da rota leva à página do próprio pedido,
+        // que é o que o comprador precisa guardar. Mandar um daqui devolveria
+        // a tela genérica de sucesso e perderia o link.
         cancel_url: window.location.href,
       }),
     })

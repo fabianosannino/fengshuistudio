@@ -145,11 +145,17 @@ export async function POST(request: Request) {
      *
      * E se não der para gravar, o checkout **falha**. É deliberado: esta rota
      * existe hoje porque a venda acontecia sem deixar registro, e seguir com a
-     * cobrança sabendo que o registro falhou seria reintroduzir exatamente o
-     * defeito. Quando a fase 1 trouxer reconciliação da loja — que recupera a
-     * venda a partir do Stripe —, isto pode virar best-effort. Sem ela, não.
+     * cobrança sabendo que o registro falhou seria reintroduzir o defeito.
+     *
+     * A reconciliação da loja já existe, e mesmo assim isto **continua
+     * fail-closed** — de propósito. Ela **detecta** a venda sem pedido, e não
+     * a reconstrói: refazer o pedido exigiria inventar o que só o checkout
+     * sabia (qual item, qual quantidade, qual taxa combinada), e um pedido
+     * reconstruído por aproximação é pior do que um alerta, porque parece
+     * completo. Relaxar isto pede uma forma de recuperar a venda inteira, não
+     * só de perceber que ela sumiu.
      */
-    const pedidoId = await criarPedidoIniciado(supabase, {
+    const pedido = await criarPedidoIniciado(supabase, {
       tipo: 'servico',
       vendedorTipo: 'consultor',
       vendedorPerfilId: vendedor.id,
@@ -164,7 +170,7 @@ export async function POST(request: Request) {
       },
     }, '/api/stripe/checkout')
 
-    if (!pedidoId) {
+    if (!pedido) {
       return NextResponse.json(
         { error: 'Não foi possível iniciar a compra. Tente novamente.' },
         { status: 503 }
@@ -178,15 +184,21 @@ export async function POST(request: Request) {
       },
       // O caminho principal para o webhook achar o pedido. Vai aqui porque é
       // gravado junto com a sessão; o `session_id` depende de um update depois.
-      metadata: { pedido_id: pedidoId },
+      metadata: { pedido_id: pedido.id },
       mode: 'payment',
-      success_url: destino(body.success_url, '/stripe/success?session_id={CHECKOUT_SESSION_ID}'),
+      /*
+       * O comprador cai na página do próprio pedido, não numa tela genérica de
+       * sucesso. É o único momento em que temos como entregar o link a ele —
+       * não há e-mail transacional ainda —, e o token é o que substitui a
+       * conta que ele não tem.
+       */
+      success_url: destino(body.success_url, `/pedido/${pedido.tokenPublico}`),
       cancel_url: destino(body.cancel_url, `/store/${accountId}`),
     }, {
       stripeAccount: accountId, // Direct charge on the connected account
     })
 
-    await anotarSessaoDoPedido(supabase, pedidoId, session.id, '/api/stripe/checkout')
+    await anotarSessaoDoPedido(supabase, pedido.id, session.id, '/api/stripe/checkout')
 
     return NextResponse.json({ url: session.url, session_id: session.id })
   } catch (err) {
