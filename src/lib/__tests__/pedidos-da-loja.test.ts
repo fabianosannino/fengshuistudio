@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  estadoDoPedido, pedidoRendeuReceita, rotuloDoEstado, type EventoDoPedido,
+  estadoDoPedido, pedidoRendeuReceita, rotuloDoEstado,
+  prazoDeArrependimento, dentroDoPrazoDeArrependimento,
+  type EventoDoPedido,
 } from '../pedidos-da-loja'
 
 function ev(evento: string, ocorrido_em?: string): EventoDoPedido {
@@ -58,6 +60,70 @@ describe('pedidoRendeuReceita', () => {
     // pior do que painel nenhum, porque parece confiável.
     expect(pedidoRendeuReceita([ev('pago'), ev('reembolsado')])).toBe(false)
     expect(pedidoRendeuReceita([ev('pago'), ev('contestado')])).toBe(false)
+  })
+})
+
+describe('devolucao_solicitada', () => {
+  it('supera o pago, porque é pendência do vendedor', () => {
+    expect(estadoDoPedido([ev('pago'), ev('devolucao_solicitada')])).toBe('devolucao_solicitada')
+  })
+
+  it('mas o reembolso a resolve', () => {
+    // Se ficasse acima, o pedido continuaria aparecendo como pendente depois
+    // de o dinheiro já ter voltado.
+    expect(estadoDoPedido([
+      ev('pago'), ev('devolucao_solicitada'), ev('reembolsado'),
+    ])).toBe('reembolsado')
+  })
+
+  it('pedido com devolução pedida ainda conta como receita — o dinheiro não voltou', () => {
+    expect(pedidoRendeuReceita([ev('pago'), ev('devolucao_solicitada')])).toBe(true)
+  })
+})
+
+describe('prazoDeArrependimento', () => {
+  const PAGO = ev('pago', '2026-08-13T12:00:00Z')
+  const ENTREGUE = ev('entregue', '2026-08-20T12:00:00Z')
+
+  it('serviço conta do pagamento', () => {
+    const prazo = prazoDeArrependimento('servico', [PAGO])
+    expect(prazo?.toISOString()).toBe('2026-08-20T12:00:00.000Z')
+  })
+
+  it('bem físico conta da ENTREGA, não do pagamento', () => {
+    // A diferença é jurídica: o consumidor recebe o produto sete dias depois
+    // de pagar, e o prazo dele não pode já ter vencido quando a caixa chega.
+    const prazo = prazoDeArrependimento('bem_proprio', [PAGO, ENTREGUE])
+    expect(prazo?.toISOString()).toBe('2026-08-27T12:00:00.000Z')
+  })
+
+  it('bem físico sem entrega ainda não tem prazo correndo', () => {
+    // `null` é ausência, não prazo vencido. Mostrar «vencido» tiraria do
+    // comprador um direito que sequer começou.
+    expect(prazoDeArrependimento('bem_proprio', [PAGO])).toBeNull()
+  })
+
+  it('sem o marco não há prazo', () => {
+    expect(prazoDeArrependimento('servico', [ev('iniciado')])).toBeNull()
+  })
+
+  it('data ilegível não vira prazo inventado', () => {
+    expect(prazoDeArrependimento('servico', [ev('pago', 'não é data')])).toBeNull()
+  })
+})
+
+describe('dentroDoPrazoDeArrependimento', () => {
+  const PAGO = ev('pago', '2026-08-13T12:00:00Z')
+
+  it('vale no sexto dia e não vale no oitavo', () => {
+    expect(dentroDoPrazoDeArrependimento('servico', [PAGO], new Date('2026-08-19T12:00:00Z'))).toBe(true)
+    expect(dentroDoPrazoDeArrependimento('servico', [PAGO], new Date('2026-08-21T12:00:00Z'))).toBe(false)
+  })
+
+  it('prazo não iniciado devolve false — mas não é a mesma coisa que vencido', () => {
+    const eventos = [PAGO]
+    expect(dentroDoPrazoDeArrependimento('bem_proprio', eventos)).toBe(false)
+    expect(prazoDeArrependimento('bem_proprio', eventos)).toBeNull()
   })
 })
 

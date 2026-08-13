@@ -15,47 +15,16 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import AppShell from '../../components/AppShell'
 import { supabase } from '../../../src/lib/supabase'
-import { logger } from '../../../src/lib/logger'
-import {
-  estadoDoPedido, pedidoRendeuReceita, rotuloDoEstado,
-  type EstadoDoPedido, type EventoDoPedido,
-} from '../../../src/lib/pedidos-da-loja'
 
 interface OnboardProfile {
   store_slug?: string | null
 }
 
-/** Cor por situação. Estorno e contestação não podem parecer com venda boa. */
-const CORES_DO_ESTADO: Record<EstadoDoPedido, { fundo: string; texto: string }> = {
-  iniciado: { fundo: '#FAF3E0', texto: '#8A6E2F' },
-  pago: { fundo: '#F0F6F3', texto: '#2E7D6B' },
-  preparando: { fundo: '#F0F6F3', texto: '#2E7D6B' },
-  enviado: { fundo: '#F0F6F3', texto: '#2E7D6B' },
-  entregue: { fundo: '#F0F6F3', texto: '#2E7D6B' },
-  cancelado: { fundo: '#F3F4F6', texto: '#6B7280' },
-  reembolsado: { fundo: '#FDECEC', texto: '#A33A3A' },
-  contestado: { fundo: '#FDECEC', texto: '#A33A3A' },
-  disputa_resolvida: { fundo: '#F3F4F6', texto: '#6B7280' },
-}
 
-/**
- * Uma venda da loja, como ela vem do banco.
- *
- * Não há campo `status`: o estado é derivado de `pedido_eventos` por
- * `estadoDoPedido` (ADR 0027). A tela lia `store_orders`, que tinha a coluna
- * — e que nunca recebeu uma linha, porque nada escrevia nela.
- */
-interface PedidoDaLoja {
-  id: string
-  numero: string
-  criado_em: string
-  total_centavos: number
-  pedido_itens: { nome: string }[]
-  pedido_eventos: EventoDoPedido[]
-}
 
 interface AccountStatus {
   has_account: boolean
@@ -89,18 +58,6 @@ function StripeOnboard() {
       : ''
   )
   const [profile, setProfile] = useState<OnboardProfile | null>(null)
-  const [sales, setSales] = useState<PedidoDaLoja[]>([])
-  /*
-   * Receita conta só o que entrou e não voltou.
-   *
-   * Somar todo pedido incluiria o carrinho abandonado e o reembolsado — e um
-   * painel que diz «R$ 400 de receita» somando uma venda estornada é pior do
-   * que painel nenhum, porque parece confiável.
-   */
-  const totalRevenue = sales
-    .filter(p => pedidoRendeuReceita(p.pedido_eventos ?? []))
-    .reduce((s, p) => s + (p.total_centavos || 0), 0) / 100
-  const vendasPagas = sales.filter(p => pedidoRendeuReceita(p.pedido_eventos ?? [])).length
 
   // ── Check if returning from Stripe onboarding ──────────────────────────
   const returnAccountId = searchParams.get('accountId')
@@ -123,19 +80,6 @@ function StripeOnboard() {
         .single()
       setProfile(profileData)
 
-      const { data: salesData, error: erroDasVendas } = await supabase
-        .from('pedidos')
-        .select('id, numero, criado_em, total_centavos, pedido_itens(nome), pedido_eventos(evento, ocorrido_em)')
-        .eq('vendedor_perfil_id', user.id)
-        .order('criado_em', { ascending: false })
-        .limit(20)
-
-      if (erroDasVendas) {
-        logger.error('Não foi possível carregar as vendas da loja', {
-          route: '/stripe/onboard', erro: erroDasVendas.message,
-        })
-      }
-      setSales(salesData || [])
     }
 
     setLoading(false)
@@ -330,65 +274,19 @@ function StripeOnboard() {
               </button>
             </div>
 
-            {/* Sales History */}
+            {/* Vendas: a lista vive em /vendas, não aqui.
+                Duas telas mostrando a mesma coisa é o começo de duas verdades
+                — e esta página é sobre a conta Stripe, não sobre pedidos. */}
             {status?.charges_enabled && (
               <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginTop: '20px' }}>
-                <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-                  Vendas Recentes
-                </h3>
-                {sales.length === 0 ? (
-                  <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '24px 0' }}>
-                    Nenhuma venda registrada ainda. Compartilhe o link da sua loja para começar!
-                  </p>
-                ) : (
-                  <>
-                    {/* Revenue summary */}
-                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                      <div style={{ flex: 1, padding: '12px', background: '#F0F6F3', borderRadius: '8px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2E7D6B' }}>
-                          {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#6B7280' }}>Receita Total</div>
-                      </div>
-                      <div style={{ flex: 1, padding: '12px', background: '#EAF4F1', borderRadius: '8px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2E7D6B' }}>{vendasPagas}</div>
-                        <div style={{ fontSize: '11px', color: '#6B7280' }}>Vendas pagas</div>
-                      </div>
-                    </div>
-                    {/* Sales table */}
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr>
-                          {['Pedido', 'Data', 'Produto', 'Valor', 'Situação'].map(h => (
-                            <th key={h} style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #E5E7EB', color: '#6B7280', fontSize: '11px', fontWeight: 'bold' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sales.map((sale) => {
-                          // Derivado dos eventos a cada render — não há coluna
-                          // a ler, e é isso que impede a tela de mostrar «pago»
-                          // depois de um estorno.
-                          const estado = estadoDoPedido(sale.pedido_eventos ?? [])
-                          const cores = CORES_DO_ESTADO[estado] ?? CORES_DO_ESTADO.iniciado
-                          return (
-                            <tr key={sale.id}>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#6B7280', fontSize: '12px' }}>{sale.numero}</td>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{new Date(sale.criado_em).toLocaleDateString('pt-BR')}</td>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#374151' }}>{sale.pedido_itens?.[0]?.nome ?? '—'}</td>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6', color: '#2E7D6B', fontWeight: 'bold' }}>{(sale.total_centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                              <td style={{ padding: '8px', borderBottom: '1px solid #F3F4F6' }}>
-                                <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold', background: cores.fundo, color: cores.texto }}>
-                                  {rotuloDoEstado(estado)}
-                                </span>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </>
-                )}
+                <h3 style={{ color: '#0E1B2C', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Vendas</h3>
+                <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px' }}>
+                  Acompanhe os pedidos, o que já foi pago e o que foi devolvido — e estorne quando precisar.
+                </p>
+                <Link href="/vendas" style={{
+                  display: 'inline-block', padding: '10px 20px', background: '#2E7D6B', color: '#fff',
+                  borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none',
+                }}>Ver minhas vendas</Link>
               </div>
             )}
           </>

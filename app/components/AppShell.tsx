@@ -17,7 +17,7 @@ import {
 } from './hooks-cliente'
 import {
   LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
-  Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard,
+  Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard, Receipt,
   BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu, Grid3x3,
   type LucideIcon,
 } from 'lucide-react'
@@ -121,6 +121,10 @@ export default function AppShell({
       titulo: 'Negócio',
       itens: [
         ...(isProfessional ? [{ label: 'Pagamentos', icon: Wallet, href: '/pagamentos' }] : []),
+        // Vendas da loja. Separada de «Pagamentos», que é o recebível da
+        // consultoria — são dois fluxos de dinheiro diferentes, e juntá-los
+        // numa tela só faria a origem de cada valor sumir.
+        ...(isProfessional ? [{ label: 'Vendas', icon: Receipt, href: '/vendas' }] : []),
         { label: 'Parceiros', icon: Handshake, href: '/parceiros' },
         { label: 'Produtos', icon: ShoppingCart, href: '/produtos' },
         // Os gráficos que ocupavam a home. Continuam valendo como leitura
