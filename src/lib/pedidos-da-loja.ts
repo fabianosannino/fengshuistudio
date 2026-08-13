@@ -212,7 +212,7 @@ export async function criarPedidoIniciado(
   supabase: SupabaseClient,
   pedido: PedidoParaCriar,
   origemDoLog: string
-): Promise<string | null> {
+): Promise<{ id: string; tokenPublico: string } | null> {
   const { data, error } = await supabase
     .from(PEDIDOS)
     .insert({
@@ -223,7 +223,10 @@ export async function criarPedidoIniciado(
       total_centavos: pedido.totalCentavos,
       taxa_plataforma_centavos: pedido.taxaPlataformaCentavos,
     })
-    .select('id')
+    // O token vem de volta na mesma escrita: é ele que monta o link do
+    // comprador, e uma segunda consulta só para lê-lo abriria um caminho em
+    // que o pedido existe e o link não.
+    .select('id, token_publico')
     .single()
 
   if (error || !data) {
@@ -255,7 +258,7 @@ export async function criarPedidoIniciado(
     origem: 'sistema',
   }, origemDoLog)
 
-  return data.id
+  return { id: data.id, tokenPublico: data.token_publico }
 }
 
 /** Guarda o `session_id` depois que o Stripe o devolve. */

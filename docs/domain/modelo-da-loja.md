@@ -408,7 +408,17 @@ São **duas telas**, não uma, porque são dois sujeitos com direitos diferentes
 
 O comprador **não tem conta** — a rota de checkout já assume isso. Não existe
 `auth.uid()` para comparar, então nenhuma policy o alcança. Ver o próprio
-pedido exige um token assinado, com validade, enviado no e-mail de confirmação.
+pedido exige um token com validade.
+
+**Como ficou:** token opaco de 24 bytes gravado em `pedidos.token_publico`, com
+prazo de 180 dias. Preferido a link assinado por HMAC porque não introduz mais
+um segredo para rotacionar e é **revogável** — apagar a linha mata o link, o
+que uma assinatura válida até a data não permite.
+
+O comprador cai nessa página **direto do checkout**: o `success_url` aponta
+para ela. É a única forma de entregar o link enquanto não houver e-mail
+transacional — e a pendência de mandá-lo por e-mail continua aberta, porque
+quem fechar a aba hoje perde o acesso.
 
 Duas armadilhas a evitar aqui:
 
@@ -500,7 +510,7 @@ não é código:
 | fase | o que | por que aqui |
 |---|---|---|
 | **0** ✅ | registrar a venda que já acontece: webhook `checkout.session.completed` da conta conectada → `pedidos` + `pedido_eventos` | conserta o defeito da seção 0. Não dependia de decisão nenhuma. **Feito** — ADR 0030 |
-| **1** | reconciliação da loja; `pedido_lancamentos`; painel de vendas do consultor; página do pedido para o comprador com link assinado; `devolucao_solicitada` e o prazo derivado | é a venda que já existe, mais os requisitos de 12-A e 12-B. Sem frete, sem NF-e nossa |
+| **1** ✅ | reconciliação da loja; `pedido_lancamentos`; painel de vendas do consultor; página do pedido para o comprador por token; `devolucao_solicitada` e o prazo derivado | era a venda que já existia, mais os requisitos de 12-A e 12-B. **Feita** |
 | **2** | bem próprio **digital** | testa o trilho «plataforma é a vendedora» sem esbarrar em fiscal |
 | **3** | bem próprio **físico** | aqui entram emissor de NF-e, estoque, frete e logística reversa |
 | **4** | terceiro: indicação primeiro, marketplace depois | indicação é barata; marketplace traz a responsabilidade solidária |

@@ -4,6 +4,10 @@
     {
       "path": "/api/admin/reconciliacao",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/admin/reconciliacao-loja",
+      "schedule": "30 6 * * *"
     }
   ]
 }
