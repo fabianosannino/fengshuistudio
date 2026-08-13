@@ -316,6 +316,39 @@ sai inteiro, e o custo fica na cadeia de fornecimento.
    conservador — devolver ao registrar o pedido de devolução — é o que este
    documento adota até haver orientação jurídica em contrário.
 
+### Decisão: a plataforma devolve a comissão (13/08)
+
+No arrependimento, **a plataforma estorna os 10% junto**. Não fica com comissão
+de venda desfeita.
+
+Isso resolve quem banca **a maior parte**, e é importante ser exato sobre o que
+sobra:
+
+| parte | como fica |
+|---|---|
+| comprador | inteiro — produto e frete de ida de volta |
+| plataforma | zero a zero — devolve o que reteve |
+| consultor | **perde a tarifa do gateway**, e o frete de volta |
+
+A tarifa do Stripe não volta, e numa cobrança direta ela saiu do saldo do
+consultor, porque é ele o vendedor. Na venda de teste foram R$ 0,59 num pedido
+de R$ 5. **Não existe configuração que evite isso** — só a plataforma
+compensá-lo por fora, o que seria outra decisão e não está tomada.
+
+A consequência de produto é que o consultor precisa **ver esse número antes de
+vender**, não descobri-lo no extrato. Em item barato com frete, a devolução
+pode custar mais do que a venda rendia.
+
+### A regra só é real quando o app estorna
+
+Hoje o estorno é feito no painel do Stripe, onde devolver a comissão depende de
+alguém marcar uma caixa. **Regra que depende de lembrar não é regra** — é a
+mesma forma dos defeitos que este projeto vem corrigindo o tempo todo.
+
+Ela passa a valer de fato quando o estorno sair da tela de vendas, chamando o
+Stripe sempre com o estorno da comissão junto, e gravando os lançamentos
+correspondentes. Até lá, é convenção escrita, e convenção escrita falha.
+
 ### O prazo é derivado, e a origem depende do que foi vendido
 
 | o que | conta a partir de |

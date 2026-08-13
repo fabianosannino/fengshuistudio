@@ -32,7 +32,11 @@ import {
 } from '../../../../src/lib/eventos-stripe'
 import {
   acharPedidoDaSessao, acharPedidoDoPagamento, confirmarPagamento, registrarEvento,
+  valoresDoPedido,
 } from '../../../../src/lib/pedidos-da-loja'
+import {
+  registrarLancamentosDaVenda, registrarLancamentosDoReembolso,
+} from '../../../../src/lib/lancamentos-da-venda'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -119,6 +123,23 @@ export async function POST(request: Request) {
           ocorridoEm: new Date(event.created * 1000).toISOString(),
         }, ROUTE)
 
+        // O razão da venda: o que o comprador pagou, o que a plataforma reteve
+        // e o que o gateway ficou. Falha aqui não desfaz o `pago` — o
+        // pagamento é o fato importante, e o razão é reconstituível.
+        const valores = await valoresDoPedido(supabase, pedidoId, ROUTE)
+        if (valores) {
+          await registrarLancamentosDaVenda(supabase, {
+            pedidoId,
+            totalCentavos: sessao.amount_total ?? valores.total,
+            freteCentavos: valores.frete,
+            taxaPlataformaCentavos: valores.taxa,
+            paymentIntent: typeof sessao.payment_intent === 'string' ? sessao.payment_intent : null,
+            contaConectada: event.account ?? valores.contaConectada,
+            referencia: event.id,
+            ocorridoEm: new Date(event.created * 1000).toISOString(),
+          }, ROUTE)
+        }
+
         logger.info('Venda da loja registrada', {
           route: ROUTE, pedidoId, contaConectada: event.account ?? null,
         })
@@ -147,13 +168,26 @@ export async function POST(request: Request) {
           break
         }
 
+        const ocorridoEm = new Date(event.created * 1000).toISOString()
+
         await registrarEvento(supabase, {
           pedidoId,
           evento: event.type === 'charge.refunded' ? 'reembolsado' : 'contestado',
           origem: 'webhook_stripe',
           referencia: event.id,
-          ocorridoEm: new Date(event.created * 1000).toISOString(),
+          ocorridoEm,
         }, ROUTE)
+
+        // Só o reembolso mexe no razão. A contestação ainda não moveu dinheiro
+        // — o `contestado` é aviso, e o valor só se resolve na disputa.
+        if (event.type === 'charge.refunded') {
+          await registrarLancamentosDoReembolso(supabase, {
+            pedidoId,
+            cobranca: cobranca as Stripe.Charge,
+            referencia: event.id,
+            ocorridoEm,
+          }, ROUTE)
+        }
         break
       }
 

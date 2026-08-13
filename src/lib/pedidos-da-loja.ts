@@ -32,7 +32,8 @@ import { logger } from './logger'
 
 export type EstadoDoPedido =
   | 'iniciado' | 'pago' | 'cancelado' | 'preparando' | 'enviado'
-  | 'entregue' | 'reembolsado' | 'contestado' | 'disputa_resolvida'
+  | 'entregue' | 'devolucao_solicitada' | 'reembolsado' | 'contestado'
+  | 'disputa_resolvida'
 
 export type OrigemDoEvento =
   | 'webhook_stripe' | 'vendedor' | 'comprador' | 'admin' | 'sistema'
@@ -63,6 +64,10 @@ const PRECEDENCIA: Record<EstadoDoPedido, number> = {
   preparando: 20,
   enviado: 30,
   entregue: 40,
+  // Abaixo de `reembolsado` de propósito: o pedido de devolução é uma
+  // pendência do vendedor, e o estorno a resolve. Acima, o pedido continuaria
+  // aparecendo como pendente depois de pago de volta.
+  devolucao_solicitada: 45,
   cancelado: 50,
   reembolsado: 60,
   contestado: 70,
@@ -91,6 +96,57 @@ export function estadoDoPedido(eventos: EventoDoPedido[]): EstadoDoPedido {
   return melhor
 }
 
+/** Sete dias do CDC art. 49, em milissegundos. */
+const PRAZO_DE_ARREPENDIMENTO_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * Até quando o comprador pode se arrepender — derivado, nunca gravado.
+ *
+ * A origem da contagem muda com o que foi vendido, e a diferença é jurídica,
+ * não estética:
+ *
+ * | o que | conta a partir de |
+ * |---|---|
+ * | bem físico | a entrega — é quando ele recebe |
+ * | bem digital | o pagamento |
+ * | serviço | a contratação, aqui representada pelo pagamento |
+ *
+ * Devolve `null` quando o marco ainda não aconteceu: pedido físico não
+ * entregue não tem prazo correndo, e isso é ausência, não prazo zero.
+ * Mostrá-lo como «vencido» tiraria do comprador um direito que sequer começou.
+ */
+export function prazoDeArrependimento(
+  tipo: string,
+  eventos: EventoDoPedido[]
+): Date | null {
+  const marco = tipo === 'bem_proprio' || tipo === 'bem_de_terceiro'
+    ? eventos.find(e => e.evento === 'entregue')
+    : eventos.find(e => e.evento === 'pago')
+
+  if (!marco?.ocorrido_em) return null
+
+  const inicio = Date.parse(marco.ocorrido_em)
+  if (!Number.isFinite(inicio)) return null
+
+  return new Date(inicio + PRAZO_DE_ARREPENDIMENTO_MS)
+}
+
+/**
+ * `true` enquanto o arrependimento do art. 49 está no prazo.
+ *
+ * Prazo ainda não iniciado devolve `false` — não porque o direito não exista,
+ * mas porque ele não está **correndo**. Quem chama deve distinguir os dois com
+ * `prazoDeArrependimento`, que devolve `null` nesse caso.
+ */
+export function dentroDoPrazoDeArrependimento(
+  tipo: string,
+  eventos: EventoDoPedido[],
+  agora: Date = new Date()
+): boolean {
+  const prazo = prazoDeArrependimento(tipo, eventos)
+  return prazo !== null && prazo.getTime() > agora.getTime()
+}
+
 /** `true` quando o dinheiro entrou e não voltou. */
 export function pedidoRendeuReceita(eventos: EventoDoPedido[]): boolean {
   const estado = estadoDoPedido(eventos)
@@ -106,6 +162,7 @@ export function rotuloDoEstado(estado: EstadoDoPedido): string {
     preparando: 'Em preparo',
     enviado: 'Enviado',
     entregue: 'Entregue',
+    devolucao_solicitada: 'Devolução solicitada',
     reembolsado: 'Reembolsado',
     contestado: 'Contestado',
     disputa_resolvida: 'Disputa resolvida',
@@ -358,6 +415,39 @@ export async function confirmarPagamento(
     referencia: confirmacao.referencia,
     ocorridoEm: confirmacao.ocorridoEm ?? null,
   }, origemDoLog)
+}
+
+/**
+ * Os valores do pedido, para montar o razão.
+ *
+ * Lido do banco e não do Stripe porque `frete_centavos` e
+ * `taxa_plataforma_centavos` são decisões nossas, tomadas no checkout — o
+ * Stripe só sabe o total.
+ */
+export async function valoresDoPedido(
+  supabase: SupabaseClient,
+  pedidoId: string,
+  origemDoLog: string
+): Promise<{ total: number; frete: number; taxa: number; contaConectada: string | null } | null> {
+  const { data, error } = await supabase
+    .from(PEDIDOS)
+    .select('total_centavos, frete_centavos, taxa_plataforma_centavos, stripe_account_id')
+    .eq('id', pedidoId)
+    .maybeSingle()
+
+  if (error || !data) {
+    logger.error('Não foi possível ler os valores do pedido', {
+      origem: origemDoLog, pedidoId, error: error?.message,
+    })
+    return null
+  }
+
+  return {
+    total: data.total_centavos ?? 0,
+    frete: data.frete_centavos ?? 0,
+    taxa: data.taxa_plataforma_centavos ?? 0,
+    contaConectada: data.stripe_account_id ?? null,
+  }
 }
 
 /** Acha o pedido de uma cobrança, para reembolso e contestação. */
