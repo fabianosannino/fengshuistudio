@@ -5,6 +5,9 @@ import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import AppShell from '../components/AppShell'
+import ServicosDoParceiro, {
+  agruparPorParceiro, COLUNAS_DA_VITRINE, type ServicoVisivel,
+} from '../components/ServicosDoParceiro'
 import { planoEfetivo } from '../../src/lib/plano-utils'
 import type { Profile } from '../../src/lib/types'
 import { Building2, Compass, Palette, Briefcase, Handshake, MapPin, type LucideIcon } from 'lucide-react'
@@ -22,6 +25,32 @@ const TIPOS_PROFISSIONAL: Record<string, { label: string; iconComp: LucideIcon; 
 export default function Parceiros() {
   const [loading, setLoading] = useState(true)
   const [parceiros, setParceiros] = useState<Profile[]>([])
+  const [servicos, setServicos] = useState<Record<string, ServicoVisivel[]>>({})
+
+  /*
+   * Uma consulta para todos os cards, não uma por card. Com 30 parceiros na
+   * tela, o caminho ingênuo faria 30 idas ao banco — e a lista é o primeiro
+   * contato de quem procura consultor.
+   */
+  async function carregarServicos(ids: string[]) {
+    if (ids.length === 0) return
+    const { data, error } = await supabase
+      .from('servicos_do_parceiro')
+      .select(COLUNAS_DA_VITRINE)
+      .in('perfil_id', ids)
+      .eq('ativo', true)
+      .order('ordem')
+
+    if (error) {
+      // Vitrine é enfeite do card: sem ela a busca continua servindo. Falhar a
+      // tela inteira por causa disto seria trocar o essencial pelo acessório.
+      logger.warn('Não foi possível carregar a vitrine dos parceiros', {
+        route: '/parceiros', erro: error.message,
+      })
+      return
+    }
+    setServicos(prev => ({ ...prev, ...agruparPorParceiro((data ?? []) as ServicoVisivel[]) }))
+  }
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroBusca, setFiltroBusca] = useState('')
@@ -62,6 +91,7 @@ export default function Parceiros() {
 
       const parceiros = data || []
       setParceiros(parceiros)
+      await carregarServicos(parceiros.map(p => p.id))
       setHasMore(parceiros.length === PAGE_SIZE)
       setLoading(false)
     }
@@ -79,6 +109,7 @@ export default function Parceiros() {
       .range(from, from + PAGE_SIZE - 1)
     if (data && data.length > 0) {
       setParceiros(prev => [...prev, ...data])
+      await carregarServicos(data.map(p => p.id))
       setPage(nextPage)
       setHasMore(data.length === PAGE_SIZE)
     } else {
@@ -277,6 +308,10 @@ export default function Parceiros() {
                     {parceiro.bio.length > 120 ? parceiro.bio.slice(0, 120) + '...' : parceiro.bio}
                   </p>
                 )}
+
+                {/* `Profile.id` é opcional no tipo; sem id não há vitrine a
+                    casar, e o componente já trata lista vazia. */}
+                <ServicosDoParceiro servicos={servicos[parceiro.id ?? ''] ?? []} />
 
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   {parceiro.linkedin && (

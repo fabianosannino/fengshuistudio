@@ -74,7 +74,7 @@ beforeEach(() => {
     active: true, unit_amount: 5000, product: { name: 'Consulta completa' },
   })
   sessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/s', id: 'cs_1' })
-  respostas.profiles = { data: { id: 'perfil-do-vendedor' }, error: null }
+  respostas.profiles = { data: { id: 'perfil-do-vendedor', loja_ativa: true }, error: null }
   respostas.pedidos = { data: { id: 'pedido-1' }, error: null }
   respostas.pedido_itens = { data: null, error: null }
   respostas.pedido_eventos = { data: null, error: null }
@@ -166,6 +166,27 @@ describe('POST /api/stripe/checkout', () => {
     await POST(req(validBody))
     const [params] = sessionsCreate.mock.calls[0]
     expect(params.metadata).toEqual({ pedido_id: 'pedido-1' })
+  })
+
+  it('A LOJA NASCE FECHADA: vendedor sem `loja_ativa` não vende', async () => {
+    // A conferência é no servidor porque esta rota é pública — quem tiver o
+    // link `/store/acct_...` compraria sem ver botão nenhum. Esconder da tela
+    // não desabilitaria nada.
+    respostas.profiles = { data: { id: 'perfil-do-vendedor', loja_ativa: false }, error: null }
+    const res = await POST(req(validBody))
+    expect(res.status).toBe(400)
+    expect(sessionsCreate).not.toHaveBeenCalled()
+  })
+
+  it('a recusa por loja fechada é indistinguível de conta sem perfil', async () => {
+    // «Esta loja não vende» é a informação inteira para quem está de fora;
+    // distinguir os motivos contaria quem tem conta conectada e ainda não foi
+    // aprovado.
+    respostas.profiles = { data: { id: 'x', loja_ativa: false }, error: null }
+    const fechada = await POST(req(validBody))
+    respostas.profiles = { data: null, error: null }
+    const semPerfil = await POST(req(validBody))
+    expect(await fechada.json()).toEqual(await semPerfil.json())
   })
 
   it('conta conectada sem perfil correspondente não vende', async () => {

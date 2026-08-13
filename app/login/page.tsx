@@ -36,7 +36,15 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [messageIsError, setMessageIsError] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
+  const paramsDaUrl = useSearchParams()
+  /*
+   * `?cadastro=1` abre já na aba de criar conta.
+   *
+   * A página do pedido convida o comprador anônimo a criar conta; cair na aba
+   * «Entrar» faria ele procurar onde se cadastra logo depois de aceitar o
+   * convite — que é onde se perde a maior parte de quem aceitou.
+   */
+  const [isSignUp, setIsSignUp] = useState(paramsDaUrl.get('cadastro') === '1')
   const [name, setName] = useState('')
   const [signUpDone, setSignUpDone] = useState(false)
   const [resending, setResending] = useState(false)
