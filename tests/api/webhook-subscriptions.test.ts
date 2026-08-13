@@ -33,6 +33,8 @@ interface Q {
   op: 'select' | 'insert' | 'update'
   values?: Record<string, unknown>
   filters: Array<[string, unknown]>
+  /** Colunas pedidas. Duas leituras da mesma tabela pedem coisas diferentes. */
+  cols?: string
 }
 type QResult = { data?: unknown; error?: { message: string } | null }
 type Handler = (q: Q) => QResult
@@ -47,7 +49,7 @@ function makeSupabaseMock(handler: Handler) {
     }
     const b: Record<string, unknown> = {}
     Object.assign(b, {
-      select: () => b,
+      select: (cols?: string) => { q.cols = cols; return b },
       insert: (v: Record<string, unknown>) => { q.op = 'insert'; q.values = v; return b },
       update: (v: Record<string, unknown>) => { q.op = 'update'; q.values = v; return b },
       upsert: (v: Record<string, unknown>) => { q.op = 'insert'; q.values = v; return b },
@@ -58,6 +60,7 @@ function makeSupabaseMock(handler: Handler) {
       // possa afirmar sobre eles.
       not: (k: string, _op: string, v: unknown) => { q.filters.push([k, v]); return b },
       gt: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
+      is: (k: string, v: unknown) => { q.filters.push([k, v]); return b },
       limit: () => Promise.resolve(exec()),
       single: () => Promise.resolve(exec()),
       // `maybeSingle` é o que `sincronizar-assinatura` usa para procurar a
@@ -111,11 +114,26 @@ function subscriptionEvent(type: string, overrides: Record<string, unknown> = {}
   } as unknown as Stripe.Event
 }
 
-/** Handler padrão: perfil existe, nenhuma assinatura prévia, plano 'pro' no banco. */
+/**
+ * Handler padrão: perfil existe, nenhuma assinatura prévia, plano 'pro' no banco.
+ *
+ * `concessoes_de_plano` devolve uma concessão viva de Profissional. É o que o
+ * banco devolveria depois do `insert` que a própria rota acabou de fazer — o
+ * mock não encadeia escrita e leitura, então o estado esperado é declarado
+ * aqui. Sem isso, `recalcularPlanoDoPerfil` leria zero concessões e projetaria
+ * o gratuito, testando o mock em vez da regra.
+ */
 function defaultHandler(q: Q): QResult {
   if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
   if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: { message: 'no rows' } }
   if (q.table === 'plans' && q.op === 'select') return { data: { id: 'plan-1', slug: 'pro' } }
+  if (q.table === 'concessoes_de_plano' && q.op === 'select') {
+    // Duas leituras diferentes: `conceder` procura a concessão existente
+    // (pede `id`), e o recálculo lê todas as vivas. Devolver a mesma coisa
+    // para as duas faria a rota atualizar em vez de inserir.
+    if (q.cols === 'id') return { data: null }
+    return { data: [{ plano: 'profissional', valido_de: null, valido_ate: null, encerrada_em: null }] }
+  }
   return {}
 }
 
@@ -156,9 +174,49 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
       gateway_subscription_id: 'sub_123',
     })
 
+    // A assinatura administra a própria concessão, identificada pelo `sub_...`.
+    // É o que impede o cancelamento de apagar um plano vindo de outra fonte.
+    const concessao = supabaseMock.queries.find(q => q.table === 'concessoes_de_plano' && q.op === 'insert')
+    expect(concessao?.values).toMatchObject({
+      user_id: 'user-1',
+      plano: 'profissional',
+      origem: 'assinatura',
+      referencia: 'sub_123',
+      encerrada_em: null,
+    })
+
+    // E `profiles.plano` é a projeção do que está vivo, não uma escrita direta.
     const planoUpdate = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
     expect(planoUpdate?.values).toEqual({ plano: 'pro' })
     expect(planoUpdate?.filters).toContainEqual(['id', 'user-1'])
+  })
+
+  it('subscription.deleted encerra a concessão daquela assinatura, não o plano inteiro', async () => {
+    // O defeito de 13/08: cancelar o Simples rebaixou um perfil que tinha
+    // Profissional por chave. Agora só a concessão da assinatura é encerrada,
+    // e a projeção recalcula a partir do que sobrou.
+    supabaseMock = makeSupabaseMock(q => {
+      if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
+      if (q.table === 'subscriptions' && q.op === 'select') return { data: { id: 'sub-row-1' } }
+      if (q.table === 'concessoes_de_plano' && q.op === 'select') {
+        if (q.cols === 'id') return { data: null }
+        // Sobrou a da chave.
+        return { data: [{ plano: 'profissional', valido_de: null, valido_ate: null, encerrada_em: null }] }
+      }
+      return {}
+    })
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.deleted'))
+    const res = await POST(req())
+    expect(res.status).toBe(200)
+
+    const encerramento = supabaseMock.queries
+      .find(q => q.table === 'concessoes_de_plano' && q.op === 'update')
+    expect(encerramento?.values?.encerrada_em).toBeTruthy()
+    expect(encerramento?.filters).toContainEqual(['referencia', 'sub_123'])
+
+    // Continua Profissional: a chave não foi tocada.
+    const projecao = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
+    expect(projecao?.values).toEqual({ plano: 'pro' })
   })
 
   it('subscription.created é idempotente: assinatura já registrada não duplica', async () => {
