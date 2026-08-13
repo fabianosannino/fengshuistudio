@@ -32,6 +32,7 @@ import {
 } from '../../../../../src/lib/eventos-stripe'
 import { enumDoPlano } from '../../../../../src/lib/plano-utils'
 import { sincronizarAssinatura } from '../../../../../src/lib/sincronizar-assinatura'
+import { encerrarConcessao } from '../../../../../src/lib/concessoes-de-plano'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
@@ -183,10 +184,19 @@ export async function POST(request: Request) {
             .in('status', ['active', 'past_due']))
         }
 
-        await logWrite('downgrade-profile-free', supabase
-          .from('profiles')
-          .update({ plano: enumDoPlano('free') })
-          .eq('id', profile.id))
+        // Encerra **a concessão desta assinatura** e recalcula o plano do que
+        // sobrou. Escrever `free` direto aqui foi o defeito de 13/08: apagou
+        // um Profissional que vinha de chave de ativação.
+        await encerrarConcessao(
+          supabase,
+          {
+            userId: profile.id,
+            origem: 'assinatura',
+            referencia: subscription.id,
+            motivo: 'Assinatura removida no Stripe',
+          },
+          ROUTE
+        )
 
         break
       }

@@ -32,7 +32,8 @@
 import type Stripe from 'stripe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from './logger'
-import { enumDoPlano, planoEfetivo } from './plano-utils'
+import { planoEfetivo, type PlanoEfetivo } from './plano-utils'
+import { conceder, encerrarConcessao } from './concessoes-de-plano'
 
 /** Status do Stripe → vocabulário da coluna `subscriptions.status`. */
 export function statusDaAssinatura(statusDoStripe: string): string {
@@ -176,7 +177,7 @@ export async function sincronizarAssinatura(
       logger.error('Não foi possível atualizar a assinatura', { origem, subscriptionId: assinatura.id, error: error.message })
       return { situacao: 'falhou', motivo: error.message }
     }
-    await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, origem)
+    await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, assinatura.id, origem)
     return { situacao: 'atualizada', linhaId: existente.id }
   }
 
@@ -205,7 +206,7 @@ export async function sincronizarAssinatura(
     return { situacao: 'falhou', motivo: error.message }
   }
 
-  await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, origem)
+  await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, assinatura.id, origem)
   logger.info('Assinatura sincronizada', {
     origem, subscriptionId: assinatura.id, linhaId: criada?.id, plano: slug,
   })
@@ -213,37 +214,62 @@ export async function sincronizarAssinatura(
 }
 
 /**
- * Escreve o plano no perfil, no vocabulário do enum.
+ * Traduz o estado da assinatura em concessão de plano.
+ *
+ * ## Por que não escreve em `profiles.plano`
+ *
+ * Escrevia, e o resultado foi o defeito de 13/08: cancelar uma assinatura do
+ * Simples rebaixou para o gratuito um perfil que tinha Profissional por chave
+ * de ativação. A coluna guardava **o quê** sem guardar **de onde**, então o
+ * cancelamento apagou um direito que não vinha dali.
+ *
+ * Agora a assinatura administra **a própria concessão**, identificada pelo
+ * `sub_...`. O que vem de outra fonte não é tocado, e `profiles.plano` é
+ * recalculado a partir de tudo que está vivo — ver `concessoes-de-plano`.
  *
  * ## Duas ausências diferentes
  *
- * **Assinatura cancelada rebaixa** para o gratuito. É o desfecho, e vale para
- * qualquer caminho que chegue aqui — webhook de cancelamento, fim de período,
- * reconciliação que descobre uma assinatura já encerrada no Stripe. A regra
- * vivia só dentro do `customer.subscription.updated`; fora dali, uma
- * assinatura cancelada deixava o plano pago de pé.
+ * **Assinatura cancelada encerra a concessão dela.** É o desfecho, e vale para
+ * qualquer caminho que chegue aqui — webhook, fim de período, reconciliação
+ * que descobre uma assinatura já encerrada no Stripe.
  *
- * **Plano não identificado não muda nada.** Rebaixar por não ter sabido
- * reconhecer o preço tiraria recurso de quem pagou — é o oposto do caso
- * acima, e por isso os dois estão escritos lado a lado.
+ * **Plano não identificado não muda nada.** Encerrar por não ter sabido
+ * reconhecer o preço tiraria recurso de quem pagou — é o oposto do caso acima,
+ * e por isso os dois estão escritos lado a lado.
  */
 async function aplicarPlanoNoPerfil(
   supabase: SupabaseClient,
   perfilId: string,
   slug: string | null,
   statusNoBanco: string,
+  subscriptionId: string,
   origem: string
 ): Promise<void> {
-  const cancelada = statusNoBanco === 'cancelled'
-  if (!cancelada && !slug) return
-
-  const valor = cancelada ? enumDoPlano('free') : enumDoPlano(planoEfetivo(slug!))
-  const { error } = await supabase
-    .from('profiles')
-    .update({ plano: valor })
-    .eq('id', perfilId)
-
-  if (error) {
-    logger.error('Não foi possível aplicar o plano no perfil', { origem, perfilId, error: error.message })
+  if (statusNoBanco === 'cancelled') {
+    await encerrarConcessao(
+      supabase,
+      {
+        userId: perfilId,
+        origem: 'assinatura',
+        referencia: subscriptionId,
+        motivo: 'Assinatura cancelada no Stripe',
+      },
+      origem
+    )
+    return
   }
+
+  if (!slug) return
+
+  await conceder(
+    supabase,
+    {
+      userId: perfilId,
+      plano: planoEfetivo(slug) as PlanoEfetivo,
+      origem: 'assinatura',
+      referencia: subscriptionId,
+      motivo: `Assinatura ${statusNoBanco} no Stripe`,
+    },
+    origem
+  )
 }
