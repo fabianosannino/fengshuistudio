@@ -47,6 +47,12 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
 - **Papel ≠ plano** (ADR 0024). `papelDoUsuario` responde «atende clientes ou
   cuida da própria casa?» e decide menu e home; `planoUsuario` responde «o que
   comprou?» e decide limites. Um consultor no free é as duas coisas.
+- **O pedido da loja não tem `status`** (ADR 0030). O estado sai de
+  `pedido_eventos`, que é append-only por trigger — o banco recusa `update` e
+  `delete`. Corrigir um evento é **acrescentar** o que corrige, e o estado é a
+  precedência entre os fatos, não o último a chegar: é o que faz um `pago`
+  atrasado não desfazer um reembolso. `pago` é escrito **só** pelo webhook,
+  nunca pela tela de sucesso.
 - **Ausência ≠ zero.** Setor não avaliado é `null` e aparece como «—», nunca
   como 0%; item de checklist não verificado não entra no denominador; área da
   Roda sem resposta não vira média. Vale para score, checklist, Roda da Vida e
@@ -117,8 +123,10 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   papel do usuário separado do plano (0024), cliente final recebe julgamento e
   não score (0025), fila offline da vistoria (0026), estado derivado em vez de
   status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028), plano derivado de
-  concessões (0029).
+  concessões (0029), pedido como máquina de estados (0030).
   Toda decisão arquitetural nova vira um ADR.
+- `docs/domain/modelo-da-loja.md` — modelo da loja e as fases. Leia antes de
+  mexer em pedido, comissão ou afiliado.
 - `docs/security/threat-model.md` — ativos, fronteiras e ameaças.
 - `docs/domain/glossary.md` — linguagem ubíqua (Ba Guá, setores, planos).
 - `docs/domain/fengshui-metodos-referencia.md` — documento-mestre dos métodos e

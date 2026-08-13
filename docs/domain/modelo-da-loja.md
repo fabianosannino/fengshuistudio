@@ -1,8 +1,8 @@
 # Modelo da loja — documento de trabalho
 
-**Estado:** modelo fechado nas três decisões de produto (seção 10). Vira ADR
-quando a fase 0 da seção 14 for implementada — o esquema da seção 13 ainda pode
-mudar ao encostar no primeiro webhook real.
+**Estado:** modelo fechado nas três decisões de produto (seção 10). A **fase 0
+está implementada** — ver ADR 0030 e a migration `20260813050000`. As fases 1 a
+5 seguem como plano.
 
 Este documento existe porque a loja é a próxima coisa a nascer, e porque o
 projeto passou o dia 13/08 consertando defeitos de uma forma só: **um fato
@@ -12,7 +12,7 @@ dinheiro de terceiro no meio.
 
 ---
 
-## 0. O que já existe — e o que está quebrado agora
+## 0. O que estava quebrado (corrigido na fase 0)
 
 `store_orders` existe desde `20260407_store_slug_and_sales.sql`. Tem RLS, tem
 índice único em `stripe_session_id`, tem FK para `profiles`. E tem **zero
@@ -359,7 +359,7 @@ não é código:
 
 | fase | o que | por que aqui |
 |---|---|---|
-| **0** | registrar a venda que já acontece: webhook `checkout.session.completed` da conta conectada → `pedidos` + `pedido_eventos` | conserta o defeito da seção 0, que está no ar. Não depende de decisão nenhuma |
+| **0** ✅ | registrar a venda que já acontece: webhook `checkout.session.completed` da conta conectada → `pedidos` + `pedido_eventos` | conserta o defeito da seção 0. Não dependia de decisão nenhuma. **Feito** — ADR 0030 |
 | **1** | serviço do consultor completo: painel de vendas, reembolso, disputa | é a venda que já existe. Sem frete, sem NF-e nossa |
 | **2** | bem próprio **digital** | testa o trilho «plataforma é a vendedora» sem esbarrar em fiscal |
 | **3** | bem próprio **físico** | aqui entram emissor de NF-e, estoque, frete e logística reversa |
