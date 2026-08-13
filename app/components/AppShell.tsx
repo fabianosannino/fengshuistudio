@@ -17,7 +17,7 @@ import {
 } from './hooks-cliente'
 import {
   LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
-  Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard, Receipt,
+  Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard, Receipt, Package,
   BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu, Grid3x3,
   type LucideIcon,
 } from 'lucide-react'
@@ -82,10 +82,11 @@ export default function AppShell({
       ],
     },
     {
-      titulo: 'Ajuda e loja',
+      titulo: 'Marketplace',
       itens: [
         { label: 'Encontrar consultor', icon: Handshake, href: '/parceiros' },
         { label: 'Loja', icon: ShoppingCart, href: '/produtos' },
+        { label: 'Minhas compras', icon: Receipt, href: '/minhas-compras' },
       ],
     },
     {
@@ -119,17 +120,37 @@ export default function AppShell({
     },
     {
       titulo: 'Negócio',
+      /*
+       * Estes itens são decididos pelo **papel**, não pelo plano (ADR 0024).
+       *
+       * «Pagamentos» e «Vendas» estavam presos a `isProfissional`, que é
+       * `planoEfetivo === 'profissional'`. O efeito era um consultor no free
+       * ou no simples com conta Connect ativa, vendendo, e **sem o menu de
+       * vendas** — sem conseguir nem estornar, que é obrigação legal dele.
+       * Plano decide limite de recurso; quem chega a este menu já é consultor.
+       */
       itens: [
-        ...(isProfessional ? [{ label: 'Pagamentos', icon: Wallet, href: '/pagamentos' }] : []),
+        { label: 'Pagamentos', icon: Wallet, href: '/pagamentos' },
         // Vendas da loja. Separada de «Pagamentos», que é o recebível da
         // consultoria — são dois fluxos de dinheiro diferentes, e juntá-los
         // numa tela só faria a origem de cada valor sumir.
-        ...(isProfessional ? [{ label: 'Vendas', icon: Receipt, href: '/vendas' }] : []),
+        { label: 'Vendas', icon: Receipt, href: '/vendas' },
+        // O catálogo que ele vende. Não confundir com «Loja», que é o de
+        // curadoria; até agora esta tela só era alcançável pelo onboarding.
+        { label: 'Meus produtos', icon: Package, href: '/stripe/products' },
         { label: 'Parceiros', icon: Handshake, href: '/parceiros' },
-        { label: 'Produtos', icon: ShoppingCart, href: '/produtos' },
         // Os gráficos que ocupavam a home. Continuam valendo como leitura
         // mensal do negócio — que é o que eles são.
         { label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
+      ],
+    },
+    {
+      // Consultor também compra. O que ele compra não é negócio dele — por
+      // isso grupo separado, com o mesmo nome que o cliente final vê.
+      titulo: 'Marketplace',
+      itens: [
+        { label: 'Loja', icon: ShoppingCart, href: '/produtos' },
+        { label: 'Minhas compras', icon: Receipt, href: '/minhas-compras' },
       ],
     },
     {
