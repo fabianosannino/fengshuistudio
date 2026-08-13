@@ -287,6 +287,113 @@ de uma reclamação — que é tarde.
 
 ---
 
+## 12-A. Arrependimento, frete e devolução integral
+
+Requisito do dono, 13/08: **todo pedido de devolução em até 7 dias é devolvido
+integralmente.** É o CDC art. 49, e o parágrafo único é a parte que decide o
+esquema:
+
+> «os valores eventualmente pagos, **a qualquer título**, durante o prazo de
+> reflexão, serão devolvidos, de imediato, monetariamente atualizados.»
+
+«A qualquer título» inclui **o frete de ida**. E o entendimento consolidado é
+que o **frete de volta é do vendedor**. Ou seja, no arrependimento o comprador
+sai inteiro, e o custo fica na cadeia de fornecimento.
+
+### Três consequências que não são opinião
+
+1. **O comprador sempre recebe 100%.** O que se discute não é quanto ele
+   recebe — é **quem banca**. Isso é decisão de negócio, e por isso precisa
+   estar registrada como fato, não resolvida no impulso de quem clica.
+2. **A tarifa do gateway não volta.** O Stripe fica com a dele mesmo em
+   reembolso integral. Na venda de teste isso foi R$ 0,59 num pedido de R$ 5:
+   **12% do valor**, que alguém paga sem ter vendido nada. Em bem físico, com
+   frete no meio, uma devolução pode custar mais do que a margem da venda.
+   Isso precisa aparecer na tela do consultor **antes** de ele achar que
+   devolução é neutra.
+3. **«De imediato» não é «depois que a caixa voltar».** Condicionar o estorno
+   ao recebimento da devolução é prática comum e é onde mora o risco. O padrão
+   conservador — devolver ao registrar o pedido de devolução — é o que este
+   documento adota até haver orientação jurídica em contrário.
+
+### O prazo é derivado, e a origem depende do que foi vendido
+
+| o que | conta a partir de |
+|---|---|
+| bem físico | `entregue_em` — recebimento |
+| bem digital | `pago` |
+| serviço | a contratação |
+
+Nunca um booleano `pode_devolver`. É `origem + 7 dias`, calculado na leitura,
+como todo o resto neste documento. O serviço já prestado tem nuance que precisa
+de advogado, não de decisão de arquitetura — e o campo derivado não impede
+nenhuma das leituras.
+
+**Evento novo:** `devolucao_solicitada`. É o fato que dispara a obrigação e
+inicia a contagem do «de imediato». Sem ele, a única data disponível seria a do
+estorno — que é o efeito, não a causa.
+
+### O dinheiro precisa de razão, não de colunas
+
+Frete de ida, frete de volta, comissão, estorno de comissão e tarifa do gateway
+são **fatos financeiros diferentes**, com regras de reversão diferentes e partes
+diferentes. Somar tudo em `total_centavos` e depois tentar desmontar é
+impossível: a soma perdeu a informação.
+
+```
+pedido_lancamentos                  -- append-only, como pedido_eventos
+  id | pedido_id
+     | tipo       -- produto | frete | comissao_plataforma | tarifa_gateway
+                  -- | reembolso | frete_devolucao | estorno_comissao
+     | valor_centavos          -- sempre positivo; o sentido está nas partes
+     | pagador    -- comprador | consultor | plataforma | gateway
+     | recebedor  -- comprador | consultor | plataforma | gateway
+     | origem | referencia | ocorrido_em | motivo
+```
+
+Com `pagador` e `recebedor` em vez de sinal, a pergunta «quem ficou com o
+prejuízo desta devolução?» vira uma soma, para qualquer combinação de frete,
+comissão e tarifa. Com um campo de sinal, vira interpretação — e interpretação
+diverge entre a tela do consultor e a do admin.
+
+`pedidos.frete_centavos` continua existindo, porque o checkout precisa cobrar o
+frete. Ele é a projeção; o lançamento é o fato.
+
+---
+
+## 12-B. O comprador precisa ver o próprio pedido
+
+Requisito do dono, 13/08: **o status das compras, pagamentos e devoluções tem
+que estar dentro do FengShui Studio**, para o cliente acompanhar.
+
+São **duas telas**, não uma, porque são dois sujeitos com direitos diferentes:
+
+| quem | onde | como é protegido |
+|---|---|---|
+| consultor | página autenticada de vendas | RLS, que já existe |
+| comprador | página pública do pedido | **link assinado com prazo** |
+
+O comprador **não tem conta** — a rota de checkout já assume isso. Não existe
+`auth.uid()` para comparar, então nenhuma policy o alcança. Ver o próprio
+pedido exige um token assinado, com validade, enviado no e-mail de confirmação.
+
+Duas armadilhas a evitar aqui:
+
+- **Não identificar o comprador por e-mail digitado.** «Digite seu e-mail para
+  ver seu pedido» entrega o histórico de compras de qualquer pessoa a quem
+  souber o e-mail dela. O token é o que prova posse.
+- **Não usar o número do pedido como chave de acesso.** `P260813-F0FD73` é
+  legível de propósito, para o suporte falar dele — e o que é legível é
+  adivinhável.
+
+O que a tela do comprador mostra é a mesma verdade derivada de
+`pedido_eventos`, com os lançamentos traduzidos: o que pagou, o que já voltou,
+e — quando o prazo estiver correndo — **até quando pode se arrepender**. Essa
+data é o item que mais evita atrito no suporte, e ela sai do cálculo, não de um
+campo que alguém precisa manter.
+
+---
+
 ## 13. Esquema proposto
 
 Nomes em português, vocabulário do app, como em `concessoes_de_plano`.
@@ -360,7 +467,7 @@ não é código:
 | fase | o que | por que aqui |
 |---|---|---|
 | **0** ✅ | registrar a venda que já acontece: webhook `checkout.session.completed` da conta conectada → `pedidos` + `pedido_eventos` | conserta o defeito da seção 0. Não dependia de decisão nenhuma. **Feito** — ADR 0030 |
-| **1** | serviço do consultor completo: painel de vendas, reembolso, disputa | é a venda que já existe. Sem frete, sem NF-e nossa |
+| **1** | reconciliação da loja; `pedido_lancamentos`; painel de vendas do consultor; página do pedido para o comprador com link assinado; `devolucao_solicitada` e o prazo derivado | é a venda que já existe, mais os requisitos de 12-A e 12-B. Sem frete, sem NF-e nossa |
 | **2** | bem próprio **digital** | testa o trilho «plataforma é a vendedora» sem esbarrar em fiscal |
 | **3** | bem próprio **físico** | aqui entram emissor de NF-e, estoque, frete e logística reversa |
 | **4** | terceiro: indicação primeiro, marketplace depois | indicação é barata; marketplace traz a responsabilidade solidária |
