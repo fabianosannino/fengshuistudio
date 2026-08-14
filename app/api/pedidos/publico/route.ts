@@ -26,11 +26,15 @@ import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { registrarEvento, dentroDoPrazoDeArrependimento } from '../../../../src/lib/pedidos-da-loja'
 import { pedidoParaOComprador, tokenNoPrazo } from '../../../../src/lib/pedido-publico'
+import { enviarEmail } from '../../../../src/lib/email'
+import { emailDeDevolucaoSolicitada } from '../../../../src/lib/emails-do-pedido'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 const ROUTE = '/api/pedidos/publico'
 
 const CAMPOS = `
   id, numero, tipo, criado_em, total_centavos, comprador_email, token_expira_em,
+  vendedor_perfil_id,
   pedido_itens(nome, quantidade, preco_unitario_centavos),
   pedido_eventos(evento, ocorrido_em),
   pedido_lancamentos(tipo, valor_centavos, pagador, recebedor)
@@ -136,6 +140,34 @@ export async function POST(request: Request) {
 
   if (!registrado) {
     return NextResponse.json({ error: 'Não foi possível registrar o pedido.' }, { status: 503 })
+  }
+
+  /*
+   * Avisa o vendedor.
+   *
+   * O pedido de devolução nasce numa página que ele não visita — a do
+   * comprador. Sem este e-mail, ele só descobriria abrindo `/vendas` por
+   * conta própria, e o prazo do «de imediato» do art. 49 corre a partir do
+   * pedido, não de quando ele resolveu olhar.
+   *
+   * Best-effort: o direito do consumidor já está registrado, e falhar o aviso
+   * não pode desfazer isso nem devolver erro a quem pediu.
+   */
+  if (pedido.vendedor_perfil_id) {
+    const { data: vendedor } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', pedido.vendedor_perfil_id)
+      .maybeSingle()
+
+    if (vendedor?.email) {
+      const { assunto, html, texto } = emailDeDevolucaoSolicitada({
+        numero: pedido.numero,
+        totalCentavos: pedido.total_centavos ?? 0,
+        linkDasVendas: `${origemDaAplicacao(request)}/vendas`,
+      })
+      await enviarEmail({ para: vendedor.email, assunto, html, texto }, ROUTE)
+    }
   }
 
   logger.info('Devolução solicitada pelo comprador', { route: ROUTE, pedidoId: pedido.id })

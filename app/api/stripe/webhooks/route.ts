@@ -39,6 +39,12 @@ import {
 import {
   registrarLancamentosDaVenda, registrarLancamentosDoReembolso,
 } from '../../../../src/lib/lancamentos-da-venda'
+import {
+  pedidoParaConfirmar, marcarConfirmacaoEnviada, prazoDeArrependimento,
+} from '../../../../src/lib/pedidos-da-loja'
+import { enviarEmail } from '../../../../src/lib/email'
+import { emailDeConfirmacao } from '../../../../src/lib/emails-do-pedido'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -151,6 +157,35 @@ export async function POST(request: Request) {
             referencia: event.id,
             ocorridoEm: new Date(event.created * 1000).toISOString(),
           }, ROUTE)
+        }
+
+        /*
+         * A confirmação por e-mail entrega o **único** link que o comprador
+         * tem para o pedido — ele não tem conta. Até agora esse link só
+         * aparecia na tela pós-pagamento, e quem fechasse a aba ficava sem
+         * nenhuma porta.
+         *
+         * Best-effort declarado: falha aqui não desfaz a venda nem devolve
+         * erro. Responder 500 faria o Stripe reentregar e reprocessar o que já
+         * estava certo — trocaríamos um aviso perdido por trabalho refeito.
+         */
+        const paraConfirmar = await pedidoParaConfirmar(supabase, pedidoId, ROUTE)
+        if (paraConfirmar?.compradorEmail) {
+          const prazo = prazoDeArrependimento(paraConfirmar.tipo, paraConfirmar.eventos)
+          const { assunto, html, texto } = emailDeConfirmacao({
+            numero: paraConfirmar.numero,
+            itens: paraConfirmar.itens,
+            totalCentavos: paraConfirmar.totalCentavos,
+            arrependimentoAte: prazo ? prazo.toISOString() : null,
+            linkDoPedido: `${origemDaAplicacao(request)}/pedido/${paraConfirmar.tokenPublico}`,
+          })
+
+          const enviado = await enviarEmail(
+            { para: paraConfirmar.compradorEmail, assunto, html, texto }, ROUTE
+          )
+          // Só marca depois de sair. Marcar antes trocaria «pode ter chegado
+          // duas vezes» por «pode não ter chegado nenhuma».
+          if (enviado) await marcarConfirmacaoEnviada(supabase, pedidoId, ROUTE)
         }
 
         logger.info('Venda da loja registrada', {
