@@ -137,6 +137,33 @@ describe('POST /api/stripe/webhooks', () => {
     expect(atualizacao?.values?.total_centavos).toBe(4200)
   })
 
+  it('PIX: o pagamento confirma no evento assíncrono, não no `completed`', async () => {
+    // Com Pix o comprador termina o checkout antes de o dinheiro cair. Sem
+    // tratar este evento, toda venda por Pix ficaria presa em «aguardando
+    // pagamento» — com o dinheiro já na conta do consultor.
+    constructEvent.mockReturnValue(evento('checkout.session.async_payment_succeeded', {
+      id: 'cs_pix', payment_status: 'paid', payment_intent: 'pi_pix',
+      amount_total: 100, metadata: { pedido_id: 'pedido-1' },
+      customer_details: { email: 'comprador@exemplo.com' },
+    }))
+
+    const res = await POST(req())
+    expect(res.status).toBe(200)
+    expect(eventosGravados()[0]?.values?.evento).toBe('pago')
+  })
+
+  it('PIX expirado vira `cancelado`, não silêncio', async () => {
+    // «Vai cair» e «não vem mais» precisam ser distinguíveis para o vendedor.
+    constructEvent.mockReturnValue(evento('checkout.session.async_payment_failed', {
+      id: 'cs_pix', payment_status: 'unpaid', metadata: { pedido_id: 'pedido-1' },
+    }))
+
+    await POST(req())
+    const cancelado = eventosGravados()[0]
+    expect(cancelado?.values?.evento).toBe('cancelado')
+    expect(cancelado?.values?.motivo).toContain('não confirmado')
+  })
+
   it('sessão concluída SEM pagamento confirmado não vira venda', async () => {
     // `unpaid` chega em fluxo assíncrono (boleto, Pix). Marcar pago aqui daria
     // acesso a quem ainda não pagou.
