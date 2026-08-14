@@ -22,17 +22,20 @@ import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { sanitizeString, validateUUID } from '../../../../src/lib/validation'
-import { listarProdutosParaAdmin } from '../../../../src/lib/produtos-da-plataforma'
+import {
+  listarProdutosParaAdmin, ehLinkDeIndicacaoSeguro,
+} from '../../../../src/lib/produtos-da-plataforma'
 
 const ROUTE = '/api/admin/produtos'
 
 const MAX_NOME = 120
 const MAX_DESCRICAO = 600
+const MAX_LINK = 500
 /** R$ 1,00 a R$ 10.000,00 — piso do Stripe embaixo, engano de digitação em cima. */
 const PRECO_MINIMO_CENTAVOS = 100
 const PRECO_MAXIMO_CENTAVOS = 1_000_000
 
-const TIPOS = ['bem_proprio_digital', 'bem_proprio_fisico'] as const
+const TIPOS = ['bem_proprio_digital', 'bem_proprio_fisico', 'bem_de_terceiro'] as const
 
 async function somenteAdmin() {
   const supabase = await createRouteHandlerClient()
@@ -56,12 +59,38 @@ export async function GET(request: Request) {
 
   if (!await somenteAdmin()) return NEGADO
 
-  const produtos = await listarProdutosParaAdmin(createSupabaseAdminClient(), ROUTE)
+  const supabase = createSupabaseAdminClient()
+  const produtos = await listarProdutosParaAdmin(supabase, ROUTE)
   if (!produtos) {
     return NextResponse.json({ error: 'Não foi possível carregar o catálogo.' }, { status: 503 })
   }
 
-  return NextResponse.json({ produtos })
+  /*
+   * Cliques por produto — o número que torna a comissão da indicação cobrável.
+   *
+   * Contado aqui, sobre as linhas lidas, em vez de virar coluna em `produtos`:
+   * um contador gravado precisaria ser incrementado a cada clique e ficaria
+   * errado na primeira escrita perdida. A contagem é derivada, como o resto.
+   */
+  const { data: cliques, error: erroDosCliques } = await supabase
+    .from('cliques_de_indicacao')
+    .select('produto_id')
+    .limit(10_000)
+
+  if (erroDosCliques) {
+    logger.warn('Não foi possível contar os cliques de indicação', {
+      route: ROUTE, error: erroDosCliques.message,
+    })
+  }
+
+  const porProduto = new Map<string, number>()
+  for (const c of cliques ?? []) {
+    porProduto.set(c.produto_id, (porProduto.get(c.produto_id) ?? 0) + 1)
+  }
+
+  return NextResponse.json({
+    produtos: produtos.map(p => ({ ...p, cliques: porProduto.get(p.id) ?? 0 })),
+  })
 }
 
 export async function POST(request: Request) {
@@ -71,7 +100,10 @@ export async function POST(request: Request) {
   const admin = await somenteAdmin()
   if (!admin) return NEGADO
 
-  let body: { nome?: string; descricao?: string; preco_centavos?: number; tipo?: string }
+  let body: {
+    nome?: string; descricao?: string; preco_centavos?: number; tipo?: string
+    modo_de_venda?: string; link_externo?: string; parceiro?: string
+  }
   try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
@@ -92,6 +124,32 @@ export async function POST(request: Request) {
     : 'bem_proprio_digital'
 
   /*
+   * Indicação: o terceiro vende na loja dele e o dinheiro não passa por aqui.
+   *
+   * As duas checagens abaixo repetem o que o banco já garante por constraint,
+   * e a repetição é deliberada: aqui elas viram mensagem para o admin, lá elas
+   * são a garantia de que nenhum caminho — script, correção manual, rota nova
+   * — escapa. Uma sem a outra deixa metade do problema.
+   */
+  const indicacao = body.modo_de_venda === 'indicacao'
+
+  if (indicacao && tipo !== 'bem_de_terceiro') {
+    return NextResponse.json(
+      { error: 'Indicação só existe para produto de terceiro.' },
+      { status: 400 }
+    )
+  }
+
+  const link = indicacao ? sanitizeString(body.link_externo ?? '', MAX_LINK) : null
+
+  if (indicacao && !ehLinkDeIndicacaoSeguro(link)) {
+    return NextResponse.json(
+      { error: 'Informe o link do parceiro começando com https://' },
+      { status: 400 }
+    )
+  }
+
+  /*
    * Nasce **inativo**, sempre.
    *
    * Digital ativo sem arquivo é recusado pelo banco (ver a constraint), e o
@@ -103,9 +161,12 @@ export async function POST(request: Request) {
     .from('produtos')
     .insert({
       tipo,
+      modo_de_venda: indicacao ? 'indicacao' : 'marketplace',
       nome,
       descricao: sanitizeString(body.descricao ?? '', MAX_DESCRICAO) || null,
       preco_centavos: preco,
+      link_externo: link,
+      parceiro: sanitizeString(body.parceiro ?? '', MAX_NOME) || null,
       ativo: false,
     })
     .select('id')

@@ -67,9 +67,12 @@ export function extensaoParaMimeDeProduto(mime: string): string | null {
   return MIME_ACEITO[mime] ?? null
 }
 
+export type ModoDeVenda = 'marketplace' | 'indicacao'
+
 export interface Produto {
   id: string
   tipo: TipoDeProduto
+  modo_de_venda: ModoDeVenda
   nome: string
   descricao: string | null
   preco_centavos: number
@@ -78,6 +81,8 @@ export interface Produto {
   arquivo_nome: string | null
   arquivo_mime: string | null
   arquivo_bytes: number | null
+  link_externo: string | null
+  parceiro: string | null
   criado_em?: string
   atualizado_em?: string
 }
@@ -86,31 +91,75 @@ export interface Produto {
 export interface ProdutoNaVitrine {
   id: string
   tipo: TipoDeProduto
+  modo_de_venda: ModoDeVenda
   nome: string
   descricao: string | null
   preco_centavos: number
   /** Só para a tela dizer «download imediato» em vez de prometer entrega. */
   entrega_digital: boolean
+  /**
+   * Quem vende, quando não somos nós. Vai para a vitrine **de propósito**:
+   * numa indicação a compra acontece no site do parceiro, e o comprador tem
+   * que saber disso antes de clicar, não depois.
+   *
+   * O `link_externo` continua fora daqui — o clique passa por
+   * `/api/loja/indicacao`, que mede antes de encaminhar.
+   */
+  parceiro: string | null
 }
 
 export function ehDigital(tipo: string): boolean {
   return tipo === 'bem_proprio_digital'
 }
 
+/** `true` quando a compra acontece fora daqui — o dinheiro não passa por nós. */
+export function ehIndicacao(produto: { modo_de_venda?: string | null }): boolean {
+  return produto.modo_de_venda === 'indicacao'
+}
+
 export function produtoParaVitrine(produto: Produto): ProdutoNaVitrine {
   return {
     id: produto.id,
     tipo: produto.tipo,
+    modo_de_venda: produto.modo_de_venda,
     nome: produto.nome,
     descricao: produto.descricao,
     preco_centavos: produto.preco_centavos,
     entrega_digital: ehDigital(produto.tipo),
+    parceiro: produto.parceiro,
   }
 }
 
+/**
+ * O link de indicação é seguro para encaminhar?
+ *
+ * O destino vem do nosso cadastro, não do cliente — mas o cadastro é digitado,
+ * e um `javascript:` colado ali viraria execução no browser de quem confia na
+ * nossa marca. A rota de redirecionamento é pública e o alvo é sempre um
+ * terceiro; a checagem custa nada e fecha a classe inteira.
+ *
+ * **Só `https`.** `http` não é recusado por purismo: o comprador sai da nossa
+ * página para uma conexão que pode ser lida e reescrita no caminho, num
+ * contexto em que ele acabou de ver nosso aviso de que aquilo é uma
+ * recomendação nossa.
+ */
+export function ehLinkDeIndicacaoSeguro(link: string | null | undefined): boolean {
+  if (!link) return false
+
+  let url: URL
+  try { url = new URL(link) } catch { return false }
+
+  if (url.protocol !== 'https:') return false
+  // `https://usuario:senha@host` é a forma clássica de disfarçar o domínio
+  // real na barra de endereços.
+  if (url.username || url.password) return false
+  return Boolean(url.hostname)
+}
+
 const CAMPOS_COMPLETOS = `
-  id, tipo, nome, descricao, preco_centavos, ativo,
-  arquivo_path, arquivo_nome, arquivo_mime, arquivo_bytes, criado_em, atualizado_em
+  id, tipo, modo_de_venda, nome, descricao, preco_centavos, ativo,
+  arquivo_path, arquivo_nome, arquivo_mime, arquivo_bytes,
+  link_externo, parceiro, criado_em, atualizado_em
 `
 
 /** A vitrine: só o que está ativo, e só o que a vitrine pode ver. */

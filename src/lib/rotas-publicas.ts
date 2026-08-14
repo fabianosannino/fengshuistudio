@@ -61,6 +61,8 @@ export const APIS_PUBLICAS = [
   // Vitrine e checkout do catálogo próprio da plataforma (fase 2).
   '/api/loja/produtos',
   '/api/loja/checkout',
+  // O clique que mede e encaminha para a loja do parceiro (fase 4).
+  '/api/loja/indicacao',
 ] as const
 
 export function ehPaginaPublica(pathname: string): boolean {
