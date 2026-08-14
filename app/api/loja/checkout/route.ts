@@ -156,6 +156,16 @@ export async function POST(request: Request) {
         },
       }],
       metadata: { pedido_id: pedido.id },
+      /*
+       * O mesmo `pedido_id`, agora **na cobrança**.
+       *
+       * O `metadata` da sessão some da vista quando se olha o dinheiro: a
+       * reconciliação varre cobranças, e na conta da plataforma cai muito mais
+       * do que loja — assinatura, link de pagamento, cobrança avulsa. Sem este
+       * carimbo, cada uma delas viraria «venda ausente no banco» todo dia, e um
+       * relatório que acusa o que não é problema ensina a ser ignorado.
+       */
+      payment_intent_data: { metadata: { pedido_id: pedido.id } },
       success_url: `${origin}/pedido/${pedido.tokenPublico}`,
       cancel_url: `${origin}/produtos`,
     })

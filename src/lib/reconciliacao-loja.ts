@@ -171,6 +171,42 @@ export function compararVendas(
 }
 
 /**
+ * Esta cobrança é uma venda da loja?
+ *
+ * ## O ruído que isto evita
+ *
+ * A varredura passou a incluir a conta da **plataforma**, porque desde a fase 2
+ * vendemos bem próprio nela. Só que na nossa conta cai muito mais coisa do que
+ * loja: assinatura, link de pagamento, cobrança manual. Sem esta pergunta,
+ * cada uma delas virava um `venda_ausente_no_banco` — todo dia, para sempre.
+ *
+ * Relatório que acusa o que não é problema é pior do que relatório nenhum:
+ * ensina a ignorá-lo, e o dia em que a acusação for verdadeira ela vai passar
+ * junto com o resto.
+ *
+ * A regra: **na nossa conta, venda da loja carrega o `pedido_id`** que o
+ * checkout carimba no `payment_intent`. Sem carimbo, não é venda nossa — é
+ * assinatura, link de pagamento ou cobrança avulsa, e nenhuma delas deveria
+ * ter pedido correspondente.
+ *
+ * Na conta **conectada** não há carimbo a exigir: ali só existe cobrança da
+ * loja, porque o consultor não vende mais nada por ela.
+ *
+ * **Lacuna declarada:** cobranças na conta da plataforma anteriores ao carimbo
+ * ficam de fora. São as de antes da fase 2 — nenhuma é venda da loja, porque a
+ * loja não existia. Uma venda nossa sem carimbo, daqui pra frente, seria
+ * ignorada; o preço é aceitável porque o carimbo nasce no mesmo lugar que o
+ * pedido, e sem pedido o checkout nem redireciona.
+ */
+export function ehCobrancaDaLoja(
+  cobranca: { pedidoIdNoMetadata?: string | null },
+  contaConectada: string | null
+): boolean {
+  if (contaConectada) return true
+  return Boolean(cobranca.pedidoIdNoMetadata)
+}
+
+/**
  * O pedido que ficou preso em `iniciado` com uma sessão do Stripe do lado de lá.
  *
  * ## O buraco que isto tapa
