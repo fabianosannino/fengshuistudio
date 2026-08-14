@@ -53,6 +53,10 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
   precedência entre os fatos, não o último a chegar: é o que faz um `pago`
   atrasado não desfazer um reembolso. `pago` é escrito **só** pelo webhook,
   nunca pela tela de sucesso.
+- **Quem pode baixar o bem digital é calculado, não liberado** (ADR 0031). O
+  direito sai da posse do token do pedido mais `pedidoRendeuReceita` — nunca de
+  uma coluna `download_liberado`, que o reembolso não desfaria. O arquivo mora
+  em bucket privado e a URL assinada nasce no clique, com minutos de validade.
 - **Ausência ≠ zero.** Setor não avaliado é `null` e aparece como «—», nunca
   como 0%; item de checklist não verificado não entra no denominador; área da
   Roda sem resposta não vira média. Vale para score, checklist, Roda da Vida e
@@ -123,7 +127,8 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   papel do usuário separado do plano (0024), cliente final recebe julgamento e
   não score (0025), fila offline da vistoria (0026), estado derivado em vez de
   status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028), plano derivado de
-  concessões (0029), pedido como máquina de estados (0030).
+  concessões (0029), pedido como máquina de estados (0030), entrega digital
+  derivada do pedido (0031).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/domain/modelo-da-loja.md` — modelo da loja e as fases. Leia antes de
   mexer em pedido, comissão ou afiliado.

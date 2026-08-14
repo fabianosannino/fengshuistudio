@@ -164,6 +164,7 @@ export default function AppShell({
       titulo: 'Administração',
       itens: [
         { label: 'Chaves', icon: KeyRound, href: '/admin/chaves' },
+        { label: 'Catálogo', icon: Package, href: '/admin/produtos' },
         { label: 'Pagamentos', icon: CreditCard, href: '/admin/pagamentos' },
         { label: 'Relatórios', icon: BarChart3, href: '/admin/relatorios' },
         { label: 'Auditoria', icon: FileText, href: '/admin/auditoria' },

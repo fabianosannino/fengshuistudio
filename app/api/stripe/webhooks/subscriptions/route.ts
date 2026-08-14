@@ -9,7 +9,9 @@
  * - customer.subscription.deleted → Subscription fully cancelled
  * - invoice.paid → Invoice successfully paid
  * - invoice.payment_failed → Payment attempt failed
- * - charge.refunded → Refund processed
+ * - charge.refunded → Refund processed (assinatura **ou** pedido da loja)
+ * - checkout.session.completed / .async_payment_succeeded → venda de bem próprio
+ * - checkout.session.async_payment_failed → o Pix da venda própria expirou
  *
  * SETUP:
  * 1. Stripe Dashboard > Developers > Webhooks > + Add endpoint
@@ -17,8 +19,21 @@
  * 3. Listen to: "Events on your account"
  * 4. Select: customer.subscription.created, customer.subscription.updated,
  *    customer.subscription.deleted, invoice.paid, invoice.payment_failed,
- *    charge.refunded
+ *    charge.refunded, checkout.session.completed,
+ *    checkout.session.async_payment_succeeded,
+ *    checkout.session.async_payment_failed
  * 5. Copy signing secret to STRIPE_SUBSCRIPTION_WEBHOOK_SECRET env var
+ *
+ * ## Por que a venda de bem próprio entra num endpoint chamado «subscriptions»
+ *
+ * Porque o escopo de um destino do Stripe — «Sua conta» ou «Contas conectadas»
+ * — **não é editável depois de criado**, e este é o destino da nossa conta. A
+ * venda de bem próprio cobra na nossa conta, então o evento dela chega aqui,
+ * queira o nome do arquivo ou não.
+ *
+ * A alternativa seria um terceiro endpoint, com um terceiro segredo para
+ * configurar e manter em sincronia. O nome ficou desatualizado; a URL está
+ * registrada em produção e renomeá-la custaria mais do que o desconforto.
  */
 
 import { NextResponse } from 'next/server'
@@ -33,6 +48,12 @@ import {
 import { enumDoPlano } from '../../../../../src/lib/plano-utils'
 import { sincronizarAssinatura } from '../../../../../src/lib/sincronizar-assinatura'
 import { encerrarConcessao } from '../../../../../src/lib/concessoes-de-plano'
+import {
+  acharPedidoDaSessao, acharPedidoDoPagamento, registrarEvento, valoresDoPedido,
+} from '../../../../../src/lib/pedidos-da-loja'
+import { registrarLancamentosDoReembolso } from '../../../../../src/lib/lancamentos-da-venda'
+import { confirmarVendaDaLoja } from '../../../../../src/lib/venda-da-loja'
+import { origemDaAplicacao } from '../../../../../src/lib/auth-rotas'
 
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
@@ -304,11 +325,99 @@ export async function POST(request: Request) {
         break
       }
 
+      /*
+       * A venda de bem próprio (fase 2) cobra na **nossa** conta, então o
+       * evento dela chega aqui, e não no endpoint das contas conectadas.
+       *
+       * O desfecho é o mesmo dos dois lados — por isso vive em
+       * `venda-da-loja.ts`. `confirmarVendaDaLoja` devolve `null` quando a
+       * sessão não é de um pedido da loja, que é o caso de todo checkout de
+       * assinatura passando por aqui.
+       */
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
+        const sessao = event.data.object as Stripe.Checkout.Session
+
+        // Pix confirma depois: o `completed` chega `unpaid` e a confirmação
+        // vem no `async_payment_succeeded`. É esta guarda que separa os dois.
+        if (sessao.payment_status !== 'paid') {
+          logger.info('Sessão concluída sem pagamento confirmado — aguardando confirmação', {
+            route: ROUTE, sessionId: sessao.id, status: sessao.payment_status,
+          })
+          break
+        }
+
+        await confirmarVendaDaLoja(supabase, {
+          sessao,
+          eventoId: event.id,
+          eventoEm: event.created,
+          // Cobrança na própria plataforma: não há conta conectada.
+          contaDoEvento: null,
+          origemDaApp: origemDaAplicacao(request),
+        }, ROUTE)
+        break
+      }
+
+      case 'checkout.session.async_payment_failed': {
+        const sessao = event.data.object as Stripe.Checkout.Session
+        const pedidoId = await acharPedidoDaSessao(supabase, sessao, ROUTE)
+        if (!pedidoId) break
+
+        // O Pix expirou. Vira `cancelado` em vez de silêncio: «vai cair» e
+        // «não vem mais» precisam ser distinguíveis para quem olha o pedido.
+        await registrarEvento(supabase, {
+          pedidoId,
+          evento: 'cancelado',
+          origem: 'webhook_stripe',
+          referencia: event.id,
+          ocorridoEm: new Date(event.created * 1000).toISOString(),
+          motivo: 'Pagamento assíncrono não confirmado no prazo',
+        }, ROUTE)
+        break
+      }
+
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge & {
           amount_refunded?: number
           refunded?: boolean
         }
+
+        /*
+         * Pedido da loja vem primeiro, e o `break` é o ponto.
+         *
+         * O tratamento abaixo é de assinatura: procura o perfil pelo
+         * `customer`. Numa venda da loja o comprador é convidado — não tem
+         * `customer` nem perfil —, então o reembolso morreria no `if
+         * (!customerId) break` e o pedido ficaria pago para sempre, com o
+         * dinheiro já devolvido.
+         */
+        const paymentIntentDaLoja = typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : null
+
+        if (paymentIntentDaLoja) {
+          const pedidoId = await acharPedidoDoPagamento(supabase, paymentIntentDaLoja, ROUTE)
+          if (pedidoId) {
+            const ocorridoEm = new Date(event.created * 1000).toISOString()
+            await registrarEvento(supabase, {
+              pedidoId, evento: 'reembolsado', origem: 'webhook_stripe',
+              referencia: event.id, ocorridoEm,
+            }, ROUTE)
+
+            const valores = await valoresDoPedido(supabase, pedidoId, ROUTE)
+            await registrarLancamentosDoReembolso(supabase, {
+              pedidoId,
+              cobranca: charge,
+              vendedor: valores?.vendedor ?? 'plataforma',
+              referencia: event.id,
+              ocorridoEm,
+            }, ROUTE)
+
+            logger.info('Reembolso de pedido da loja registrado', { route: ROUTE, pedidoId })
+            break
+          }
+        }
+
         const customerId = typeof charge.customer === 'string'
           ? charge.customer
           : (charge.customer as Stripe.Customer)?.id

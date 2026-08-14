@@ -93,14 +93,30 @@ describe('prazoDeArrependimento', () => {
   it('bem físico conta da ENTREGA, não do pagamento', () => {
     // A diferença é jurídica: o consumidor recebe o produto sete dias depois
     // de pagar, e o prazo dele não pode já ter vencido quando a caixa chega.
-    const prazo = prazoDeArrependimento('bem_proprio', [PAGO, ENTREGUE])
+    const prazo = prazoDeArrependimento('bem_proprio_fisico', [PAGO, ENTREGUE])
     expect(prazo?.toISOString()).toBe('2026-08-27T12:00:00.000Z')
   })
 
   it('bem físico sem entrega ainda não tem prazo correndo', () => {
     // `null` é ausência, não prazo vencido. Mostrar «vencido» tiraria do
     // comprador um direito que sequer começou.
-    expect(prazoDeArrependimento('bem_proprio', [PAGO])).toBeNull()
+    expect(prazoDeArrependimento('bem_proprio_fisico', [PAGO])).toBeNull()
+  })
+
+  it('bem DIGITAL conta do pagamento, não da entrega', () => {
+    // O defeito que este teste guarda: com um `bem_proprio` só, o e-book caía
+    // no ramo do físico e esperava um `entregue` que nunca vem. O prazo ficava
+    // nulo para sempre e o comprador nunca conseguia pedir devolução — o
+    // direito existiria no CDC e não existiria no app.
+    const prazo = prazoDeArrependimento('bem_proprio_digital', [PAGO])
+    expect(prazo?.toISOString()).toBe('2026-08-20T12:00:00.000Z')
+  })
+
+  it('bem digital baixado não reinicia o prazo', () => {
+    // O download registra `entregue`, e isso não pode empurrar a data: no
+    // digital o marco é o pagamento, tenha ele baixado hoje ou daqui a um mês.
+    const prazo = prazoDeArrependimento('bem_proprio_digital', [PAGO, ENTREGUE])
+    expect(prazo?.toISOString()).toBe('2026-08-20T12:00:00.000Z')
   })
 
   it('sem o marco não há prazo', () => {
@@ -122,8 +138,8 @@ describe('dentroDoPrazoDeArrependimento', () => {
 
   it('prazo não iniciado devolve false — mas não é a mesma coisa que vencido', () => {
     const eventos = [PAGO]
-    expect(dentroDoPrazoDeArrependimento('bem_proprio', eventos)).toBe(false)
-    expect(prazoDeArrependimento('bem_proprio', eventos)).toBeNull()
+    expect(dentroDoPrazoDeArrependimento('bem_proprio_fisico', eventos)).toBe(false)
+    expect(prazoDeArrependimento('bem_proprio_fisico', eventos)).toBeNull()
   })
 })
 

@@ -15,8 +15,17 @@
  */
 
 import { estadoDoPedido, prazoDeArrependimento, dentroDoPrazoDeArrependimento,
-  rotuloDoEstado, type EventoDoPedido } from './pedidos-da-loja'
+  pedidoRendeuReceita, rotuloDoEstado, type EventoDoPedido } from './pedidos-da-loja'
+import { ehDigital } from './produtos-da-plataforma'
 import type { Lancamento } from './lancamentos-do-pedido'
+
+export interface ItemBruto {
+  id?: string
+  nome: string
+  quantidade: number
+  preco_unitario_centavos: number
+  produto_id?: string | null
+}
 
 export interface PedidoBruto {
   numero: string
@@ -25,7 +34,7 @@ export interface PedidoBruto {
   total_centavos: number
   comprador_email: string | null
   token_expira_em?: string | null
-  pedido_itens?: { nome: string; quantidade: number; preco_unitario_centavos: number }[]
+  pedido_itens?: ItemBruto[]
   pedido_eventos?: EventoDoPedido[]
   pedido_lancamentos?: Lancamento[]
 }
@@ -37,7 +46,14 @@ export interface PedidoParaOComprador {
   rotulo: string
   total_centavos: number
   devolvido_centavos: number
-  itens: { nome: string; quantidade: number; preco_unitario_centavos: number }[]
+  itens: {
+    id: string | null
+    nome: string
+    quantidade: number
+    preco_unitario_centavos: number
+    /** `true` quando há arquivo a baixar **agora** — ver a nota em `itensParaOComprador`. */
+    baixavel: boolean
+  }[]
   /** Só os fatos que dizem respeito a ele. */
   historico: { evento: string; rotulo: string; ocorrido_em: string | null }[]
   arrependimento_ate: string | null
@@ -80,6 +96,33 @@ export function devolvidoAoComprador(lancamentos: Lancamento[]): number {
 }
 
 /**
+ * Os itens, com a resposta de «dá para baixar isto agora?».
+ *
+ * A pergunta é respondida **aqui**, e não na tela, porque ela é derivada de
+ * três coisas que a tela não deveria recombinar sozinha: o tipo do pedido, a
+ * existência de um produto do nosso catálogo por trás do item, e o estado
+ * financeiro. A rota de download confere as mesmas condições de novo — esta
+ * projeção decide o que **mostrar**, não o que liberar.
+ *
+ * Um pedido tem um tipo só (seção 2 do modelo), então o tipo do pedido basta
+ * para saber se o item é digital: não existe pedido meio digital.
+ */
+export function itensParaOComprador(
+  pedido: PedidoBruto,
+  eventos: EventoDoPedido[]
+): PedidoParaOComprador['itens'] {
+  const entregaDigital = ehDigital(pedido.tipo) && pedidoRendeuReceita(eventos)
+
+  return (pedido.pedido_itens ?? []).map(i => ({
+    id: i.id ?? null,
+    nome: i.nome,
+    quantidade: i.quantidade,
+    preco_unitario_centavos: i.preco_unitario_centavos,
+    baixavel: entregaDigital && Boolean(i.id) && Boolean(i.produto_id),
+  }))
+}
+
+/**
  * A projeção pública do pedido.
  *
  * Note o que **não** sai daqui: id, vendedor, ids do Stripe, comissão da
@@ -104,9 +147,7 @@ export function pedidoParaOComprador(
     rotulo: rotuloDoEstado(estado),
     total_centavos: pedido.total_centavos,
     devolvido_centavos: devolvidoAoComprador(pedido.pedido_lancamentos ?? []),
-    itens: (pedido.pedido_itens ?? []).map(i => ({
-      nome: i.nome, quantidade: i.quantidade, preco_unitario_centavos: i.preco_unitario_centavos,
-    })),
+    itens: itensParaOComprador(pedido, eventos),
     historico: eventos
       .filter(e => EVENTOS_VISIVEIS.has(e.evento))
       .map(e => ({
