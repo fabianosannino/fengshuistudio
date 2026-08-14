@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe,
+  compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe, ehCobrancaDaLoja,
   type CobrancaNoStripe, type PedidoNoBanco,
 } from '../reconciliacao-loja'
 
@@ -145,5 +145,26 @@ describe('pedidosParaConferirNoStripe', () => {
 
   it('ignora pedido sem sessão — não há o que perguntar', () => {
     expect(pedidosParaConferirNoStripe([{ ...preso, stripe_session_id: null }])).toHaveLength(0)
+  })
+})
+
+describe('ehCobrancaDaLoja', () => {
+  /*
+   * A varredura passou a incluir a conta da plataforma, e na nossa conta cai
+   * muito mais do que loja. Sem esta pergunta, a primeira execução acusou uma
+   * cobrança de R$ 20,00 que não era venda nenhuma — e acusaria de novo todo
+   * dia, para sempre. Relatório que acusa o que não é problema ensina a ser
+   * ignorado, e aí o dia em que a acusação for real ela passa junto.
+   */
+  it('na nossa conta, exige o carimbo do pedido', () => {
+    expect(ehCobrancaDaLoja({ pedidoIdNoMetadata: 'pedido-1' }, null)).toBe(true)
+    expect(ehCobrancaDaLoja({ pedidoIdNoMetadata: null }, null)).toBe(false)
+    expect(ehCobrancaDaLoja({}, null)).toBe(false)
+  })
+
+  it('na conta conectada, toda cobrança é da loja', () => {
+    // Lá não há assinatura nem link de pagamento: o consultor não vende mais
+    // nada por aquela conta. Exigir carimbo ali esconderia venda de verdade.
+    expect(ehCobrancaDaLoja({ pedidoIdNoMetadata: null }, 'acct_1')).toBe(true)
   })
 })

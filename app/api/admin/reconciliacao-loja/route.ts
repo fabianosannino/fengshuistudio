@@ -60,7 +60,7 @@ import { estadoDoPedido, registrarEvento } from '../../../../src/lib/pedidos-da-
 import { confirmarVendaDaLoja } from '../../../../src/lib/venda-da-loja'
 import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 import {
-  compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe,
+  compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe, ehCobrancaDaLoja,
   type CobrancaNoStripe, type PedidoNoBanco, type DivergenciaDaLoja,
 } from '../../../../src/lib/reconciliacao-loja'
 
@@ -113,7 +113,9 @@ async function cobrancasDoStripe(contas: string[]): Promise<{
 
     while (lidas < LIMITE_POR_CONTA) {
       const pagina: Stripe.ApiList<Stripe.Charge> = await stripeClient.charges.list(
-        { limit: 100, starting_after: cursor },
+        // O `payment_intent` vem expandido para ler o carimbo `pedido_id`, que
+        // é o que distingue venda da loja de assinatura na **nossa** conta.
+        { limit: 100, starting_after: cursor, expand: ['data.payment_intent'] },
         conta ? { stripeAccount: conta } : undefined
       )
 
@@ -125,6 +127,16 @@ async function cobrancasDoStripe(contas: string[]): Promise<{
 
         const intent = typeof c.payment_intent === 'string' ? c.payment_intent : c.payment_intent?.id
         if (!intent) continue
+
+        // Assinatura, link de pagamento e cobrança manual caem na nossa conta
+        // e não são loja. Ver `ehCobrancaDaLoja`.
+        const carimbo = typeof c.payment_intent === 'object'
+          ? c.payment_intent?.metadata?.pedido_id ?? null
+          : null
+
+        if (!ehCobrancaDaLoja({
+          pedidoIdNoMetadata: carimbo ?? c.metadata?.pedido_id ?? null,
+        }, conta)) continue
 
         lista.push({
           paymentIntentId: intent,
