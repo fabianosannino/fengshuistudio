@@ -453,6 +453,79 @@ export async function valoresDoPedido(
   }
 }
 
+/**
+ * Tudo o que a confirmação por e-mail precisa, numa consulta.
+ *
+ * Devolve `null` também quando a confirmação **já saiu** — o chamador não tem
+ * o que decidir nesse caso, e devolver os dados junto com um booleano só
+ * convidaria alguém a ignorá-lo.
+ */
+export async function pedidoParaConfirmar(
+  supabase: SupabaseClient,
+  pedidoId: string,
+  origemDoLog: string
+): Promise<{
+  numero: string
+  tipo: string
+  compradorEmail: string | null
+  totalCentavos: number
+  tokenPublico: string
+  itens: { nome: string; quantidade: number }[]
+  eventos: EventoDoPedido[]
+} | null> {
+  const { data, error } = await supabase
+    .from(PEDIDOS)
+    .select(`numero, tipo, comprador_email, total_centavos, token_publico,
+             confirmacao_enviada_em,
+             pedido_itens(nome, quantidade), pedido_eventos(evento, ocorrido_em)`)
+    .eq('id', pedidoId)
+    .maybeSingle()
+
+  if (error || !data) {
+    logger.error('Não foi possível ler o pedido para confirmação', {
+      origem: origemDoLog, pedidoId, error: error?.message,
+    })
+    return null
+  }
+
+  if (data.confirmacao_enviada_em) return null
+  if (!data.comprador_email) return null
+
+  return {
+    numero: data.numero,
+    tipo: data.tipo,
+    compradorEmail: data.comprador_email,
+    totalCentavos: data.total_centavos ?? 0,
+    tokenPublico: data.token_publico,
+    itens: data.pedido_itens ?? [],
+    eventos: data.pedido_eventos ?? [],
+  }
+}
+
+/**
+ * Marca a confirmação como enviada.
+ *
+ * Depois do envio, não antes: marcar antes trocaria «pode ter chegado duas
+ * vezes» por «pode não ter chegado nenhuma», e o segundo é pior — o comprador
+ * ficaria sem o único link que tem para o pedido.
+ */
+export async function marcarConfirmacaoEnviada(
+  supabase: SupabaseClient,
+  pedidoId: string,
+  origemDoLog: string
+): Promise<void> {
+  const { error } = await supabase
+    .from(PEDIDOS)
+    .update({ confirmacao_enviada_em: new Date().toISOString() })
+    .eq('id', pedidoId)
+
+  if (error) {
+    logger.warn('Não foi possível marcar a confirmação como enviada', {
+      origem: origemDoLog, pedidoId, error: error.message,
+    })
+  }
+}
+
 /** Acha o pedido de uma cobrança, para reembolso e contestação. */
 export async function acharPedidoDoPagamento(
   supabase: SupabaseClient,

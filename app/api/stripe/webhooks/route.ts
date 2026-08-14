@@ -4,16 +4,18 @@
  * POST /api/stripe/webhooks — Receives standard events for connected accounts
  *
  * EVENTS HANDLED:
- * - account.updated            → capacidades/pendências da conta mudaram
- * - checkout.session.completed → a venda da loja foi paga
- * - charge.refunded            → a venda foi reembolsada
- * - charge.dispute.created     → o comprador contestou
+ * - account.updated                          → capacidades/pendências mudaram
+ * - checkout.session.completed               → a venda da loja foi paga
+ * - checkout.session.async_payment_succeeded → o Pix caiu (confirma depois)
+ * - checkout.session.async_payment_failed    → o Pix expirou sem pagamento
+ * - charge.refunded                          → a venda foi reembolsada
+ * - charge.dispute.created                   → o comprador contestou
  *
  * SETUP:
  * 1. Stripe Dashboard > Developers > Webhooks > + Add endpoint
  * 2. URL: https://yourdomain.com/api/stripe/webhooks
  * 3. Listen to: "Events on Connected accounts"
- * 4. Select os quatro eventos acima
+ * 4. Select os cinco eventos acima
  * 5. Copy signing secret to STRIPE_WEBHOOK_SECRET env var
  *
  * `pago` é escrito **aqui**, e só aqui. Nunca na tela de sucesso: a
@@ -37,6 +39,12 @@ import {
 import {
   registrarLancamentosDaVenda, registrarLancamentosDoReembolso,
 } from '../../../../src/lib/lancamentos-da-venda'
+import {
+  pedidoParaConfirmar, marcarConfirmacaoEnviada, prazoDeArrependimento,
+} from '../../../../src/lib/pedidos-da-loja'
+import { enviarEmail } from '../../../../src/lib/email'
+import { emailDeConfirmacao } from '../../../../src/lib/emails-do-pedido'
+import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -98,13 +106,24 @@ export async function POST(request: Request) {
         break
       }
 
-      case 'checkout.session.completed': {
+      /*
+       * Os dois eventos escrevem `pago`, e é por isso que compartilham o
+       * corpo: com Pix, o comprador termina o checkout **antes** de o dinheiro
+       * cair, e o `completed` chega com `payment_status: 'unpaid'`. A
+       * confirmação vem depois, no `async_payment_succeeded`.
+       *
+       * Sem tratar o segundo, ligar o Pix faria toda venda por esse meio
+       * ficar presa em «aguardando pagamento» para sempre — dinheiro na conta
+       * do consultor e pedido eternamente pendente aqui.
+       */
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const sessao = event.data.object as Stripe.Checkout.Session
 
-        // Sessão expirada ou ainda não paga não vira venda. `unpaid` chega em
-        // fluxos assíncronos (boleto, Pix) e vira `pago` num evento posterior.
+        // A guarda continua valendo, e agora é ela que separa os dois: o
+        // `completed` de um Pix pendente sai por aqui e volta no evento certo.
         if (sessao.payment_status !== 'paid') {
-          logger.info('Sessão concluída sem pagamento confirmado', {
+          logger.info('Sessão concluída sem pagamento confirmado — aguardando confirmação', {
             route: ROUTE, sessionId: sessao.id, status: sessao.payment_status,
           })
           break
@@ -140,9 +159,62 @@ export async function POST(request: Request) {
           }, ROUTE)
         }
 
+        /*
+         * A confirmação por e-mail entrega o **único** link que o comprador
+         * tem para o pedido — ele não tem conta. Até agora esse link só
+         * aparecia na tela pós-pagamento, e quem fechasse a aba ficava sem
+         * nenhuma porta.
+         *
+         * Best-effort declarado: falha aqui não desfaz a venda nem devolve
+         * erro. Responder 500 faria o Stripe reentregar e reprocessar o que já
+         * estava certo — trocaríamos um aviso perdido por trabalho refeito.
+         */
+        const paraConfirmar = await pedidoParaConfirmar(supabase, pedidoId, ROUTE)
+        if (paraConfirmar?.compradorEmail) {
+          const prazo = prazoDeArrependimento(paraConfirmar.tipo, paraConfirmar.eventos)
+          const { assunto, html, texto } = emailDeConfirmacao({
+            numero: paraConfirmar.numero,
+            itens: paraConfirmar.itens,
+            totalCentavos: paraConfirmar.totalCentavos,
+            arrependimentoAte: prazo ? prazo.toISOString() : null,
+            linkDoPedido: `${origemDaAplicacao(request)}/pedido/${paraConfirmar.tokenPublico}`,
+          })
+
+          const enviado = await enviarEmail(
+            { para: paraConfirmar.compradorEmail, assunto, html, texto }, ROUTE
+          )
+          // Só marca depois de sair. Marcar antes trocaria «pode ter chegado
+          // duas vezes» por «pode não ter chegado nenhuma».
+          if (enviado) await marcarConfirmacaoEnviada(supabase, pedidoId, ROUTE)
+        }
+
         logger.info('Venda da loja registrada', {
           route: ROUTE, pedidoId, contaConectada: event.account ?? null,
         })
+        break
+      }
+
+      case 'checkout.session.async_payment_failed': {
+        /*
+         * O Pix foi gerado e expirou sem pagamento.
+         *
+         * Vira `cancelado`, e não silêncio: o pedido ficaria em «aguardando
+         * pagamento» indefinidamente, e o vendedor não teria como distinguir
+         * «vai cair» de «não vem mais». Carrinho abandonado continua sendo
+         * ausência de evento; isto aqui é um fim conhecido.
+         */
+        const sessao = event.data.object as Stripe.Checkout.Session
+        const pedidoId = await acharPedidoDaSessao(supabase, sessao, ROUTE)
+        if (!pedidoId) break
+
+        await registrarEvento(supabase, {
+          pedidoId,
+          evento: 'cancelado',
+          origem: 'webhook_stripe',
+          referencia: event.id,
+          ocorridoEm: new Date(event.created * 1000).toISOString(),
+          motivo: 'Pagamento assíncrono não confirmado no prazo',
+        }, ROUTE)
         break
       }
 

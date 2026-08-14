@@ -22,6 +22,7 @@ import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { origemDaAplicacao, ehCaminhoRelativoSeguro } from '../../../../src/lib/auth-rotas'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { criarPedidoIniciado, anotarSessaoDoPedido } from '../../../../src/lib/pedidos-da-loja'
+import { metodosDaConta } from '../../../../src/lib/metodos-de-pagamento'
 
 // Percentual que a plataforma retém em cada venda (direct charge).
 const APPLICATION_FEE_PERCENT = 10
@@ -195,8 +196,17 @@ export async function POST(request: Request) {
       )
     }
 
+    /*
+     * Pix quando a conta souber recebê-lo. A tarifa do cartão é
+     * 3,99% + R$ 0,39, e a parte fixa chega a 43% numa venda de R$ 1 — Pix não
+     * tem esse piso. Ver `metodos-de-pagamento.ts` para por que a lista é
+     * consultada em vez de declarada.
+     */
+    const metodos = await metodosDaConta(accountId, '/api/stripe/checkout')
+
     const session = await stripeClient.checkout.sessions.create({
       line_items: [{ price: priceId, quantity }],
+      payment_method_types: metodos,
       payment_intent_data: {
         application_fee_amount: applicationFee,
       },
