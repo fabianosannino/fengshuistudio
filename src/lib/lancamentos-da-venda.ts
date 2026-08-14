@@ -19,7 +19,7 @@
 import type Stripe from 'stripe'
 import stripeClient from './stripe'
 import { logger } from './logger'
-import { registrarLancamento } from './lancamentos-do-pedido'
+import { registrarLancamento, type ParteDoPedido } from './lancamentos-do-pedido'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
@@ -35,6 +35,16 @@ export async function registrarLancamentosDaVenda(
     taxaPlataformaCentavos: number
     paymentIntent: string | null
     contaConectada: string | null
+    /**
+     * Quem vendeu — e, portanto, quem recebe e de quem sai a tarifa.
+     *
+     * Na fase 2 a plataforma passou a vender bem próprio, e sem este parâmetro
+     * o razão diria que o dinheiro de uma venda nossa foi para «consultor».
+     * O saldo continuaria fechando (ele fecha por construção), e a resposta a
+     * «quanto os consultores receberam?» é que ficaria errada — silenciosamente,
+     * porque nada quebra.
+     */
+    vendedor: VendedorDaVenda
     referencia: string
     ocorridoEm: string
   },
@@ -50,17 +60,20 @@ export async function registrarLancamentosDaVenda(
 
   await registrarLancamento(supabase, {
     ...comum, tipo: 'produto', valorCentavos: produto,
-    pagador: 'comprador', recebedor: 'consultor',
+    pagador: 'comprador', recebedor: venda.vendedor,
   }, origemDoLog)
 
   await registrarLancamento(supabase, {
     ...comum, tipo: 'frete', valorCentavos: venda.freteCentavos,
-    pagador: 'comprador', recebedor: 'consultor',
+    pagador: 'comprador', recebedor: venda.vendedor,
   }, origemDoLog)
 
+  // Valor zero não vira linha (ver `registrarLancamento`), e é assim que a
+  // venda própria fica **sem** lançamento de comissão: não existe comissão a
+  // reter de si mesmo. Ausência ≠ zero, também no razão.
   await registrarLancamento(supabase, {
     ...comum, tipo: 'comissao_plataforma', valorCentavos: venda.taxaPlataformaCentavos,
-    pagador: 'consultor', recebedor: 'plataforma',
+    pagador: venda.vendedor, recebedor: 'plataforma',
   }, origemDoLog)
 
   const tarifa = await tarifaDoGateway(venda.paymentIntent, venda.contaConectada, origemDoLog)
@@ -68,10 +81,13 @@ export async function registrarLancamentosDaVenda(
 
   await registrarLancamento(supabase, {
     ...comum, tipo: 'tarifa_gateway', valorCentavos: tarifa,
-    pagador: 'consultor', recebedor: 'gateway',
+    pagador: venda.vendedor, recebedor: 'gateway',
     motivo: 'Tarifa do Stripe, retida do saldo do vendedor',
   }, origemDoLog)
 }
+
+/** Quem fica com o dinheiro da venda: o consultor ou a própria plataforma. */
+export type VendedorDaVenda = Extract<ParteDoPedido, 'consultor' | 'plataforma'>
 
 /**
  * A tarifa efetivamente descontada, lida da `balance_transaction`.
@@ -84,13 +100,22 @@ async function tarifaDoGateway(
   contaConectada: string | null,
   origemDoLog: string
 ): Promise<number | null> {
-  if (!paymentIntent || !contaConectada) return null
+  if (!paymentIntent) return null
 
   try {
+    /*
+     * Sem conta conectada, a cobrança é da própria plataforma — venda de bem
+     * próprio. A `balance_transaction` mora na conta onde o dinheiro caiu, e
+     * pedi-la com `stripeAccount` de uma conta que não existe devolveria erro.
+     *
+     * Antes, `contaConectada` nula abortava a busca e o razão saía sem a
+     * tarifa. Ficaria calado justo na venda em que a tarifa é a **única**
+     * dedução, porque não há comissão nenhuma para explicar a diferença.
+     */
     const intent = await stripeClient.paymentIntents.retrieve(
       paymentIntent,
       { expand: ['latest_charge.balance_transaction'] },
-      { stripeAccount: contaConectada }
+      contaConectada ? { stripeAccount: contaConectada } : undefined
     )
 
     const cobranca = intent.latest_charge
@@ -129,6 +154,8 @@ export async function registrarLancamentosDoReembolso(
   reembolso: {
     pedidoId: string
     cobranca: Stripe.Charge
+    /** Quem devolve. Numa venda própria somos nós dos dois lados. */
+    vendedor: VendedorDaVenda
     referencia: string
     ocorridoEm: string
   },
@@ -143,7 +170,7 @@ export async function registrarLancamentosDoReembolso(
 
   await registrarLancamento(supabase, {
     ...comum, tipo: 'reembolso', valorCentavos: reembolso.cobranca.amount_refunded ?? 0,
-    pagador: 'consultor', recebedor: 'comprador',
+    pagador: reembolso.vendedor, recebedor: 'comprador',
   }, origemDoLog)
 
   const devolvida = await comissaoDevolvida(reembolso.cobranca, origemDoLog)
@@ -151,7 +178,7 @@ export async function registrarLancamentosDoReembolso(
 
   await registrarLancamento(supabase, {
     ...comum, tipo: 'estorno_comissao', valorCentavos: devolvida,
-    pagador: 'plataforma', recebedor: 'consultor',
+    pagador: 'plataforma', recebedor: reembolso.vendedor,
     motivo: 'A plataforma não retém comissão de venda desfeita',
   }, origemDoLog)
 }

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
 import AppShell from '../components/AppShell'
+import VitrineDaPlataforma from '../components/VitrineDaPlataforma'
 import { Sparkle, Gem, Droplets, Leaf, Wind, Flame, Lamp, Lightbulb, Search, type LucideIcon } from 'lucide-react'
 
 interface ProdutoAfiliadoRow {
@@ -246,6 +247,10 @@ function ProdutosContent() {
           Produtos para harmonização e ativação dos setores do Ba Gua
         </p>
       </div>
+
+      {/* O que é nosso vem antes do que é recomendação de terceiro — e some
+          sozinho quando não há nada publicado. */}
+      <VitrineDaPlataforma />
 
       {/* Info banner */}
       <div style={{

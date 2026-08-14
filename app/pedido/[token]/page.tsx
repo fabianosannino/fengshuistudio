@@ -22,7 +22,13 @@ interface PedidoVisivel {
   rotulo: string
   total_centavos: number
   devolvido_centavos: number
-  itens: { nome: string; quantidade: number; preco_unitario_centavos: number }[]
+  itens: {
+    id: string | null
+    nome: string
+    quantidade: number
+    preco_unitario_centavos: number
+    baixavel: boolean
+  }[]
   historico: { evento: string; rotulo: string; ocorrido_em: string | null }[]
   arrependimento_ate: string | null
   pode_pedir_devolucao: boolean
@@ -56,6 +62,8 @@ export default function PedidoDoComprador() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [pedindo, setPedindo] = useState(false)
+  const [baixando, setBaixando] = useState<string | null>(null)
+  const [avisoDoDownload, setAvisoDoDownload] = useState('')
   const [aviso, setAviso] = useState('')
 
   const carregar = useCallback(async () => {
@@ -71,6 +79,33 @@ export default function PedidoDoComprador() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { carregar() }, [carregar])
+
+  /**
+   * Pede a URL assinada e abre.
+   *
+   * O link não vem junto com o pedido: ele é emitido no clique e vale minutos.
+   * Trazê-lo no carregamento da página o deixaria pronto no HTML, com validade
+   * correndo enquanto ninguém clica — e o que ele entrega é o produto inteiro.
+   */
+  async function baixar(itemId: string) {
+    setBaixando(itemId)
+    setAvisoDoDownload('')
+    try {
+      const res = await fetch(
+        `/api/pedidos/arquivo?token=${encodeURIComponent(token)}&item=${encodeURIComponent(itemId)}`
+      )
+      const dados = await res.json().catch(() => ({}))
+      if (!res.ok || !dados.url) {
+        // Aviso próprio, junto dos itens: a falha do download não tem nada a
+        // ver com o bloco de arrependimento, e aparecer lá confundiria.
+        setAvisoDoDownload(dados.error ?? 'Não foi possível preparar o download.')
+        return
+      }
+      window.location.assign(dados.url)
+    } finally {
+      setBaixando(null)
+    }
+  }
 
   async function pedirDevolucao() {
     setPedindo(true)
@@ -133,15 +168,36 @@ export default function PedidoDoComprador() {
 
           <div style={{ marginTop: '20px', borderTop: '1px solid #F3F4F6', paddingTop: '16px' }}>
             {pedido.itens.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                <span style={{ color: '#374151' }}>
-                  {item.nome}{item.quantidade > 1 && ` × ${item.quantidade}`}
-                </span>
-                <span style={{ color: '#0E1B2C', fontWeight: 'bold' }}>
-                  {reais(item.preco_unitario_centavos * item.quantidade)}
-                </span>
+              <div key={item.id ?? i} style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                  <span style={{ color: '#374151' }}>
+                    {item.nome}{item.quantidade > 1 && ` × ${item.quantidade}`}
+                  </span>
+                  <span style={{ color: '#0E1B2C', fontWeight: 'bold' }}>
+                    {reais(item.preco_unitario_centavos * item.quantidade)}
+                  </span>
+                </div>
+                {/* O botão só aparece quando o servidor disse que dá para
+                    baixar — e a rota confere tudo de novo antes de assinar. */}
+                {item.baixavel && item.id && (
+                  <button type="button" disabled={baixando === item.id}
+                    onClick={() => baixar(item.id!)}
+                    style={{
+                      marginTop: '6px', padding: '8px 16px', background: '#2E7D6B',
+                      color: '#fff', border: 'none', borderRadius: '8px',
+                      fontSize: '13px', fontWeight: 'bold',
+                      cursor: baixando === item.id ? 'default' : 'pointer',
+                    }}>
+                    {baixando === item.id ? 'Preparando…' : 'Baixar arquivo'}
+                  </button>
+                )}
               </div>
             ))}
+            {avisoDoDownload && (
+              <p style={{ background: '#FDECEC', color: '#A33A3A', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', margin: '8px 0 0' }}>
+                {avisoDoDownload}
+              </p>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #F3F4F6', paddingTop: '10px', marginTop: '10px', fontSize: '15px' }}>
               <strong style={{ color: '#0E1B2C' }}>Total</strong>
               <strong style={{ color: '#0E1B2C' }}>{reais(pedido.total_centavos)}</strong>

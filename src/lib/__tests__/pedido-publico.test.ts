@@ -137,3 +137,78 @@ describe('tokenNoPrazo', () => {
     expect(tokenNoPrazo('não é data', AGORA)).toBe(false)
   })
 })
+
+describe('itens baixáveis (fase 2)', () => {
+  const DIGITAL: Partial<PedidoBruto> = {
+    tipo: 'bem_proprio_digital',
+    pedido_itens: [{
+      id: 'item-1', nome: 'Guia do Ba Guá', quantidade: 1,
+      preco_unitario_centavos: 2990, produto_id: 'produto-1',
+    }],
+  }
+
+  it('pedido digital pago dá o item como baixável', () => {
+    const visao = pedidoParaOComprador(pedido(DIGITAL), AGORA)
+    expect(visao.itens[0].baixavel).toBe(true)
+    expect(visao.itens[0].id).toBe('item-1')
+  })
+
+  it('serviço nunca é baixável, mesmo pago', () => {
+    // Não há arquivo do outro lado. Mostrar o botão prometeria uma entrega
+    // que não existe — e o clique cairia num 404 sem explicação.
+    expect(pedidoParaOComprador(pedido(), AGORA).itens[0].baixavel).toBe(false)
+  })
+
+  it('reembolsado deixa de ser baixável', () => {
+    // O dinheiro voltou; o acesso acompanha. É `pedidoRendeuReceita` que
+    // responde isso, e não uma coluna de liberação que envelheceria sozinha.
+    const visao = pedidoParaOComprador(pedido({
+      ...DIGITAL,
+      pedido_eventos: [
+        { evento: 'pago', ocorrido_em: '2026-08-13T15:45:55Z' },
+        { evento: 'reembolsado', ocorrido_em: '2026-08-14T10:00:00Z' },
+      ],
+    }), AGORA)
+    expect(visao.itens[0].baixavel).toBe(false)
+  })
+
+  it('devolução solicitada AINDA é baixável', () => {
+    // Declarado de propósito: o pedido de devolução é pendência do vendedor,
+    // não o fim da compra. Enquanto o dinheiro não voltou, ele continua tendo
+    // o que pagou. É o estorno que encerra o acesso.
+    const visao = pedidoParaOComprador(pedido({
+      ...DIGITAL,
+      pedido_eventos: [
+        { evento: 'pago', ocorrido_em: '2026-08-13T15:45:55Z' },
+        { evento: 'devolucao_solicitada', ocorrido_em: '2026-08-14T10:00:00Z' },
+      ],
+    }), AGORA)
+    expect(visao.itens[0].baixavel).toBe(true)
+  })
+
+  it('não pago não é baixável', () => {
+    const visao = pedidoParaOComprador(pedido({
+      ...DIGITAL,
+      pedido_eventos: [{ evento: 'iniciado', ocorrido_em: '2026-08-13T15:45:15Z' }],
+    }), AGORA)
+    expect(visao.itens[0].baixavel).toBe(false)
+  })
+
+  it('item sem produto do catálogo não é baixável', () => {
+    // Venda antiga, ou item que veio do Stripe do consultor: não há de onde
+    // tirar o arquivo.
+    const visao = pedidoParaOComprador(pedido({
+      ...DIGITAL,
+      pedido_itens: [{ id: 'item-1', nome: 'X', quantidade: 1, preco_unitario_centavos: 100 }],
+    }), AGORA)
+    expect(visao.itens[0].baixavel).toBe(false)
+  })
+
+  it('digital pago conta o arrependimento do pagamento', () => {
+    // O par do teste em `pedidos-da-loja`: aqui é a tela que precisa mostrar
+    // a data, e sem o marco certo ela mostraria «—» para sempre.
+    const visao = pedidoParaOComprador(pedido(DIGITAL), AGORA)
+    expect(visao.arrependimento_ate).toBe('2026-08-20T15:45:55.000Z')
+    expect(visao.pode_pedir_devolucao).toBe(true)
+  })
+})

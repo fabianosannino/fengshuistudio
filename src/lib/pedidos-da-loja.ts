@@ -100,6 +100,17 @@ export function estadoDoPedido(eventos: EventoDoPedido[]): EstadoDoPedido {
 const PRAZO_DE_ARREPENDIMENTO_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
+ * Tipos cujo prazo começa na **entrega**, porque há uma caixa chegando.
+ *
+ * O que fica de fora — serviço e bem digital — conta do pagamento, e a
+ * diferença não é de estilo: um e-book tratado como bem físico esperaria um
+ * evento `entregue` que nunca acontece, o prazo ficaria `null` para sempre e o
+ * comprador nunca conseguiria pedir devolução. O direito existiria no CDC e
+ * não existiria no app.
+ */
+const TIPOS_COM_REMESSA = new Set(['bem_proprio_fisico', 'bem_de_terceiro'])
+
+/**
  * Até quando o comprador pode se arrepender — derivado, nunca gravado.
  *
  * A origem da contagem muda com o que foi vendido, e a diferença é jurídica,
@@ -119,7 +130,7 @@ export function prazoDeArrependimento(
   tipo: string,
   eventos: EventoDoPedido[]
 ): Date | null {
-  const marco = tipo === 'bem_proprio' || tipo === 'bem_de_terceiro'
+  const marco = TIPOS_COM_REMESSA.has(tipo)
     ? eventos.find(e => e.evento === 'entregue')
     : eventos.find(e => e.evento === 'pago')
 
@@ -179,8 +190,11 @@ const EVENTOS = 'pedido_eventos'
 /** Código do Postgres para violação de unicidade. */
 const VIOLACAO_DE_UNICIDADE = '23505'
 
+export type TipoDePedido =
+  | 'servico' | 'bem_proprio_digital' | 'bem_proprio_fisico' | 'bem_de_terceiro'
+
 export interface PedidoParaCriar {
-  tipo: 'servico' | 'bem_proprio' | 'bem_de_terceiro'
+  tipo: TipoDePedido
   vendedorTipo: 'consultor' | 'plataforma' | 'terceiro'
   vendedorPerfilId?: string | null
   stripeAccountId?: string | null
@@ -192,6 +206,12 @@ export interface PedidoParaCriar {
     precoUnitarioCentavos: number
     quantidade: number
     stripePriceId?: string | null
+    /**
+     * Só no catálogo próprio, e só para saber **qual arquivo entregar**. O
+     * item continua sendo fotografia: nome e preço permanecem copiados, e
+     * nenhuma tela lê o produto vivo para exibir o que foi comprado.
+     */
+    produtoId?: string | null
   }
 }
 
@@ -243,6 +263,7 @@ export async function criarPedidoIniciado(
     preco_unitario_centavos: pedido.item.precoUnitarioCentavos,
     quantidade: pedido.item.quantidade,
     stripe_price_id: pedido.item.stripePriceId ?? null,
+    produto_id: pedido.item.produtoId ?? null,
   })
 
   if (erroDoItem) {
@@ -431,10 +452,16 @@ export async function valoresDoPedido(
   supabase: SupabaseClient,
   pedidoId: string,
   origemDoLog: string
-): Promise<{ total: number; frete: number; taxa: number; contaConectada: string | null } | null> {
+): Promise<{
+  total: number
+  frete: number
+  taxa: number
+  contaConectada: string | null
+  vendedor: 'consultor' | 'plataforma'
+} | null> {
   const { data, error } = await supabase
     .from(PEDIDOS)
-    .select('total_centavos, frete_centavos, taxa_plataforma_centavos, stripe_account_id')
+    .select('total_centavos, frete_centavos, taxa_plataforma_centavos, stripe_account_id, vendedor_tipo')
     .eq('id', pedidoId)
     .maybeSingle()
 
@@ -450,6 +477,10 @@ export async function valoresDoPedido(
     frete: data.frete_centavos ?? 0,
     taxa: data.taxa_plataforma_centavos ?? 0,
     contaConectada: data.stripe_account_id ?? null,
+    // `terceiro` ainda não existe como vendedor (fase 4). Até lá, tudo o que
+    // não é consultor é venda nossa — e o razão precisa de uma das quatro
+    // partes, não de um rótulo novo por fase.
+    vendedor: data.vendedor_tipo === 'consultor' ? 'consultor' : 'plataforma',
   }
 }
 

@@ -1,8 +1,9 @@
 # Modelo da loja — documento de trabalho
 
-**Estado:** modelo fechado nas três decisões de produto (seção 10). A **fase 0
-está implementada** — ver ADR 0030 e a migration `20260813050000`. As fases 1 a
-5 seguem como plano.
+**Estado:** modelo fechado nas três decisões de produto (seção 10). As **fases
+0, 1 e 2 estão implementadas** — ver ADR 0030 (o pedido como máquina de
+estados) e ADR 0031 (entrega digital derivada). As fases 3 a 5 seguem como
+plano.
 
 Este documento existe porque a loja é a próxima coisa a nascer, e porque o
 projeto passou o dia 13/08 consertando defeitos de uma forma só: **um fato
@@ -511,7 +512,7 @@ não é código:
 |---|---|---|
 | **0** ✅ | registrar a venda que já acontece: webhook `checkout.session.completed` da conta conectada → `pedidos` + `pedido_eventos` | conserta o defeito da seção 0. Não dependia de decisão nenhuma. **Feito** — ADR 0030 |
 | **1** ✅ | reconciliação da loja; `pedido_lancamentos`; painel de vendas do consultor; página do pedido para o comprador por token; `devolucao_solicitada` e o prazo derivado | era a venda que já existia, mais os requisitos de 12-A e 12-B. **Feita** |
-| **2** | bem próprio **digital** | testa o trilho «plataforma é a vendedora» sem esbarrar em fiscal |
+| **2** ✅ | bem próprio **digital** | testava o trilho «plataforma é a vendedora» sem esbarrar em fiscal. **Feita** — ADR 0031 |
 | **3** | bem próprio **físico** | aqui entram emissor de NF-e, estoque, frete e logística reversa |
 | **4** | terceiro: indicação primeiro, marketplace depois | indicação é barata; marketplace traz a responsabilidade solidária |
 | **5** | afiliados | usa `comissoes`, que já existe desde a fase 1 |

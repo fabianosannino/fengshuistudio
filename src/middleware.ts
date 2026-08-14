@@ -1,26 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createSupabaseMiddlewareClient } from './lib/supabase-server'
-import { ROTA_CALLBACK_AUTH, ehCaminhoRelativoSeguro, ehRotaDeMarketing } from './lib/auth-rotas'
-
-// `/auth/callback` é público por necessidade: é ele quem cria a sessão a
-// partir do link de e-mail. Exigir sessão ali tornaria o fluxo impossível.
-const PUBLIC_ROUTES = ['/', '/login', '/esqueci-senha', '/redefinir-senha', '/landing', '/termos', '/privacidade', ROTA_CALLBACK_AUTH]
-
-// APIs públicas: webhooks do Stripe (chegam sem cookie de sessão e validam
-// assinatura na própria rota) e as APIs da loja pública (compradores
-// anônimos). As demais rotas /api exigem sessão e respondem 401 — nunca
-// redirect, que quebraria fetch() e integrações externas.
-const PUBLIC_API_PREFIXES = ['/api/stripe/webhooks', '/api/stripe/checkout', '/api/stripe/products']
+import { ehCaminhoRelativoSeguro } from './lib/auth-rotas'
+import { ehPaginaPublica, ehApiPublica } from './lib/rotas-publicas'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public routes
-  if (PUBLIC_ROUTES.includes(pathname) || ehRotaDeMarketing(pathname) || pathname.startsWith('/loja') || pathname === '/consultores') {
-    return NextResponse.next()
-  }
-
-  if (PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  // As listas moram em `rotas-publicas.ts` — aqui elas não tinham teste, e o
+  // que faltava nelas era a loja inteira. Ver a nota naquele arquivo.
+  if (ehPaginaPublica(pathname) || ehApiPublica(pathname)) {
     return NextResponse.next()
   }
 

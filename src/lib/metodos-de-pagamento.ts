@@ -66,3 +66,17 @@ export async function metodosDaConta(
     return SO_CARTAO
   }
 }
+
+/**
+ * ## E na venda de bem próprio, que cobra na nossa conta?
+ *
+ * Ali a lista **não é declarada**: `payment_method_types` é omitido, e o
+ * Stripe usa os métodos que a nossa conta tem habilitados no painel.
+ *
+ * A diferença de tratamento tem motivo. Aqui a lista precisa ser consultada
+ * porque a conta é de outra pessoa — declarar `pix` numa conta sem a
+ * capacidade faz o Stripe **recusar a criação da sessão**, e o checkout
+ * quebraria inteiro, cartão incluído. Na nossa conta, quem liga o Pix é quem
+ * mantém o painel: omitir deixa a decisão onde ela já é tomada, e ativar o Pix
+ * passa a valer sem precisar de deploy.
+ */

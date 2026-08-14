@@ -33,17 +33,10 @@ import {
   reivindicarEvento, marcarProcessado, marcarFalha, objetoDoEvento,
 } from '../../../../src/lib/eventos-stripe'
 import {
-  acharPedidoDaSessao, acharPedidoDoPagamento, confirmarPagamento, registrarEvento,
-  valoresDoPedido,
+  acharPedidoDaSessao, acharPedidoDoPagamento, registrarEvento, valoresDoPedido,
 } from '../../../../src/lib/pedidos-da-loja'
-import {
-  registrarLancamentosDaVenda, registrarLancamentosDoReembolso,
-} from '../../../../src/lib/lancamentos-da-venda'
-import {
-  pedidoParaConfirmar, marcarConfirmacaoEnviada, prazoDeArrependimento,
-} from '../../../../src/lib/pedidos-da-loja'
-import { enviarEmail } from '../../../../src/lib/email'
-import { emailDeConfirmacao } from '../../../../src/lib/emails-do-pedido'
+import { registrarLancamentosDoReembolso } from '../../../../src/lib/lancamentos-da-venda'
+import { confirmarVendaDaLoja } from '../../../../src/lib/venda-da-loja'
 import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
@@ -129,68 +122,18 @@ export async function POST(request: Request) {
           break
         }
 
-        const pedidoId = await acharPedidoDaSessao(supabase, sessao, ROUTE)
-        if (!pedidoId) break
-
-        await confirmarPagamento(supabase, {
-          pedidoId,
-          compradorEmail: sessao.customer_details?.email ?? sessao.customer_email ?? null,
-          compradorNome: sessao.customer_details?.name ?? null,
-          paymentIntent: typeof sessao.payment_intent === 'string' ? sessao.payment_intent : null,
-          totalCentavos: sessao.amount_total ?? null,
-          referencia: event.id,
-          ocorridoEm: new Date(event.created * 1000).toISOString(),
-        }, ROUTE)
-
-        // O razão da venda: o que o comprador pagou, o que a plataforma reteve
-        // e o que o gateway ficou. Falha aqui não desfaz o `pago` — o
-        // pagamento é o fato importante, e o razão é reconstituível.
-        const valores = await valoresDoPedido(supabase, pedidoId, ROUTE)
-        if (valores) {
-          await registrarLancamentosDaVenda(supabase, {
-            pedidoId,
-            totalCentavos: sessao.amount_total ?? valores.total,
-            freteCentavos: valores.frete,
-            taxaPlataformaCentavos: valores.taxa,
-            paymentIntent: typeof sessao.payment_intent === 'string' ? sessao.payment_intent : null,
-            contaConectada: event.account ?? valores.contaConectada,
-            referencia: event.id,
-            ocorridoEm: new Date(event.created * 1000).toISOString(),
-          }, ROUTE)
-        }
-
         /*
-         * A confirmação por e-mail entrega o **único** link que o comprador
-         * tem para o pedido — ele não tem conta. Até agora esse link só
-         * aparecia na tela pós-pagamento, e quem fechasse a aba ficava sem
-         * nenhuma porta.
-         *
-         * Best-effort declarado: falha aqui não desfaz a venda nem devolve
-         * erro. Responder 500 faria o Stripe reentregar e reprocessar o que já
-         * estava certo — trocaríamos um aviso perdido por trabalho refeito.
+         * O desfecho vive em `venda-da-loja.ts`, compartilhado com o webhook
+         * da conta da plataforma: a partir da fase 2 há duas contas cobrando,
+         * e o que acontece quando o dinheiro entra é o mesmo nas duas.
          */
-        const paraConfirmar = await pedidoParaConfirmar(supabase, pedidoId, ROUTE)
-        if (paraConfirmar?.compradorEmail) {
-          const prazo = prazoDeArrependimento(paraConfirmar.tipo, paraConfirmar.eventos)
-          const { assunto, html, texto } = emailDeConfirmacao({
-            numero: paraConfirmar.numero,
-            itens: paraConfirmar.itens,
-            totalCentavos: paraConfirmar.totalCentavos,
-            arrependimentoAte: prazo ? prazo.toISOString() : null,
-            linkDoPedido: `${origemDaAplicacao(request)}/pedido/${paraConfirmar.tokenPublico}`,
-          })
-
-          const enviado = await enviarEmail(
-            { para: paraConfirmar.compradorEmail, assunto, html, texto }, ROUTE
-          )
-          // Só marca depois de sair. Marcar antes trocaria «pode ter chegado
-          // duas vezes» por «pode não ter chegado nenhuma».
-          if (enviado) await marcarConfirmacaoEnviada(supabase, pedidoId, ROUTE)
-        }
-
-        logger.info('Venda da loja registrada', {
-          route: ROUTE, pedidoId, contaConectada: event.account ?? null,
-        })
+        await confirmarVendaDaLoja(supabase, {
+          sessao,
+          eventoId: event.id,
+          eventoEm: event.created,
+          contaDoEvento: event.account ?? null,
+          origemDaApp: origemDaAplicacao(request),
+        }, ROUTE)
         break
       }
 
@@ -253,9 +196,14 @@ export async function POST(request: Request) {
         // Só o reembolso mexe no razão. A contestação ainda não moveu dinheiro
         // — o `contestado` é aviso, e o valor só se resolve na disputa.
         if (event.type === 'charge.refunded') {
+          const valores = await valoresDoPedido(supabase, pedidoId, ROUTE)
           await registrarLancamentosDoReembolso(supabase, {
             pedidoId,
             cobranca: cobranca as Stripe.Charge,
+            // Quem devolve é quem recebeu. Sem isto, o estorno de uma venda
+            // própria sairia do saldo de «consultor» no razão — e o prejuízo
+            // da devolução apareceria no bolso errado.
+            vendedor: valores?.vendedor ?? 'consultor',
             referencia: event.id,
             ocorridoEm,
           }, ROUTE)
