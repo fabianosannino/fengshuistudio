@@ -18,12 +18,16 @@ import { Upload, Package, Eye, EyeOff } from 'lucide-react'
 interface ProdutoAdmin {
   id: string
   tipo: string
+  modo_de_venda: 'marketplace' | 'indicacao'
   nome: string
   descricao: string | null
   preco_centavos: number
   ativo: boolean
   arquivo_nome: string | null
   arquivo_bytes: number | null
+  link_externo: string | null
+  parceiro: string | null
+  cliques: number
 }
 
 const ROTA = '/api/admin/produtos'
@@ -43,6 +47,9 @@ export default function AdminProdutos() {
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
   const [preco, setPreco] = useState('')
+  const [indicacao, setIndicacao] = useState(false)
+  const [linkExterno, setLinkExterno] = useState('')
+  const [parceiro, setParceiro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   const [enviandoDe, setEnviandoDe] = useState<string | null>(null)
@@ -77,15 +84,25 @@ export default function AdminProdutos() {
     const res = await fetch(ROTA, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, descricao, preco_centavos: centavos }),
+      body: JSON.stringify({
+        nome, descricao, preco_centavos: centavos,
+        // Indicação é produto de terceiro por definição: o banco recusa a
+        // combinação contrária, e mandar o tipo certo daqui evita que o admin
+        // descubra isso por mensagem de erro.
+        ...(indicacao
+          ? { tipo: 'bem_de_terceiro', modo_de_venda: 'indicacao', link_externo: linkExterno, parceiro }
+          : {}),
+      }),
     })
     const dados = await res.json().catch(() => ({}))
     setSalvando(false)
 
     if (!res.ok) { setAviso(dados.error ?? 'Não foi possível cadastrar.'); return }
 
-    setNome(''); setDescricao(''); setPreco('')
-    setAviso('Produto cadastrado. Envie o arquivo para poder publicá-lo.')
+    setNome(''); setDescricao(''); setPreco(''); setLinkExterno(''); setParceiro('')
+    setAviso(indicacao
+      ? 'Indicação cadastrada. Publique para ela aparecer na loja.'
+      : 'Produto cadastrado. Envie o arquivo para poder publicá-lo.')
     await carregar()
   }
 
@@ -173,8 +190,37 @@ export default function AdminProdutos() {
           <input
             style={{ ...campo, maxWidth: '200px' }} value={preco} inputMode="decimal"
             onChange={e => setPreco(e.target.value)}
-            placeholder="Preço em reais (ex.: 29,90)"
+            placeholder={indicacao ? 'Preço de referência (ex.: 29,90)' : 'Preço em reais (ex.: 29,90)'}
           />
+
+          {/* Indicação muda quem vende, quem entrega e quem responde — por isso
+              é uma escolha explícita no cadastro, não uma consequência de ter
+              preenchido um link. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 12px', fontSize: '14px', color: '#374151' }}>
+            <input type="checkbox" checked={indicacao}
+              onChange={e => setIndicacao(e.target.checked)} />
+            Indicação — quem vende é um parceiro, e a compra acontece no site dele
+          </label>
+
+          {indicacao && (
+            <>
+              <input
+                style={campo} value={parceiro} maxLength={120}
+                onChange={e => setParceiro(e.target.value)}
+                placeholder="Nome do parceiro — aparece como «Vendido por» na loja"
+              />
+              <input
+                style={campo} value={linkExterno} maxLength={500}
+                onChange={e => setLinkExterno(e.target.value)}
+                placeholder="https://loja-do-parceiro.com.br/produto"
+              />
+              <p style={{ color: '#8A6E2F', fontSize: '12px', margin: '0 0 12px', lineHeight: 1.5 }}>
+                O preço aqui é <strong>referência</strong>: quem cobra é o parceiro,
+                e o valor pode mudar lá. O clique é contado para apurar a comissão.
+              </p>
+            </>
+          )}
+
           <button type="button" disabled={salvando || !nome.trim()} onClick={cadastrar} style={{
             padding: '10px 20px', background: '#0E1B2C', color: '#fff', border: 'none',
             borderRadius: '8px', fontSize: '14px', fontWeight: 'bold',
@@ -197,10 +243,17 @@ export default function AdminProdutos() {
                 <strong style={{ color: '#0E1B2C', fontSize: '15px' }}>{produto.nome}</strong>
                 <p style={{ color: '#6B7280', fontSize: '13px', margin: '4px 0 0' }}>
                   {formatarMoeda(produto.preco_centavos / 100)}
-                  {produto.arquivo_nome
-                    ? ` · ${produto.arquivo_nome} ${tamanho(produto.arquivo_bytes)}`
-                    : ' · sem arquivo'}
+                  {produto.modo_de_venda === 'indicacao'
+                    ? ` · ${produto.parceiro ?? 'parceiro'} · ${produto.cliques} clique${produto.cliques === 1 ? '' : 's'}`
+                    : produto.arquivo_nome
+                      ? ` · ${produto.arquivo_nome} ${tamanho(produto.arquivo_bytes)}`
+                      : ' · sem arquivo'}
                 </p>
+                {produto.modo_de_venda === 'indicacao' && produto.link_externo && (
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '2px 0 0', wordBreak: 'break-all' }}>
+                    {produto.link_externo}
+                  </p>
+                )}
               </div>
               <span style={{
                 padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
@@ -221,6 +274,9 @@ export default function AdminProdutos() {
                   e.target.value = ''
                 }}
               />
+              {/* Indicação não tem arquivo para entregar: quem entrega é o
+                  parceiro. Mostrar o botão sugeriria uma obrigação nossa. */}
+              {produto.modo_de_venda !== 'indicacao' && (
               <button type="button" onClick={() => inputsDeArquivo.current[produto.id]?.click()}
                 disabled={enviandoDe === produto.id}
                 style={{
@@ -234,6 +290,7 @@ export default function AdminProdutos() {
                   ? 'Enviando…'
                   : produto.arquivo_nome ? 'Substituir arquivo' : 'Enviar arquivo'}
               </button>
+              )}
 
               <button type="button" onClick={() => alternarPublicacao(produto)} style={{
                 display: 'flex', alignItems: 'center', gap: '6px',

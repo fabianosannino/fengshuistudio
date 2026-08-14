@@ -1,9 +1,10 @@
 # Modelo da loja — documento de trabalho
 
 **Estado:** modelo fechado nas três decisões de produto (seção 10). As **fases
-0, 1 e 2 estão implementadas** — ver ADR 0030 (o pedido como máquina de
-estados) e ADR 0031 (entrega digital derivada). As fases 3 a 5 seguem como
-plano.
+0, 1 e 2 estão implementadas**, e a **fase 4 na modalidade indicação** também —
+ver ADR 0030 (o pedido como máquina de estados), ADR 0031 (entrega digital
+derivada) e ADR 0032 (indicação diz quem vende). Ficam de plano: a fase 3
+(físico), o marketplace de terceiro e a fase 5 (afiliados).
 
 Este documento existe porque a loja é a próxima coisa a nascer, e porque o
 projeto passou o dia 13/08 consertando defeitos de uma forma só: **um fato
@@ -514,7 +515,7 @@ não é código:
 | **1** ✅ | reconciliação da loja; `pedido_lancamentos`; painel de vendas do consultor; página do pedido para o comprador por token; `devolucao_solicitada` e o prazo derivado | era a venda que já existia, mais os requisitos de 12-A e 12-B. **Feita** |
 | **2** ✅ | bem próprio **digital** | testava o trilho «plataforma é a vendedora» sem esbarrar em fiscal. **Feita** — ADR 0031 |
 | **3** | bem próprio **físico** | aqui entram emissor de NF-e, estoque, frete e logística reversa |
-| **4** | terceiro: indicação primeiro, marketplace depois | indicação é barata; marketplace traz a responsabilidade solidária |
+| **4** | terceiro: indicação ✅, marketplace depois | **Indicação feita** — ADR 0032. O marketplace, que traz a responsabilidade solidária, segue como plano |
 | **5** | afiliados | usa `comissoes`, que já existe desde a fase 1 |
 
 A fase 3 é a única que trava em coisa de fora — inscrição estadual e emissor

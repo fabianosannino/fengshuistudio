@@ -68,3 +68,11 @@ describe('o que continua fechado', () => {
     expect(ehPaginaPublica('/relatorios/pedido/123')).toBe(false)
   })
 })
+
+describe('indicação (fase 4)', () => {
+  it('o clique que encaminha ao parceiro é público', () => {
+    // Quem clica na vitrine pode não ter conta — é a mesma premissa do resto
+    // da loja, e foi ela que o middleware já defraudou uma vez.
+    expect(ehApiPublica('/api/loja/indicacao')).toBe(true)
+  })
+})

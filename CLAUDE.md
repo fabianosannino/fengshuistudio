@@ -57,6 +57,11 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
   direito sai da posse do token do pedido mais `pedidoRendeuReceita` — nunca de
   uma coluna `download_liberado`, que o reembolso não desfaria. O arquivo mora
   em bucket privado e a URL assinada nasce no clique, com minutos de validade.
+- **Na indicação, quem vende é o parceiro — e a vitrine diz isso** (ADR 0032).
+  `modo_de_venda` mora no produto com constraint bicondicional: indicação exige
+  link externo, marketplace o proíbe. O clique passa por `/api/loja/indicacao`,
+  que recebe o **id do produto** (nunca a URL, que faria um redirecionador
+  aberto) e mede **volume, não identidade**.
 - **Ausência ≠ zero.** Setor não avaliado é `null` e aparece como «—», nunca
   como 0%; item de checklist não verificado não entra no denominador; área da
   Roda sem resposta não vira média. Vale para score, checklist, Roda da Vida e
@@ -128,7 +133,7 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   não score (0025), fila offline da vistoria (0026), estado derivado em vez de
   status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028), plano derivado de
   concessões (0029), pedido como máquina de estados (0030), entrega digital
-  derivada do pedido (0031).
+  derivada do pedido (0031), indicação diz quem vende (0032).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/domain/modelo-da-loja.md` — modelo da loja e as fases. Leia antes de
   mexer em pedido, comissão ou afiliado.
