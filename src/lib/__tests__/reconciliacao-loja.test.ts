@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  compararVendas, resumirDivergenciasDaLoja,
+  compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe,
   type CobrancaNoStripe, type PedidoNoBanco,
 } from '../reconciliacao-loja'
 
@@ -108,5 +108,42 @@ describe('resumirDivergenciasDaLoja', () => {
       []
     ))
     expect(resumo).toEqual({ venda_ausente_no_banco: 2 })
+  })
+})
+
+describe('pedidosParaConferirNoStripe', () => {
+  /*
+   * O ponto cego que existiu: `compararVendas` casa pelo `payment_intent`, e o
+   * `pi_` é escrito pelo webhook. Pedido que perdeu o webhook não tem `pi_` e
+   * não era alcançado por nenhum dos dois lados da comparação.
+   *
+   * Aconteceu em 14/08, na primeira venda de bem próprio: o comprador pagou
+   * R$ 1,00 e o pedido ficou preso em `iniciado` — sem caminho de volta, porque
+   * o Stripe não reenvia o que nunca teve entrega.
+   */
+  const preso = {
+    id: 'p1', numero: 'P260814-E97D12', estado: 'iniciado',
+    stripe_session_id: 'cs_live_1', stripe_payment_intent: null, total_centavos: 100,
+  }
+
+  it('pega o pedido preso em iniciado com sessão', () => {
+    expect(pedidosParaConferirNoStripe([preso]).map(p => p.numero)).toEqual(['P260814-E97D12'])
+  })
+
+  it('ignora quem já tem payment_intent', () => {
+    // Com `pi_`, a comparação normal alcança o pedido — perguntar de novo ao
+    // Stripe seria chamada à toa, e são 50 por execução.
+    expect(pedidosParaConferirNoStripe([
+      { ...preso, stripe_payment_intent: 'pi_1' },
+    ])).toHaveLength(0)
+  })
+
+  it('ignora quem já saiu de iniciado', () => {
+    expect(pedidosParaConferirNoStripe([{ ...preso, estado: 'pago' }])).toHaveLength(0)
+    expect(pedidosParaConferirNoStripe([{ ...preso, estado: 'cancelado' }])).toHaveLength(0)
+  })
+
+  it('ignora pedido sem sessão — não há o que perguntar', () => {
+    expect(pedidosParaConferirNoStripe([{ ...preso, stripe_session_id: null }])).toHaveLength(0)
   })
 })

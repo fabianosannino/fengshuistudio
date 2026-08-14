@@ -25,7 +25,8 @@
 export interface CobrancaNoStripe {
   /** `pi_...` — a chave que liga os dois lados. */
   paymentIntentId: string
-  contaConectada: string
+  /** `null` quando a cobrança foi na conta da plataforma (bem próprio). */
+  contaConectada: string | null
   /** Em centavos, como tudo neste projeto. */
   valorCentavos: number
   /** Quanto já foi devolvido. Zero quando não houve reembolso. */
@@ -39,6 +40,10 @@ export interface PedidoNoBanco {
   id: string
   numero: string
   stripe_payment_intent: string | null
+  /** Gravado antes do redirecionamento — sobrevive ao webhook que não veio. */
+  stripe_session_id?: string | null
+  /** `null` na venda de bem próprio: a cobrança é na conta da plataforma. */
+  stripe_account_id?: string | null
   total_centavos: number
   /** Derivado dos eventos antes de comparar — aqui já chega pronto. */
   estado: string
@@ -163,6 +168,39 @@ export function compararVendas(
   }
 
   return divergencias
+}
+
+/**
+ * O pedido que ficou preso em `iniciado` com uma sessão do Stripe do lado de lá.
+ *
+ * ## O buraco que isto tapa
+ *
+ * `compararVendas` casa os dois lados pelo `payment_intent` — e o
+ * `payment_intent` só é **escrito pelo webhook**. Quando o webhook não chega,
+ * o pedido fica sem `pi_`, e sem `pi_` ele não entra na comparação por nenhum
+ * dos dois lados: não é «venda ausente no banco» (o pedido existe) nem
+ * «pagamento não registrado» (a comparação nunca o alcança).
+ *
+ * Ou seja: a reconciliação existia justamente para o caso «o webhook não
+ * chegou», e era cega para a forma mais comum dele. Aconteceu de verdade em
+ * 14/08 — o destino da conta da plataforma não escutava
+ * `checkout.session.completed`, o comprador pagou R$ 1,00 e o pedido ficou em
+ * `iniciado` para sempre, sem caminho de volta.
+ *
+ * O que sobra para casar nesse estado é o `stripe_session_id`, gravado **antes**
+ * do redirecionamento. Daí esta lista: os pedidos que valem uma pergunta ao
+ * Stripe — «esta sessão foi paga?».
+ */
+export function pedidosParaConferirNoStripe<
+  T extends { estado: string; stripe_session_id?: string | null; stripe_payment_intent?: string | null }
+>(pedidos: T[]): T[] {
+  return pedidos.filter(p =>
+    p.estado === 'iniciado'
+    && Boolean(p.stripe_session_id)
+    // Com `pi_` gravado, o pagamento já foi confirmado por aqui e a
+    // comparação normal dá conta — perguntar de novo seria chamada à toa.
+    && !p.stripe_payment_intent
+  )
 }
 
 /** Contagem por tipo, para o relatório caber numa linha de log. */
