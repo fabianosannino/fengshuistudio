@@ -53,6 +53,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { exigirAdmin } from '../../../../src/lib/guarda-admin'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -78,11 +79,12 @@ async function autorizado(request: Request): Promise<boolean> {
   const cabecalho = request.headers.get('authorization')
   if (segredo && cabecalho === `Bearer ${segredo}`) return true
 
+  // Pessoa: sessão + papel + segundo fator. O caminho do agendador acima não
+  // passa por aqui de propósito — um cron não tem app autenticador, e exigir
+  // `aal2` dele quebraria a reconciliação diária sem tornar nada mais seguro.
+  // O que protege aquele caminho é o segredo, e ele é comparado antes.
   const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  return profile?.role === 'admin'
+  return (await exigirAdmin(supabase)).ok
 }
 
 /**

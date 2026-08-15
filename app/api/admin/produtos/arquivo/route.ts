@@ -24,6 +24,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createRouteHandlerClient } from '../../../../../src/lib/supabase-route'
+import { exigirAdmin, respostaDaGuarda } from '../../../../../src/lib/guarda-admin'
 import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../../src/lib/rate-limit'
 import { logger } from '../../../../../src/lib/logger'
@@ -41,18 +42,9 @@ export async function POST(request: Request) {
   if (!success) return NextResponse.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()
-  const { data: { user } } = await sessao.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
-
-  const { data: perfil } = await sessao
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (perfil?.role !== 'admin') {
-    return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
-  }
+  const guarda = await exigirAdmin(sessao)
+  if (!guarda.ok) return respostaDaGuarda(guarda, '/api/admin/produtos/arquivo')
+  const user = guarda.user
 
   let form: FormData
   try { form = await request.formData() } catch {

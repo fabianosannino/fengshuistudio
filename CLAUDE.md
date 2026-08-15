@@ -76,7 +76,15 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
   protegidas por trigger — escrevê-las exige `service_role`.
 - **Autorização**: rotas de usuário derivam ownership do `user.id` autenticado,
   **nunca** de IDs vindos do body (ex.: `account_id`). Rotas `/api/admin/*`
-  re-verificam `role` no servidor.
+  re-verificam `role` no servidor — por `exigirAdmin` de
+  `src/lib/guarda-admin.ts`, que é a guarda única. Não recrie a checagem na
+  rota: ela estava copiada em nove lugares e nenhum conferia segundo fator.
+- **O painel admin exige segundo fator** (ADR 0033). `aal2` em toda página
+  `/admin/*` e rota `/api/admin/*`, conferido **no servidor**. Nível
+  desconhecido não é acesso — `decidirAcesso` devolve `indeterminado`, e
+  `indeterminado` recusa. Desligar é `ADMIN_MFA_OBRIGATORIO=false`, variável de
+  ambiente e nunca botão de painel: um MFA que o painel desliga é um MFA que
+  quem invadiu o painel desliga.
 - **Preço nunca vem do cliente**: checkout lê o `price` da conta conectada.
 - **Uploads**: validar MIME por whitelist e derivar a extensão do MIME
   (`imageExtensionForMime`), nunca de `file.name`.
@@ -133,7 +141,8 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   não score (0025), fila offline da vistoria (0026), estado derivado em vez de
   status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028), plano derivado de
   concessões (0029), pedido como máquina de estados (0030), entrega digital
-  derivada do pedido (0031), indicação diz quem vende (0032).
+  derivada do pedido (0031), indicação diz quem vende (0032), segundo fator no
+  admin com falha fechada (0033).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/domain/modelo-da-loja.md` — modelo da loja e as fases. Leia antes de
   mexer em pedido, comissão ou afiliado.

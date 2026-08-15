@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { exigirAdmin, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 
@@ -22,17 +23,8 @@ function generateKey(): string {
   return segments.join('-')
 }
 
-async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-  if (!profile || profile.role !== 'admin') return null
-  return { user, profile }
-}
+/** A guarda mora em `guarda-admin.ts` — aqui só o apelido local. */
+const verifyAdmin = exigirAdmin
 
 // GET — list keys with optional filters
 export async function GET(request: Request) {
@@ -42,7 +34,7 @@ export async function GET(request: Request) {
 
   const supabase = await createRouteHandlerClient()
   const admin = await verifyAdmin(supabase)
-  if (!admin) return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
 
   const url = new URL(request.url)
   const status = url.searchParams.get('status')
@@ -113,7 +105,7 @@ export async function POST(request: Request) {
 
   const supabase = await createRouteHandlerClient()
   const admin = await verifyAdmin(supabase)
-  if (!admin) return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
 
   let body: { quantidade?: number; plan_type?: string; expires_at?: string | null; note?: string }
   try {
@@ -178,7 +170,7 @@ export async function PATCH(request: Request) {
 
   const supabase = await createRouteHandlerClient()
   const admin = await verifyAdmin(supabase)
-  if (!admin) return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
 
   let body: { id: string; action: string }
   try {

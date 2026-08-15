@@ -18,6 +18,7 @@
 
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { exigirAdmin, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -39,16 +40,8 @@ const TIPOS = ['bem_proprio_digital', 'bem_proprio_fisico', 'bem_de_terceiro'] a
 
 async function somenteAdmin() {
   const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: perfil } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  return perfil?.role === 'admin' ? user : null
+  const guarda = await exigirAdmin(supabase)
+  return guarda.ok ? guarda.user : null
 }
 
 const NEGADO = NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
