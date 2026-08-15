@@ -86,6 +86,61 @@ export async function registrarLancamentosDaVenda(
   }, origemDoLog)
 }
 
+/**
+ * Escreve a tarifa que faltou no razão de uma venda já confirmada.
+ *
+ * ## Por que existe uma segunda chance
+ *
+ * `registrarLancamentosDaVenda` roda dentro do webhook, segundos depois do
+ * pagamento, e às vezes o Stripe devolve a cobrança sem a
+ * `balance_transaction` — o objeto existe, a leitura não o alcança. Medido em
+ * 15/08 em duas de cinco vendas próprias.
+ *
+ * O webhook não tem como vencer essa corrida sem atrasar o registro do
+ * pagamento, que é o fato que importa. Então a completude do razão vira
+ * trabalho de quem roda depois: a reconciliação chama isto.
+ *
+ * ## O que **não** faz
+ *
+ * Não recalcula nem corrige linha existente — só acrescenta a que falta. A
+ * tabela é append-only por trigger, e reescrever razão seria trocar o fato
+ * registrado pela nossa leitura de hoje.
+ *
+ * Devolve `true` quando o razão ficou completo, e `false` quando a tarifa
+ * continua indisponível — e aí a lacuna segue declarada no log, como antes.
+ */
+export async function completarTarifaDaVenda(
+  supabase: SupabaseClient,
+  pedido: {
+    pedidoId: string
+    paymentIntent: string
+    contaConectada: string | null
+    vendedor: VendedorDaVenda
+    ocorridoEm?: string | null
+  },
+  origemDoLog: string
+): Promise<boolean> {
+  const tarifa = await tarifaDoGateway(pedido.paymentIntent, pedido.contaConectada, origemDoLog)
+  if (tarifa === null) return false
+
+  return registrarLancamento(supabase, {
+    pedidoId: pedido.pedidoId,
+    tipo: 'tarifa_gateway',
+    valorCentavos: tarifa,
+    pagador: pedido.vendedor,
+    recebedor: 'gateway',
+    origem: 'webhook_stripe',
+    /*
+     * A referência amarra o conserto à cobrança e é o que torna a execução de
+     * amanhã inofensiva: o índice de unicidade recusa o segundo insert com a
+     * mesma referência dentro do tipo.
+     */
+    referencia: `reconciliacao:tarifa:${pedido.paymentIntent}`,
+    ocorridoEm: pedido.ocorridoEm ?? null,
+    motivo: 'Tarifa do Stripe, retida do saldo do vendedor — completada pela reconciliação',
+  }, origemDoLog)
+}
+
 /** Quem fica com o dinheiro da venda: o consultor ou a própria plataforma. */
 export type VendedorDaVenda = Extract<ParteDoPedido, 'consultor' | 'plataforma'>
 

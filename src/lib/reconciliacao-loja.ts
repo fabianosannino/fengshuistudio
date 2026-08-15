@@ -45,8 +45,18 @@ export interface PedidoNoBanco {
   /** `null` na venda de bem próprio: a cobrança é na conta da plataforma. */
   stripe_account_id?: string | null
   total_centavos: number
+  /** Quem vendeu — decide de quem sai a tarifa ao completar o razão. */
+  vendedor_tipo?: string | null
   /** Derivado dos eventos antes de comparar — aqui já chega pronto. */
   estado: string
+  /**
+   * Os **tipos** já lançados no razão deste pedido.
+   *
+   * Só os tipos, não os valores: completar o razão é responder «o que falta?»,
+   * e carregar o razão inteiro de mil pedidos para uma pergunta de presença
+   * seria pagar caro por uma resposta booleana.
+   */
+  lancamentos?: string[]
 }
 
 export type TipoDeDivergenciaDaLoja =
@@ -236,6 +246,63 @@ export function pedidosParaConferirNoStripe<
     // Com `pi_` gravado, o pagamento já foi confirmado por aqui e a
     // comparação normal dá conta — perguntar de novo seria chamada à toa.
     && !p.stripe_payment_intent
+  )
+}
+
+/**
+ * Estados em que a cobrança **aconteceu** — mesmo que tenha sido desfeita.
+ *
+ * `reembolsado` entra, e é o ponto: a tarifa do gateway não volta no
+ * reembolso. O lançamento dela continua devido, e é justamente ele que faz o
+ * saldo do vendedor ficar negativo num pedido devolvido — o número que
+ * `liquidoDoConsultor` existe para mostrar.
+ */
+const COBRANCA_ACONTECEU = new Set([...AFIRMA_PAGAMENTO, 'reembolsado'])
+
+/**
+ * Pedidos pagos cujo razão está sem a linha de tarifa do gateway.
+ *
+ * ## Por que a reconciliação, e não o webhook
+ *
+ * O webhook lê a tarifa da `balance_transaction` logo depois do pagamento — e
+ * às vezes o Stripe devolve a cobrança **sem** ela. Medido em 15/08: no pedido
+ * `P260815-AF630A` a transação `txn_3U4p3B…` existia com `fee: 43` desde
+ * 21:23:34, e a leitura das 21:23:37 não a enxergou. Três segundos depois do
+ * fato, e ainda assim ausente.
+ *
+ * Não é «ainda não foi criada»: é consistência eventual do lado de lá. Duas
+ * das cinco vendas próprias caíram nisso.
+ *
+ * Esperar dentro do webhook seria atrasar o registro do **pagamento** — o fato
+ * que importa — para tentar ganhar uma corrida contra a infraestrutura de
+ * outra empresa, sem garantia de ganhar. Aqui não há pressa: a execução roda
+ * depois, quantas vezes for preciso, e o `registrarLancamento` é idempotente
+ * por referência.
+ *
+ * É a divisão que `lancamentos-do-pedido.ts` já declarava: «lançamento
+ * faltando não é detectável só com o razão — exige comparar com o Stripe, o
+ * que é reconciliação, e é trabalho de outro módulo».
+ *
+ * **Lacuna declarada:** cobrança com tarifa genuinamente zero seria listada em
+ * toda execução, porque valor zero não vira linha (ausência ≠ zero) e portanto
+ * nunca «completa». Custa uma chamada por execução e não corrompe nada. Em BRL
+ * no cartão não acontece; se um dia acontecer, aparece como um pedido teimoso
+ * no relatório, não como número errado.
+ */
+export function pedidosComRazaoIncompleto<
+  T extends {
+    estado: string
+    stripe_payment_intent?: string | null
+    /** Os tipos já lançados neste pedido. */
+    lancamentos?: string[] | null
+  }
+>(pedidos: T[]): T[] {
+  return pedidos.filter(p =>
+    COBRANCA_ACONTECEU.has(p.estado)
+    // Sem `pi_` não há o que perguntar ao Stripe. Esse pedido é caso da
+    // varredura de sessões, que roda antes e pode dar o `pi_` a ele.
+    && Boolean(p.stripe_payment_intent)
+    && !(p.lancamentos ?? []).includes('tarifa_gateway')
   )
 }
 

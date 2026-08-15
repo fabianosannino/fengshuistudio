@@ -9,7 +9,47 @@ coisas que já têm decisão tomada e data, faltando execução.
 
 ---
 
-## P1 — Rotacionar os segredos expostos
+## ~~P1 — Rotacionar os segredos expostos~~ — FEITO em 15/08
+
+Adiado de manhã, executado à noite. Os dois segredos que vazaram estão mortos:
+
+| segredo | o que foi feito |
+|---|---|
+| `sk_live_…VTf5` | encerrada, depois de a nova entrar e ser conferida |
+| `sk_live_…ofRf` | encerrada — existia viva e **nunca tinha sido usada** |
+| `service_role` legada | desabilitada, junto com o resto do sistema de chaves JWT |
+
+### O que quase deu errado
+
+**A tela do Supabase não desabilita a `service_role` sozinha.** «Disable
+JWT-based API keys» desliga o par — `service_role` **e** `anon` — e a `anon`
+estava em uso em três lugares (`supabase.ts`, `supabase-server.ts`,
+`supabase-route.ts`), que sustentam login e toda leitura autenticada. Clicar
+antes de migrar teria derrubado o app inteiro.
+
+O caminho que funcionou foi migrar as duas para o formato novo
+(`sb_secret_…` e `sb_publishable_…`), que são revogáveis individualmente e não
+exigem tocar no segredo JWT — o que teria derrubado todas as sessões ativas.
+
+**Um deploy falhou no meio**, por `next/font/google` não resolver a fonte
+Fraunces em tempo de build. Nada a ver com as chaves, mas o sintoma era «quebrou
+logo depois de eu mexer nisso». Se tivesse levado à conclusão errada, a
+correção teria sido no lugar errado. Segunda ocorrência no dia; a primeira foi
+no merge do #159.
+
+### O procedimento, para a próxima vez
+
+Vale para qualquer segredo, e a ordem é a lição: **criar → migrar → conferir →
+revogar**. Nunca revogar primeiro. Enquanto a chave velha existe, desfazer é um
+redeploy; depois de revogada, não é.
+
+Conferido com quatro compras reais de R$ 1,00 — a última já com as chaves
+legadas desabilitadas.
+
+---
+
+<details>
+<summary>O registro original, mantido</summary>
 
 **Decisão do dono (15/08): fica para antes do lançamento.**
 
@@ -59,6 +99,8 @@ pagamento e webhook juntos.
 Depois de cada troca, conferir que o webhook do Stripe volta a entregar
 (`eventos_stripe` recebendo linhas) e que uma leitura autenticada qualquer
 continua funcionando.
+
+</details>
 
 ---
 
