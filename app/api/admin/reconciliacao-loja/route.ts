@@ -98,7 +98,17 @@ async function autorizado(request: Request): Promise<boolean> {
  * listar na plataforma não as devolveria. É também o motivo de o custo crescer
  * com o número de consultores, e de haver teto declarado.
  */
-async function cobrancasDoStripe(contas: string[]): Promise<{
+async function cobrancasDoStripe(
+  contas: string[],
+  /*
+   * Os `pi_` que já têm pedido aqui.
+   *
+   * É o segundo sinal de «esta cobrança é da loja», ao lado do carimbo no
+   * metadata — ver `ehCobrancaDaLoja`. Vem antes da varredura de propósito: a
+   * pergunta que ele responde precisa estar respondida na hora de filtrar.
+   */
+  intentsComPedido: ReadonlySet<string>
+): Promise<{
   lista: CobrancaNoStripe[]
   truncado: boolean
 }> {
@@ -142,6 +152,7 @@ async function cobrancasDoStripe(contas: string[]): Promise<{
 
         if (!ehCobrancaDaLoja({
           pedidoIdNoMetadata: carimbo ?? c.metadata?.pedido_id ?? null,
+          temPedidoNoBanco: intentsComPedido.has(intent),
         }, conta)) continue
 
         lista.push({
@@ -308,9 +319,17 @@ async function contasConectadas(): Promise<string[]> {
 }
 
 async function levantar() {
-  const contas = await contasConectadas()
-  const { lista, truncado } = await cobrancasDoStripe(contas)
+  /*
+   * O banco vem primeiro: a varredura precisa saber quais `payment_intent` já
+   * têm pedido daqui para reconhecer as cobranças anteriores ao carimbo.
+   */
   const banco = await pedidosDoBanco()
+  const intentsComPedido = new Set(
+    banco.map(p => p.stripe_payment_intent).filter((pi): pi is string => Boolean(pi))
+  )
+
+  const contas = await contasConectadas()
+  const { lista, truncado } = await cobrancasDoStripe(contas, intentsComPedido)
   const divergencias = compararVendas(lista, banco)
 
   return {
