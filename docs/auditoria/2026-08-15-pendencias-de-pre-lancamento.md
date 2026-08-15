@@ -62,13 +62,29 @@ continua funcionando.
 
 ---
 
-## P2 — `RESEND_API_KEY` com domínio verificado
+## ~~P2 — `RESEND_API_KEY` com domínio verificado~~ — FEITO em 15/08
 
-Sem isso o comprador **não recebe o link do pedido**, e como ele não tem conta,
-esse link é o único acesso que ele tem. Hoje a loja depende de o comprador não
-fechar a aba.
+O diagnóstico inicial estava errado, e vale registrar por quê: eu supunha que
+faltavam a chave e a verificação do domínio. **As duas já existiam** —
+`collabz.com.br` verificado desde 24/07 e a chave «FengShui» criada em 14/08.
 
-Conferido em 15/08: `confirmacao_enviada_em` está nulo nos seis pedidos.
+O que faltava era só o **remetente**: o código pedia envio de
+`@fengshuistudio.com.br`, que não é o domínio verificado, e o Resend recusava
+com 403 em toda venda:
+
+```
+"The fengshuistudio.com.br domain is not verified"
+```
+
+Como o envio é best-effort declarado, a recusa virava linha de log e o
+comprador ficava sem o link do pedido — o único acesso que ele tem. Corrigido
+no PR #161 (remetente padrão) e no #162 (`Reply-To`).
+
+**Nota que evita o próximo engano:** endereço de envio **não é** caixa postal.
+O Resend manda de qualquer endereço no domínio verificado, exista caixa ou
+não; o que se paga por usuário no provedor é a caixa que **recebe**. Por isso o
+remetente pode ser `nao-responda@` sem custo, e o `Reply-To` aponta para a
+única caixa real (`fsannino@collabz.com.br`).
 
 Decisão de 15/08: o domínio verificado será **`collabz.com.br`**, com endereço
 por produto (`fengshui@…`, `ervatorio@…`), porque um domínio verificado cobre
