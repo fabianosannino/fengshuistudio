@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe, ehCobrancaDaLoja,
+  pedidosComRazaoIncompleto,
   type CobrancaNoStripe, type PedidoNoBanco,
 } from '../reconciliacao-loja'
 
@@ -166,5 +167,62 @@ describe('ehCobrancaDaLoja', () => {
     // Lá não há assinatura nem link de pagamento: o consultor não vende mais
     // nada por aquela conta. Exigir carimbo ali esconderia venda de verdade.
     expect(ehCobrancaDaLoja({ pedidoIdNoMetadata: null }, 'acct_1')).toBe(true)
+  })
+})
+
+describe('pedidosComRazaoIncompleto', () => {
+  /*
+   * O webhook lê a tarifa da `balance_transaction` segundos depois do
+   * pagamento, e às vezes o Stripe devolve a cobrança **sem** ela — não por
+   * não existir, mas por consistência eventual. Medido em 15/08: a transação
+   * do pedido `P260815-AF630A` existia com `fee: 43` três segundos antes da
+   * leitura que não a encontrou. Duas de cinco vendas próprias caíram nisso.
+   *
+   * Esperar dentro do webhook atrasaria o registro do pagamento — o fato que
+   * importa — numa corrida que ele não tem como vencer. Daí esta lista.
+   */
+  const pago = {
+    estado: 'pago',
+    stripe_payment_intent: 'pi_1',
+    lancamentos: ['produto'],
+  }
+
+  it('lista o pedido pago sem a linha de tarifa', () => {
+    expect(pedidosComRazaoIncompleto([pago])).toHaveLength(1)
+  })
+
+  it('ignora quem já tem a tarifa', () => {
+    expect(pedidosComRazaoIncompleto([
+      { ...pago, lancamentos: ['produto', 'tarifa_gateway'] },
+    ])).toHaveLength(0)
+  })
+
+  it('ignora pedido sem `pi_` — não há o que perguntar ao Stripe', () => {
+    // É caso da varredura de sessões, que roda antes e pode dar o `pi_` a ele.
+    expect(pedidosComRazaoIncompleto([{ ...pago, stripe_payment_intent: null }])).toHaveLength(0)
+  })
+
+  it('ignora quem nunca foi pago', () => {
+    expect(pedidosComRazaoIncompleto([{ ...pago, estado: 'iniciado' }])).toHaveLength(0)
+    expect(pedidosComRazaoIncompleto([{ ...pago, estado: 'cancelado' }])).toHaveLength(0)
+  })
+
+  it('inclui o pedido reembolsado — a tarifa não volta', () => {
+    // É justamente ela que faz o saldo do vendedor ficar negativo num pedido
+    // devolvido, que é o número que `liquidoDoConsultor` existe para mostrar.
+    expect(pedidosComRazaoIncompleto([{ ...pago, estado: 'reembolsado' }])).toHaveLength(1)
+  })
+
+  it('inclui os estados de pós-venda', () => {
+    for (const estado of ['preparando', 'enviado', 'entregue', 'devolucao_solicitada']) {
+      expect(pedidosComRazaoIncompleto([{ ...pago, estado }]), estado).toHaveLength(1)
+    }
+  })
+
+  it('trata razão ausente como razão sem tarifa', () => {
+    // Pedido pago que não tem lançamento nenhum: o razão está mais incompleto
+    // ainda, e a tarifa continua devida.
+    expect(pedidosComRazaoIncompleto([{ ...pago, lancamentos: [] }])).toHaveLength(1)
+    expect(pedidosComRazaoIncompleto([{ ...pago, lancamentos: undefined }])).toHaveLength(1)
   })
 })

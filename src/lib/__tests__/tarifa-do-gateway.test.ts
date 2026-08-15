@@ -34,7 +34,7 @@ vi.mock('../lancamentos-do-pedido', () => ({
   registrarLancamento: (...args: unknown[]) => registrarLancamento(...args),
 }))
 
-const { registrarLancamentosDaVenda } = await import('../lancamentos-da-venda')
+const { registrarLancamentosDaVenda, completarTarifaDaVenda } = await import('../lancamentos-da-venda')
 
 const SUPABASE = {} as never
 
@@ -170,5 +170,69 @@ describe('tarifa ausente — a lacuna precisa se anunciar', () => {
     await registrarLancamentosDaVenda(SUPABASE, VENDA, 'teste')
 
     expect(tiposEscritos()).toContain('produto')
+  })
+})
+
+describe('completarTarifaDaVenda — a segunda chance', () => {
+  /*
+   * A reconciliação chama isto para pedidos pagos cujo razão ficou sem a
+   * tarifa. Roda depois, sem pressa, e é onde a corrida contra a consistência
+   * eventual do Stripe deixa de importar.
+   */
+  const PEDIDO = {
+    pedidoId: 'ped-1',
+    paymentIntent: 'pi_123',
+    contaConectada: null,
+    vendedor: 'plataforma' as const,
+  }
+
+  it('escreve a linha que faltou, do vendedor para o gateway', async () => {
+    retrieve.mockResolvedValue({
+      latest_charge: { balance_transaction: { fee: 43, fee_details: [{ type: 'stripe_fee', amount: 43 }] } },
+    })
+
+    expect(await completarTarifaDaVenda(SUPABASE, PEDIDO, 'teste')).toBe(true)
+
+    const linha = registrarLancamento.mock.calls[0][1] as Record<string, unknown>
+    expect(linha.tipo).toBe('tarifa_gateway')
+    expect(linha.valorCentavos).toBe(43)
+    expect(linha.pagador).toBe('plataforma')
+    expect(linha.recebedor).toBe('gateway')
+  })
+
+  it('a referência amarra o conserto à cobrança', async () => {
+    // É o que torna a execução de amanhã inofensiva: o índice de unicidade
+    // recusa o segundo insert com a mesma referência dentro do tipo.
+    retrieve.mockResolvedValue({
+      latest_charge: { balance_transaction: { fee: 43, fee_details: [] } },
+    })
+
+    await completarTarifaDaVenda(SUPABASE, PEDIDO, 'teste')
+
+    const linha = registrarLancamento.mock.calls[0][1] as { referencia: string }
+    expect(linha.referencia).toBe('reconciliacao:tarifa:pi_123')
+  })
+
+  it('devolve false e não escreve quando a tarifa continua indisponível', async () => {
+    // O caso que motivou tudo: a `balance_transaction` ainda não alcançável.
+    // Sem linha inventada, e a lacuna segue declarada no log.
+    retrieve.mockResolvedValue({ latest_charge: { balance_transaction: null } })
+
+    expect(await completarTarifaDaVenda(SUPABASE, PEDIDO, 'teste')).toBe(false)
+    expect(registrarLancamento).not.toHaveBeenCalled()
+    expect(motivoDaLacuna()).toBe('cobrança sem balance_transaction')
+  })
+
+  it('na venda do consultor, a tarifa sai do consultor', async () => {
+    retrieve.mockResolvedValue({
+      latest_charge: { balance_transaction: { fee: 43, fee_details: [] } },
+    })
+
+    await completarTarifaDaVenda(SUPABASE, { ...PEDIDO, vendedor: 'consultor', contaConectada: 'acct_1' }, 'teste')
+
+    const linha = registrarLancamento.mock.calls[0][1] as { pagador: string }
+    expect(linha.pagador).toBe('consultor')
+    // E a consulta vai para a conta conectada, que é onde o dinheiro caiu.
+    expect(retrieve.mock.calls[0][2]).toEqual({ stripeAccount: 'acct_1' })
   })
 })

@@ -59,9 +59,11 @@ import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { estadoDoPedido, registrarEvento } from '../../../../src/lib/pedidos-da-loja'
 import { confirmarVendaDaLoja } from '../../../../src/lib/venda-da-loja'
+import { completarTarifaDaVenda } from '../../../../src/lib/lancamentos-da-venda'
 import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 import {
   compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe, ehCobrancaDaLoja,
+  pedidosComRazaoIncompleto,
   type CobrancaNoStripe, type PedidoNoBanco, type DivergenciaDaLoja,
 } from '../../../../src/lib/reconciliacao-loja'
 
@@ -73,6 +75,8 @@ const LIMITE_POR_CONTA = 200
 const LIMITE_DE_CONTAS = 200
 /** Teto de sessões conferidas por execução — uma chamada ao Stripe cada. */
 const LIMITE_DE_SESSOES = 50
+/** Teto de razões completados por execução — também uma chamada ao Stripe cada. */
+const LIMITE_DE_RAZOES = 50
 
 async function autorizado(request: Request): Promise<boolean> {
   const segredo = process.env.CRON_SECRET
@@ -174,7 +178,8 @@ async function pedidosDoBanco(): Promise<PedidoNoBanco[]> {
   const { data, error } = await supabase
     .from('pedidos')
     .select(`id, numero, stripe_payment_intent, stripe_session_id, stripe_account_id,
-             total_centavos, pedido_eventos(evento, ocorrido_em)`)
+             total_centavos, vendedor_tipo, pedido_eventos(evento, ocorrido_em),
+             pedido_lancamentos(tipo)`)
     .limit(1000)
 
   if (error) {
@@ -189,7 +194,12 @@ async function pedidosDoBanco(): Promise<PedidoNoBanco[]> {
     stripe_session_id: p.stripe_session_id,
     stripe_account_id: p.stripe_account_id,
     total_centavos: p.total_centavos,
+    vendedor_tipo: p.vendedor_tipo,
     estado: estadoDoPedido(p.pedido_eventos ?? []),
+    // Só os tipos: quem completa o razão precisa saber **o que falta**, não
+    // quanto foi lançado. Trazer os valores aqui seria carregar o razão
+    // inteiro de mil pedidos para responder uma pergunta de presença.
+    lancamentos: (p.pedido_lancamentos ?? []).map((l: { tipo: string }) => l.tipo),
   }))
 }
 
@@ -245,6 +255,40 @@ async function confirmarSessoesPagas(
   }
 
   return { verificadas: candidatos.length, confirmados }
+}
+
+/**
+ * Completa o razão dos pedidos pagos que ficaram sem a linha de tarifa.
+ *
+ * Existe porque o webhook lê a `balance_transaction` segundos depois do
+ * pagamento e às vezes o Stripe a devolve ausente — não por não existir, mas
+ * por consistência eventual. Ver `pedidosComRazaoIncompleto`.
+ *
+ * Roda **depois** de `confirmarSessoesPagas`, e a ordem importa: um pedido
+ * confirmado agora acabou de ganhar `pi_` e razão, e já entra aqui se a tarifa
+ * dele também tiver faltado.
+ *
+ * Só o POST chama isto. O GET continua sem escrever nada.
+ */
+async function completarRazoes(
+  pedidos: PedidoNoBanco[]
+): Promise<{ pendentes: number; completados: string[] }> {
+  const supabase = createSupabaseAdminClient()
+  const candidatos = pedidosComRazaoIncompleto(pedidos).slice(0, LIMITE_DE_RAZOES)
+  const completados: string[] = []
+
+  for (const pedido of candidatos) {
+    const ok = await completarTarifaDaVenda(supabase, {
+      pedidoId: pedido.id,
+      paymentIntent: pedido.stripe_payment_intent!,
+      contaConectada: pedido.stripe_account_id ?? null,
+      vendedor: pedido.vendedor_tipo === 'plataforma' ? 'plataforma' : 'consultor',
+    }, ROUTE)
+
+    if (ok) completados.push(pedido.numero)
+  }
+
+  return { pendentes: candidatos.length, completados }
 }
 
 async function contasConectadas(): Promise<string[]> {
@@ -307,6 +351,13 @@ export async function POST(request: Request) {
    */
   const sessoes = await confirmarSessoesPagas(request, await pedidosDoBanco())
 
+  /*
+   * Reler o banco: a varredura acima pode ter dado `pi_` e razão a pedidos que
+   * não os tinham, e é sobre o estado **depois** dela que a completude do
+   * razão precisa ser avaliada.
+   */
+  const razoes = await completarRazoes(await pedidosDoBanco())
+
   const relatorio = await levantar()
   const supabase = createSupabaseAdminClient()
   const corrigidas: DivergenciaDaLoja[] = []
@@ -337,7 +388,8 @@ export async function POST(request: Request) {
   logger.info('Reconciliação da loja (aplicada)', {
     route: ROUTE, resumo: relatorio.resumo, corrigidas: corrigidas.length,
     sessoesConfirmadas: sessoes.confirmados.length,
+    razoesCompletados: razoes.completados.length,
   })
 
-  return NextResponse.json({ aplicado: true, ...relatorio, corrigidas, sessoes })
+  return NextResponse.json({ aplicado: true, ...relatorio, corrigidas, sessoes, razoes })
 }
