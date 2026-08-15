@@ -41,43 +41,62 @@ const ENDPOINT = 'https://api.resend.com/emails'
  *
  * O plano gratuito do Resend dá **um** domínio verificado, e a CollabZ tem
  * vários produtos que vão precisar mandar e-mail. Como um domínio verificado
- * cobre infinitos endereços nele, um único `collabz.com.br` atende todos —
- * `fengshui@`, `ervatorio@`, e o que vier — em vez de gastar um plano pago
- * para ter um domínio por marca.
+ * cobre infinitos endereços nele, um único `collabz.com.br` atende todos.
  *
  * Quem carrega a marca é o **nome de exibição**, que é o que a caixa de
  * entrada mostra em destaque; o endereço só aparece para quem abre os
  * detalhes.
+ *
+ * ## Por que `fsannino@` e não `nao-responda@`
+ *
+ * Decisão de 15/08, e a razão não é a que parece. Enviar de `nao-responda@`
+ * funcionaria: o Resend manda de qualquer endereço no domínio verificado,
+ * exista caixa ou não. O que **exige** caixa de verdade é receber.
+ *
+ * E é aí que `nao-responda@` custa caro. Ele obriga a manter um `Reply-To`
+ * apontando para outro endereço, e vira uma promessa a mais para manter de pé:
+ * o dia em que essa segunda variável estiver errada, a resposta do comprador
+ * cai numa caixa que ninguém lê — sem erro, sem log, sem ninguém saber.
+ *
+ * `fsannino@collabz.com.br` é hoje a única caixa que existe de verdade, então
+ * é o único endereço que funciona nas duas pontas: envia porque o domínio está
+ * verificado, e recebe porque a caixa é real. Um endereço só, sem parte que
+ * possa envelhecer sozinha.
  *
  * ## O que muda se o padrão estiver errado
  *
  * Remetente em domínio não verificado é **recusado** pelo Resend. Como este
  * módulo é best-effort, a recusa vira log e o comprador fica sem o link do
  * pedido — que é o único acesso que ele tem. Por isso o padrão aponta para o
- * domínio que de fato será verificado, e não para o que seria mais bonito:
+ * domínio que de fato está verificado, e não para o que seria mais bonito:
  * esquecer o `EMAIL_REMETENTE` no deploy passa a ser inofensivo em vez de
  * silenciosamente quebrar a entrega.
  */
-const REMETENTE_PADRAO = 'FengShui Studio <nao-responda@collabz.com.br>'
+const REMETENTE_PADRAO = 'FengShui Studio <fsannino@collabz.com.br>'
 
 /**
  * Para onde vai a resposta do comprador.
  *
- * ## Por que existe, separado do remetente
- *
- * Endereço de envio e caixa postal são coisas diferentes: o Resend manda de
- * qualquer endereço no domínio verificado, exista caixa ou não. Já **receber**
- * exige caixa de verdade — e é isso que se paga por usuário no provedor de
- * e-mail.
- *
- * Daí a separação. O remetente carrega a marca e não precisa existir; o
- * `Reply-To` aponta para a única caixa que existe hoje.
- *
- * Sem isto, quem respondesse à confirmação da compra escreveria para
- * `nao-responda@`, que não é lido por ninguém — e a resposta de um comprador
- * confuso é exatamente a que não pode se perder.
+ * Continua existindo porque remetente e caixa de resposta **podem** divergir:
+ * o dia em que o envio passar a sair de `fengshui@collabz.com.br`, a resposta
+ * ainda tem que chegar em alguém. Hoje os dois coincidem, e o cabeçalho é
+ * omitido quando coincidem — ver `enderecoDe`.
  */
 const RESPONDER_PARA_PADRAO = 'fsannino@collabz.com.br'
+
+/**
+ * O endereço dentro de `Nome <endereco@dominio>` — ou o valor inteiro, quando
+ * já vem sem nome de exibição.
+ *
+ * Serve para comparar remetente e `Reply-To` pelo que de fato importa. As duas
+ * constantes acima apontam para a mesma caixa hoje, mas escritas de formas
+ * diferentes: uma com nome de exibição, a outra sem. Comparar as strings cruas
+ * diria que são endereços distintos.
+ */
+function enderecoDe(valor: string): string {
+  const entreSinais = valor.match(/<([^>]+)>/)
+  return (entreSinais ? entreSinais[1] : valor).trim().toLowerCase()
+}
 
 export interface EmailParaEnviar {
   para: string
@@ -94,6 +113,15 @@ export async function enviarEmail(
   const chave = process.env.RESEND_API_KEY
   const remetente = process.env.EMAIL_REMETENTE || REMETENTE_PADRAO
   const responderPara = process.env.EMAIL_RESPONDER_PARA || RESPONDER_PARA_PADRAO
+
+  /*
+   * `Reply-To` igual ao `From` é ruído: não muda para onde a resposta vai, e
+   * alguns clientes mostram o aviso de «responder para outro endereço» sem que
+   * haja outro endereço. Como hoje os dois padrões apontam para a mesma caixa,
+   * o cabeçalho só é enviado quando de fato diz algo diferente.
+   */
+  const respostaVaiParaOutroLugar =
+    Boolean(responderPara) && enderecoDe(responderPara) !== enderecoDe(remetente)
 
   if (!chave) {
     logger.info('Envio de e-mail ignorado — RESEND_API_KEY ausente', {
@@ -118,7 +146,7 @@ export async function enviarEmail(
         from: remetente,
         // `reply_to` aceita lista; uma entrada só, e ela precisa ser uma caixa
         // que alguém lê — ver `RESPONDER_PARA_PADRAO`.
-        ...(responderPara ? { reply_to: [responderPara] } : {}),
+        ...(respostaVaiParaOutroLugar ? { reply_to: [responderPara] } : {}),
         to: [email.para],
         subject: email.assunto,
         html: email.html,

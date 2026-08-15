@@ -82,20 +82,23 @@ no PR #161 (remetente padrão) e no #162 (`Reply-To`).
 
 **Nota que evita o próximo engano:** endereço de envio **não é** caixa postal.
 O Resend manda de qualquer endereço no domínio verificado, exista caixa ou
-não; o que se paga por usuário no provedor é a caixa que **recebe**. Por isso o
-remetente pode ser `nao-responda@` sem custo, e o `Reply-To` aponta para a
-única caixa real (`fsannino@collabz.com.br`).
+não; o que se paga por usuário no provedor é a caixa que **recebe**.
 
-Decisão de 15/08: o domínio verificado será **`collabz.com.br`**, com endereço
-por produto (`fengshui@…`, `ervatorio@…`), porque um domínio verificado cobre
-infinitos endereços e o plano gratuito do Resend dá um domínio só.
+Decisão de 15/08: o domínio verificado é **`collabz.com.br`**, porque um
+domínio verificado cobre infinitos endereços e o plano gratuito do Resend dá um
+domínio só.
 
-O `REMETENTE_PADRAO` de `src/lib/email.ts` já aponta para lá — assim, esquecer
-o `EMAIL_REMETENTE` no Vercel deixa de quebrar a entrega em silêncio.
+**Correção do mesmo dia:** o remetente passou de `nao-responda@` para
+`fsannino@collabz.com.br`, que é a única caixa que existe de verdade. O motivo
+não é o que parece — `nao-responda@` enviaria normalmente. É que ele obrigava a
+manter um `Reply-To` separado, ou seja, uma segunda variável cuja falha é
+invisível: com ela errada, a resposta do comprador cai numa caixa que ninguém
+lê, sem erro e sem log. Com um endereço só, não há parte que possa envelhecer
+sozinha. O `Reply-To` continua no código, e agora é **omitido** quando aponta
+para o próprio remetente.
 
-**Falta:** verificar o domínio no Resend (DNS), criar a chave e pôr
-`RESEND_API_KEY` em Production. Sem domínio verificado o Resend só entrega para
-o e-mail dono da conta — o teste passa e o cliente real não recebe nada.
+Está tudo verificado e no ar: domínio desde 24/07, chave desde 14/08, e a
+entrega conferida em pedido real (`P260815-B1D533`).
 
 ---
 
