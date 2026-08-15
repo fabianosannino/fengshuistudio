@@ -181,11 +181,71 @@ Pendente junto: acrescentar `checkout.session.async_payment_succeeded` e
 
 ---
 
-## P5 — Estornar os pedidos de teste
+## P5 — Estornar os pedidos de teste — parcial
 
-R$ 13,00 em cinco pedidos de teste com cartão real. Um deles
-(`P260814-09F9B7`) tem **devolução solicitada e não estornada** — é obrigação
-registrada no próprio sistema, e a mais antiga.
+R$ 19,00 em doze pedidos de teste com cartão real, todos comprados por
+`fsannino@gmail.com`.
 
-Mantidos por ora, por decisão de 15/08, como medida da tarifa em valores
-diferentes.
+**Oito estornados** em 15/08 — os sete de bem próprio e um anterior. Os
+webhooks registraram `reembolsado` e a linha `reembolso` no razão de cada um,
+sem toque manual no banco.
+
+**Faltam quatro**, na conta conectada, somando R$ 12,00 — `P260813-7ACECD`,
+`P260813-9822C4`, `P260814-09F9B7` e `P260815-B1D533`. Devem sair pela tela
+`/vendas`, que é o caminho que devolve a comissão junto.
+
+`P260814-09F9B7` tem **devolução solicitada e não estornada** desde 14/08 — é
+obrigação registrada no próprio sistema, e a mais antiga da lista.
+
+**A tarifa não volta.** R$ 5,64 no total ficaram com o gateway, e é isso que a
+linha `tarifa_gateway` de cada pedido registra mesmo depois do estorno.
+
+---
+
+## P6 — Bem próprio não tem como ser estornado pelo app
+
+**Descoberto em 15/08, ao estornar os pedidos de teste.** Decisão do dono: PR
+no dia seguinte.
+
+### O defeito
+
+`/api/pedidos/estorno` recusa venda de bem próprio:
+
+```ts
+if (!pedido.stripe_payment_intent || !pedido.stripe_account_id) {
+  logger.error('Pedido estornável sem dados de cobrança', …)
+  return 409
+}
+```
+
+`stripe_account_id` é **nulo por desenho** na venda da plataforma — a cobrança
+acontece na nossa conta, não na de um consultor. A rota foi escrita nas fases 0
+e 1, quando só existia venda de consultor, e a fase 2 acrescentou um tipo de
+venda que ela não sabe desfazer. O `logger.error` piora: trata o desenho
+correto como dado corrompido.
+
+### Por que não é detalhe
+
+A página do comprador (`/pedido/<token>`) mostra **«Solicitar devolução»**, e o
+e-mail de confirmação promete os 7 dias do CDC, art. 49. Do outro lado não há
+tela que cumpra: `/vendas` é do consultor, e o painel admin não tem estorno.
+
+Ou seja: o direito é anunciado ao comprador em dois lugares e não existe no
+sistema. É a promessa sem nada atrás — a mesma forma de defeito que a loja
+inteira fora de `rotas-publicas.ts`, o `produtos_afiliados` vazio e o
+`nao-responda@` sem `Reply-To`.
+
+Nos testes isto foi contornado estornando direto pelo Stripe. Um comprador de
+verdade não tem esse contorno.
+
+### O conserto
+
+1. A rota aceita `stripe_account_id` nulo e estorna na conta da plataforma —
+   sem `stripeAccount`, e sem `refund_application_fee`, que não existe onde não
+   houve comissão.
+2. Uma tela para exercer isso: o admin, já que o vendedor somos nós.
+3. Teste que fixa a distinção — venda de consultor e venda própria estornam por
+   caminhos diferentes e as duas precisam funcionar.
+
+O `reembolsado` e os lançamentos continuam vindo do webhook. Isso já está certo
+e não muda: foi conferido nos oito estornos de 15/08.
