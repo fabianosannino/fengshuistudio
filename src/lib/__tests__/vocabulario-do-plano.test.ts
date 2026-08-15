@@ -71,3 +71,46 @@ describe('enumDoPlano', () => {
     expect(new Set(rotulos).size).toBe(PLANOS.length)
   })
 })
+
+describe('o filtro do painel admin fala uma língua só', () => {
+  /*
+   * O seletor de planos em `/admin/pagamentos` manda o valor direto para
+   * `query.eq('plano', …)`, contra uma coluna do enum `plano_tipo`.
+   *
+   * Três das quatro opções não existiam no enum, e o Postgres respondia
+   * `invalid input value for enum plano_tipo`. A tela não mostrava erro:
+   * mostrava **lista vazia**. Quem filtrasse por «Profissional» concluiria
+   * que ninguém tem o plano — havia dois.
+   *
+   * A quarta opção era `pro`, o valor cru do banco, oferecido ao lado do
+   * rótulo do app para o mesmo plano. Funcionava por ser o único que não
+   * precisava de tradução, o que o tornava a opção certa pelo motivo errado.
+   */
+
+  /** O que o seletor oferece hoje — o vocabulário do app, e só ele. */
+  const OPCOES_DO_SELETOR: PlanoEfetivo[] = ['free', 'simples', 'profissional']
+
+  it('toda opção do seletor vira um valor que o enum aceita', () => {
+    for (const opcao of OPCOES_DO_SELETOR) {
+      const paraOBanco = enumDoPlano(planoEfetivo(opcao))
+      expect(ENUM_DO_BANCO, opcao).toContain(paraOBanco)
+    }
+  })
+
+  it('o filtro alcança quem está gravado com o vocabulário antigo', () => {
+    // É o ponto do filtro: quem está no banco como `pro` precisa aparecer
+    // quando se pede «profissional». Sem a tradução, os dois nomes do mesmo
+    // plano dividiam a lista em duas que nunca se encontravam.
+    expect(enumDoPlano(planoEfetivo('profissional'))).toBe('pro')
+    expect(enumDoPlano(planoEfetivo('free'))).toBe('freemium')
+    expect(enumDoPlano(planoEfetivo('simples'))).toBe('starter')
+  })
+
+  it('o valor cru também é aceito, se alguém o mandar', () => {
+    // Link antigo, favorito salvo, ou chamada direta à API: `planoEfetivo`
+    // absorve os dois vocabulários, então a tradução não quebra o que já
+    // funcionava por acidente.
+    expect(enumDoPlano(planoEfetivo('pro'))).toBe('pro')
+    expect(enumDoPlano(planoEfetivo('freemium'))).toBe('freemium')
+  })
+})

@@ -134,8 +134,21 @@ export async function GET(request: Request) {
       query = query.or(`nome_completo.ilike.%${search}%,id.eq.${search.length === 36 ? search : '00000000-0000-0000-0000-000000000000'}`)
     }
 
+    /*
+     * O filtro fala o vocabulário do app; a coluna é do enum do banco.
+     *
+     * Sem esta tradução, `eq('plano', 'profissional')` levantava
+     * `invalid input value for enum plano_tipo` e a lista voltava vazia — o
+     * admin filtrava por Profissional e concluía que ninguém tinha o plano.
+     * Três das quatro opções do seletor caíam nisso; a única que funcionava
+     * era `pro`, o valor cru, que a tela oferecia por fora do vocabulário.
+     *
+     * `enumDoPlano` existe há tempo para exatamente isto, e está importado
+     * neste arquivo desde então — usado na escrita, esquecido na leitura.
+     */
     if (planFilter !== 'all') {
-      query = query.eq('plano', planFilter)
+      const efetivo = planoEfetivo(planFilter)
+      query = query.eq('plano', enumDoPlano(efetivo))
     }
 
     query = query.range((page - 1) * pageSize, page * pageSize - 1)

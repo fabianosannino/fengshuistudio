@@ -5,6 +5,7 @@ import { supabase } from '../../../src/lib/supabase'
 import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
 import { X } from 'lucide-react'
+import { planoLabel } from '../../../src/lib/plano-utils'
 
 interface Metrics {
   mrr: number
@@ -165,11 +166,18 @@ export default function AdminPagamentos() {
           style={{ padding: '8px 14px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', minWidth: '200px' }} />
         <select value={planFilter} onChange={e => { setPlanFilter(e.target.value); setPage(1) }}
           style={{ padding: '8px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
+          {/*
+            «Pro» saiu da lista.
+
+            Era o valor cru do banco oferecido ao lado do rótulo do app, para o
+            mesmo plano — e, por acidente, a única opção que funcionava, porque
+            as outras três não existem no enum e derrubavam a consulta. Agora a
+            tradução acontece na rota e o seletor fala uma língua só.
+          */}
           <option value="all">Todos os planos</option>
           <option value="free">Free</option>
           <option value="simples">Simples</option>
           <option value="profissional">Profissional</option>
-          <option value="pro">Pro</option>
         </select>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
           style={{ padding: '8px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
@@ -203,7 +211,7 @@ export default function AdminPagamentos() {
             ) : users.map(u => {
               const activeSub = (u.subscriptions || []).find(s => s.status !== 'cancelled') || (u.subscriptions || [])[0]
               const status = activeSub?.status || 'free'
-              const badge = STATUS_BADGES[status] || { label: u.plano || 'Free', bg: '#F3F4F6', color: '#6B7280' }
+              const badge = STATUS_BADGES[status] || { label: planoLabel(u.plano), bg: '#F3F4F6', color: '#6B7280' }
               return (
                 <tr key={u.id} style={{ borderBottom: '1px solid #F3F4F6', cursor: 'pointer' }}
                   onClick={() => setSelectedUser(u)}>
@@ -212,7 +220,21 @@ export default function AdminPagamentos() {
                     <div style={{ fontSize: '12px', color: '#9CA3AF' }}>{u.id.slice(0, 8)}...</div>
                   </td>
                   <td style={{ padding: '12px' }}>
-                    <span style={{ fontWeight: 'bold', color: '#374151' }}>{activeSub?.plans?.name || u.plano || 'Free'}</span>
+                    {/*
+                      `planoLabel` em vez do valor cru.
+
+                      A coluna mostrava `plans.name` para quem tem assinatura e
+                      `profiles.plano` para quem não tem — então o mesmo plano
+                      aparecia como «Profissional» numa linha e «pro» na outra,
+                      e `freemium` aparecia sem tradução nenhuma.
+
+                      `pro`, `starter`, `freemium` e `agencia` são o vocabulário
+                      de uma versão anterior do produto. Ele não deveria chegar
+                      a nenhuma tela — e a prova de que confunde é o dono deste
+                      app ter perguntado qual era a diferença entre «pro» e
+                      «Profissional».
+                    */}
+                    <span style={{ fontWeight: 'bold', color: '#374151' }}>{planoLabel(u.plano)}</span>
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     {activeSub?.billing_cycle === 'yearly' ? 'Anual' : activeSub?.billing_cycle === 'monthly' ? 'Mensal' : '—'}
@@ -269,7 +291,7 @@ export default function AdminPagamentos() {
               <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>{selectedUser.nome_completo}</div>
               <div style={{ fontSize: '13px', color: '#6B7280' }}>ID: {selectedUser.id}</div>
               <div style={{ fontSize: '13px', color: '#6B7280' }}>Cadastro: {fmtDate(selectedUser.criado_em)}</div>
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>Plano atual: <strong>{selectedUser.plano || 'free'}</strong></div>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>Plano atual: <strong>{planoLabel(selectedUser.plano)}</strong></div>
               <div style={{ fontSize: '13px', color: '#6B7280' }}>Tipo: {selectedUser.tipo_usuario || '—'}</div>
             </div>
 
