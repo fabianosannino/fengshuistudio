@@ -77,12 +77,23 @@ sobre `EMAIL_REMETENTE` em `src/lib/email.ts`.
 
 ---
 
-## P3 — Upstash para o rate limit
+## ~~P3 — Upstash para o rate limit~~ — FEITO
 
-Sem `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`, `rate-limit.ts`
-degrada para memória local — e em serverless cada requisição pode cair numa
-instância nova, então na prática não limita. A degradação é declarada
-(ADR 0023), o que não a torna suficiente para produção com dinheiro.
+`UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` já estão no Vercel
+(informado pelo dono em 15/08, e conferido).
+
+**Como foi conferido:** 36 requisições contra `/api/pedidos/publico` em
+produção, com os logs confirmando a chegada das 37 (36 minhas + 1 de fundo) — e
+**nenhuma ocorrência** do `logger.warn` «Rate limit sem store compartilhado».
+Esse aviso dispara em produção sempre que uma das duas variáveis falta, uma vez
+por instância. Silêncio com tráfego passando é a confirmação de que o store
+compartilhado está em uso.
+
+**O que este teste NÃO prova:** o bloqueio em si. Nenhuma das 36 recebeu 429,
+apesar do limite de 30/min — quase certamente porque as chamadas saíram por um
+proxy de IP variável, e `ipDaRequisicao` deriva a chave do IP. Exercitar o
+limite de verdade pede requisições de um IP fixo. Fica registrado como lacuna
+declarada, não como aprovação.
 
 ---
 
