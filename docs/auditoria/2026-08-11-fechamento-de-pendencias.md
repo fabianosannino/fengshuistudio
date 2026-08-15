@@ -160,3 +160,44 @@ existem para impedir.
 O gargalo do produto também não mudou, e nenhuma linha de código o resolve:
 0 assinaturas, 0 vendas, 0 lojas configuradas, o fluxo de dinheiro nunca
 exercitado ponta a ponta. Ver `2026-07-19-avaliacao-experiencia-cliente.md`.
+
+---
+
+## Anexo (15/08): os avisos do linter do Supabase que ficam de pé
+
+O linter de segurança acusa nove itens. Três foram corrigidos na migration
+`20260815030000_endurecer_funcoes.sql`; **seis são decisões deste projeto** e
+vão reaparecer em toda execução. Ficam registrados aqui porque um aviso sem
+razão anotada é um convite a «consertar» — e um deles derruba o app.
+
+### `is_admin()` executável por `authenticated` — NÃO REVOGAR
+
+O aviso é correto na descrição e errado como recomendação para este código.
+**39 policies de RLS chamam `is_admin()`**, e policy roda no contexto de quem
+consulta: sem `EXECUTE` para `authenticated`, todo `select` de usuário logado
+passa a falhar. Conferido antes de decidir, não presumido.
+
+### `perfis_publicos` como `security definer`
+
+ADR 0028. A view existe exatamente para publicar um recorte de `profiles` sem
+abrir a tabela; a propriedade que o linter acusa é o mecanismo, não o defeito.
+
+### RLS ligado e nenhuma policy: `produtos`, `cliques_de_indicacao`,
+### `eventos_stripe`, `disputas_stripe`
+
+Também é o desenho. Zero policies significa que ninguém lê sem `service_role`,
+e o que é público sai por rota com **lista branca de colunas**. É o que mantém
+`arquivo_path` (o arquivo que o comprador pagou para baixar) e `link_externo`
+(o destino da indicação, que precisa passar pela medição) fora da vitrine.
+
+Uma policy `select using (ativo)` devolveria a linha inteira e desfaria as duas
+proteções de uma vez.
+
+### O que foi corrigido
+
+- `produtos_toca_atualizado_em` ganhou `set search_path = public` — nasceu sem,
+  na fase 2, contra a regra do próprio projeto.
+- `pedido_eventos_somente_insere` perdeu `EXECUTE` para `anon`/`authenticated`:
+  era alcançável por `/rest/v1/rpc/`. Função de trigger não precisa disso — a
+  checagem de privilégio é no `create trigger`, não a cada linha —, e foi
+  conferido em transação revertida que `UPDATE` e `DELETE` continuam recusados.
