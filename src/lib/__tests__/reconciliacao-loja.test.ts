@@ -226,3 +226,46 @@ describe('pedidosComRazaoIncompleto', () => {
     expect(pedidosComRazaoIncompleto([{ ...pago, lancamentos: undefined }])).toHaveLength(1)
   })
 })
+
+describe('ehCobrancaDaLoja — o segundo sinal', () => {
+  /*
+   * O carimbo é escrito no Stripe no instante do checkout. Quem foi cobrado
+   * antes de ele existir no código não o tem, e nunca vai ter — a cobrança
+   * está fechada.
+   *
+   * `P260814-E97D12` é esse caso: venda real de bem próprio, paga e conferida,
+   * com `payment_intent` gravado aqui e `metadata: {}` lá. A varredura a
+   * descartava, o pedido sobrava sozinho, e o relatório acusava «pedido pago
+   * sem cobrança correspondente» em toda execução.
+   */
+
+  it('cobrança sem carimbo, mas com pedido nosso, é da loja', () => {
+    expect(ehCobrancaDaLoja({
+      pedidoIdNoMetadata: null,
+      temPedidoNoBanco: true,
+    }, null)).toBe(true)
+  })
+
+  it('sem carimbo e sem pedido continua de fora', () => {
+    // Assinatura, link de pagamento e cobrança avulsa caem na nossa conta e
+    // não são loja. Sem nenhum dos dois sinais, acusá-las encheria o
+    // relatório do que não é problema — que é como ele deixa de ser lido.
+    expect(ehCobrancaDaLoja({
+      pedidoIdNoMetadata: null,
+      temPedidoNoBanco: false,
+    }, null)).toBe(false)
+  })
+
+  it('o carimbo sozinho continua bastando', () => {
+    // O caminho normal, de toda venda a partir de 14/08: o sinal chega pelo
+    // Stripe antes de existir pedido pago do nosso lado.
+    expect(ehCobrancaDaLoja({
+      pedidoIdNoMetadata: 'pedido-1',
+      temPedidoNoBanco: false,
+    }, null)).toBe(true)
+  })
+
+  it('na conta conectada nenhum dos dois é exigido', () => {
+    expect(ehCobrancaDaLoja({}, 'acct_1')).toBe(true)
+  })
+})

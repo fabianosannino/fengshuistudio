@@ -209,10 +209,38 @@ export function compararVendas(
  * pedido, e sem pedido o checkout nem redireciona.
  */
 export function ehCobrancaDaLoja(
-  cobranca: { pedidoIdNoMetadata?: string | null },
+  cobranca: {
+    pedidoIdNoMetadata?: string | null
+    /**
+     * Existe pedido nosso gravado com este `payment_intent`?
+     *
+     * ## Por que um segundo sinal
+     *
+     * O carimbo é escrito no Stripe **no instante do checkout**. Quem foi
+     * cobrado antes de ele existir no código não o tem, e nunca vai ter — a
+     * cobrança está fechada.
+     *
+     * Aconteceu com `P260814-E97D12`: venda real de bem próprio, paga,
+     * conferida, com `payment_intent` gravado aqui. A cobrança dela tem
+     * `metadata: {}`, porque o carimbo entrou no código naquela mesma noite,
+     * horas depois. A varredura a descartava como «não é da loja», o pedido
+     * sobrava sozinho de um lado, e o relatório acusava «pedido pago sem
+     * cobrança correspondente» — **toda execução, para sempre**.
+     *
+     * Relatório que acusa o que não é problema ensina a ser ignorado, e aí o
+     * dia em que a acusação for real ela passa junto. Era o defeito que este
+     * módulo já tinha corrigido uma vez, voltando por outra porta.
+     *
+     * Ter um pedido gravado com aquele `pi_` é evidência tão forte quanto o
+     * carimbo, e melhor num ponto: vem do **nosso** lado, onde não depende de
+     * o Stripe ter sido escrito na hora certa.
+     */
+    temPedidoNoBanco?: boolean
+  },
   contaConectada: string | null
 ): boolean {
   if (contaConectada) return true
+  if (cobranca.temPedidoNoBanco) return true
   return Boolean(cobranca.pedidoIdNoMetadata)
 }
 
