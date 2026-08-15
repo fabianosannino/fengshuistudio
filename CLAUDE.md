@@ -170,3 +170,8 @@ Ao mexer nisso:
 e o plano P0/P1/P2. `docs/auditoria/2026-08-11-fechamento-de-pendencias.md` diz o
 que foi fechado, o que ficou e por quê — comece por ele. Consulte antes de
 decisões arquiteturais.
+
+`docs/auditoria/2026-08-15-pendencias-de-pre-lancamento.md` é a lista curta do
+que **já tem decisão tomada** e falta executar antes de lançar — rotação dos
+segredos expostos, chave do Resend, Upstash, Pix. Não proponha nada dali como
+novidade: leia antes de sugerir «próximos passos».
