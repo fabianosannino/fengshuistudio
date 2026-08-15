@@ -106,6 +106,18 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
 - **Foto nunca é renderizada a partir do valor cru do banco.** Os buckets estão
   fechando (ADR 0022): passe o valor por `useUrlsAssinadas`/`urlExibivel`, que
   aceita tanto URL pública legada quanto path. Upload novo grava **path**.
+- **Direitos do titular são autoatendimento** (`/privacidade/meus-dados`,
+  `/api/conta/dados`). O `user.id` vem de `supabase.auth.getUser()`, **nunca**
+  do corpo — mesma regra de `account_id`.
+  Aqui a exclusão é diferente dos outros portais: `clientes` e `consultas`
+  guardam dados de **terceiros** que nunca abriram conta. Sem o consultor, o
+  fundamento para mantê-los deixa de existir, então são **apagados**, não
+  anonimizados — junto com as fotos nos buckets, antes das linhas, senão o
+  objeto fica órfão e servível por link.
+  Coluna de imagem nova em `consultas` entra em `COLUNAS_DE_FOTO_DA_CONSULTA`
+  (`src/lib/dados-do-titular.ts`) **e** no teste. Fora dali, a foto sobrevive à
+  exclusão em silêncio.
+  O pedido fica: é registro fiscal e sustenta o razão. Some quem a pessoa era.
 - **Rate limit é `await`** e a chave vem de `ipDaRequisicao(request)` — nunca de
   `x-forwarded-for.split(',')[0]`, que é a ponta que o cliente escreve.
 
