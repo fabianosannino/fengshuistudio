@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createSupabaseMiddlewareClient } from './lib/supabase-server'
+// `logger` não importa nada — é seguro no Edge, e é o que permite esta camada
+// dizer por que fechou em vez de fechar calada.
+import { logger } from './lib/logger'
 import { ehCaminhoRelativoSeguro } from './lib/auth-rotas'
 import { ehPaginaPublica, ehApiPublica } from './lib/rotas-publicas'
 import { PAPEL_ADMIN } from './lib/guarda-admin'
@@ -90,14 +93,40 @@ export async function middleware(request: NextRequest) {
 async function niveisDaSessao(
   supabase: ReturnType<typeof createSupabaseMiddlewareClient>['supabase']
 ): Promise<NiveisDaSessao> {
+  /*
+   * A falha é fechada **e** dita.
+   *
+   * Antes, os dois caminhos de erro devolviam `{null, null}` em silêncio. Isso
+   * vira `indeterminado`, que a tela de verificação traduzia como «o TOTP está
+   * desabilitado no projeto Supabase» — uma causa entre várias, afirmada sem
+   * evidência nenhuma.
+   *
+   * Aconteceu em 15/08: o admin viu essa tela e o TOTP estava habilitado — um
+   * fator foi criado com sucesso minutos depois. A mensagem mandava consertar
+   * o que não estava quebrado, e não havia uma linha de log para contradizê-la.
+   *
+   * Fechar sem dizer por quê é a mesma coisa que engolir o erro, com a
+   * agravante de parecer deliberado. Mesma correção que a tarifa do gateway
+   * recebeu hoje.
+   */
   try {
     const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (error || !data) return { currentLevel: null, nextLevel: null }
+
+    if (error || !data) {
+      logger.warn('Nível de garantia da sessão indisponível — acesso ao admin fechado', {
+        route: 'middleware', porque: error?.message ?? 'resposta sem dados',
+      })
+      return { currentLevel: null, nextLevel: null }
+    }
+
     return {
       currentLevel: data.currentLevel as NiveisDaSessao['currentLevel'],
       nextLevel: data.nextLevel as NiveisDaSessao['nextLevel'],
     }
-  } catch {
+  } catch (err) {
+    logger.warn('Nível de garantia da sessão indisponível — acesso ao admin fechado', {
+      route: 'middleware', porque: String(err),
+    })
     return { currentLevel: null, nextLevel: null }
   }
 }
