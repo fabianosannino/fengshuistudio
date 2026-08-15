@@ -64,6 +64,15 @@ describe('o que continua fechado', () => {
     expect(ehPaginaPublica('/admin/produtos')).toBe(false)
   })
 
+  it('os dados do titular exigem sessão — é ela que diz de quem eles são', () => {
+    // `/privacidade` é pública por caminho exato (a política), e `meus-dados`
+    // vive debaixo dela. Se a lista virasse prefixo, a página que exporta e
+    // exclui a conta abriria sem sessão — e a rota é a que apaga clientes.
+    expect(ehPaginaPublica('/privacidade')).toBe(true)
+    expect(ehPaginaPublica('/privacidade/meus-dados')).toBe(false)
+    expect(ehApiPublica('/api/conta/dados')).toBe(false)
+  })
+
   it('o app continua exigindo sessão', () => {
     expect(ehPaginaPublica('/dashboard')).toBe(false)
     expect(ehPaginaPublica('/clientes')).toBe(false)
