@@ -60,6 +60,25 @@ const ENDPOINT = 'https://api.resend.com/emails'
  */
 const REMETENTE_PADRAO = 'FengShui Studio <nao-responda@collabz.com.br>'
 
+/**
+ * Para onde vai a resposta do comprador.
+ *
+ * ## Por que existe, separado do remetente
+ *
+ * Endereço de envio e caixa postal são coisas diferentes: o Resend manda de
+ * qualquer endereço no domínio verificado, exista caixa ou não. Já **receber**
+ * exige caixa de verdade — e é isso que se paga por usuário no provedor de
+ * e-mail.
+ *
+ * Daí a separação. O remetente carrega a marca e não precisa existir; o
+ * `Reply-To` aponta para a única caixa que existe hoje.
+ *
+ * Sem isto, quem respondesse à confirmação da compra escreveria para
+ * `nao-responda@`, que não é lido por ninguém — e a resposta de um comprador
+ * confuso é exatamente a que não pode se perder.
+ */
+const RESPONDER_PARA_PADRAO = 'fsannino@collabz.com.br'
+
 export interface EmailParaEnviar {
   para: string
   assunto: string
@@ -74,6 +93,7 @@ export async function enviarEmail(
 ): Promise<boolean> {
   const chave = process.env.RESEND_API_KEY
   const remetente = process.env.EMAIL_REMETENTE || REMETENTE_PADRAO
+  const responderPara = process.env.EMAIL_RESPONDER_PARA || RESPONDER_PARA_PADRAO
 
   if (!chave) {
     logger.info('Envio de e-mail ignorado — RESEND_API_KEY ausente', {
@@ -96,6 +116,9 @@ export async function enviarEmail(
       },
       body: JSON.stringify({
         from: remetente,
+        // `reply_to` aceita lista; uma entrada só, e ela precisa ser uma caixa
+        // que alguém lê — ver `RESPONDER_PARA_PADRAO`.
+        ...(responderPara ? { reply_to: [responderPara] } : {}),
         to: [email.para],
         subject: email.assunto,
         html: email.html,
