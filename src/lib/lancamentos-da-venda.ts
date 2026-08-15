@@ -100,7 +100,30 @@ async function tarifaDoGateway(
   contaConectada: string | null,
   origemDoLog: string
 ): Promise<number | null> {
-  if (!paymentIntent) return null
+  /**
+   * Toda saída sem tarifa diz **por quê**.
+   *
+   * Antes, só o `catch` registrava. Os outros três retornos eram mudos — e a
+   * promessa no topo deste arquivo («fica registrado no log que o razão está
+   * incompleto») valia para um caso em quatro.
+   *
+   * O custo apareceu em 15/08, no pedido `P260815-C799D5`: o razão saiu sem
+   * `tarifa_gateway`, sem nenhuma linha de log, e as duas vendas próprias
+   * anteriores tinham a linha. Não deu para dizer qual condição disparou —
+   * a `balance_transaction` existia no Stripe, com `fee: 43`, criada dois
+   * segundos antes de o webhook gravar.
+   *
+   * Uma lacuna que não se anuncia não é lacuna declarada: é a mesma coisa que
+   * um erro engolido, só que com um comentário dizendo o contrário.
+   */
+  function semTarifa(porque: string): null {
+    logger.warn('Razão sem tarifa do gateway — lacuna declarada', {
+      origem: origemDoLog, paymentIntent, contaConectada, porque,
+    })
+    return null
+  }
+
+  if (!paymentIntent) return semTarifa('pedido sem payment_intent')
 
   try {
     /*
@@ -119,10 +142,12 @@ async function tarifaDoGateway(
     )
 
     const cobranca = intent.latest_charge
-    if (!cobranca || typeof cobranca === 'string') return null
+    if (!cobranca) return semTarifa('payment_intent sem latest_charge')
+    if (typeof cobranca === 'string') return semTarifa('latest_charge não expandiu')
 
     const transacao = cobranca.balance_transaction
-    if (!transacao || typeof transacao === 'string') return null
+    if (!transacao) return semTarifa('cobrança sem balance_transaction')
+    if (typeof transacao === 'string') return semTarifa('balance_transaction não expandiu')
 
     // `fee` inclui a comissão da plataforma quando ela é cobrada como
     // application fee. Subtrair evita contar os nossos 10% duas vezes — uma
@@ -133,10 +158,7 @@ async function tarifaDoGateway(
 
     return Math.max(0, transacao.fee - comissaoDentroDaTarifa)
   } catch (err) {
-    logger.warn('Não foi possível ler a tarifa do gateway — razão incompleto', {
-      origem: origemDoLog, paymentIntent, error: String(err),
-    })
-    return null
+    return semTarifa(`erro ao consultar o Stripe: ${String(err)}`)
   }
 }
 
