@@ -33,6 +33,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { BUCKET_CLIENTES, BUCKET_IMOVEIS, caminhoDoObjeto } from './storage-imagens'
 
 /**
+ * O bucket privado dos relatórios em PDF.
+ *
+ * Mora aqui e não em `storage-imagens.ts` porque não é imagem — e foi
+ * justamente por procurar só em «storage-imagens» que ele ficou de fora da
+ * primeira versão desta exclusão.
+ */
+export const BUCKET_RELATORIOS = 'relatorios'
+
+/**
  * O texto que fica no lugar do que identificava a pessoa.
  *
  * Legível de propósito: quem abrir o pedido no admin daqui a um ano precisa
@@ -99,30 +108,59 @@ export async function inventariar(
 }
 
 /**
- * As colunas de `consultas` que guardam foto.
+ * De onde saem os arquivos do titular — enumerados por bucket.
  *
- * São cinco, e não uma. Listá-las aqui — em vez de escrever `select('fotos')` e
- * seguir — é o que impede a exclusão de limpar o banco e deixar o bucket cheio:
- * o objeto órfão continua servível por link, e ninguém descobre, porque nada no
- * banco diz que ele existe.
+ * ## Por que uma lista por bucket, e não «as colunas de foto»
  *
- * Coluna nova de imagem em `consultas` precisa entrar aqui **e** no teste.
+ * A primeira versão disto tinha uma lista só, chamada «colunas de foto da
+ * consulta», e ela estava errada de três formas ao mesmo tempo:
+ *
+ * 1. faltava `planta_url` — que hoje mora **dentro** do jsonb `bagua_entrada`,
+ *    não numa coluna própria;
+ * 2. faltava `relatorio_pdf_path`, que aponta para **outro bucket**
+ *    (`relatorios`) e por isso nem caberia numa lista de «fotos»;
+ * 3. faltava `fotos_consulta` inteira — uma **tabela**, não uma coluna.
+ *
+ * O erro comum aos três é o nome: «colunas de foto da consulta» descreve onde
+ * eu tinha olhado, não onde os arquivos estão. A varredura que corrigiu isso
+ * partiu do schema, procurando `foto|imagem|url|path|anexo|arquivo` em toda
+ * tabela — e é essa varredura que precisa ser repetida quando alguém somar um
+ * upload novo.
  */
-export const COLUNAS_DE_FOTO_DA_CONSULTA = [
+
+/** Colunas de `consultas` cujo conteúdo vive em `imoveis-fotos`. */
+export const COLUNAS_DE_IMAGEM_DA_CONSULTA = [
   'bagua_imagem',
   'foto_geral_url',
   'fotos_comodos',
   'fotos_antes',
   'fotos_depois',
+  // `bagua_entrada` é jsonb e guarda `planta_url` — a forma que o app escreve
+  // hoje (`app/bagua-planta/page.tsx`). A coluna solta abaixo é a forma antiga;
+  // as duas entram porque há linha das duas eras no banco.
+  'bagua_entrada',
+  'planta_url',
+  'relatorio_url',
 ] as const
 
 /**
- * As chaves que guardam imagem dentro de um objeto aninhado.
+ * Colunas de `consultas` cujo conteúdo vive em `relatorios`.
  *
- * Hoje só `fotos`, de `FotoComodo { comodo, fotos[] }`. Existe como lista para
- * que uma forma nova entre aqui em vez de virar um `if` no meio da varredura.
+ * Bucket privado e separado. Um PDF de relatório traz o diagnóstico do imóvel
+ * do cliente com endereço — tão pessoal quanto as fotos, e estava ficando.
  */
-export const CHAVES_DE_IMAGEM_ANINHADAS = ['fotos', 'url', 'path'] as const
+export const COLUNAS_DE_RELATORIO_DA_CONSULTA = ['relatorio_pdf_path'] as const
+
+/**
+ * A tabela de fotos da consulta.
+ *
+ * Separada de `consultas` e ligada por `consulta_id`. As linhas somem por
+ * cascata quando a consulta é apagada — **os objetos não**. Sem colher a `url`
+ * daqui antes, cada foto enviada por esse caminho fica no bucket para sempre.
+ */
+export const TABELA_DE_FOTOS_DA_CONSULTA = 'fotos_consulta'
+
+export const CHAVES_DE_IMAGEM_ANINHADAS = ['fotos', 'url', 'path', 'planta_url'] as const
 
 /**
  * Junta, de uma linha de `consultas`, tudo que parece caminho de imagem.
@@ -132,7 +170,10 @@ export const CHAVES_DE_IMAGEM_ANINHADAS = ['fotos', 'url', 'path'] as const
  * Achatar tudo aqui deixa a rota sem um `if` por coluna — e sem a chance de
  * esquecer uma quando o formato mudar.
  */
-export function fotosDaConsulta(linha: Record<string, unknown>): string[] {
+export function fotosDaConsulta(
+  linha: Record<string, unknown>,
+  colunas: readonly string[] = COLUNAS_DE_IMAGEM_DA_CONSULTA
+): string[] {
   const encontradas: string[] = []
 
   const colher = (valor: unknown): void => {
@@ -152,42 +193,50 @@ export function fotosDaConsulta(linha: Record<string, unknown>): string[] {
     }
   }
 
-  for (const coluna of COLUNAS_DE_FOTO_DA_CONSULTA) colher(linha[coluna])
+  for (const coluna of colunas) colher(linha[coluna])
   return encontradas
 }
 
 /**
- * Os caminhos de foto que precisam sair do storage.
+ * Os caminhos que precisam sair do storage, agrupados por bucket.
  *
  * Apagar a linha não apaga o objeto: uma exclusão que limpa `clientes` e deixa
  * `clientes-fotos` cheio devolve o rosto das pessoas a quem tiver o link — e o
  * link continua válido, porque nada o invalidou. É a forma mais silenciosa de
  * a funcionalidade ser mentira.
  *
- * Pura de propósito. Recebe o que o banco devolveu e diz o que apagar, sem
- * tocar em rede — que é a parte testável.
+ * Recebe um mapa de bucket para valores crus. O mapa, e não dois parâmetros
+ * posicionais como antes: com posição, somar o terceiro bucket exigia mexer em
+ * toda chamada, e foi assim que `relatorios` ficou de fora.
+ *
+ * Pura de propósito — recebe o que o banco devolveu e diz o que apagar, sem
+ * tocar em rede.
  */
-export function fotosParaApagar(
-  valoresDeClientes: readonly (string | null | undefined)[],
-  valoresDeImoveis: readonly (string | null | undefined)[]
+export function arquivosParaApagar(
+  porBucket: Record<string, readonly (string | null | undefined)[]>
 ): { bucket: string; paths: string[] }[] {
-  const resolver = (bucket: string, valores: readonly (string | null | undefined)[]) => {
-    const paths = valores
-      .map((valor) => (valor ? caminhoDoObjeto(valor, bucket) : null))
-      .filter((p): p is string => Boolean(p))
-    // `Set` porque a mesma foto pode aparecer em mais de uma linha, e pedir
-    // duas vezes a remoção do mesmo objeto faz a segunda parecer falha.
-    return { bucket, paths: [...new Set(paths)] }
-  }
-  return [
-    resolver(BUCKET_CLIENTES, valoresDeClientes),
-    resolver(BUCKET_IMOVEIS, valoresDeImoveis),
-  ].filter((g) => g.paths.length > 0)
+  return Object.entries(porBucket)
+    .map(([bucket, valores]) => {
+      const paths = valores
+        .map((valor) => (valor ? caminhoDoObjeto(valor, bucket) : null))
+        .filter((p): p is string => Boolean(p))
+      // `Set` porque a mesma foto pode aparecer em mais de uma linha, e pedir
+      // duas vezes a remoção do mesmo objeto faz a segunda parecer falha.
+      return { bucket, paths: [...new Set(paths)] }
+    })
+    .filter((g) => g.paths.length > 0)
 }
 
 export interface ResumoDaExclusao {
   clientesApagados: number
   consultasApagadas: number
-  fotosApagadas: number
+  arquivosApagados: number
   pedidosAnonimizados: number
 }
+
+/** Os três buckets que guardam arquivo do titular. */
+export const BUCKETS_DO_TITULAR = {
+  clientes: BUCKET_CLIENTES,
+  imoveis: BUCKET_IMOVEIS,
+  relatorios: BUCKET_RELATORIOS,
+} as const

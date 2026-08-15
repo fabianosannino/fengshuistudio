@@ -114,9 +114,13 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
   fundamento para mantê-los deixa de existir, então são **apagados**, não
   anonimizados — junto com as fotos nos buckets, antes das linhas, senão o
   objeto fica órfão e servível por link.
-  Coluna de imagem nova em `consultas` entra em `COLUNAS_DE_FOTO_DA_CONSULTA`
-  (`src/lib/dados-do-titular.ts`) **e** no teste. Fora dali, a foto sobrevive à
-  exclusão em silêncio.
+  **Origem de arquivo nova entra em `src/lib/dados-do-titular.ts` e no teste.**
+  São três buckets (`clientes-fotos`, `imoveis-fotos`, `relatorios`) e quatro
+  origens — inclusive `planta_url` **dentro** do jsonb `bagua_entrada` e a
+  tabela `fotos_consulta`, que não é coluna. Fora das listas, o objeto sobrevive
+  à exclusão em silêncio: a linha cai por cascata, o arquivo fica no bucket e
+  nada no banco aponta para ele. Antes de somar upload, repita a varredura do
+  schema por `foto|imagem|url|path|anexo|arquivo`.
   O pedido fica: é registro fiscal e sustenta o razão. Some quem a pessoa era.
 - **Rate limit é `await`** e a chave vem de `ipDaRequisicao(request)` — nunca de
   `x-forwarded-for.split(',')[0]`, que é a ponta que o cliente escreve.

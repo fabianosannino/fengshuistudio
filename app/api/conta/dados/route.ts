@@ -35,8 +35,9 @@ import { logger } from '../../../../src/lib/logger'
 import { escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 import {
   MARCA_DE_ANONIMIZACAO, PALAVRA_DE_CONFIRMACAO, emailAnonimo,
-  fotosParaApagar, fotosDaConsulta, inventariar,
-  COLUNAS_DE_FOTO_DA_CONSULTA, type ResumoDaExclusao,
+  arquivosParaApagar, fotosDaConsulta, inventariar, BUCKETS_DO_TITULAR,
+  COLUNAS_DE_IMAGEM_DA_CONSULTA, COLUNAS_DE_RELATORIO_DA_CONSULTA,
+  TABELA_DE_FOTOS_DA_CONSULTA, type ResumoDaExclusao,
 } from '../../../../src/lib/dados-do-titular'
 
 const ROTA = '/api/conta/dados'
@@ -105,36 +106,60 @@ export async function POST(request: Request) {
 
   const admin = createSupabaseAdminClient()
   const resumo: ResumoDaExclusao = {
-    clientesApagados: 0, consultasApagadas: 0, fotosApagadas: 0, pedidosAnonimizados: 0,
+    clientesApagados: 0, consultasApagadas: 0, arquivosApagados: 0, pedidosAnonimizados: 0,
   }
 
-  // ── 1. As fotos, antes das linhas ─────────────────────────────────────
+  // ── 1. Os arquivos, antes das linhas ──────────────────────────────────
   // Nesta ordem de propósito: apagar as linhas primeiro perderia os caminhos,
   // e os objetos ficariam órfãos no bucket — visíveis para quem tivesse o link,
   // sem nada no banco que dissesse que existem.
-  const [fotosDeClientes, fotosDeImoveis] = await Promise.all([
+  //
+  // São três buckets e quatro origens, e a primeira versão disto alcançava
+  // uma: `clientes-fotos` e cinco colunas de `consultas`. Ficavam de fora a
+  // tabela `fotos_consulta` inteira, o `planta_url` dentro do jsonb
+  // `bagua_entrada` e o PDF do relatório, que vive noutro bucket.
+  const idsDasConsultas = (
+    await admin.from('consultas').select('id').eq('consultor_id', user.id)
+  ).data?.map((l) => (l as { id: string }).id) ?? []
+
+  const colunasDaConsulta = [
+    ...COLUNAS_DE_IMAGEM_DA_CONSULTA,
+    ...COLUNAS_DE_RELATORIO_DA_CONSULTA,
+  ].join(',')
+
+  const [fotosDeClientes, linhasDeConsulta, fotosAnexadas] = await Promise.all([
     admin.from('clientes').select('foto_url').eq('consultor_id', user.id),
-    admin.from('consultas')
-      .select(COLUNAS_DE_FOTO_DA_CONSULTA.join(','))
-      .eq('consultor_id', user.id),
+    admin.from('consultas').select(colunasDaConsulta).eq('consultor_id', user.id),
+    // `fotos_consulta` não tem `consultor_id` — chega pelas consultas dele.
+    // A lista vazia curto-circuita: um `in()` sem valores devolveria tudo.
+    idsDasConsultas.length > 0
+      ? admin.from(TABELA_DE_FOTOS_DA_CONSULTA).select('url').in('consulta_id', idsDasConsultas)
+      : Promise.resolve({ data: [] }),
   ])
 
-  const valoresDeImoveis = (fotosDeImoveis.data ?? []).flatMap((linha) =>
-    fotosDaConsulta(linha as unknown as Record<string, unknown>)
-  )
+  const linhas = (linhasDeConsulta.data ?? []) as unknown as Record<string, unknown>[]
 
-  for (const grupo of fotosParaApagar(
-    (fotosDeClientes.data ?? []).map((l) => (l as { foto_url?: string }).foto_url),
-    valoresDeImoveis
-  )) {
+  const grupos = arquivosParaApagar({
+    [BUCKETS_DO_TITULAR.clientes]: (fotosDeClientes.data ?? [])
+      .map((l) => (l as { foto_url?: string }).foto_url),
+    [BUCKETS_DO_TITULAR.imoveis]: [
+      ...linhas.flatMap((l) => fotosDaConsulta(l, COLUNAS_DE_IMAGEM_DA_CONSULTA)),
+      ...(fotosAnexadas.data ?? []).map((l) => (l as { url?: string }).url),
+    ],
+    [BUCKETS_DO_TITULAR.relatorios]: linhas.flatMap(
+      (l) => fotosDaConsulta(l, COLUNAS_DE_RELATORIO_DA_CONSULTA)
+    ),
+  })
+
+  for (const grupo of grupos) {
     const { error } = await admin.storage.from(grupo.bucket).remove(grupo.paths)
     if (error) {
       // Best-effort declarado (ADR 0020): a exclusão do banco segue, e a lacuna
       // fica no log em vez de virar um 500 que deixa a conta intacta. Objeto
       // que sobrou é achável pelo log; conta não excluída não é achável.
-      logger.error('Falha ao remover fotos do titular', { rota: ROTA, bucket: grupo.bucket, erro: error.message })
+      logger.error('Falha ao remover arquivos do titular', { rota: ROTA, bucket: grupo.bucket, erro: error.message })
     } else {
-      resumo.fotosApagadas += grupo.paths.length
+      resumo.arquivosApagados += grupo.paths.length
     }
   }
 
@@ -180,8 +205,14 @@ export async function POST(request: Request) {
   )
 
   // ── 5. A conta ────────────────────────────────────────────────────────
-  // O perfil é anonimizado em vez de removido: `pedidos` referencia
-  // `vendedor_perfil_id`, e apagar a linha derrubaria o registro fiscal junto.
+  // Esta anonimização **não** é o que preserva o registro fiscal — quem faz
+  // isso é a FK: `pedidos.vendedor_perfil_id → profiles.id` é `ON DELETE SET
+  // NULL` (20260813050000), então o pedido sobrevive ao perfil sozinho.
+  //
+  // Ela existe para o caminho de falha. O `deleteUser` abaixo cascateia para
+  // `profiles` e leva a linha junto; se ele falhar, o que fica é um perfil já
+  // anonimizado em vez de um perfil intacto de alguém que pediu para sair.
+  // Custa uma escrita e cobre o pior desfecho.
   await escreverBestEffort(
     admin.from('profiles').update({
       nome_completo: MARCA_DE_ANONIMIZACAO,
