@@ -120,7 +120,23 @@ function Verificacao() {
   }, [preparar, params])
 
   async function confirmar() {
-    if (codigo.length !== DIGITOS_DO_CODIGO || !factorId) {
+    /*
+     * Duas recusas, duas mensagens.
+     *
+     * As duas condições dividiam o mesmo texto, e as causas não são parecidas:
+     * código curto é coisa de quem digita, `factorId` nulo é o cadastro que não
+     * chegou a existir. Juntas, quem tivesse digitado os seis dígitos certos
+     * leria uma instrução que acabou de cumprir — e ficaria tentando de novo
+     * contra um problema que não é dele.
+     *
+     * Erro genérico ≠ erro enganoso (ADR 0019).
+     */
+    if (!factorId) {
+      setErro('O cadastro não foi iniciado. Recarregue a página.')
+      return
+    }
+
+    if (codigo.length !== DIGITOS_DO_CODIGO) {
       setErro(`Digite o código de ${DIGITOS_DO_CODIGO} dígitos.`)
       return
     }
@@ -194,13 +210,24 @@ function Verificacao() {
                   autenticador e digite o código de {DIGITOS_DO_CODIGO} dígitos.
                 </p>
                 {qrCode && (
-                  <div
-                    style={{ background: '#fff', padding: '10px', display: 'flex', justifyContent: 'center', margin: '14px 0' }}
-                    /* O QR vem do Supabase como SVG. É conteúdo gerado pelo
-                       próprio provedor de auth para esta sessão — não é entrada
-                       de usuário. A CSP do app continua valendo em volta. */
-                    dangerouslySetInnerHTML={{ __html: qrCode }}
-                  />
+                  <div style={{ background: '#fff', padding: '10px', display: 'flex', justifyContent: 'center', margin: '14px 0' }}>
+                    {/*
+                      `qr_code` do Supabase é uma **data URI**, não SVG cru:
+
+                          data:image/svg+xml;utf-8,<svg …>
+
+                      Injetado com `dangerouslySetInnerHTML`, o prefixo virava
+                      texto solto na tela — «data:image/svg+xml;utf-8,» impresso
+                      ao lado do QR — enquanto o `<svg>` seguinte renderizava por
+                      acaso. Como imagem, o browser decodifica a URI inteira, que
+                      é o que ela é. A CSP já libera `data:` em `img-src`.
+
+                      De quebra some o `dangerouslySetInnerHTML`, que aqui nunca
+                      foi necessário.
+                    */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- data URI: `next/image` não otimiza, e o QR já vem no tamanho final */}
+                    <img src={qrCode} alt="QR code para cadastrar no app autenticador" width={200} height={200} />
+                  </div>
                 )}
                 {segredo && (
                   <p style={{ fontSize: '11px', color: '#9CA3AF', wordBreak: 'break-all', marginBottom: '14px' }}>
