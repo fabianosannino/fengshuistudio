@@ -96,8 +96,24 @@ export function redirecionarParaLogin(): void {
  * duas listas discordavam, e a discordância era invisível: uma página podia
  * estar no sitemap e fechada, como estava. Uma fonte só torna isso impossível.
  *
- * Só entra aqui página que não lê dado de usuário. `/produtos` e
- * `/demonstracao` continuam fechadas porque montam o `AppShell`.
+ * Só entra aqui página que não lê dado de usuário. `/demonstracao` continua
+ * fechada porque monta o `AppShell` incondicionalmente.
+ *
+ * ## Por que `/produtos` entrou depois
+ *
+ * Ela estava nesta mesma nota como exemplo do que **fica de fora**, e a razão
+ * dada era correta na época: montava o `AppShell`. Deixou de ser quando a
+ * página ganhou dois ramos — com menu para quem tem conta, sem menu para quem
+ * chegou de fora — e o ramo do visitante nunca chegou a rodar, porque o
+ * middleware o interceptava antes.
+ *
+ * Ou seja: a loja tinha código escrito para o comprador sem conta, tela
+ * desenhada para ele, e um redirecionamento que garantia que ele nunca a
+ * visse. A regra continua a mesma; o que mudou foi a página.
+ *
+ * Para uma loja isso é o defeito inteiro, não um detalhe de acesso: exigir
+ * cadastro para ver o que está à venda é pedir a decisão antes de mostrar o
+ * motivo dela.
  */
 export const ROTAS_MARKETING = [
   '/precos',
@@ -106,6 +122,7 @@ export const ROTAS_MARKETING = [
   '/para-consultores',
   '/rede-de-parceiros',
   '/minha-casa',
+  '/produtos',
 ] as const
 
 /** Subpáginas de recurso — `/recursos/bagua`, `/recursos/calendario`, … */

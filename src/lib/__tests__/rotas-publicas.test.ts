@@ -30,6 +30,17 @@ describe('a loja é acessível a quem não tem conta', () => {
     expect(ehApiPublica('/api/loja/checkout')).toBe(true)
   })
 
+  it('a vitrine da plataforma abre junto com a API que a alimenta', () => {
+    /*
+     * As duas metades precisam concordar, e discordavam: a API já era pública
+     * e a **página** não. O efeito era pior do que uma página fechada — a
+     * página redirecionava para o login antes que o fetch chegasse a acontecer,
+     * então o catálogo respondia certo para ninguém.
+     */
+    expect(ehPaginaPublica('/produtos')).toBe(true)
+    expect(ehApiPublica('/api/loja/produtos')).toBe(true)
+  })
+
   it('o webhook chega sem cookie', () => {
     expect(ehApiPublica('/api/stripe/webhooks')).toBe(true)
     expect(ehApiPublica('/api/stripe/webhooks/subscriptions')).toBe(true)

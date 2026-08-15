@@ -25,12 +25,33 @@ describe('ehRotaDeMarketing', () => {
     }
   })
 
+  it('libera a loja — quem ainda não tem conta precisa ver o que está à venda', () => {
+    /*
+     * Este caso já existiu invertido, afirmando que `/produtos` **não** era
+     * pública «porque monta o AppShell». Estava certo quando foi escrito.
+     *
+     * Deixou de estar quando a página ganhou dois ramos: com menu para quem
+     * tem conta, sem menu para o visitante. O ramo do visitante existia no
+     * código, com texto próprio, e nunca rodou — o middleware interceptava
+     * antes. Loja que exige cadastro para mostrar o preço pede a decisão antes
+     * do motivo dela.
+     */
+    expect(ehRotaDeMarketing('/produtos')).toBe(true)
+  })
+
   it('não libera tela de app', () => {
-    // `/planos` e `/demonstracao` montam o AppShell e leem dados de sessão;
-    // `/produtos` idem. Abrir uma delas por engano exporia tela autenticada.
-    for (const rota of ['/dashboard', '/planos', '/produtos', '/demonstracao', '/clientes', '/perfil', '/admin']) {
+    // `/planos` e `/demonstracao` montam o AppShell incondicionalmente e leem
+    // dados de sessão. Abrir uma delas por engano exporia tela autenticada.
+    for (const rota of ['/dashboard', '/planos', '/demonstracao', '/clientes', '/perfil', '/admin']) {
       expect(ehRotaDeMarketing(rota), rota).toBe(false)
     }
+  })
+
+  it('não confunde a loja com as telas de admin de produto', () => {
+    // `/admin/produtos` cadastra o catálogo e é do dono; `/produtos` é a
+    // vitrine. Casar por prefixo abriria a primeira junto com a segunda.
+    expect(ehRotaDeMarketing('/admin/produtos')).toBe(false)
+    expect(ehRotaDeMarketing('/produtos-admin')).toBe(false)
   })
 
   it('não confunde prefixo com rota', () => {
