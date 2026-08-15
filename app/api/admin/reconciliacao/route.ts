@@ -38,7 +38,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { exigirAdmin } from '../../../../src/lib/guarda-admin'
+import { exigirCapacidade } from '../../../../src/lib/guarda-admin'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -65,7 +65,7 @@ async function autorizado(request: Request): Promise<boolean> {
   // `aal2` dele quebraria a reconciliação diária sem tornar nada mais seguro.
   // O que protege aquele caminho é o segredo, e ele é comparado antes.
   const supabase = await createRouteHandlerClient()
-  return (await exigirAdmin(supabase)).ok
+  return (await exigirCapacidade(supabase, 'reconciliacao:executar')).ok
 }
 
 /** Lê a conta inteira, paginando. O Stripe devolve 100 por página. */

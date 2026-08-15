@@ -31,6 +31,7 @@ import {
   decidirAcesso, mfaExigido, CODIGO_MFA_PENDENTE,
   VARIAVEL_DO_INTERRUPTOR, type NiveisDaSessao,
 } from './mfa-admin'
+import { temCapacidade, type Capacidade } from './capacidades-admin'
 
 /** O papel que abre o painel. Constante nomeada, não string solta. */
 export const PAPEL_ADMIN = 'admin'
@@ -40,6 +41,7 @@ export type FalhaDaGuarda =
   | { motivo: 'nao_admin'; status: 403 }
   | { motivo: 'mfa_pendente'; status: 403 }
   | { motivo: 'mfa_indeterminado'; status: 403 }
+  | { motivo: 'sem_capacidade'; status: 403; capacidade: Capacidade }
 
 export type ResultadoDaGuarda =
   | { ok: true; user: User; profile: Profile }
@@ -123,6 +125,34 @@ export async function exigirAdmin(
 }
 
 /**
+ * Autenticado + admin + segundo fator + **a capacidade exigida**.
+ *
+ * É `exigirAdmin` mais uma pergunta, e a ordem importa: quem não é admin nem
+ * chega a ser perguntado sobre capacidade, porque a resposta seria a mesma e a
+ * distinção vazaria quem é admin e quem não é.
+ *
+ * ## Por que a rota declara a capacidade em vez de deduzi-la
+ *
+ * Porque deduzir do caminho (`/api/admin/chaves` → `chaves:*`) amarraria a
+ * autorização à URL. Renomear a rota mudaria quem pode chamá-la, e o `git mv`
+ * que fizesse isso não pareceria uma mudança de permissão para ninguém.
+ */
+export async function exigirCapacidade(
+  supabase: SupabaseClient,
+  capacidade: Capacidade
+): Promise<ResultadoDaGuarda> {
+  const guarda = await exigirAdmin(supabase)
+  if (!guarda.ok) return guarda
+
+  const capacidades = (guarda.profile as Profile & { capacidades_admin?: string[] })
+    .capacidades_admin
+  if (!temCapacidade(capacidades, capacidade)) {
+    return { ok: false, motivo: 'sem_capacidade', status: 403, capacidade }
+  }
+  return guarda
+}
+
+/**
  * A falha virada resposta HTTP.
  *
  * O corpo é genérico para o cliente e específico só no código de máquina: o
@@ -131,7 +161,14 @@ export async function exigirAdmin(
  * para o `logger`.
  */
 export function respostaDaGuarda(falha: FalhaDaGuarda, rota: string): NextResponse {
-  logger.warn('Acesso ao admin recusado', { rota, motivo: falha.motivo })
+  logger.warn('Acesso ao admin recusado', {
+    rota,
+    motivo: falha.motivo,
+    // A capacidade que faltou vai só para o log. Ela nomeia a estrutura interna
+    // da autorização, e devolvê-la ao cliente entregaria o mapa do que existe a
+    // quem já provou não poder usá-lo.
+    ...(falha.motivo === 'sem_capacidade' ? { capacidade: falha.capacidade } : {}),
+  })
 
   if (falha.motivo === 'nao_autenticado') {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })

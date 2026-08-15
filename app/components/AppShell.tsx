@@ -6,6 +6,7 @@ import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import { planoEfetivo, planoLabel, podeClientes, podeCalendario, isProfissional as isProfissionalFn, planoUsuario } from '../../src/lib/plano-utils'
+import { CAPACIDADE_DA_TELA, temCapacidade } from '../../src/lib/capacidades-admin'
 import PaymentBanner from './PaymentBanner'
 import NotificationBell from './NotificationBell'
 import {
@@ -56,6 +57,7 @@ export default function AppShell({
 
   const isProfessional = isProfissionalFn(profile)
   const isAdmin = profile?.role === 'admin'
+  const capacidadesDoAdmin = (profile as (typeof profile & { capacidades_admin?: string[] }))?.capacidades_admin
   const plano = planoUsuario(profile)
 
   const clienteFinal = ehClienteFinal(profile)
@@ -160,16 +162,28 @@ export default function AppShell({
         { label: 'Perfil', icon: Settings, href: '/perfil' },
       ],
     },
+    /*
+     * Administração — só os itens que esta pessoa consegue abrir.
+     *
+     * O que autoriza é `exigirCapacidade`, no servidor. Isto aqui é UX:
+     * mostrar um item de menu que responde 403 transforma uma regra clara num
+     * erro sem explicação. Se a lista e o servidor divergirem, o servidor
+     * vence — e é por isso que as duas leem a mesma constante.
+     */
     ...(isAdmin ? [{
       titulo: 'Administração',
-      itens: [
+      itens: ([
         { label: 'Chaves', icon: KeyRound, href: '/admin/chaves' },
         { label: 'Catálogo', icon: Package, href: '/admin/produtos' },
         { label: 'Reconciliação', icon: RefreshCw, href: '/admin/reconciliacao' },
         { label: 'Pagamentos', icon: CreditCard, href: '/admin/pagamentos' },
         { label: 'Relatórios', icon: BarChart3, href: '/admin/relatorios' },
         { label: 'Auditoria', icon: FileText, href: '/admin/auditoria' },
-      ],
+      ]).filter(item => {
+        const exigida = CAPACIDADE_DA_TELA[item.href]
+        return exigida === null || exigida === undefined
+          || temCapacidade(capacidadesDoAdmin, exigida)
+      }),
     }] : []),
   ].filter(g => g.itens.length > 0)
 

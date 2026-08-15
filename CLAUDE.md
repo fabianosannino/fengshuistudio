@@ -76,9 +76,19 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
   protegidas por trigger — escrevê-las exige `service_role`.
 - **Autorização**: rotas de usuário derivam ownership do `user.id` autenticado,
   **nunca** de IDs vindos do body (ex.: `account_id`). Rotas `/api/admin/*`
-  re-verificam `role` no servidor — por `exigirAdmin` de
-  `src/lib/guarda-admin.ts`, que é a guarda única. Não recrie a checagem na
-  rota: ela estava copiada em nove lugares e nenhum conferia segundo fator.
+  usam `exigirCapacidade` de `src/lib/guarda-admin.ts`, que é a guarda única.
+  Não recrie a checagem na rota: ela estava copiada em nove lugares e nenhum
+  conferia segundo fator.
+- **Papel abre o painel; capacidade decide o que se faz nele** (ADR 0034).
+  `role = 'admin'` entra; `capacidades_admin` diz o quê. Ler o relatório e
+  promover alguém a admin eram a mesma permissão até aqui. A rota **declara** a
+  capacidade — deduzi-la do caminho amarraria autorização à URL, e um `git mv`
+  viraria mudança de permissão sem parecer uma.
+  `capacidades_admin` é **mais fechada** que `role` e `plano`: aquelas o trigger
+  deixa um admin mudar, esta só `service_role` escreve. Com a mesma saída, um
+  admin se autoconcederia o que lhe faltasse e a separação viraria decoração.
+  A lista em `src/lib/capacidades-admin.ts` desenha o menu e responde antes; a
+  barreira é o servidor. Se divergirem, **o servidor vence**.
 - **O painel admin exige segundo fator** (ADR 0033). `aal2` em toda página
   `/admin/*` e rota `/api/admin/*`, conferido **no servidor**. Nível
   desconhecido não é acesso — `decidirAcesso` devolve `indeterminado`, e
@@ -142,7 +152,7 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028), plano derivado de
   concessões (0029), pedido como máquina de estados (0030), entrega digital
   derivada do pedido (0031), indicação diz quem vende (0032), segundo fator no
-  admin com falha fechada (0033).
+  admin com falha fechada (0033), capacidade do admin separada do papel (0034).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/domain/modelo-da-loja.md` — modelo da loja e as fases. Leia antes de
   mexer em pedido, comissão ou afiliado.

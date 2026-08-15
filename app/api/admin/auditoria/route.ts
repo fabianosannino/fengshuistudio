@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { exigirAdmin, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
+import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
-  const admin = await exigirAdmin(supabase)
+  const admin = await exigirCapacidade(supabase, 'auditoria:ler')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/auditoria')
 
   const url = new URL(request.url)
