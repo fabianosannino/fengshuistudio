@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
-import { exigirAdmin, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
+import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 
@@ -23,9 +23,6 @@ function generateKey(): string {
   return segments.join('-')
 }
 
-/** A guarda mora em `guarda-admin.ts` — aqui só o apelido local. */
-const verifyAdmin = exigirAdmin
-
 // GET — list keys with optional filters
 export async function GET(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -33,7 +30,7 @@ export async function GET(request: Request) {
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
-  const admin = await verifyAdmin(supabase)
+  const admin = await exigirCapacidade(supabase, 'chaves:ler')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
 
   const url = new URL(request.url)
@@ -104,7 +101,7 @@ export async function POST(request: Request) {
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
-  const admin = await verifyAdmin(supabase)
+  const admin = await exigirCapacidade(supabase, 'chaves:gerar')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
 
   let body: { quantidade?: number; plan_type?: string; expires_at?: string | null; note?: string }
@@ -169,7 +166,7 @@ export async function PATCH(request: Request) {
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
-  const admin = await verifyAdmin(supabase)
+  const admin = await exigirCapacidade(supabase, 'chaves:cancelar')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
 
   let body: { id: string; action: string }

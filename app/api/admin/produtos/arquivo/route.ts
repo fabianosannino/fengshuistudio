@@ -24,7 +24,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createRouteHandlerClient } from '../../../../../src/lib/supabase-route'
-import { exigirAdmin, respostaDaGuarda } from '../../../../../src/lib/guarda-admin'
+import { exigirCapacidade, respostaDaGuarda } from '../../../../../src/lib/guarda-admin'
 import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../../src/lib/rate-limit'
 import { logger } from '../../../../../src/lib/logger'
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   if (!success) return NextResponse.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()
-  const guarda = await exigirAdmin(sessao)
+  const guarda = await exigirCapacidade(sessao, 'catalogo:escrever')
   if (!guarda.ok) return respostaDaGuarda(guarda, '/api/admin/produtos/arquivo')
   const user = guarda.user
 
