@@ -183,16 +183,46 @@ function Verificacao() {
             <h1 style={{ fontSize: '18px', margin: '10px 0 8px' }}>
               Verificação em duas etapas indisponível
             </h1>
+            {/*
+              A tela afirmava «o TOTP está desabilitado no projeto Supabase».
+
+              Ela não sabe disso. Este estado vem de `indeterminado`, que
+              significa **não foi possível apurar o nível da sessão** — e a
+              causa mais comum é sessão recém-criada, não configuração.
+
+              Aconteceu em 15/08: o admin leu essa frase, foi conferir o painel
+              do Supabase, e o TOTP estava habilitado — um fator foi cadastrado
+              com sucesso minutos depois. A mensagem mandou consertar o que não
+              estava quebrado, e escondeu a ação que resolvia: recarregar.
+
+              Agora diz o que se sabe, na ordem do que custa menos tentar.
+            */}
             <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: 1.6 }}>
-              O painel exige um segundo fator e não foi possível configurá-lo.
-              Isso normalmente significa que o TOTP está desabilitado no projeto
-              Supabase — habilite em <strong>Authentication → Multi-Factor</strong>.
+              Não foi possível apurar o nível de segurança da sua sessão, e por
+              isso o painel continua fechado.
+            </p>
+            <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: 1.6, marginTop: '10px' }}>
+              <strong>Recarregue esta página.</strong> Logo depois de entrar, a
+              sessão às vezes ainda não carrega esse nível, e uma segunda
+              tentativa costuma resolver.
             </p>
             <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '12px', lineHeight: 1.6 }}>
-              O painel não é liberado por causa deste erro. Se precisar entrar
-              antes de corrigir, a exigência tem um interruptor de ambiente —
-              está documentado no ADR 0033.
+              Se insistir, verifique se o TOTP está habilitado no projeto
+              Supabase (<strong>Authentication → Multi-Factor</strong>). O motivo
+              real fica registrado no log do servidor, com a mensagem original.
             </p>
+            <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '12px', lineHeight: 1.6 }}>
+              Se precisar entrar antes de corrigir, a exigência tem um
+              interruptor de ambiente — está documentado no ADR 0033.
+            </p>
+            {/*
+              Sem a query: `?estado=indisponivel` é o que trouxe para cá, e
+              mantê-la faria o efeito devolver a esta mesma tela sem tentar
+              nada. Recarregar com ela na URL é o botão que não faz nada.
+            */}
+            <button type="button" onClick={() => window.location.assign(window.location.pathname)} style={botaoStyle}>
+              Tentar novamente
+            </button>
           </>
         )}
 
