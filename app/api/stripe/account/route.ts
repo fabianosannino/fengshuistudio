@@ -30,9 +30,23 @@ export async function POST(request: Request) {
       country: 'BR',
       email: email,
       business_type: 'individual',
+      /*
+       * Capacidade não pedida é capacidade que nunca fica ativa.
+       *
+       * `pix_payments` faltava aqui, e a consequência era silenciosa: o
+       * checkout consulta a capacidade antes de oferecer Pix
+       * (`metodosDaConta`), sempre encontrava «ausente» e caía para cartão.
+       * Nenhuma conta conectada podia receber por Pix — não por decisão do
+       * consultor, mas porque nós nunca perguntamos.
+       *
+       * Pedir aqui é o passo anterior a qualquer coisa que se faça no painel:
+       * é o pedido que faz o Stripe incluir as exigências do Pix no
+       * onboarding do consultor.
+       */
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
+        pix_payments: { requested: true },
       },
       business_profile: {
         name: displayName,
@@ -115,6 +129,9 @@ export async function GET(request: Request) {
       requirements_status: requirementsStatus,
       capabilities: {
         card_payments: account.capabilities?.card_payments || 'inactive',
+        // Sai daqui para a tela poder dizer **por que** o Pix não aparece no
+        // checkout. Sem isto, «só cartão» era um fato sem explicação.
+        pix_payments: account.capabilities?.pix_payments || 'inactive',
       },
     })
   } catch (err) {

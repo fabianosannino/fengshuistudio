@@ -33,7 +33,7 @@ interface AccountStatus {
   ready_to_process_payments?: boolean
   onboarding_complete?: boolean
   requirements_status?: string
-  capabilities?: { card_payments?: string }
+  capabilities?: { card_payments?: string; pix_payments?: string }
   charges_enabled?: boolean
 }
 
@@ -216,6 +216,16 @@ function StripeOnboard() {
                   </div>
                   <div style={{ fontSize: '12px', color: '#6B7280' }}>
                     Cartão: {status.capabilities?.card_payments || 'inativo'}
+                  </div>
+                  {/* O Pix aparece aqui porque «só cartão no checkout» era um
+                      fato sem explicação: a capacidade pode estar pendente de
+                      informação que só o consultor tem. */}
+                  <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                    Pix: {status.capabilities?.pix_payments === 'active'
+                      ? 'ativo'
+                      : status.capabilities?.pix_payments === 'pending'
+                        ? 'aguardando o Stripe'
+                        : 'inativo — complete o cadastro'}
                   </div>
                 </div>
               </div>
