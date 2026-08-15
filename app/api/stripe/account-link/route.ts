@@ -29,6 +29,31 @@ export async function POST(request: Request) {
   const origin = origemDaAplicacao(request)
 
   try {
+    /*
+     * Pede o Pix antes de montar o link — inclusive para conta que já existe.
+     *
+     * A criação da conta passou a pedir `pix_payments`, mas as contas
+     * anteriores a isso nasceram sem. Elas nunca teriam a capacidade, e o
+     * checkout delas ficaria em cartão para sempre sem que ninguém soubesse
+     * por quê: não há tela no painel Express onde o consultor peça isso.
+     *
+     * Pedir aqui é idempotente e barato, e faz o Stripe apresentar as
+     * exigências do Pix **dentro** do onboarding que o consultor já ia fazer.
+     *
+     * Best-effort declarado: se este update falhar, o onboarding ainda tem que
+     * acontecer. Perder o Pix é perder uma economia de tarifa; perder o
+     * onboarding é perder a capacidade de vender.
+     */
+    try {
+      await stripeClient.accounts.update(accountId, {
+        capabilities: { pix_payments: { requested: true } },
+      })
+    } catch (err) {
+      logger.warn('Não foi possível solicitar a capacidade de Pix', {
+        route: '/api/stripe/account-link', accountId, error: String(err),
+      })
+    }
+
     // Create a V1 Account Link for onboarding
     const accountLink = await stripeClient.accountLinks.create({
       account: accountId,
