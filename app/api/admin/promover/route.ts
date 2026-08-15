@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { exigirAdmin, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { planoEfetivo } from '../../../../src/lib/plano-utils'
@@ -11,17 +12,9 @@ export async function POST(request: Request) {
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
-  }
+  const admin = await exigirAdmin(supabase)
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/promover')
+  const { user } = admin
 
   let body: { user_id: string }
   try {
@@ -88,17 +81,9 @@ export async function GET(request: Request) {
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
-  }
+  const admin = await exigirAdmin(supabase)
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/promover')
+  const { user } = admin
 
   const url = new URL(request.url)
   const q = (url.searchParams.get('q') || '').slice(0, 100).replace(/[%_\\]/g, '')

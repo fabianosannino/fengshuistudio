@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { exigirAdmin, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
@@ -51,13 +52,8 @@ function respostaDeAcao(mensagem: string, auditoriaRegistrada: boolean, extra?: 
   })
 }
 
-async function verifyAdmin(supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  if (!profile || profile.role !== 'admin') return null
-  return { user, profile }
-}
+/** A guarda mora em `guarda-admin.ts` — aqui só o apelido local. */
+const verifyAdmin = exigirAdmin
 
 // GET — dashboard metrics + user list with subscriptions
 export async function GET(request: Request) {
@@ -67,7 +63,7 @@ export async function GET(request: Request) {
 
   const supabase = await createRouteHandlerClient()
   const admin = await verifyAdmin(supabase)
-  if (!admin) return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/subscriptions')
 
   const url = new URL(request.url)
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
@@ -178,7 +174,7 @@ export async function POST(request: Request) {
 
   const supabase = await createRouteHandlerClient()
   const admin = await verifyAdmin(supabase)
-  if (!admin) return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
+  if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/subscriptions')
 
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
