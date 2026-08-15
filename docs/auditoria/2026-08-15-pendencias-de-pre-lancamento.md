@@ -72,8 +72,14 @@ Conferido em 15/08: `confirmacao_enviada_em` está nulo nos seis pedidos.
 
 Decisão de 15/08: o domínio verificado será **`collabz.com.br`**, com endereço
 por produto (`fengshui@…`, `ervatorio@…`), porque um domínio verificado cobre
-infinitos endereços e o plano gratuito do Resend dá um domínio só. Ver a nota
-sobre `EMAIL_REMETENTE` em `src/lib/email.ts`.
+infinitos endereços e o plano gratuito do Resend dá um domínio só.
+
+O `REMETENTE_PADRAO` de `src/lib/email.ts` já aponta para lá — assim, esquecer
+o `EMAIL_REMETENTE` no Vercel deixa de quebrar a entrega em silêncio.
+
+**Falta:** verificar o domínio no Resend (DNS), criar a chave e pôr
+`RESEND_API_KEY` em Production. Sem domínio verificado o Resend só entrega para
+o e-mail dono da conta — o teste passa e o cliente real não recebe nada.
 
 ---
 

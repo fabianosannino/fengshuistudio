@@ -31,11 +31,34 @@ import { logger } from './logger'
 const ENDPOINT = 'https://api.resend.com/emails'
 
 /**
- * Remetente. Precisa de domínio verificado no Resend — sem isso, o Resend só
- * entrega para o endereço dono da conta, e a venda de um cliente real não
- * chegaria a ninguém.
+ * Remetente padrão.
+ *
+ * ## Por que `collabz.com.br` e não `fengshuistudio.com.br`
+ *
+ * Parece errado à primeira vista — o app é o FengShui Studio. O domínio aqui
+ * não é o da marca: é **o domínio verificado no Resend**, e são coisas
+ * diferentes.
+ *
+ * O plano gratuito do Resend dá **um** domínio verificado, e a CollabZ tem
+ * vários produtos que vão precisar mandar e-mail. Como um domínio verificado
+ * cobre infinitos endereços nele, um único `collabz.com.br` atende todos —
+ * `fengshui@`, `ervatorio@`, e o que vier — em vez de gastar um plano pago
+ * para ter um domínio por marca.
+ *
+ * Quem carrega a marca é o **nome de exibição**, que é o que a caixa de
+ * entrada mostra em destaque; o endereço só aparece para quem abre os
+ * detalhes.
+ *
+ * ## O que muda se o padrão estiver errado
+ *
+ * Remetente em domínio não verificado é **recusado** pelo Resend. Como este
+ * módulo é best-effort, a recusa vira log e o comprador fica sem o link do
+ * pedido — que é o único acesso que ele tem. Por isso o padrão aponta para o
+ * domínio que de fato será verificado, e não para o que seria mais bonito:
+ * esquecer o `EMAIL_REMETENTE` no deploy passa a ser inofensivo em vez de
+ * silenciosamente quebrar a entrega.
  */
-const REMETENTE_PADRAO = 'FengShui Studio <nao-responda@fengshuistudio.com.br>'
+const REMETENTE_PADRAO = 'FengShui Studio <nao-responda@collabz.com.br>'
 
 export interface EmailParaEnviar {
   para: string
