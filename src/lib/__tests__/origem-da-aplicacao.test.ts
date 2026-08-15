@@ -49,3 +49,53 @@ describe('origemDaAplicacao', () => {
     }
   })
 })
+
+describe('variável mal digitada não vira link quebrado', () => {
+  /*
+   * Aconteceu em produção, 15/08: `NEXT_PUBLIC_APP_URL` estava como
+   * `https://fengshuistudio.vercel.` — faltando o `app`.
+   *
+   * O checkout não sofreu, porque ali a requisição vem do browser e traz
+   * `origin`. O **webhook** não traz, caiu na variável, e o e-mail de
+   * confirmação foi entregue ao comprador com o único link que ele tem
+   * apontando para um domínio que não existe.
+   *
+   * Nada quebrou, nada falhou, e só o destinatário descobriria.
+   */
+  it('host terminado em ponto é recusado — é a forma exata do engano', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fengshuistudio.vercel.')
+    vi.stubEnv('NODE_ENV', 'production')
+    expect(() => origemDaAplicacao(pedido())).toThrow(/NEXT_PUBLIC_APP_URL/)
+  })
+
+  it('mas o origin da requisição continua valendo, mesmo com a variável ruim', () => {
+    // A variável só é consultada quando não há `origin`. Recusá-la não pode
+    // derrubar o caminho que estava funcionando.
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fengshuistudio.vercel.')
+    expect(origemDaAplicacao(pedido({ origin: 'https://app.example' }))).toBe('https://app.example')
+  })
+
+  it('recusa o que não é URL absoluta', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'fengshuistudio.com.br')
+    vi.stubEnv('NODE_ENV', 'production')
+    expect(() => origemDaAplicacao(pedido())).toThrow()
+  })
+
+  it('recusa esquema que não serve de link', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'javascript:alert(1)')
+    vi.stubEnv('NODE_ENV', 'production')
+    expect(() => origemDaAplicacao(pedido())).toThrow()
+  })
+
+  it('host sem ponto não passa em produção', () => {
+    // `https://fengshuistudio` é o outro jeito de errar a mesma coisa.
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fengshuistudio')
+    vi.stubEnv('NODE_ENV', 'production')
+    expect(() => origemDaAplicacao(pedido())).toThrow()
+  })
+
+  it('o valor bom continua passando', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fengshuistudio.vercel.app')
+    expect(origemDaAplicacao(pedido())).toBe('https://fengshuistudio.vercel.app')
+  })
+})

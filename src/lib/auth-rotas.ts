@@ -2,6 +2,8 @@
 // ROTAS E REGRAS DE AUTENTICAÇÃO — fonte única
 // ══════════════════════════════════════════════════════════════════════════════
 
+import { logger } from './logger'
+
 /**
  * Rota que troca o `code` do fluxo PKCE por uma sessão.
  *
@@ -116,6 +118,28 @@ export function ehRotaDeMarketing(pathname: string): boolean {
 }
 
 /**
+ * A origem configurada dá para usar como base de link?
+ *
+ * Não valida se o domínio existe — isso é resolução de DNS, e não cabe numa
+ * função síncrona. Valida a forma, que é onde o engano de digitação aparece:
+ *
+ * - precisa parsear como URL absoluta `http`/`https`;
+ * - o host precisa ter ponto (`localhost` só passa fora de produção, e ali a
+ *   função nem chega aqui);
+ * - o host **não** pode terminar em ponto. `fengshuistudio.vercel.` parseia,
+ *   porque ponto final é raiz de DNS válida na especificação — e é exatamente
+ *   a forma que um `app` faltando produz.
+ */
+function ehOrigemUsavel(valor: string): boolean {
+  let url: URL
+  try { url = new URL(valor) } catch { return false }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
+  if (url.hostname.endsWith('.')) return false
+  return url.hostname.includes('.') || url.hostname === 'localhost'
+}
+
+/**
  * A URL pública desta instalação, para montar links de volta do Stripe.
  *
  * ## O defeito
@@ -143,7 +167,26 @@ export function origemDaAplicacao(request: Request): string {
   if (doPedido && /^https?:\/\//.test(doPedido)) return doPedido
 
   const daConfiguracao = process.env.NEXT_PUBLIC_APP_URL
-  if (daConfiguracao) return daConfiguracao.replace(/\/+$/, '')
+  if (daConfiguracao) {
+    const limpa = daConfiguracao.replace(/\/+$/, '')
+    if (ehOrigemUsavel(limpa)) return limpa
+
+    /*
+     * Variável mal digitada não vira link quebrado em silêncio.
+     *
+     * Aconteceu: `NEXT_PUBLIC_APP_URL` estava como
+     * `https://fengshuistudio.vercel.` — faltando o `app`. O checkout não
+     * sofreu, porque ali a requisição vem do browser e traz `origin`; o
+     * webhook, que não traz, caiu nesta variável e mandou ao comprador um
+     * e-mail de confirmação cujo **único** link não abria.
+     *
+     * O pior formato de erro: nada quebra, o e-mail é entregue, e só o
+     * destinatário descobre — se reclamar.
+     */
+    logger.error('NEXT_PUBLIC_APP_URL não parece uma origem válida — ignorada', {
+      route: 'auth-rotas', valor: limpa,
+    })
+  }
 
   if (process.env.NODE_ENV !== 'production') return 'http://localhost:3000'
 
