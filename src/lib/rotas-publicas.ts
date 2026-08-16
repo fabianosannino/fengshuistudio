@@ -63,6 +63,15 @@ export const APIS_PUBLICAS = [
   '/api/loja/checkout',
   // O clique que mede e encaminha para a loja do parceiro (fase 4).
   '/api/loja/indicacao',
+  /*
+   * O clique que **traz** alguém, por link de afiliado (fase 5).
+   *
+   * Pública por definição: o link é divulgado para quem ainda não conhece o
+   * app. Exigir sessão aqui seria pedir conta a quem acabou de clicar num
+   * anúncio — e o afiliado perderia toda atribuição de quem não tem cadastro,
+   * que é exatamente o público que ele foi contratado para trazer.
+   */
+  '/api/afiliado/clique',
 ] as const
 
 export function ehPaginaPublica(pathname: string): boolean {

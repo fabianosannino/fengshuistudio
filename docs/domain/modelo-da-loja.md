@@ -516,8 +516,41 @@ não é código:
 | **2** ✅ | bem próprio **digital** | testava o trilho «plataforma é a vendedora» sem esbarrar em fiscal. **Feita** — ADR 0031 |
 | **3** | bem próprio **físico** | aqui entram emissor de NF-e, estoque, frete e logística reversa |
 | **4** | terceiro: indicação ✅, marketplace depois | **Indicação feita** — ADR 0032. O marketplace, que traz a responsabilidade solidária, segue como plano |
-| **5** | afiliados | usa `comissoes`, que já existe desde a fase 1 |
+| **5** | afiliados — **atribuição feita**, comissão pendente | ver a nota abaixo |
 
 A fase 3 é a única que trava em coisa de fora — inscrição estadual e emissor
 fiscal. Colocá-la no fim não é adiar: é não deixar o resto da loja esperando um
 certificado digital.
+
+### Correção sobre a fase 5 (16/08)
+
+Esta tabela dizia que a fase 5 «usa `comissoes`, que já existe desde a fase 1».
+**Não existia.** O que a fase 1 entregou foi `pedido_lancamentos` — o razão,
+que registra `comissao_plataforma` como lançamento. Não é a tabela `comissoes`
+desta seção 13, com `vence_em`, `paga_em` e `estornada_em`.
+
+A frase fazia a fase parecer pequena. Fica corrigida porque dimensionamento
+errado no plano vira promessa errada fora dele.
+
+**Feito em 16/08 — a atribuição**, que é a metade que não podia esperar:
+`indicacoes`, `profiles.codigo_de_afiliado`, `pedidos.indicacao_id` e a rota
+`/api/afiliado/clique`. Último clique, janela de 30 dias, com o visitante
+identificado por valor aleatório em cookie e **hash** no banco.
+
+A ordem tem uma razão que vale registrar: percentual e forma de pagamento
+dependem de decisão comercial e de contador, e podem ser aplicados depois sobre
+pedidos já gravados. **Clique não registrado é atribuição perdida para
+sempre.** Então o que urgia era a metade que não dependia de ninguém decidir.
+
+**Falta**, e depende de decisão antes de código:
+
+1. O **percentual** e a quem se aplica — com contador, por causa da retenção
+   na fonte entre PF e PJ.
+2. A fronteira entre `comissoes` e `pedido_lancamentos`. A `comissoes` desenhada
+   tem `origem: plataforma | afiliado`, mas a comissão da plataforma **já é**
+   registrada no razão. Criar a linha com `origem='plataforma'` gravaria o
+   mesmo fato duas vezes, e a que envelhecesse primeiro passaria a mentir —
+   o defeito que o plano derivado de concessões e o pedido sem `status` existem
+   para evitar. A proposta é `comissoes` ser **só de afiliado**, com o razão
+   continuando dono da comissão da plataforma.
+3. Tela do afiliado, apuração e repasse por transferência Connect.

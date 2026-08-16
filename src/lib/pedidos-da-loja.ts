@@ -200,6 +200,15 @@ export interface PedidoParaCriar {
   stripeAccountId?: string | null
   totalCentavos: number
   taxaPlataformaCentavos: number
+  /**
+   * De qual indicação de afiliado veio esta venda.
+   *
+   * Resolvida no **início** do checkout, e não na confirmação do pagamento: a
+   * janela de 30 dias vale no instante em que a pessoa decide comprar, não no
+   * instante em que o cartão responde. Entre um e outro pode passar tempo — e
+   * num pagamento assíncrono, dias.
+   */
+  indicacaoId?: string | null
   item: {
     nome: string
     descricao?: string | null
@@ -242,6 +251,9 @@ export async function criarPedidoIniciado(
       stripe_account_id: pedido.stripeAccountId ?? null,
       total_centavos: pedido.totalCentavos,
       taxa_plataforma_centavos: pedido.taxaPlataformaCentavos,
+      // De quem veio o comprador, quando veio de alguém. `null` é o normal —
+      // a maioria das vendas não tem afiliado, e ausência não é zero.
+      indicacao_id: pedido.indicacaoId ?? null,
     })
     // O token vem de volta na mesma escrita: é ele que monta o link do
     // comprador, e uma segunda consulta só para lê-lo abriria um caminho em
