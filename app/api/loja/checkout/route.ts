@@ -37,6 +37,9 @@ import { validateUUID } from '../../../../src/lib/validation'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { criarPedidoIniciado, anotarSessaoDoPedido } from '../../../../src/lib/pedidos-da-loja'
 import { produtoParaVenda, ehDigital } from '../../../../src/lib/produtos-da-plataforma'
+import {
+  COOKIE_DO_VISITANTE, hashDoVisitante, indicacaoQueAtribui, atribuicaoValida,
+} from '../../../../src/lib/atribuicao-de-afiliado'
 
 const ROUTE = '/api/loja/checkout'
 
@@ -93,6 +96,7 @@ export async function POST(request: Request) {
 
   const total = produto.preco_centavos * quantidade
   const origin = origemDaAplicacao(request)
+  const indicacaoId = await indicacaoDoComprador(supabase, request)
 
   try {
     /*
@@ -112,6 +116,7 @@ export async function POST(request: Request) {
       stripeAccountId: null,
       totalCentavos: total,
       taxaPlataformaCentavos: 0,
+      indicacaoId,
       item: {
         nome: produto.nome,
         descricao: produto.descricao,
@@ -183,4 +188,59 @@ export async function POST(request: Request) {
     })
     return NextResponse.json({ error: 'Erro ao criar sessão de pagamento.' }, { status: 500 })
   }
+}
+
+/**
+ * De qual indicação de afiliado veio quem está comprando.
+ *
+ * Resolvida **aqui**, no início do checkout, e não no webhook: a janela de 30
+ * dias vale no instante em que a pessoa decide comprar. Entre a decisão e a
+ * confirmação do cartão pode passar tempo, e num pagamento assíncrono passam
+ * dias — resolver depois faria uma indicação viva vencer no meio do caminho e
+ * a atribuição sumir por atraso de infraestrutura.
+ *
+ * Best-effort declarado: falha aqui devolve `null` e a venda segue sem
+ * afiliado. Derrubar uma compra paga porque não deu para creditar quem indicou
+ * seria trocar receita certa por comissão incerta.
+ */
+async function indicacaoDoComprador(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  request: Request
+): Promise<string | null> {
+  const identidade = request.headers.get('cookie')
+    ?.split(';')
+    .map(p => p.trim())
+    .find(p => p.startsWith(`${COOKIE_DO_VISITANTE}=`))
+    ?.split('=')[1]
+
+  if (!identidade) return null
+
+  const { data, error } = await supabase
+    .from('indicacoes')
+    .select('id, afiliado_perfil_id, criada_em, expira_em')
+    .eq('visitante_hash', hashDoVisitante(identidade))
+    // Teto: mesmo visitante clicando muito não vira consulta sem fim. Trinta
+    // é folgado para uma janela de trinta dias, e `indicacaoQueAtribui`
+    // escolhe pela mais recente de qualquer forma.
+    .order('criada_em', { ascending: false })
+    .limit(30)
+
+  if (error) {
+    logger.warn('Não foi possível ler a indicação do comprador', {
+      route: ROUTE, error: error.message,
+    })
+    return null
+  }
+
+  const indicacao = indicacaoQueAtribui(data ?? [], new Date())
+
+  /*
+   * O comprador da loja não tem conta, então não há perfil para comparar e a
+   * regra do autoafiliado não tem o que checar aqui. A chamada fica mesmo
+   * assim, com `null` explícito: quando a loja passar a reconhecer comprador
+   * logado, o lugar de aplicar a regra já existe — e a alternativa seria
+   * descobrir a ausência dela no dia em que alguém comprar com o próprio
+   * código.
+   */
+  return atribuicaoValida(indicacao, null) ? indicacao!.id : null
 }

@@ -41,6 +41,16 @@ describe('a loja é acessível a quem não tem conta', () => {
     expect(ehApiPublica('/api/loja/produtos')).toBe(true)
   })
 
+  it('o clique de afiliado abre sem sessão', () => {
+    /*
+     * O link do afiliado é divulgado para quem ainda não conhece o app.
+     * Exigir sessão aqui pediria conta a quem acabou de clicar num anúncio, e
+     * o afiliado perderia a atribuição de todo mundo sem cadastro — que é
+     * exatamente o público que ele foi contratado para trazer.
+     */
+    expect(ehApiPublica('/api/afiliado/clique')).toBe(true)
+  })
+
   it('o webhook chega sem cookie', () => {
     expect(ehApiPublica('/api/stripe/webhooks')).toBe(true)
     expect(ehApiPublica('/api/stripe/webhooks/subscriptions')).toBe(true)
