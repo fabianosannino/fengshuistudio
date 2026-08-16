@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { ROTAS_MARKETING } from '../src/lib/auth-rotas'
+import { ROTAS_MARKETING, URL_CANONICA } from '../src/lib/auth-rotas'
 
 /**
  * O sitemap lista o que um visitante sem sessão realmente alcança.
@@ -10,19 +10,8 @@ import { ROTAS_MARKETING } from '../src/lib/auth-rotas'
  * `ROTAS_MARKETING`, a mesma lista que o middleware usa para liberar acesso,
  * para que «indexável» e «acessível» não voltem a divergir.
  */
-/**
- * O domínio que o buscador deve indexar.
- *
- * Era `fengshuistudio.vercel.app` — o endereço de infraestrutura. Ele responde
- * 200, então nada quebrava; o que acontecia era pior e mais lento: o Google
- * indexava o app pelo host da Vercel, e o domínio da marca —
- * `www.fengshuistudio.com.br`, que é o que está nos cartões, nos e-mails e no
- * `success_url` do Stripe — competia com ele pelo mesmo conteúdo.
- *
- * É `www` e não o apex porque o apex responde **307 para o www**. Anunciar o
- * apex mandaria o buscador a um redirecionamento em toda página do sitemap.
- */
-const BASE_URL = 'https://www.fengshuistudio.com.br'
+/** O domínio a anunciar — a mesma constante que o `robots.txt` usa. */
+const BASE_URL = URL_CANONICA
 
 /** Subpáginas de recurso — existem como página, não como rota derivada. */
 const SUBPAGINAS_DE_RECURSO = [

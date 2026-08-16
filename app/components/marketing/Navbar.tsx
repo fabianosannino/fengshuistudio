@@ -84,6 +84,14 @@ export default function Navbar() {
             </div>
           </div>
           <Link href="/precos" className={linkCls('/precos')}>Preços</Link>
+          {/*
+            * A vitrine estava aberta e inalcançável: pública desde que o
+            * middleware parou de interceptá-la, anunciada no sitemap com
+            * prioridade 0.9, e sem um link no site que levasse até lá. Só
+            * chegava quem já tinha conta (pelo menu «Loja» do app), quem
+            * clicava num link de afiliado ou quem digitava a URL.
+            */}
+          <Link href="/produtos" className={linkCls('/produtos')}>Loja</Link>
           <Link href="/rede-de-parceiros" className={linkCls('/rede-de-parceiros')}>Parceiros</Link>
           <Link href="/sobre" className={linkCls('/sobre')}>Sobre</Link>
         </nav>
@@ -127,7 +135,8 @@ export default function Navbar() {
           ))}
           <div className="pt-2 space-y-2">
             <Link href="/precos" className="block py-2 text-ink font-medium">Preços</Link>
-              <Link href="/rede-de-parceiros" className="block py-2 text-ink font-medium">Parceiros</Link>
+            <Link href="/produtos" className="block py-2 text-ink font-medium">Loja</Link>
+            <Link href="/rede-de-parceiros" className="block py-2 text-ink font-medium">Parceiros</Link>
             <Link href="/sobre" className="block py-2 text-ink font-medium">Sobre</Link>
           </div>
           <div className="pt-4 flex flex-col gap-3">

@@ -128,6 +128,37 @@ export const ROTAS_MARKETING = [
 /** Subpáginas de recurso — `/recursos/bagua`, `/recursos/calendario`, … */
 export const PREFIXO_RECURSOS = '/recursos/'
 
+/**
+ * O domínio que o buscador deve indexar.
+ *
+ * Era `fengshuistudio.vercel.app` — o endereço de infraestrutura. Ele responde
+ * 200, então nada quebrava; o que acontecia era pior e mais lento: o Google
+ * indexava o app pelo host da Vercel, e o domínio da marca —
+ * `www.fengshuistudio.com.br`, que é o que está nos cartões, nos e-mails e no
+ * `success_url` do Stripe — competia com ele pelo mesmo conteúdo.
+ *
+ * É `www` e não o apex porque o apex responde **307 para o www**. Anunciar o
+ * apex mandaria o buscador a um redirecionamento em toda página do sitemap.
+ *
+ * ## Não confundir com `origemDaAplicacao`
+ *
+ * Aquela responde «onde esta instância está rodando», e a resposta muda: numa
+ * preview da Vercel é o host da preview; em desenvolvimento é `localhost`.
+ * Esta é fixa e responde outra pergunta — «qual endereço o mundo deve conhecer».
+ * Usar `origemDaAplicacao` aqui faria cada preview publicar um sitemap
+ * anunciando a si mesma, que é a forma mais rápida de espalhar o conteúdo por
+ * hosts que ninguém quer indexados.
+ *
+ * ## Por que mora aqui
+ *
+ * Porque `sitemap.ts` e `robots.ts` precisam da **mesma** resposta, e por um
+ * tempo não tiveram: o sitemap foi corrigido para o domínio da marca e o robots
+ * ficou apontando para o da Vercel. O buscador então pedia `robots.txt` no
+ * domínio certo e recebia o endereço de um sitemap no domínio errado — a
+ * correção do sitemap desfeita pelo arquivo que aponta para ele.
+ */
+export const URL_CANONICA = 'https://www.fengshuistudio.com.br'
+
 /** `true` quando a rota é do site público e dispensa sessão. */
 export function ehRotaDeMarketing(pathname: string): boolean {
   return (ROTAS_MARKETING as readonly string[]).includes(pathname)

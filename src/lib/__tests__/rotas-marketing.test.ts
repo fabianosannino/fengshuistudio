@@ -10,6 +10,9 @@ import { ROTAS_MARKETING, ehRotaDeMarketing } from '../auth-rotas'
  */
 const LINKS_DA_HOME_PUBLICA = [
   '/precos', '/recursos', '/sobre', '/para-consultores', '/rede-de-parceiros', '/minha-casa',
+  // «Loja», acrescentada à Navbar e ao rodapé em 16/08. Ela já era pública;
+  // o que faltava era um caminho até ela.
+  '/produtos',
 ]
 
 describe('ehRotaDeMarketing', () => {

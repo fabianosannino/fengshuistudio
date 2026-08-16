@@ -32,6 +32,7 @@ export default function Footer() {
               <li><Link href="/recursos/bagua" className="hover:text-gold transition-colors">Ba Guá & Planta</Link></li>
               <li><Link href="/recursos/relatorios" className="hover:text-gold transition-colors">Relatórios PDF</Link></li>
               <li><Link href="/precos" className="hover:text-gold transition-colors">Preços</Link></li>
+              <li><Link href="/produtos" className="hover:text-gold transition-colors">Loja</Link></li>
             </ul>
           </nav>
           <nav aria-label="Para quem">
