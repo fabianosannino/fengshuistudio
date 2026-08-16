@@ -343,13 +343,44 @@ pode custar mais do que a venda rendia.
 
 ### A regra só é real quando o app estorna
 
-Hoje o estorno é feito no painel do Stripe, onde devolver a comissão depende de
-alguém marcar uma caixa. **Regra que depende de lembrar não é regra** — é a
+Enquanto o estorno era feito no painel do Stripe, devolver a comissão dependia
+de alguém marcar uma caixa. **Regra que depende de lembrar não é regra** — é a
 mesma forma dos defeitos que este projeto vem corrigindo o tempo todo.
 
-Ela passa a valer de fato quando o estorno sair da tela de vendas, chamando o
-Stripe sempre com o estorno da comissão junto, e gravando os lançamentos
-correspondentes. Até lá, é convenção escrita, e convenção escrita falha.
+Ela passa a valer quando o estorno sai da tela, chamando o Stripe com o estorno
+da comissão junto. É o que `/api/pedidos/estorno` faz: `refund_application_fee`
+é fixo em `true` e **não** é parâmetro da rota.
+
+### As duas vendas se desfazem por caminhos diferentes (16/08)
+
+Aquela rota nasceu nas fases 0 e 1, quando só existia venda de consultor, e
+exigia `stripe_account_id`. A fase 2 acrescentou a venda de **bem próprio**,
+onde aquela coluna é nula **por desenho** — a cobrança acontece na conta da
+plataforma. Resultado: toda venda nossa era recusada com um 409, e não havia
+tela que chamasse a rota para ela.
+
+Enquanto isso a página do comprador oferecia «Solicitar devolução» e o e-mail
+prometia os 7 dias. **O direito era anunciado em dois lugares e não existia em
+nenhum** — o único contorno era o painel do Stripe, que um comprador não tem.
+
+O que muda com quem recebeu o dinheiro está isolado em
+`src/lib/estorno-da-venda.ts`:
+
+| | venda do consultor | venda de bem próprio |
+|---|---|---|
+| onde o estorno acontece | `stripeAccount` da conta dele | a nossa conta — parâmetro **ausente**, não nulo |
+| `refund_application_fee` | `true`, sempre | **não vai** — não há comissão de si mesmo, e mandá-lo faz o Stripe recusar a chamada inteira |
+| quem manda estornar | ele, pela policy de `pedidos` | admin com `assinaturas:escrever`, em `/admin/vendas` |
+| quem perde a tarifa | o consultor | a plataforma |
+
+A capacidade na venda própria não é cerimônia: ali o dono da linha é a
+plataforma e **qualquer** admin alcança o pedido na leitura. Sem ela, ler o
+relatório e devolver dinheiro voltariam a ser a mesma permissão — o defeito que
+o ADR 0034 desfaz.
+
+`/admin/vendas` é tela separada de `/vendas` porque aquela filtra por
+`vendedor_perfil_id = user.id`, e venda de bem próprio não tem vendedor pessoa:
+ela nunca apareceria ali, por mais admin que fosse quem abrisse.
 
 ### O prazo é derivado, e a origem depende do que foi vendido
 

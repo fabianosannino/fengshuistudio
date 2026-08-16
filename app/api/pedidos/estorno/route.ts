@@ -16,6 +16,17 @@
  * regra que depende de alguém marcar uma caixa não é regra, e era exatamente
  * assim que funcionava enquanto o estorno era feito no painel do Stripe.
  *
+ * Na venda de **bem próprio** o parâmetro não vai: não há `application_fee`
+ * porque não se cobra comissão de si mesmo, e mandá-lo faria o Stripe recusar
+ * a chamada inteira. Ver `estorno-da-venda.ts`.
+ *
+ * ## As duas vendas se desfazem por caminhos diferentes
+ *
+ * Até 16/08 esta rota exigia `stripe_account_id` e por isso recusava **toda**
+ * venda de bem próprio, onde aquela coluna é nula por desenho. O comprador
+ * tinha o botão «Solicitar devolução» e o e-mail prometendo os 7 dias do CDC,
+ * e ninguém do outro lado conseguia cumprir.
+ *
  * ## Quem escreve o quê
  *
  * Esta rota grava `devolucao_solicitada` — o pedido do consumidor, que é o
@@ -32,11 +43,12 @@ import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { estadoDoPedido, registrarEvento } from '../../../../src/lib/pedidos-da-loja'
+import { exigirCapacidade } from '../../../../src/lib/guarda-admin'
+import {
+  ESTORNAVEIS, faltaParaEstornar, parametrosDoEstorno, quemEstorna,
+} from '../../../../src/lib/estorno-da-venda'
 
 const ROUTE = '/api/pedidos/estorno'
-
-/** Estados em que ainda faz sentido devolver dinheiro. */
-const ESTORNAVEIS = new Set(['pago', 'preparando', 'enviado', 'entregue', 'devolucao_solicitada'])
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -68,7 +80,7 @@ export async function POST(request: Request) {
    */
   const { data: pedido, error: erroDeLeitura } = await supabase
     .from('pedidos')
-    .select('id, stripe_payment_intent, stripe_account_id, pedido_eventos(evento, ocorrido_em)')
+    .select('id, stripe_payment_intent, stripe_account_id, vendedor_tipo, pedido_eventos(evento, ocorrido_em)')
     .eq('id', pedidoId)
     .maybeSingle()
 
@@ -90,11 +102,37 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!pedido.stripe_payment_intent || !pedido.stripe_account_id) {
-    logger.error('Pedido estornável sem dados de cobrança', {
+  /*
+   * Só o `payment_intent` é indispensável.
+   *
+   * A condição aqui exigia **também** `stripe_account_id`, e com isso recusava
+   * toda venda de bem próprio — onde aquela coluna é nula por desenho, porque
+   * a cobrança acontece na nossa conta. Ver `estorno-da-venda.ts`.
+   */
+  if (faltaParaEstornar(pedido)) {
+    logger.error('Pedido estornável sem cobrança registrada', {
       route: ROUTE, pedidoId, estado,
     })
     return NextResponse.json({ error: 'Não foi possível processar o estorno.' }, { status: 409 })
+  }
+
+  /*
+   * Na venda de bem próprio, o vendedor somos nós — e «nós» é o admin com
+   * capacidade, não qualquer consultor logado.
+   *
+   * A leitura acima já passou pela policy, que devolve a linha para o dono ou
+   * para admin. Isso basta na venda do consultor: quem lê é quem vende. Não
+   * basta na venda da plataforma, onde o dono da linha é a plataforma e
+   * qualquer admin a alcança — daí a capacidade, que separa ler de desfazer.
+   */
+  if (quemEstorna(pedido) === 'admin') {
+    const guarda = await exigirCapacidade(supabase, 'assinaturas:escrever')
+    if (!guarda.ok) {
+      logger.warn('Estorno de venda própria recusado por falta de capacidade', {
+        route: ROUTE, pedidoId,
+      })
+      return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
+    }
   }
 
   const admin = createSupabaseAdminClient()
@@ -111,15 +149,10 @@ export async function POST(request: Request) {
   }, ROUTE)
 
   try {
-    const reembolso = await stripeClient.refunds.create({
-      payment_intent: pedido.stripe_payment_intent,
-      // Fixo, e não parâmetro. Ver a nota no topo do arquivo.
-      refund_application_fee: true,
-    }, {
-      stripeAccount: pedido.stripe_account_id,
-      // Dois cliques no botão não devolvem duas vezes.
-      idempotencyKey: `estorno-${pedidoId}`,
-    })
+    // Os parâmetros mudam com quem recebeu o dinheiro — `stripeAccount` e
+    // `refund_application_fee` só existem na cobrança da conta conectada.
+    const { corpo, opcoes } = parametrosDoEstorno(pedido, pedidoId)
+    const reembolso = await stripeClient.refunds.create(corpo, opcoes)
 
     logger.info('Estorno solicitado ao Stripe', {
       route: ROUTE, pedidoId, refundId: reembolso.id, status: reembolso.status,

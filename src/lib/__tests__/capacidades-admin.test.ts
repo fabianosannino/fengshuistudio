@@ -60,8 +60,11 @@ describe('CAPACIDADE_DA_TELA', () => {
     }
   })
 
-  it('cobre as seis telas do menu de administração', () => {
-    expect(Object.keys(CAPACIDADE_DA_TELA)).toHaveLength(6)
+  it('cobre as sete telas do menu de administração', () => {
+    // A contagem existe para quebrar quando alguém acrescenta uma tela em
+    // `/admin` e esquece de dizer o que ela exige — o menu a mostraria a todo
+    // admin, e o 403 viria da rota, sem explicação.
+    expect(Object.keys(CAPACIDADE_DA_TELA)).toHaveLength(7)
   })
 })
 
