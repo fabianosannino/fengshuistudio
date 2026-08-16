@@ -13,7 +13,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import AppShell from '../../components/AppShell'
 import { logger } from '../../../src/lib/logger'
 import { formatarMoeda } from '../../../src/lib/formato'
-import { Upload, Package, Eye, EyeOff } from 'lucide-react'
+import { Upload, Package, Eye, EyeOff, Pencil, Image as ImageIcon } from 'lucide-react'
+import EditarProduto, { SeloDaPromocao } from './EditarProduto'
+import { precoVigente } from '../../../src/lib/promocao-do-produto'
+import { urlPublicaDaImagem } from '../../../src/lib/produtos-da-plataforma'
 
 interface ProdutoAdmin {
   id: string
@@ -27,10 +30,42 @@ interface ProdutoAdmin {
   arquivo_bytes: number | null
   link_externo: string | null
   parceiro: string | null
+  imagem_path: string | null
+  promocao_preco_centavos: number | null
+  promocao_inicio: string | null
+  promocao_fim: string | null
   cliques: number
 }
 
 const ROTA = '/api/admin/produtos'
+
+/**
+ * A miniatura do cartão, ou o quadro vazio.
+ *
+ * O quadro vazio existe para que a lista não mude de forma conforme o produto
+ * tenha foto ou não — e para que «este não tem imagem» seja visível de relance,
+ * que é o motivo de a coluna existir.
+ */
+function Miniatura({ url }: { url: string | null }) {
+  const moldura = {
+    width: '64px', height: '64px', borderRadius: '8px', flexShrink: 0,
+    border: '1px solid #F3F4F6', overflow: 'hidden' as const,
+  }
+
+  if (!url) {
+    return (
+      <div style={{
+        ...moldura, background: '#F9FAFB',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }} aria-hidden="true">
+        <ImageIcon size={20} color="#D1D5DB" />
+      </div>
+    )
+  }
+
+  // eslint-disable-next-line @next/next/no-img-element -- bucket externo; `next/image` exigiria configurar o domínio remoto e não ganha nada numa miniatura de 64px
+  return <img src={url} alt="" style={{ ...moldura, objectFit: 'cover', display: 'block' }} />
+}
 
 function tamanho(bytes: number | null): string {
   if (!bytes) return ''
@@ -53,7 +88,19 @@ export default function AdminProdutos() {
   const [salvando, setSalvando] = useState(false)
 
   const [enviandoDe, setEnviandoDe] = useState<string | null>(null)
+  const [enviandoFotoDe, setEnviandoFotoDe] = useState<string | null>(null)
+  const [editando, setEditando] = useState<string | null>(null)
   const inputsDeArquivo = useRef<Record<string, HTMLInputElement | null>>({})
+  const inputsDeFoto = useRef<Record<string, HTMLInputElement | null>>({})
+
+  /*
+   * O instante da renderização, congelado.
+   *
+   * Chamar `new Date()` dentro do map faria cada cartão perguntar a hora por
+   * conta própria — e uma campanha que fechasse no meio da lista apareceria
+   * «rodando» acima e «encerrada» abaixo, na mesma tela.
+   */
+  const agora = new Date()
 
   const carregar = useCallback(async () => {
     const res = await fetch(ROTA)
@@ -125,6 +172,28 @@ export default function AdminProdutos() {
       setAviso('Não foi possível enviar o arquivo.')
     } finally {
       setEnviandoDe(null)
+    }
+  }
+
+  async function enviarFoto(produtoId: string, imagem: File) {
+    setEnviandoFotoDe(produtoId)
+    setAviso('')
+
+    const form = new FormData()
+    form.append('produto_id', produtoId)
+    form.append('imagem', imagem)
+
+    try {
+      const res = await fetch(`${ROTA}/imagem`, { method: 'POST', body: form })
+      const dados = await res.json().catch(() => ({}))
+      if (!res.ok) { setAviso(dados.error ?? 'Não foi possível enviar a imagem.'); return }
+      setAviso('Imagem atualizada.')
+      await carregar()
+    } catch (err) {
+      logger.error('Falha no envio da imagem do produto', { error: String(err) })
+      setAviso('Não foi possível enviar a imagem.')
+    } finally {
+      setEnviandoFotoDe(null)
     }
   }
 
@@ -239,10 +308,17 @@ export default function AdminProdutos() {
         ) : produtos.map(produto => (
           <div key={produto.id} style={cartao}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <Miniatura url={urlPublicaDaImagem(produto.imagem_path)} />
               <div>
                 <strong style={{ color: '#0E1B2C', fontSize: '15px' }}>{produto.nome}</strong>
+                <div style={{ margin: '5px 0 0' }}>
+                  <SeloDaPromocao produto={produto} agora={agora} />
+                </div>
                 <p style={{ color: '#6B7280', fontSize: '13px', margin: '4px 0 0' }}>
-                  {formatarMoeda(produto.preco_centavos / 100)}
+                  {/* O preço vigente, não o cheio: é este que o comprador paga
+                      agora, e a lista existe para mostrar o estado real. */}
+                  {formatarMoeda(precoVigente(produto, agora).centavos / 100)}
                   {produto.modo_de_venda === 'indicacao'
                     ? ` · ${produto.parceiro ?? 'parceiro'} · ${produto.cliques} clique${produto.cliques === 1 ? '' : 's'}`
                     : produto.arquivo_nome
@@ -254,6 +330,7 @@ export default function AdminProdutos() {
                     {produto.link_externo}
                   </p>
                 )}
+              </div>
               </div>
               <span style={{
                 padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
@@ -292,6 +369,41 @@ export default function AdminProdutos() {
               </button>
               )}
 
+              <input
+                type="file" hidden accept="image/jpeg,image/png,image/webp"
+                ref={el => { inputsDeFoto.current[produto.id] = el }}
+                onChange={e => {
+                  const imagem = e.target.files?.[0]
+                  if (imagem) enviarFoto(produto.id, imagem)
+                  e.target.value = ''
+                }}
+              />
+              <button type="button" onClick={() => inputsDeFoto.current[produto.id]?.click()}
+                disabled={enviandoFotoDe === produto.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 14px', background: '#fff', color: '#0E1B2C',
+                  border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px',
+                  cursor: enviandoFotoDe === produto.id ? 'default' : 'pointer',
+                }}>
+                <ImageIcon size={15} />
+                {enviandoFotoDe === produto.id
+                  ? 'Enviando…'
+                  : produto.imagem_path ? 'Trocar foto' : 'Adicionar foto'}
+              </button>
+
+              <button type="button"
+                onClick={() => setEditando(editando === produto.id ? null : produto.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 14px', background: '#fff', color: '#0E1B2C',
+                  border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px',
+                  cursor: 'pointer',
+                }}>
+                <Pencil size={15} />
+                {editando === produto.id ? 'Fechar' : 'Editar'}
+              </button>
+
               <button type="button" onClick={() => alternarPublicacao(produto)} style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '8px 14px', background: produto.ativo ? '#fff' : '#2E7D6B',
@@ -303,6 +415,15 @@ export default function AdminProdutos() {
                 {produto.ativo ? 'Despublicar' : 'Publicar'}
               </button>
             </div>
+
+            {editando === produto.id && (
+              <EditarProduto
+                produto={produto}
+                onSalvo={carregar}
+                onFechar={() => setEditando(null)}
+                onErro={setAviso}
+              />
+            )}
           </div>
         ))}
       </div>

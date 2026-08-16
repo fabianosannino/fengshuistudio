@@ -37,6 +37,7 @@ import { validateUUID } from '../../../../src/lib/validation'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { criarPedidoIniciado, anotarSessaoDoPedido } from '../../../../src/lib/pedidos-da-loja'
 import { produtoParaVenda, ehDigital } from '../../../../src/lib/produtos-da-plataforma'
+import { precoVigente } from '../../../../src/lib/promocao-do-produto'
 import {
   COOKIE_DO_VISITANTE, hashDoVisitante, indicacaoQueAtribui, atribuicaoValida,
 } from '../../../../src/lib/atribuicao-de-afiliado'
@@ -94,7 +95,20 @@ export async function POST(request: Request) {
     ? QUANTIDADE_DE_DIGITAL
     : Math.min(Math.max(1, Math.trunc(body.quantidade ?? 1)), MAX_QUANTIDADE)
 
-  const total = produto.preco_centavos * quantidade
+  /*
+   * O preço sai de `precoVigente`, no instante do clique.
+   *
+   * A **mesma** função que a vitrine usa, e não uma leitura paralela: fosse
+   * calculado aqui de novo, a divergência apareceria na única fronteira em que
+   * ninguém olha — a campanha que termina entre carregar a página e clicar em
+   * «Comprar». Com uma função só, o servidor decide por último e o cobrado é o
+   * do instante em que o dinheiro se move, que é o certo.
+   *
+   * `new Date()` fica aqui, no ponto de I/O, e não dentro da função: é aqui que
+   * «agora» significa alguma coisa.
+   */
+  const vigente = precoVigente(produto, new Date())
+  const total = vigente.centavos * quantidade
   const origin = origemDaAplicacao(request)
   const indicacaoId = await indicacaoDoComprador(supabase, request)
 
@@ -120,7 +134,12 @@ export async function POST(request: Request) {
       item: {
         nome: produto.nome,
         descricao: produto.descricao,
-        precoUnitarioCentavos: produto.preco_centavos,
+        /*
+         * O item guarda o preço **vigente**, não o cheio. `pedido_itens` é
+         * fotografia do instante da compra: quando a campanha acabar, o recibo
+         * tem que continuar dizendo o que a pessoa pagou.
+         */
+        precoUnitarioCentavos: vigente.centavos,
         quantidade,
         produtoId: produto.id,
       },
@@ -153,7 +172,7 @@ export async function POST(request: Request) {
         quantity: quantidade,
         price_data: {
           currency: 'brl',
-          unit_amount: produto.preco_centavos,
+          unit_amount: vigente.centavos,
           product_data: {
             name: produto.nome,
             ...(produto.descricao ? { description: produto.descricao } : {}),

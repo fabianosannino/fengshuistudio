@@ -470,6 +470,63 @@ campo que alguém precisa manter.
 
 ---
 
+## 12-C. A vitrine: foto e promoção por prazo (16/08)
+
+Requisito do dono: poder **editar** um produto, **colocar foto** e deixá-lo **em
+promoção por tempo definido**.
+
+### O que faltava
+
+A tela de catálogo só cadastrava e publicava. Corrigir um preço obrigava a criar
+produto novo — e produto novo com o mesmo nome polui o histórico de vendas, que
+é exatamente onde se olha quando um preço parece errado. A rota `PATCH` aceitava
+os campos desde a fase 2; nunca houve tela que os enviasse.
+
+Foto não existia em lugar nenhum: nem coluna, nem bucket, nem campo. O bucket de
+produto que já havia (`produtos-digitais`) recusa `image/*` no Postgres, porque
+guarda o entregável — o que o comprador paga para receber, não a ilustração.
+
+### As três decisões
+
+**1. A foto vai para bucket público** — `produtos-imagens`, o único público do
+projeto. O ADR 0022 fechou os outros porque são o interior da casa de alguém; a
+foto de produto é o oposto pela finalidade, e URL assinada ali defenderia um
+segredo inexistente ao custo de nenhum CDN guardar nada. Detalhes e a regra que
+mantém a exceção legítima: ADR 0035.
+
+**2. «Em promoção» é derivado da janela, nunca gravado.** O banco guarda
+`promocao_preco_centavos`, `promocao_inicio` e `promocao_fim`, as três juntas ou
+nenhuma. Não existe `em_promocao`: um booleano dependeria de alguém virá-lo no
+minuto certo, e até lá o **checkout** cobraria a campanha encerrada. É o ADR 0027
+com outro substantivo.
+
+**3. Um preço, uma função.** `precoVigente(produto, agora)` é usada pela vitrine
+**e** pelo checkout. Com duas implementações, a divergência seria «alguém
+esqueceu de mudar os dois lados»; com uma, é o intervalo entre carregar a página
+e clicar — e o servidor decide por último, então cobra-se o do instante em que o
+dinheiro se move.
+
+### O que a promoção **não** faz
+
+| | |
+|---|---|
+| não muda pedido já feito | `pedido_itens` é fotografia do instante da compra desde a fase 0 |
+| não existe em indicação | quem define o preço é o parceiro (ADR 0032); descontar ali anunciaria desconto que não damos |
+| não sobe o preço | constraint exige `promocao_preco_centavos < preco_centavos` |
+| não vale só no dia | a janela tem hora, e a vitrine mostra até quando |
+
+### Três estados, não dois
+
+`agendada`, `rodando`, `encerrada`. As duas últimas se parecem na vitrine — nas
+duas o preço é o cheio e não há selo. Sem distingui-las na tela de admin, o admin
+recadastra uma campanha que já está no ar para semana que vem.
+
+E a rota recusa uma campanha cuja janela inteira está no passado, que o banco
+aceitaria: ela não valeria em momento nenhum, e o defeito só apareceria quando
+alguém comprasse pelo preço cheio e reclamasse do anúncio.
+
+---
+
 ## 13. Esquema proposto
 
 Nomes em português, vocabulário do app, como em `concessoes_de_plano`.

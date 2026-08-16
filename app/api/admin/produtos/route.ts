@@ -3,7 +3,8 @@
  *
  * GET   /api/admin/produtos — lista tudo, inclusive inativo
  * POST  /api/admin/produtos — cadastra
- * PATCH /api/admin/produtos — edita (inclui publicar/despublicar)
+ * PATCH /api/admin/produtos — edita: nome, descrição, preço, publicação e
+ *                             promoção (as três colunas dela, ou nenhuma)
  *
  * ## Duas checagens, não uma
  *
@@ -26,6 +27,7 @@ import { sanitizeString, validateUUID } from '../../../../src/lib/validation'
 import {
   listarProdutosParaAdmin, ehLinkDeIndicacaoSeguro,
 } from '../../../../src/lib/produtos-da-plataforma'
+import { recusaDaPromocao, MENSAGEM_DA_RECUSA } from '../../../../src/lib/promocao-do-produto'
 
 const ROUTE = '/api/admin/produtos'
 
@@ -184,6 +186,8 @@ export async function PATCH(request: Request) {
   let body: {
     id?: string; nome?: string; descricao?: string
     preco_centavos?: number; ativo?: boolean
+    /** `null` explícito encerra a promoção; ausente não mexe nela. */
+    promocao?: { preco_centavos: number; inicio: string; fim: string } | null
   }
   try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
@@ -205,6 +209,8 @@ export async function PATCH(request: Request) {
     campos.descricao = sanitizeString(body.descricao, MAX_DESCRICAO) || null
   }
 
+  let precoCheio: number | null = null
+
   if (body.preco_centavos !== undefined) {
     const preco = Math.trunc(Number(body.preco_centavos))
     if (!Number.isFinite(preco) || preco < PRECO_MINIMO_CENTAVOS || preco > PRECO_MAXIMO_CENTAVOS) {
@@ -214,9 +220,77 @@ export async function PATCH(request: Request) {
       )
     }
     campos.preco_centavos = preco
+    precoCheio = preco
   }
 
   if (typeof body.ativo === 'boolean') campos.ativo = body.ativo
+
+  /*
+   * A promoção é atômica: as três colunas juntas, ou as três nulas.
+   *
+   * `promocao: null` é encerrar — e é o botão «Encerrar promoção» da tela.
+   * Encerrar antes da hora precisa existir: uma campanha é uma promessa com
+   * prazo, e o prazo pode ter sido digitado errado.
+   */
+  if (body.promocao === null) {
+    campos.promocao_preco_centavos = null
+    campos.promocao_inicio = null
+    campos.promocao_fim = null
+  } else if (body.promocao) {
+    /*
+     * O preço cheio de referência é o **que vai valer depois deste PATCH**:
+     * quando o mesmo pedido muda o preço e cria a promoção, comparar com o
+     * valor antigo aprovaria uma promoção que não desconta o preço novo.
+     *
+     * Quando o PATCH não mexe no preço, o cheio vem do banco — e por isso a
+     * leitura acontece antes da escrita, e não como confirmação depois.
+     */
+    const { data: atual, error: erroDaLeitura } = await createSupabaseAdminClient()
+      .from('produtos')
+      .select('preco_centavos, modo_de_venda')
+      .eq('id', body.id)
+      .maybeSingle()
+
+    if (erroDaLeitura || !atual) {
+      logger.warn('Não foi possível ler o produto para validar a promoção', {
+        route: ROUTE, produtoId: body.id, error: erroDaLeitura?.message,
+      })
+      return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 })
+    }
+
+    /*
+     * Promoção só no que vendemos.
+     *
+     * Na indicação quem vende é o parceiro, e o preço da nossa linha é
+     * referência — a vitrine já diz «a partir de». Descontar ali anunciaria um
+     * desconto que não damos, num preço que não cobramos: o comprador chegaria
+     * ao site do parceiro e encontraria outro número, com o nosso nome no
+     * anúncio. O banco também recusa; aqui vira frase que o admin entende.
+     */
+    if (atual.modo_de_venda === 'indicacao') {
+      return NextResponse.json(
+        { error: 'Indicação não tem promoção — quem define o preço é o parceiro.' },
+        { status: 400 }
+      )
+    }
+
+    if (precoCheio === null) precoCheio = atual.preco_centavos as number
+
+    const proposta = {
+      precoCentavos: Math.trunc(Number(body.promocao.preco_centavos)),
+      inicio: String(body.promocao.inicio ?? ''),
+      fim: String(body.promocao.fim ?? ''),
+    }
+
+    const recusa = recusaDaPromocao(proposta, precoCheio, new Date())
+    if (recusa) {
+      return NextResponse.json({ error: MENSAGEM_DA_RECUSA[recusa] }, { status: 400 })
+    }
+
+    campos.promocao_preco_centavos = proposta.precoCentavos
+    campos.promocao_inicio = new Date(proposta.inicio).toISOString()
+    campos.promocao_fim = new Date(proposta.fim).toISOString()
+  }
 
   if (Object.keys(campos).length === 0) {
     return NextResponse.json({ error: 'Nada para alterar.' }, { status: 400 })
