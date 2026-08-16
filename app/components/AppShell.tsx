@@ -20,6 +20,7 @@ import {
   LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
   Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard, Receipt, Package,
   BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu, Grid3x3, RefreshCw,
+  ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
 import { ehClienteFinal } from '../../src/lib/papel-do-usuario'
@@ -177,6 +178,7 @@ export default function AppShell({
         { label: 'Catálogo', icon: Package, href: '/admin/produtos' },
         { label: 'Reconciliação', icon: RefreshCw, href: '/admin/reconciliacao' },
         { label: 'Pagamentos', icon: CreditCard, href: '/admin/pagamentos' },
+        { label: 'Vendas da loja', icon: ShoppingBag, href: '/admin/vendas' },
         { label: 'Relatórios', icon: BarChart3, href: '/admin/relatorios' },
         { label: 'Auditoria', icon: FileText, href: '/admin/auditoria' },
       ]).filter(item => {

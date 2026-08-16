@@ -95,6 +95,14 @@ export const CAPACIDADE_DA_TELA: Record<string, Capacidade | null> = {
   '/admin/produtos': 'catalogo:escrever',
   '/admin/reconciliacao': 'reconciliacao:executar',
   '/admin/pagamentos': 'assinaturas:escrever',
+  // Estornar venda nossa mexe em dinheiro que já entrou, como cancelar
+  // assinatura — mesma capacidade, mesma gravidade.
+  //
+  // Depois de `/admin/pagamentos` de propósito: a ordem daqui é a do menu, e é
+  // ela que decide onde alguém cai ao passar pelo segundo fator. Pôr esta tela
+  // antes mudaria o destino de quem tem `assinaturas:escrever` sem que a
+  // mudança se parecesse com uma decisão sobre destino.
+  '/admin/vendas': 'assinaturas:escrever',
   '/admin/relatorios': 'relatorios:ler',
   '/admin/auditoria': 'auditoria:ler',
 }
