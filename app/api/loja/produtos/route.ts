@@ -25,11 +25,22 @@ export async function GET(request: Request) {
     )
   }
 
-  const produtos = await listarProdutosDaVitrine(createSupabaseAdminClient(), ROUTE)
+  const produtos = await listarProdutosDaVitrine(createSupabaseAdminClient(), ROUTE, new Date())
 
   if (!produtos) {
     return NextResponse.json({ error: 'Não foi possível carregar o catálogo.' }, { status: 503 })
   }
 
-  return NextResponse.json({ produtos })
+  /*
+   * `no-store` por causa da promoção.
+   *
+   * O preço desta resposta vale para o instante em que ela foi montada. Um
+   * cache de borda de poucos minutos serviria a campanha encerrada a quem
+   * chegasse depois, e a vitrine anunciaria um valor que o checkout — que
+   * recalcula no clique — recusaria a cobrar. Duas telas, dois preços, e o
+   * comprador no meio.
+   */
+  return NextResponse.json({ produtos }, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }

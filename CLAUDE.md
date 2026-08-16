@@ -36,8 +36,10 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
   `plano-utils.ts`).
 - **Estado que muda com o tempo é derivado, não gravado** (ADR 0027). «Atrasado»
   sai da data de vencimento, nunca de `pagamentos.status`; a etapa da consulta
-  sai dos dados presentes, não de uma coluna. Guardar os dois cria duas
-  verdades, e a que envelhece é a gravada.
+  sai dos dados presentes, não de uma coluna; «em promoção» sai da janela
+  (`precoVigente`), nunca de um `em_promocao`. Guardar os dois cria duas
+  verdades, e a que envelhece é a gravada — na promoção isso é o checkout
+  cobrando uma campanha que terminou ontem.
 - **O plano vem de concessões, não de um campo** (ADR 0029). `profiles.plano` é
   projeção; a verdade está em `concessoes_de_plano`, cada uma com origem
   (`assinatura`, `chave`, `cortesia`) e prazo. Escrever naquela coluna fora de
@@ -106,6 +108,11 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
 - **Foto nunca é renderizada a partir do valor cru do banco.** Os buckets estão
   fechando (ADR 0022): passe o valor por `useUrlsAssinadas`/`urlExibivel`, que
   aceita tanto URL pública legada quanto path. Upload novo grava **path**.
+  A **única** exceção é `produtos-imagens` (ADR 0035), público porque foto de
+  vitrine existe para ser vista por quem ainda não é cliente — e URL assinada
+  ali defenderia um segredo inexistente ao custo de o CDN não guardar nada. Só
+  foto de produto entra nesse bucket; qualquer outra coisa reabre o que o 0022
+  fechou. Mesmo lá a coluna guarda **path**, nunca URL.
 - **Direitos do titular são autoatendimento** (`/privacidade/meus-dados`,
   `/api/conta/dados`). O `user.id` vem de `supabase.auth.getUser()`, **nunca**
   do corpo — mesma regra de `account_id`.
@@ -168,7 +175,8 @@ mudança estrutural aplicada fora de migration; as consultas estão em
   status gravado (0027), `perfis_publicos` como projeção pública deliberada (0028), plano derivado de
   concessões (0029), pedido como máquina de estados (0030), entrega digital
   derivada do pedido (0031), indicação diz quem vende (0032), segundo fator no
-  admin com falha fechada (0033), capacidade do admin separada do papel (0034).
+  admin com falha fechada (0033), capacidade do admin separada do papel (0034),
+  foto de produto em bucket público e promoção derivada da janela (0035).
   Toda decisão arquitetural nova vira um ADR.
 - `docs/domain/modelo-da-loja.md` — modelo da loja e as fases. Leia antes de
   mexer em pedido, comissão ou afiliado.

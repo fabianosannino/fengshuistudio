@@ -16,7 +16,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, ShoppingBag, ExternalLink } from 'lucide-react'
+import { Download, ShoppingBag, ExternalLink, Tag } from 'lucide-react'
 import { logger } from '../../src/lib/logger'
 import { formatarMoeda } from '../../src/lib/formato'
 
@@ -24,10 +24,82 @@ interface ProdutoNaVitrine {
   id: string
   nome: string
   descricao: string | null
+  /** Já é o preço vigente — a promoção foi aplicada no servidor. */
   preco_centavos: number
+  /** O «de» riscado. `null` quando não há campanha rodando. */
+  preco_cheio_centavos: number | null
+  promocao_termina_em: string | null
+  imagem_url: string | null
   entrega_digital: boolean
   modo_de_venda: 'marketplace' | 'indicacao'
   parceiro: string | null
+}
+
+/**
+ * Até quando a campanha vale, em texto curto.
+ *
+ * Data e hora, não só data: uma promoção que fecha às 18h de sexta anunciada
+ * como «até 20/08» é lida como «até o fim do dia 20» — e a diferença aparece
+ * para quem chega às 19h achando que ainda dá tempo.
+ */
+function ateQuando(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+/**
+ * A foto do cartão, ou o espaço reservado.
+ *
+ * O reservado existe para que a grade não desalinhe quando um produto tem foto
+ * e o vizinho não — cartões de alturas diferentes lado a lado leem como defeito
+ * de página, não como «este ainda não tem imagem».
+ */
+function FotoDoProduto({ url }: { url: string | null }) {
+  const moldura = {
+    width: '100%', aspectRatio: '3 / 2', borderRadius: '8px',
+    marginBottom: '4px', overflow: 'hidden' as const,
+  }
+
+  if (!url) {
+    return (
+      <div style={{
+        ...moldura, background: '#F3F4F6',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }} aria-hidden="true">
+        <ShoppingBag size={26} color="#D1D5DB" />
+      </div>
+    )
+  }
+
+  return (
+    // `alt` vazio de propósito: o nome do produto está no texto logo abaixo, e
+    // repeti-lo faria o leitor de tela dizer a mesma coisa duas vezes.
+    // eslint-disable-next-line @next/next/no-img-element -- bucket externo; `next/image` exigiria configurar o domínio remoto e não ganha nada num cartão deste tamanho
+    <img src={url} alt="" loading="lazy" style={{
+      ...moldura, objectFit: 'cover', display: 'block',
+    }} />
+  )
+}
+
+/** «De R$ X» riscado + o selo do desconto. Some sozinho fora da campanha. */
+function Preco({ produto }: { produto: ProdutoNaVitrine }) {
+  const emPromocao = produto.preco_cheio_centavos !== null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+      {emPromocao && (
+        <s style={{ color: '#9CA3AF', fontSize: '12px' }}>
+          {formatarMoeda(produto.preco_cheio_centavos! / 100)}
+        </s>
+      )}
+      <strong style={{ color: emPromocao ? '#A33A3A' : '#0E1B2C', fontSize: '17px' }}>
+        {formatarMoeda(produto.preco_centavos / 100)}
+      </strong>
+    </div>
+  )
 }
 
 export default function VitrineDaPlataforma() {
@@ -124,7 +196,18 @@ export default function VitrineDaPlataforma() {
           <div style={grade}>
             {nossos.map(produto => (
               <div key={produto.id} style={cartao}>
+                <FotoDoProduto url={produto.imagem_url} />
                 <strong style={{ color: '#0E1B2C', fontSize: '15px' }}>{produto.nome}</strong>
+                {produto.promocao_termina_em && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    alignSelf: 'flex-start', background: '#FDECEC', color: '#A33A3A',
+                    padding: '3px 9px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold',
+                  }}>
+                    <Tag size={12} aria-hidden="true" />
+                    Promoção até {ateQuando(produto.promocao_termina_em)}
+                  </span>
+                )}
                 {produto.descricao && (
                   <p style={{ color: '#6B7280', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>
                     {produto.descricao}
@@ -136,9 +219,7 @@ export default function VitrineDaPlataforma() {
                   </span>
                 )}
                 <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                  <strong style={{ color: '#0E1B2C', fontSize: '17px' }}>
-                    {formatarMoeda(produto.preco_centavos / 100)}
-                  </strong>
+                  <Preco produto={produto} />
                   <button type="button" disabled={comprando === produto.id}
                     onClick={() => comprar(produto.id)}
                     style={{
@@ -172,6 +253,7 @@ export default function VitrineDaPlataforma() {
           <div style={grade}>
             {indicados.map(produto => (
               <div key={produto.id} style={cartao}>
+                <FotoDoProduto url={produto.imagem_url} />
                 <strong style={{ color: '#0E1B2C', fontSize: '15px' }}>{produto.nome}</strong>
                 {produto.parceiro && (
                   <span style={{ color: '#8A6E2F', fontSize: '12px', fontWeight: 'bold' }}>
