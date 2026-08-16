@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AREAS_AUTENTICADAS } from '../../../app/robots'
+import robots, { AREAS_AUTENTICADAS } from '../../../app/robots'
 import { ROTAS_MARKETING, PREFIXO_RECURSOS, URL_CANONICA } from '../auth-rotas'
 
 /**
@@ -34,10 +34,28 @@ describe('robots × sitemap', () => {
   })
 
   it('o sitemap é anunciado no domínio da marca', () => {
-    // Pedir o robots no domínio certo e receber o sitemap de outro host é
-    // convidar o buscador a indexar o endereço de infraestrutura.
+    /*
+     * A asserção é sobre a **saída**, não sobre a constante: o defeito estava
+     * no valor que chegava ao `robots.txt`, e uma constante certa com o arquivo
+     * ainda montando a URL por conta própria passaria por um teste de
+     * constante. Só o valor emitido responde a pergunta.
+     */
+    const { sitemap } = robots()
+
+    expect(sitemap).toBe('https://www.fengshuistudio.com.br/sitemap.xml')
+    expect(sitemap).not.toContain('vercel.app')
     expect(URL_CANONICA).toBe('https://www.fengshuistudio.com.br')
-    expect(URL_CANONICA).not.toContain('vercel.app')
+  })
+
+  it('a vitrine não aparece na saída como proibida', () => {
+    // O outro lado do mesmo defeito, também conferido no que sai e não na
+    // lista: `/produtos` anunciada no sitemap com prioridade 0.9 e bloqueada
+    // aqui ao mesmo tempo.
+    const { rules } = robots()
+    const proibicoes = Array.isArray(rules) ? [] : (rules.disallow as string[])
+
+    expect(proibicoes).not.toContain('/produtos')
+    expect(rules).not.toBeInstanceOf(Array)
   })
 })
 
