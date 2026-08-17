@@ -314,6 +314,14 @@ export default function Relatorio() {
           // Remove no-print elements
           const noPrint = clonedDoc.querySelectorAll('.no-print')
           noPrint.forEach(el => el.remove())
+
+          // O `overflow-x: auto` das tabelas serve à tela do telefone e é
+          // veneno aqui: o html2canvas respeita `overflow` e recortaria a
+          // captura na largura do embrulho, cortando colunas do PDF sem
+          // levantar erro. `@media print` não alcança esta captura — ela é
+          // uma tela, não uma impressão —, então a guarda é repetida no clone.
+          const rolantes = clonedDoc.querySelectorAll<HTMLElement>('.tabela-rolante')
+          rolantes.forEach(el => { el.style.overflow = 'visible' })
         }
       })
       etapa = 'montar o PDF'
@@ -504,9 +512,18 @@ export default function Relatorio() {
       <style>{`
         .print-only { display: none; }
 
+        /* As duas tabelas do relatório têm colunas \`nowrap\` — cinco numa,
+           oito na outra — e não encolhem abaixo do min-content. Sem este
+           embrulho elas empurravam a página inteira para o lado no telefone,
+           que é onde o cliente costuma abrir o relatório. */
+        .tabela-rolante { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
         @media print {
           .no-print { display: none !important; }
           .print-only { display: block !important; }
+          /* No papel não há para onde rolar: a rolagem recortaria as colunas
+             que não coubessem, e o corte não levanta erro nenhum. */
+          .tabela-rolante { overflow: visible !important; }
           body { margin: 0; background: #fff; }
           .print-area { padding: 0 !important; box-shadow: none !important; max-width: 100% !important; }
 
@@ -1409,46 +1426,48 @@ export default function Relatorio() {
                 Reposicionar um móvel antes de comprar um objeto. Cada item declara de onde vem
                 e o quanto essa recomendação é consolidada entre as escolas.
               </p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                <thead>
-                  <tr style={{ background: paperWarm }}>
-                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Setor</th>
-                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Ação</th>
-                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink, whiteSpace: 'nowrap' }}>Custo</th>
-                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink, whiteSpace: 'nowrap' }}>Desfazer</th>
-                    <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Evidência</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ordenados.map(r => (
-                    // Fragment por remédio: a linha da ação e, quando houver, a
-                    // linha de ressalvas. As ressalvas vêm da mesma pesquisa que
-                    // sustentou a classificação (ADR 0017) — apresentar a cura
-                    // sem elas era o que o relatório fazia antes, e é justamente
-                    // o que não se deve fazer com "não use planta em quarto de
-                    // casal" ou "triângulo nunca em quarto".
-                    <Fragment key={r.id}>
-                      <tr style={{ pageBreakInside: 'avoid' }}>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink }}>{r.acao}</td>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#2E7D6B' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
-                        <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
-                      </tr>
-                      {r.contraindicacoes.length > 0 && (
+              <div className="tabela-rolante">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                  <thead>
+                    <tr style={{ background: paperWarm }}>
+                      <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Setor</th>
+                      <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Ação</th>
+                      <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink, whiteSpace: 'nowrap' }}>Custo</th>
+                      <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink, whiteSpace: 'nowrap' }}>Desfazer</th>
+                      <th style={{ textAlign: 'left', padding: '5px 6px', borderBottom: `1px solid ${border}`, fontWeight: 700, color: ink }}>Evidência</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordenados.map(r => (
+                      // Fragment por remédio: a linha da ação e, quando houver, a
+                      // linha de ressalvas. As ressalvas vêm da mesma pesquisa que
+                      // sustentou a classificação (ADR 0017) — apresentar a cura
+                      // sem elas era o que o relatório fazia antes, e é justamente
+                      // o que não se deve fazer com "não use planta em quarto de
+                      // casal" ou "triângulo nunca em quarto".
+                      <Fragment key={r.id}>
                         <tr style={{ pageBreakInside: 'avoid' }}>
-                          <td />
-                          <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#8A6E2F', fontSize: '9.5px', lineHeight: 1.5 }}>
-                            {r.contraindicacoes.map((c, i) => (
-                              <div key={i} style={{ marginTop: i === 0 ? 0 : '2px' }}>⚠ {c}</div>
-                            ))}
-                          </td>
+                          <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink, whiteSpace: 'nowrap' }}>{r.setor}</td>
+                          <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: ink }}>{r.acao}</td>
+                          <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: r.custo === 'zero' ? '#2E7D6B' : inkLt, whiteSpace: 'nowrap' }}>{ROTULO_CUSTO[r.custo]}</td>
+                          <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt, whiteSpace: 'nowrap' }}>{ROTULO_REVERSIBILIDADE[r.reversibilidade]}</td>
+                          <td style={{ padding: '5px 6px', borderBottom: r.contraindicacoes.length ? 'none' : `1px solid ${border}`, color: inkLt }}>{ROTULO_EVIDENCIA[r.forcaEvidencia]}</td>
                         </tr>
-                      )}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
+                        {r.contraindicacoes.length > 0 && (
+                          <tr style={{ pageBreakInside: 'avoid' }}>
+                            <td />
+                            <td colSpan={4} style={{ padding: '0 6px 6px', borderBottom: `1px solid ${border}`, color: '#8A6E2F', fontSize: '9.5px', lineHeight: 1.5 }}>
+                              {r.contraindicacoes.map((c, i) => (
+                                <div key={i} style={{ marginTop: i === 0 ? 0 : '2px' }}>⚠ {c}</div>
+                              ))}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <p style={{ margin: '0.7rem 0 0', fontSize: '10px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                 Cada linha declara o custo, se dá para desfazer e o quanto a recomendação é
                 consolidada: <strong>consenso clássico</strong> tem âncora explícita em construto
@@ -1523,63 +1542,65 @@ export default function Relatorio() {
             <textarea className="no-print" value={textoCuras} onChange={e => setTextoCuras(e.target.value)}
               rows={3} style={{ width: '100%', padding: '8px 10px', border: '1px dashed #D1D5DB', borderRadius: '6px', fontSize: '12px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6', marginBottom: '0.5rem' }} />
             <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>{textoCuras}</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-              <thead>
-                <tr>
-                  {['Área · Guá', 'Nota', 'Nível', 'Elemento', 'Cores', 'Cristais', 'Plantas', 'Ação Principal'].map(th => (
-                    <th key={th} style={{
-                      textAlign: 'left', padding: '6px 9px', fontSize: '9px', fontWeight: 600,
-                      textTransform: 'uppercase', letterSpacing: '0.1em', color: inkLt,
-                      borderBottom: `1px solid ${border}`, whiteSpace: 'nowrap'
-                    }}>{th}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSetores.map((setor, idx) => {
-                  const pct = setor.score_percentual ?? 0
-                  const lvl = scoreLevelLabel(pct)
-                  const meta = AREA_META[setor.nome]
-                  return (
-                    <tr key={setor.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#FAFAF5' }}>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '5px',
-                          padding: '3px 8px', borderRadius: '2px', fontSize: '10px', fontWeight: 600,
-                          background: meta?.bg || '#555', color: meta?.fg || '#ddd', whiteSpace: 'nowrap'
-                        }}>
-                          {meta?.zh || ''} {setor.nome}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 8px', borderRadius: '10px',
-                          fontSize: '11px', fontWeight: 700,
-                          background: pct < 40 ? '#FAEEE9' : pct < 70 ? '#FAF3E0' : '#F0F6F3',
-                          color: lvl.color
-                        }}>{pct}%</span>
-                      </td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', color: lvl.color, fontWeight: 600, fontSize: '10px', verticalAlign: 'top' }}>
-                        {lvl.label}
-                      </td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>{meta?.elem || setor.elemento}</td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', color: lvl.color, verticalAlign: 'top' }}>
-                        {meta?.colors?.split(',').slice(0, 2).join(', ').trim() || '—'}
-                      </td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
-                        {meta?.crystals?.split(',').slice(0, 2).join(', ').trim() || '—'}
-                      </td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
-                        {meta?.plants?.split(',')[0]?.trim() || '—'}
-                      </td>
-                      <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', color: '#555', verticalAlign: 'top', maxWidth: '200px' }}>
-                        {meta?.action || '—'}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="tabela-rolante">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+                <thead>
+                  <tr>
+                    {['Área · Guá', 'Nota', 'Nível', 'Elemento', 'Cores', 'Cristais', 'Plantas', 'Ação Principal'].map(th => (
+                      <th key={th} style={{
+                        textAlign: 'left', padding: '6px 9px', fontSize: '9px', fontWeight: 600,
+                        textTransform: 'uppercase', letterSpacing: '0.1em', color: inkLt,
+                        borderBottom: `1px solid ${border}`, whiteSpace: 'nowrap'
+                      }}>{th}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedSetores.map((setor, idx) => {
+                    const pct = setor.score_percentual ?? 0
+                    const lvl = scoreLevelLabel(pct)
+                    const meta = AREA_META[setor.nome]
+                    return (
+                      <tr key={setor.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#FAFAF5' }}>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                            padding: '3px 8px', borderRadius: '2px', fontSize: '10px', fontWeight: 600,
+                            background: meta?.bg || '#555', color: meta?.fg || '#ddd', whiteSpace: 'nowrap'
+                          }}>
+                            {meta?.zh || ''} {setor.nome}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
+                          <span style={{
+                            display: 'inline-block', padding: '2px 8px', borderRadius: '10px',
+                            fontSize: '11px', fontWeight: 700,
+                            background: pct < 40 ? '#FAEEE9' : pct < 70 ? '#FAF3E0' : '#F0F6F3',
+                            color: lvl.color
+                          }}>{pct}%</span>
+                        </td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', color: lvl.color, fontWeight: 600, fontSize: '10px', verticalAlign: 'top' }}>
+                          {lvl.label}
+                        </td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>{meta?.elem || setor.elemento}</td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', color: lvl.color, verticalAlign: 'top' }}>
+                          {meta?.colors?.split(',').slice(0, 2).join(', ').trim() || '—'}
+                        </td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
+                          {meta?.crystals?.split(',').slice(0, 2).join(', ').trim() || '—'}
+                        </td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', verticalAlign: 'top' }}>
+                          {meta?.plants?.split(',')[0]?.trim() || '—'}
+                        </td>
+                        <td style={{ padding: '8px 9px', borderBottom: '1px solid #F0EDE5', color: '#555', verticalAlign: 'top', maxWidth: '200px' }}>
+                          {meta?.action || '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
         )}
