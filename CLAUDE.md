@@ -215,6 +215,15 @@ que foi fechado, o que ficou e por quê — comece por ele. Consulte antes de
 decisões arquiteturais.
 
 `docs/auditoria/2026-08-15-pendencias-de-pre-lancamento.md` é a lista curta do
-que **já tem decisão tomada** e falta executar antes de lançar — rotação dos
-segredos expostos, chave do Resend, Upstash, Pix. Não proponha nada dali como
-novidade: leia antes de sugerir «próximos passos».
+que **já tem decisão tomada** e falta executar antes de lançar. Não proponha
+nada dali como novidade: leia antes de sugerir «próximos passos».
+
+Hoje restam **P4 (Pix) e P5 (estornar quatro pedidos de teste)**, e **nenhum dos
+dois é código** — são cliques no painel do Stripe e na tela `/vendas`, que já
+existe. P1, P2, P3 e P6 estão feitos.
+
+**Item daquela lista fechado por PR é riscado no mesmo PR.** O P6 — o estorno de
+bem próprio — ficou marcado como aberto por um dia depois de pronto, e isso
+custou uma tentativa de refazê-lo. Uma pendência que já não existe é a mesma
+classe de defeito que a lista existe para caçar: a afirmação que ninguém reclama
+porque só deixou de ser verdade.
