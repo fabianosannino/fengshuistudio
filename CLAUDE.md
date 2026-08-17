@@ -218,12 +218,21 @@ decisões arquiteturais.
 que **já tem decisão tomada** e falta executar antes de lançar. Não proponha
 nada dali como novidade: leia antes de sugerir «próximos passos».
 
-Hoje restam **P4 (Pix) e P5 (estornar quatro pedidos de teste)**, e **nenhum dos
-dois é código** — são cliques no painel do Stripe e na tela `/vendas`, que já
-existe. P1, P2, P3 e P6 estão feitos.
+**Aquela lista está encerrada** (17/08). P1, P2, P3, P5 e P6 feitos; P4 (Pix)
+descartado por decisão do dono — não haverá Pix nesta fase. Não proponha nada
+dali como próximo passo: não há item aberto.
 
 **Item daquela lista fechado por PR é riscado no mesmo PR.** O P6 — o estorno de
 bem próprio — ficou marcado como aberto por um dia depois de pronto, e isso
 custou uma tentativa de refazê-lo. Uma pendência que já não existe é a mesma
 classe de defeito que a lista existe para caçar: a afirmação que ninguém reclama
 porque só deixou de ser verdade.
+
+**E pendência sobre dinheiro, conta ou dado se confere no sistema, nunca no
+documento.** O P5 — os quatro estornos — não foi fechado por PR nenhum: foi
+fechado por quatro cliques em `/vendas`, e nenhum commit passou por aqui para
+contar isso. A lista seguiu pedindo o estorno por dois dias, a quem já o tinha
+feito, mais de uma vez. A regra acima não alcança esse caso e esta alcança:
+antes de repetir que um estorno falta, leia `pedido_eventos` (origem
+`webhook_stripe` é o que separa «foi estornado» de «alguém marcou como
+estornado») e confira na Stripe. O documento é o último a saber.
