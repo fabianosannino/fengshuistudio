@@ -1,11 +1,22 @@
 # Pendências de pré-lançamento
 
 **Criado em:** 2026-08-15
-**Estado:** aberto
+**Revisto em:** 2026-08-16 — P6 riscado, conferido no código
+**Estado:** aberto em P4 e P5
 
 O que ficou decidido para ser feito **antes do lançamento**, com a razão de cada
 item e o que muda se ele não for feito. Não é lista de desejos: é o conjunto de
 coisas que já têm decisão tomada e data, faltando execução.
+
+| | O que falta | De quem |
+|---|---|---|
+| ~~P1~~ · ~~P2~~ · ~~P3~~ · ~~P6~~ | — | feitos |
+| **P4** — Pix | Continuar o onboarding da conta e ligar o Pix no painel; acrescentar os dois eventos `async_payment_*` ao destino das contas conectadas | do dono |
+| **P5** — pedidos de teste | Estornar quatro pedidos na conta conectada (R$ 12,00), pela tela `/vendas`. Um deles tem devolução solicitada desde 14/08 | do dono |
+
+**Nenhum dos dois é código.** Se você chegou aqui procurando o que programar,
+não há nada nesta lista — o que resta são cliques no painel do Stripe e na tela
+que já existe.
 
 ---
 
@@ -202,10 +213,45 @@ linha `tarifa_gateway` de cada pedido registra mesmo depois do estorno.
 
 ---
 
-## P6 — Bem próprio não tem como ser estornado pelo app
+## ~~P6 — Bem próprio não tem como ser estornado pelo app~~ — FEITO em 16/08
 
 **Descoberto em 15/08, ao estornar os pedidos de teste.** Decisão do dono: PR
-no dia seguinte.
+no dia seguinte — e foi o que aconteceu, no commit `b35bdde` (PR #178).
+
+### O que existe hoje, e onde conferir
+
+Os três passos do conserto abaixo estão no código:
+
+1. **A rota aceita `stripe_account_id` nulo.** `faltaParaEstornar` cobra só o
+   `payment_intent`, e `parametrosDoEstorno` monta `stripeAccount` e
+   `refund_application_fee` **apenas** na cobrança da conta conectada — ambos em
+   `src/lib/estorno-da-venda.ts`.
+2. **A tela existe:** `/admin/vendas`, com botão «Estornar» e diálogo de
+   confirmação nomeando o valor e o pedido. É o admin porque, na venda própria,
+   o vendedor somos nós — e a rota cobra a capacidade `assinaturas:escrever`
+   nesse caminho, o que separa *ler* o pedido de *desfazer* a venda.
+3. **Os testes fixam a distinção:** 25 casos em
+   `src/lib/__tests__/estorno-da-venda.test.ts` e `tests/api/pedidos-estorno.test.ts`.
+
+O `reembolsado` e os lançamentos continuam vindo do webhook — não mudou, e é o
+que estava certo desde os oito estornos de 15/08.
+
+### Por que este item ficou aberto no documento por um dia
+
+O PR fechou o defeito e não voltou aqui para dizer isso. Custou uma tentativa de
+refazer trabalho pronto em 16/08, e teria custado a priorização errada — este era
+o único item da lista que envolvia direito do consumidor anunciado sem nada
+atrás, então ele puxa a fila para si enquanto aparecer como aberto.
+
+**A regra que fica:** item desta lista fechado por PR é riscado **no mesmo PR**.
+Uma pendência que já não existe é a mesma classe de defeito que a lista inteira
+existe para caçar — a afirmação que ninguém reclama porque só deixou de ser
+verdade —, apenas invertida: aqui a promessa não é ao comprador, é a quem lê para
+decidir o que fazer em seguida.
+
+O registro do defeito original fica abaixo, porque a razão de ele ter existido
+continua valendo: **rota escrita para um tipo de venda não sabe recusar direito
+o segundo tipo que chega depois.**
 
 ### O defeito
 
@@ -238,7 +284,7 @@ inteira fora de `rotas-publicas.ts`, o `produtos_afiliados` vazio e o
 Nos testes isto foi contornado estornando direto pelo Stripe. Um comprador de
 verdade não tem esse contorno.
 
-### O conserto
+### O conserto — feito, ver o topo deste item
 
 1. A rota aceita `stripe_account_id` nulo e estorna na conta da plataforma —
    sem `stripeAccount`, e sem `refund_application_fee`, que não existe onde não
