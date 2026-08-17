@@ -2,7 +2,8 @@
 
 **Criado em:** 2026-08-15
 **Revisto em:** 2026-08-16 — P6 riscado, conferido no código
-**Estado:** aberto em P4 e P5
+**Revisto em:** 2026-08-17 — P5 riscado (conferido no banco e na Stripe), P4 descartado
+**Estado:** **encerrada.** Não há item aberto.
 
 O que ficou decidido para ser feito **antes do lançamento**, com a razão de cada
 item e o que muda se ele não for feito. Não é lista de desejos: é o conjunto de
@@ -10,13 +11,33 @@ coisas que já têm decisão tomada e data, faltando execução.
 
 | | O que falta | De quem |
 |---|---|---|
-| ~~P1~~ · ~~P2~~ · ~~P3~~ · ~~P6~~ | — | feitos |
-| **P4** — Pix | Continuar o onboarding da conta e ligar o Pix no painel; acrescentar os dois eventos `async_payment_*` ao destino das contas conectadas | do dono |
-| **P5** — pedidos de teste | Estornar quatro pedidos na conta conectada (R$ 12,00), pela tela `/vendas`. Um deles tem devolução solicitada desde 14/08 | do dono |
+| ~~P1~~ · ~~P2~~ · ~~P3~~ · ~~P5~~ · ~~P6~~ | — | feitos |
+| ~~P4~~ — Pix | — | **descartado** em 17/08: não haverá Pix nesta fase |
 
-**Nenhum dos dois é código.** Se você chegou aqui procurando o que programar,
-não há nada nesta lista — o que resta são cliques no painel do Stripe e na tela
-que já existe.
+**Não há nada a fazer nesta lista.** Ela fica no repositório como registro do que
+foi decidido e executado; quem procura o que fazer em seguida não encontra aqui.
+
+### Como esta lista errou por um dia — e depois por dois
+
+O P6 ficou marcado como aberto por um dia depois de pronto, e a regra que saiu
+dali foi «item fechado por PR é riscado no mesmo PR». Ela é verdadeira e
+insuficiente: **o P5 não foi fechado por PR nenhum.** Foi fechado por quatro
+cliques na tela `/vendas`, em 16/08 à 01h22, e nenhum PR passou por aqui para
+contar isso. A lista seguiu dizendo «faltam quatro» por dois dias, e cobrou o
+estorno de quem já o tinha feito — mais de uma vez.
+
+A regra que faltava, e que fica:
+
+> **Pendência sobre dinheiro, conta ou dado se confere no sistema, nunca no
+> documento.** Antes de repetir para alguém que um estorno falta, leia
+> `pedido_eventos` e a Stripe. O documento é a última coisa a saber que deixou
+> de ser verdade, porque é a única que não é atualizada por ninguém que age.
+
+É a mesma classe de defeito que a lista inteira existe para caçar — a afirmação
+que ninguém corrige porque só deixou de ser verdade —, agora na segunda
+ocorrência seguida e com custo maior: da primeira vez quase se refez trabalho
+pronto; da segunda, pediu-se a uma pessoa que refizesse um trabalho que ela já
+tinha feito, e ela precisou dizer isso.
 
 ---
 
@@ -175,41 +196,69 @@ declarada, não como aprovação.
 
 ---
 
-## P4 — Pix
+## ~~P4 — Pix~~ — DESCARTADO em 17/08
 
-Pausado em 15/08 por decisão do dono, para estudo. Não é bloqueio: é economia de
-tarifa. A medição, agora com quatro pedidos reais, é **3,99% + R$ 0,39** — em
-venda de R$ 1,00 a parte fixa sozinha é 43%.
+**Decisão do dono: não haverá Pix nesta fase.** O item sai da lista — não fica
+«pausado», que é o estado em que uma coisa continua sendo cobrada de todo mundo
+sem nunca ser feita.
 
-O passo anterior já foi feito em código (PR #158): a capacidade `pix_payments`
-passou a ser pedida na criação da conta conectada e no `account-link`. Falta
-apenas alguém clicar em continuar o onboarding, e ligar o Pix no painel da
-conta da plataforma.
+O que motivou o estudo continua verdadeiro e fica registrado: a tarifa do cartão
+medida em quatro pedidos reais é **3,99% + R$ 0,39**, e em venda de R$ 1,00 a
+parte fixa sozinha é 43%. Isso importa quando o tíquete for pequeno; hoje não é
+o caso, e cartão sozinho atende.
 
-Pendente junto: acrescentar `checkout.session.async_payment_succeeded` e
+**O que já está no código e não precisa ser desfeito:** a capacidade
+`pix_payments` é pedida na criação da conta conectada e no `account-link` (PR
+#158). Pedir a capacidade não liga o Pix nem cobra nada — ela fica disponível
+para o dia em que a decisão mudar, e removê-la agora só criaria trabalho de ida
+e volta.
+
+**O que fica pendente e não é para fazer agora:** ligar o Pix no painel, e
+acrescentar `checkout.session.async_payment_succeeded` e
 `checkout.session.async_payment_failed` ao destino das **contas conectadas**
-(`we_1U3ro5…`) — o destino da conta da plataforma já os tem.
+(`we_1U3ro5…`) — o destino da conta da plataforma já os tem. Os dois eventos só
+existem para pagamento assíncrono, que é exatamente o que o Pix e o boleto são:
+sem Pix, não há o que eles avisem.
+
+**Se o Pix voltar**, o roteiro é este parágrafo de trás para frente: eventos no
+destino das conectadas primeiro, onboarding depois, e só então oferecer na tela
+— nessa ordem, senão o primeiro pagamento assíncrono confirma sem ninguém saber.
 
 ---
 
-## P5 — Estornar os pedidos de teste — parcial
+## ~~P5 — Estornar os pedidos de teste~~ — FEITO em 16/08
 
 R$ 19,00 em doze pedidos de teste com cartão real, todos comprados por
-`fsannino@gmail.com`.
+`fsannino@gmail.com`. **Os doze estão estornados.**
 
-**Oito estornados** em 15/08 — os sete de bem próprio e um anterior. Os
-webhooks registraram `reembolsado` e a linha `reembolso` no razão de cada um,
-sem toque manual no banco.
+**Oito em 15/08** — os sete de bem próprio e um anterior.
 
-**Faltam quatro**, na conta conectada, somando R$ 12,00 — `P260813-7ACECD`,
-`P260813-9822C4`, `P260814-09F9B7` e `P260815-B1D533`. Devem sair pela tela
-`/vendas`, que é o caminho que devolve a comissão junto.
+**Os quatro últimos em 16/08, à 01h22–01h23**, pela tela `/vendas`, que é o
+caminho que devolve a comissão junto:
 
-`P260814-09F9B7` tem **devolução solicitada e não estornada** desde 14/08 — é
-obrigação registrada no próprio sistema, e a mais antiga da lista.
+| pedido | valor | devolução solicitada | reembolsado |
+|---|---|---|---|
+| `P260813-7ACECD` | R$ 5,00 | 16/08 01:22 (vendedor) | 16/08 01:23 |
+| `P260813-9822C4` | R$ 5,00 | 16/08 01:22 (vendedor) | 16/08 01:22 |
+| `P260814-09F9B7` | R$ 1,00 | **14/08 01:28 (comprador)** | 16/08 01:22 |
+| `P260815-B1D533` | R$ 1,00 | 16/08 01:22 (vendedor) | 16/08 01:22 |
+
+O `P260814-09F9B7` era o que tinha devolução pedida pelo **comprador** — a única
+obrigação da lista com prazo correndo. Está cumprida.
+
+**Conferido em 17/08 em duas fontes**, e não no que este documento dizia:
+
+- `pedido_eventos` de cada um traz `reembolsado` com origem `webhook_stripe` —
+  quer dizer que o dinheiro voltou de verdade e o evento veio da Stripe, não de
+  um toque manual no banco. É a diferença entre «alguém marcou como estornado» e
+  «foi estornado».
+- Na Stripe, as cobranças da conta da plataforma estão todas com
+  `refunded: true` e `amount_refunded` igual a `amount` — estorno integral, sem
+  sobra.
 
 **A tarifa não volta.** R$ 5,64 no total ficaram com o gateway, e é isso que a
-linha `tarifa_gateway` de cada pedido registra mesmo depois do estorno.
+linha `tarifa_gateway` de cada pedido registra mesmo depois do estorno. É custo
+do teste, não pendência.
 
 ---
 
