@@ -518,6 +518,29 @@ export default function Relatorio() {
            que é onde o cliente costuma abrir o relatório. */
         .tabela-rolante { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+        /* A barra de ações. O layout mora aqui, e não no \`style\` do elemento,
+           porque atributo ganha de folha: com o \`padding\` inline a media
+           query abaixo não teria efeito nenhum. */
+        .barra-do-relatorio {
+          display: flex; align-items: center; justify-content: space-between;
+          flex-wrap: wrap; gap: 12px; padding: 12px 32px;
+        }
+        .barra-do-relatorio-acoes {
+          display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        @media (max-width: 760px) {
+          /* Envolver, e não rolar: são até seis botões, e numa barra rolante
+             os últimos — «Baixar como imagem» e «Baixar versão salva» — ficam
+             atrás de um gesto sem indício nenhum de que existem. Era assim que
+             estavam: cortados na borda, com o fundo escuro terminando antes. */
+          .barra-do-relatorio { padding: 10px 16px; }
+          .barra-do-relatorio-acoes { width: 100%; }
+          /* 44px é o alvo mínimo de toque da WCAG 2.2 (2.5.8). Os botões tinham
+             ~30px de altura, herdada do desenho de desktop. */
+          .barra-do-relatorio-acoes button { min-height: 44px; }
+        }
+
         @media print {
           .no-print { display: none !important; }
           .print-only { display: block !important; }
@@ -570,15 +593,12 @@ export default function Relatorio() {
       </div>
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
-      <div className="no-print" style={{
-        background: '#0E1B2C', padding: '12px 32px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-      }}>
+      <div className="no-print barra-do-relatorio" style={{ background: '#0E1B2C' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => router.push(`/consultas/${id}`)}>☯</span>
           <span style={{ color: gold, fontSize: '18px', fontWeight: 'bold' }}>FengShui Studio</span>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="barra-do-relatorio-acoes">
           {needsWatermark && (
             <span style={{ color: '#C9A227', fontSize: '12px', background: 'rgba(251,191,36,0.15)', padding: '4px 12px', borderRadius: '20px' }}>
               Plano Simples — PDF com marca d&apos;água
