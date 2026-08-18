@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { corNaoSuportada, normalizarCores } from '../cores-canvas'
+import { coresNaoSuportadasRestantes, corNaoSuportada, normalizarCores } from '../cores-canvas'
 
 describe('corNaoSuportada', () => {
   it('reconhece as funções que quebram o html2canvas', () => {
@@ -115,5 +115,91 @@ describe('normalizarCores', () => {
       () => 'rgb(0, 0, 0)',
       () => { throw new Error('sem layout') }
     )).not.toThrow()
+  })
+})
+
+describe('normalizarCores em outro realm', () => {
+  /*
+    O clone do html2canvas vive dentro de um `<iframe>`: outro realm, com outro
+    `HTMLElement`. A versão anterior filtrava por `el instanceof HTMLElement`,
+    que é sempre `false` do lado de fora — então pulava todos os elementos,
+    devolvia zero e deixava as cores `lab()` chegarem ao parser.
+
+    A suíte não pegava porque o jsdom monta tudo num realm só: a guarda passava
+    por rodar no ambiente errado. Este teste monta o ambiente certo.
+  */
+  function elementoDeOutroRealm(): Element & { style: CSSStyleDeclaration } {
+    const propriedades = new Map<string, string>()
+    return {
+      tagName: 'DIV',
+      className: 'do-clone',
+      style: {
+        setProperty: (p: string, v: string) => propriedades.set(p, v),
+        getPropertyValue: (p: string) => propriedades.get(p) ?? '',
+      } as unknown as CSSStyleDeclaration,
+      // Deliberadamente **não** é `instanceof HTMLElement` desta janela.
+    } as unknown as Element & { style: CSSStyleDeclaration }
+  }
+
+  function raizComElementos(elementos: Element[]) {
+    return { querySelectorAll: () => elementos } as unknown as HTMLElement
+  }
+
+  it('converte a cor de um elemento que não é instanceof HTMLElement daqui', () => {
+    const el = elementoDeOutroRealm()
+
+    const trocas = normalizarCores(
+      raizComElementos([el]),
+      () => 'rgb(46, 125, 107)',
+      () => estiloFalso({ color: 'lab(52% 40 60)' })
+    )
+
+    expect(trocas).toBe(1)
+    expect(el.style.getPropertyValue('color')).toBe('rgb(46, 125, 107)')
+  })
+
+  it('ignora o que não tem style, sem estourar', () => {
+    const semStyle = { tagName: 'SVG' } as unknown as Element
+
+    const trocas = normalizarCores(
+      raizComElementos([semStyle]),
+      () => 'rgb(0, 0, 0)',
+      () => estiloFalso({ color: 'lab(52% 40 60)' })
+    )
+
+    expect(trocas).toBe(0)
+  })
+})
+
+describe('coresNaoSuportadasRestantes', () => {
+  it('nomeia elemento, propriedade e valor do que sobrou', () => {
+    document.body.innerHTML = '<div class="cabecalho destaque"><span>x</span></div>'
+
+    const achados = coresNaoSuportadasRestantes(
+      document.body,
+      el => estiloFalso(el.tagName === 'DIV' ? { color: 'lab(52% 40 60)' } : {})
+    )
+
+    expect(achados).toEqual(['div.cabecalho.destaque { color: lab(52% 40 60) }'])
+  })
+
+  it('devolve vazio quando tudo já é suportado', () => {
+    document.body.innerHTML = '<div><span>x</span></div>'
+
+    expect(
+      coresNaoSuportadasRestantes(document.body, () => estiloFalso({ color: 'rgb(1, 2, 3)' }))
+    ).toEqual([])
+  })
+
+  it('respeita o limite, para o erro não virar um despejo', () => {
+    document.body.innerHTML = '<i></i><i></i><i></i><i></i>'
+
+    const achados = coresNaoSuportadasRestantes(
+      document.body,
+      () => estiloFalso({ color: 'oklch(0.5 0.1 175)' }),
+      2
+    )
+
+    expect(achados).toHaveLength(2)
   })
 })

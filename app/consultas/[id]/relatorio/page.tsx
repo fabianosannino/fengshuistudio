@@ -27,7 +27,7 @@ import { CHECKLIST_CHI } from '../../../../src/lib/checklist-chi'
 import { FORMATOS, secoesDoFormato, formatoCorrespondente, paginasEstimadas } from '../../../../src/lib/formato-do-relatorio'
 import { faseLunar } from '../../../../src/lib/lunar'
 import { logger } from '../../../../src/lib/logger'
-import { normalizarCores, criarResolvedorCanvas } from '../../../../src/lib/cores-canvas'
+import { normalizarCores, criarResolvedorCanvas, coresNaoSuportadasRestantes } from '../../../../src/lib/cores-canvas'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
 import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
@@ -296,11 +296,43 @@ export default function Relatorio() {
           // como lab(), e o parser do html2canvas (1.4.1, de 2022) não conhece
           // nenhuma das duas — a captura inteira falhava. Converte no clone,
           // deixando a tela do usuário intacta.
-          const trocas = normalizarCores(clonedDoc, criarResolvedorCanvas())
-          if (trocas > 0) {
-            logger.info('Cores normalizadas para a captura', {
-              route: 'relatorio', action: 'normalizar-cores', consultaId: id, trocas,
+          /*
+            `getComputedStyle` da janela **do clone**, não desta.
+
+            O clone vive num `<iframe>`, e ler o estilo pela janela de fora
+            funciona por acidente nos browsers que toleram — não é o contrato.
+            Junto com a troca do `instanceof` em `cores-canvas.ts`, é o que faz
+            a normalização acontecer de verdade dentro do iframe.
+          */
+          const janelaDoClone = clonedDoc.defaultView ?? window
+          const lerEstilo = (el: Element) => janelaDoClone.getComputedStyle(el)
+
+          const trocas = normalizarCores(clonedDoc, criarResolvedorCanvas(), lerEstilo)
+          logger.info('Cores normalizadas para a captura', {
+            route: 'relatorio', action: 'normalizar-cores', consultaId: id, trocas,
+          })
+
+          /*
+            E a conferência, que faltava.
+
+            A varredura devolvia um número que ninguém lia, então «zero trocas»
+            era indistinguível de «não havia o que trocar» — e foi assim que a
+            captura passou a falhar no telefone com a mensagem opaca do
+            html2canvas, sem nada no log dizendo onde.
+
+            Falhar aqui não perde nada: a captura falharia de qualquer jeito
+            três linhas adiante. O que se ganha é o erro **nomear o culpado**
+            em vez de dizer só «unsupported color function "lab"».
+          */
+          const restantes = coresNaoSuportadasRestantes(clonedDoc, lerEstilo)
+          if (restantes.length > 0) {
+            logger.error('Cor não suportada sobreviveu à normalização', {
+              route: 'relatorio', action: 'normalizar-cores', consultaId: id,
+              error: restantes.join(' | '),
             })
+            throw new Error(
+              `Cor que o html2canvas não entende sobrou depois da normalização: ${restantes.join(' | ')}`
+            )
           }
 
           // Remove editable textareas and show their print-only versions
