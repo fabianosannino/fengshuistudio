@@ -22,6 +22,22 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test && npm ru
 O lint **bloqueia o CI** — não há erro tolerado. As poucas supressões existentes
 são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o porquê.
 
+## Pull Requests
+
+A branch padrão deste repositório é **`master`**, não `main` — é o único do
+conjunto assim. Ela não tem branch protection, e o auto-merge nativo não está
+armado: não existe check obrigatório bloqueando merge.
+
+- Fluxo padrão: abrir o PR, marcar como ready e **dar merge direto** (SQUASH).
+  Não deixar PR parado esperando aprovação manual.
+- **Aqui o CI roda de verdade** — o repositório é público, então o Actions tem
+  cota. Esperar `ci.yml` ficar verde antes do merge. Isso não é a mesma
+  situação dos repositórios privados, onde o Actions fica mudo.
+- O lint **bloqueia o CI** (ver `## Comandos`): não há erro tolerado. Rodar
+  `npx tsc --noEmit && npm test && npm run lint` antes de abrir o PR evita
+  descobrir isso na fila.
+- Nunca mergear com o CI vermelho, mesmo sem gate no GitHub para impedir.
+
 ## Convenções
 
 - **Arquivos**: `kebab-case.ts`. Componentes React em `PascalCase.tsx` sob
