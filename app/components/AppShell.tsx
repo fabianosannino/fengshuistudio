@@ -1,7 +1,7 @@
 'use client'
 
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
@@ -20,7 +20,7 @@ import {
   LayoutDashboard, Users, ClipboardList, Home as HomeIcon, Sparkles, CircleDot,
   Moon, Wallet, Handshake, ShoppingCart, Star, Settings, KeyRound, CreditCard, Receipt, Package,
   BarChart3, FileText, Sun, PanelLeftClose, PanelLeftOpen, LogOut, Menu, Grid3x3, RefreshCw,
-  ShoppingBag,
+  ShoppingBag, X,
   type LucideIcon,
 } from 'lucide-react'
 import { ehClienteFinal } from '../../src/lib/papel-do-usuario'
@@ -55,6 +55,47 @@ export default function AppShell({
   const isMobile = useEhMobile()
   const [darkMode, setDarkMode] = usePreferenciaBooleana(PREFERENCIA_TEMA_ESCURO, false)
   const [sidebarOpen, setSidebarOpen] = usePreferenciaBooleana(PREFERENCIA_SIDEBAR_ABERTA, true)
+
+  /*
+    A gaveta do celular é um diálogo modal, e faltavam-lhe as três coisas que
+    fazem um: fechar com `Esc`, não deixar o foco escapar para o que está
+    coberto, e devolver o foco a quem a abriu.
+
+    O `<aside>` está sempre no DOM — a gaveta abre por `translateX`, não por
+    montagem —, então com ela fechada os catorze links continuavam tabuláveis
+    fora da tela. Quem navega por teclado no telefone passava por um menu
+    invisível antes de chegar ao conteúdo.
+  */
+  const botaoDoMenu = useRef<HTMLButtonElement>(null)
+  const gaveta = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === 'Escape') setMobileOpen(false)
+    }
+    document.addEventListener('keydown', aoTeclar)
+    return () => document.removeEventListener('keydown', aoTeclar)
+  }, [mobileOpen])
+
+  /*
+    O foco entra na gaveta ao abrir e volta ao hambúrguer ao fechar. Sem a
+    volta, fechar deixa o foco no `<body>` e a próxima tecla Tab recomeça do
+    topo da página — a pessoa perde o lugar em que estava.
+
+    `mobileOpen` como única dependência de propósito: reagir a `isMobile` faria
+    o foco pular ao girar o aparelho.
+  */
+  const gavetaEstavaAberta = useRef(false)
+  useEffect(() => {
+    if (mobileOpen) {
+      gaveta.current?.focus()
+    } else if (gavetaEstavaAberta.current) {
+      botaoDoMenu.current?.focus()
+    }
+    gavetaEstavaAberta.current = mobileOpen
+  }, [mobileOpen])
 
   const isProfessional = isProfissionalFn(profile)
   const isAdmin = profile?.role === 'admin'
@@ -304,7 +345,28 @@ export default function AppShell({
         <div onClick={() => setMobileOpen(false)} role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }} />
       )}
 
-      <aside role="navigation" aria-label="Menu principal" style={{
+      <aside
+        ref={gaveta}
+        /*
+          No celular a gaveta é modal: `role="dialog"` com `aria-modal` diz ao
+          leitor de tela que o resto da página está coberto. No desktop ela é
+          só a barra lateral, e continua sendo `navigation`.
+        */
+        role={isMobile ? 'dialog' : 'navigation'}
+        aria-modal={isMobile && mobileOpen ? true : undefined}
+        aria-label="Menu principal"
+        /*
+          Fechada no celular ela continua no DOM, deslocada para fora por
+          `translateX`. Sem `inert`, os catorze links seguem tabuláveis — o
+          foco some da tela e a pessoa tabula às cegas.
+        */
+        inert={isMobile && !mobileOpen}
+        /*
+          `-1` e não `0`: a gaveta recebe foco por script ao abrir, para o
+          leitor começar a ler por ela, mas não entra na ordem natural de Tab.
+        */
+        tabIndex={-1}
+        style={{
         width: sidebarOpen ? '240px' : '72px',
         background: t.sidebar,
         height: '100vh',
@@ -331,6 +393,21 @@ export default function AppShell({
           <img src="/marketing/logo-fengshui.png" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
           {sidebarOpen && (
             <span style={{ color: accent, fontSize: '17px', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'var(--font-fraunces), serif' }}>FengShui Studio</span>
+          )}
+          {/*
+            Com o conteúdo inerte, o hambúrguer fica inalcançável enquanto a
+            gaveta está aberta. Sem este botão, fechar dependeria de saber que
+            tocar fora funciona — que é conhecimento, não affordance.
+          */}
+          {isMobile && (
+            <button type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" style={{
+              marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '44px', height: '44px', flexShrink: 0,
+              background: 'none', border: 'none', borderRadius: '8px',
+              color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+            }}>
+              <X size={22} strokeWidth={1.75} aria-hidden="true" />
+            </button>
           )}
         </div>
 
@@ -387,6 +464,13 @@ export default function AppShell({
             {sidebarOpen && <span>{darkMode ? 'Modo claro' : 'Modo escuro'}</span>}
           </button>
 
+          {/*
+            Só no desktop. No celular a gaveta já ocupa a tela e «recolher»
+            a transforma numa faixa de 72px com ícones sem rótulo — um estado
+            que se alcança sem querer, e que o `localStorage` guarda para a
+            visita seguinte.
+          */}
+          {!isMobile && (
           <button type="button" onClick={toggleSidebar} aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'} style={{
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: sidebarOpen ? '10px 14px' : '10px 0',
@@ -397,6 +481,7 @@ export default function AppShell({
             {sidebarOpen ? <PanelLeftClose size={19} strokeWidth={1.75} aria-hidden="true" /> : <PanelLeftOpen size={19} strokeWidth={1.75} aria-hidden="true" />}
             {sidebarOpen && <span>Recolher</span>}
           </button>
+          )}
 
           {/* O «Sair» daqui foi removido: havia dois na mesma tela, este e o do
               cabeçalho. O do cabeçalho ficou porque é o que continua alcançável
@@ -405,17 +490,25 @@ export default function AppShell({
         </div>
       </aside>
 
-      <div style={{
-        marginLeft: isMobile ? '0' : sidebarOpen ? '240px' : '72px',
-        flex: 1, transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: '100vh'
-      }}>
+      {/*
+        Com a gaveta aberta no celular, o que está atrás fica inerte. É isto
+        que prende o foco — e é melhor do que um laço de Tab escrito à mão:
+        o navegador cuida de tudo que é focável, inclusive do que ainda não
+        existia quando o laço foi escrito.
+      */}
+      <div
+        inert={isMobile && mobileOpen}
+        style={{
+          marginLeft: isMobile ? '0' : sidebarOpen ? '240px' : '72px',
+          flex: 1, transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: '100vh'
+        }}>
 
         <header style={{
           background: t.card, padding: '0 24px', height: '56px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid ' + t.border, position: 'sticky', top: 0, zIndex: 30,
         }}>
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" className="mobile-menu-btn" style={{
+          <button type="button" ref={botaoDoMenu} onClick={() => setMobileOpen(true)} aria-label="Abrir menu de navegação" className="mobile-menu-btn" style={{
             background: 'none', border: 'none', fontSize: '24px',
             cursor: 'pointer', padding: '8px',
             display: isMobile ? 'block' : 'none'
