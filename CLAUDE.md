@@ -30,12 +30,13 @@ armado: não existe check obrigatório bloqueando merge.
 
 - Fluxo padrão: abrir o PR, marcar como ready e **dar merge direto** (SQUASH).
   Não deixar PR parado esperando aprovação manual.
-- **Aqui o CI roda de verdade** — o repositório é público, então o Actions tem
-  cota. Esperar `ci.yml` ficar verde antes do merge. Isso não é a mesma
-  situação dos repositórios privados, onde o Actions fica mudo.
-- O lint **bloqueia o CI** (ver `## Comandos`): não há erro tolerado. Rodar
-  `npx tsc --noEmit && npm test && npm run lint` antes de abrir o PR evita
-  descobrir isso na fila.
+- **Há CI configurado** (`.github/workflows/ci.yml`, em `push` para `master` e
+  em todo `pull_request`). Esperar ficar verde antes do merge — o lint bloqueia
+  o CI (ver `## Comandos`), então não há erro tolerado.
+- **PR sem nenhuma execução não é PR aprovado.** Silêncio do Actions é ambíguo:
+  não distingue «o gatilho não casou» de «o Actions não rodou». Se nada
+  disparou, rodar `npx tsc --noEmit && npm test && npm run lint` localmente **e**
+  descobrir por que não rodou.
 - Nunca mergear com o CI vermelho, mesmo sem gate no GitHub para impedir.
 
 ## Convenções
