@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { coresNaoSuportadasRestantes, corNaoSuportada, normalizarCores } from '../cores-canvas'
+import {
+  coresNaoSuportadasRestantes,
+  corNaoSuportada,
+  nomesDeVariaveis,
+  normalizarCores,
+  normalizarVariaveisDeCor,
+} from '../cores-canvas'
 
 describe('corNaoSuportada', () => {
   it('reconhece as funções que quebram o html2canvas', () => {
@@ -201,5 +207,121 @@ describe('coresNaoSuportadasRestantes', () => {
     )
 
     expect(achados).toHaveLength(2)
+  })
+})
+
+/**
+ * Declaração computada falsa que **enumera** — é assim que o navegador expõe
+ * as custom properties, e é o caminho que a descoberta de nomes usa.
+ */
+function estiloEnumeravel(mapa: Record<string, string>): CSSStyleDeclaration {
+  const nomes = Object.keys(mapa)
+  return {
+    length: nomes.length,
+    item: (i: number) => nomes[i] ?? '',
+    getPropertyValue: (p: string) => mapa[p] ?? '',
+  } as unknown as CSSStyleDeclaration
+}
+
+describe('nomesDeVariaveis', () => {
+  it('enumera as custom properties do estilo computado da raiz', () => {
+    document.head.innerHTML = ''
+    const nomes = nomesDeVariaveis(
+      document,
+      estiloEnumeravel({ '--jade-500': 'oklch(0.545 0.085 175)', color: 'rgb(0,0,0)' })
+    )
+    expect(nomes).toEqual(['--jade-500'])
+  })
+
+  it('não estoura sem o estilo computado', () => {
+    document.head.innerHTML = ''
+    expect(nomesDeVariaveis(document)).toEqual([])
+  })
+})
+
+describe('normalizarVariaveisDeCor', () => {
+  it('troca a variável na raiz, com important', () => {
+    document.documentElement.removeAttribute('style')
+    document.head.innerHTML = ''
+
+    const trocas = normalizarVariaveisDeCor(
+      document,
+      () => 'rgb(46, 125, 107)',
+      () => estiloEnumeravel({ '--jade-500': 'oklch(0.545 0.085 175)' })
+    )
+
+    expect(trocas).toBe(1)
+    expect(document.documentElement.style.getPropertyValue('--jade-500'))
+      .toBe('rgb(46, 125, 107)')
+    // `important` é o que faz a troca ganhar do `.dark`, que redeclara as
+    // mesmas variáveis no mesmo elemento.
+    expect(document.documentElement.style.getPropertyPriority('--jade-500'))
+      .toBe('important')
+  })
+
+  it('não mexe no que já é suportado', () => {
+    document.documentElement.removeAttribute('style')
+    document.head.innerHTML = ''
+
+    const trocas = normalizarVariaveisDeCor(
+      document,
+      () => 'rgb(9, 9, 9)',
+      () => estiloEnumeravel({ '--jade-500': 'rgb(0, 0, 0)' })
+    )
+
+    expect(trocas).toBe(0)
+    expect(document.documentElement.getAttribute('style')).toBeNull()
+  })
+
+  it('pula a variável que o resolvedor recusa, em vez de gravar lixo', () => {
+    document.documentElement.removeAttribute('style')
+    document.head.innerHTML = ''
+
+    const trocas = normalizarVariaveisDeCor(
+      document,
+      () => null,
+      () => estiloEnumeravel({ '--jade-500': 'oklch(0.545 0.085 175)' })
+    )
+
+    expect(trocas).toBe(0)
+  })
+})
+
+describe('coresNaoSuportadasRestantes com pseudo-elementos', () => {
+  it('nomeia o ::before, que a normalização por estilo inline não alcança', () => {
+    document.body.innerHTML = '<div class="selo"></div>'
+
+    const achados = coresNaoSuportadasRestantes(
+      document.body,
+      () => estiloFalso({}),
+      5,
+      (_el, pseudo) =>
+        pseudo === '::before' ? estiloFalso({ color: 'lab(52% 40 60)' }) : null
+    )
+
+    expect(achados).toEqual(['div.selo::before { color: lab(52% 40 60) }'])
+  })
+})
+
+describe('as três propriedades com cor embutida', () => {
+  it('zera background-image só quando ela carrega cor não suportada', () => {
+    // A foto do relatório também é `background-image`: zerar sempre trocaria
+    // um defeito por outro.
+    const comGradiente = { tagName: 'DIV', className: '', style: document.createElement('div').style } as unknown as Element
+    const comFoto = { tagName: 'DIV', className: '', style: document.createElement('div').style } as unknown as Element
+
+    normalizarCores(
+      { querySelectorAll: () => [comGradiente] } as unknown as HTMLElement,
+      () => 'rgb(1,1,1)',
+      () => estiloFalso({ 'background-image': 'linear-gradient(oklch(1 0 0 / 4%) 1px, transparent 1px)' })
+    )
+    normalizarCores(
+      { querySelectorAll: () => [comFoto] } as unknown as HTMLElement,
+      () => 'rgb(1,1,1)',
+      () => estiloFalso({ 'background-image': 'url("/foto.jpg")' })
+    )
+
+    expect((comGradiente as unknown as HTMLElement).style.backgroundImage).toBe('none')
+    expect((comFoto as unknown as HTMLElement).style.backgroundImage).toBe('')
   })
 })

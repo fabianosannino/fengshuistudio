@@ -28,7 +28,20 @@
  * a paleta original.
  */
 
-/** Propriedades cujo valor pode conter uma função de cor moderna. */
+/**
+ * As propriedades que o html2canvas 1.4.1 lê como cor.
+ *
+ * A lista foi **conferida na fonte da biblioteca**, não suposta: são os cinco
+ * descritores com `format: 'color'` (`background-color`, `border-<lado>-color`,
+ * `color`, `text-decoration-color`, `-webkit-text-stroke-color`) mais as
+ * chamadas diretas a `color.parse` em `box-shadow`, `text-shadow` e nos pontos
+ * de parada dos gradientes de `background-image`.
+ *
+ * A versão anterior desta lista tinha `outline-color`, `fill` e `stroke` — que
+ * o html2canvas **não** lê — e faltavam-lhe `-webkit-text-stroke-color`,
+ * `text-shadow` e `background-image`. Cobria o que parecia razoável em vez do
+ * que a biblioteca faz.
+ */
 const PROPRIEDADES_DE_COR = [
   'color',
   'background-color',
@@ -36,11 +49,22 @@ const PROPRIEDADES_DE_COR = [
   'border-right-color',
   'border-bottom-color',
   'border-left-color',
-  'outline-color',
   'text-decoration-color',
-  'fill',
-  'stroke',
+  '-webkit-text-stroke-color',
 ] as const
+
+/**
+ * Propriedades que carregam cor **embutida** noutro valor. Converter exigiria
+ * reescrever a sintaxe toda; zerar custa pouco num relatório impresso.
+ *
+ * Só são zeradas **quando** carregam cor não suportada — `background-image`
+ * também guarda as fotos do relatório, e apagá-las sempre seria trocar um
+ * defeito por outro.
+ */
+const PROPRIEDADES_ZERADAS = ['box-shadow', 'text-shadow', 'background-image'] as const
+
+/** Pseudo-elementos que o html2canvas desenha, e cujo estilo é preciso ler à parte. */
+const PSEUDO = ['::before', '::after'] as const
 
 /**
  * Funções de cor que o html2canvas 1.4.1 não sabe interpretar. `color()` entra
@@ -121,6 +145,122 @@ export function criarResolvedorCanvas(): ResolvedorDeCor {
 }
 
 /**
+ * Os nomes das custom properties que valem para o documento.
+ *
+ * Duas fontes, unidas:
+ *
+ * 1. **O estilo computado da raiz.** Navegadores atuais enumeram as custom
+ *    properties ao percorrer a declaração por índice. É a fonte confiável — e
+ *    é a que dá para exercitar em teste, porque a leitura é injetada.
+ * 2. **As folhas de estilo**, percorrendo `@layer` e `@media` por dentro — o
+ *    Tailwind põe o `:root` dentro de `@layer base`. Serve de rede para o
+ *    navegador que não enumera a computada; o jsdom não preserva custom
+ *    properties nas regras, então esta parte não tem teste e é por isso que
+ *    ela é a **segunda** fonte, não a única.
+ *
+ * Folha de outra origem lança ao ler `cssRules`; é pulada. A paleta é nossa.
+ */
+export function nomesDeVariaveis(
+  doc: Document,
+  computadoDaRaiz?: CSSStyleDeclaration
+): string[] {
+  const nomes = new Set<string>()
+
+  if (computadoDaRaiz) {
+    for (let i = 0; i < computadoDaRaiz.length; i += 1) {
+      const nome = computadoDaRaiz.item(i)
+      if (nome && nome.startsWith('--')) nomes.add(nome)
+    }
+  }
+
+  const visitar = (regras: CSSRuleList) => {
+    for (const regra of Array.from(regras)) {
+      const grupo = (regra as CSSGroupingRule).cssRules
+      if (grupo) {
+        visitar(grupo)
+        continue
+      }
+      const estilo = (regra as CSSStyleRule).style
+      if (!estilo) continue
+      for (let i = 0; i < estilo.length; i += 1) {
+        const nome = estilo.item(i)
+        if (nome && nome.startsWith('--')) nomes.add(nome)
+      }
+    }
+  }
+
+  for (const folha of Array.from(doc.styleSheets ?? [])) {
+    try {
+      visitar(folha.cssRules)
+    } catch {
+      // Folha de outra origem. A paleta não mora nelas.
+    }
+  }
+
+  return Array.from(nomes)
+}
+
+/**
+ * Converte a paleta **na origem**: as próprias variáveis CSS.
+ *
+ * ## Por que aqui, e não só nos usos
+ *
+ * A paleta são 32 `oklch()` declarados como custom properties no `:root`
+ * (`app/globals.css`). Toda cor da tela deriva delas — inclusive as que a
+ * varredura por propriedade não alcança: `::before`/`::after`, pontos de
+ * parada de gradiente, `text-shadow`, `-webkit-text-stroke-color`.
+ *
+ * Trocar a variável faz o browser substituir o valor **antes** de o
+ * html2canvas ler qualquer coisa. É um lugar em vez de uma lista, e a lista é
+ * justamente o que já falhou duas vezes aqui: primeiro por não rodar (o
+ * `instanceof` entre realms), depois por ser mais curta do que a da própria
+ * biblioteca.
+ *
+ * A varredura por propriedade continua, como segunda linha — cor escrita
+ * literalmente numa regra, sem passar por variável, só ela pega.
+ */
+export function normalizarVariaveisDeCor(
+  doc: Document,
+  resolver: ResolvedorDeCor,
+  lerEstilo: (el: Element) => CSSStyleDeclaration = el => getComputedStyle(el)
+): number {
+  const raiz = doc.documentElement
+  if (!raiz) return 0
+
+  let computado: CSSStyleDeclaration
+  try {
+    computado = lerEstilo(raiz)
+  } catch {
+    return 0
+  }
+  if (!computado) return 0
+
+  const estilo = (raiz as unknown as { style?: CSSStyleDeclaration }).style
+  if (!estilo || typeof estilo.setProperty !== 'function') return 0
+
+  let trocas = 0
+
+  for (const nome of nomesDeVariaveis(doc, computado)) {
+    const valor = computado.getPropertyValue(nome)
+    if (!corNaoSuportada(valor)) continue
+
+    const convertida = resolver(valor)
+    if (!convertida) continue
+
+    /*
+      Inline no `<html>` com `!important`: ganha do `:root` e também do
+      `.dark`, que declara as mesmas variáveis no mesmo elemento. Sem o
+      `!important` a regra de classe venceria e o tema escuro continuaria
+      em oklch.
+    */
+    estilo.setProperty(nome, convertida, 'important')
+    trocas += 1
+  }
+
+  return trocas
+}
+
+/**
  * O que sobrou depois da normalização.
  *
  * A varredura devolvia só um número, e ninguém o conferia — então zero trocas
@@ -134,11 +274,30 @@ export function criarResolvedorCanvas(): ResolvedorDeCor {
 export function coresNaoSuportadasRestantes(
   raiz: Document | HTMLElement,
   lerEstilo: (el: Element) => CSSStyleDeclaration = el => getComputedStyle(el),
-  limite = 5
+  limite = 5,
+  lerPseudo?: (el: Element, pseudo: string) => CSSStyleDeclaration | null
 ): string[] {
   if (!('querySelectorAll' in raiz)) return []
 
   const achados: string[] = []
+
+  const identificar = (el: Element) => {
+    const nome = el.tagName.toLowerCase()
+    const classe = typeof el.className === 'string' && el.className
+      ? `.${el.className.trim().split(/\s+/).slice(0, 2).join('.')}`
+      : ''
+    return `${nome}${classe}`
+  }
+
+  const conferir = (el: Element, sufixo: string, computado: CSSStyleDeclaration) => {
+    for (const prop of [...PROPRIEDADES_DE_COR, ...PROPRIEDADES_ZERADAS] as const) {
+      const valor = computado.getPropertyValue(prop)
+      if (!corNaoSuportada(valor)) continue
+      achados.push(`${identificar(el)}${sufixo} { ${prop}: ${valor} }`)
+      return true
+    }
+    return false
+  }
 
   for (const el of Array.from(raiz.querySelectorAll('*'))) {
     if (achados.length >= limite) break
@@ -149,18 +308,22 @@ export function coresNaoSuportadasRestantes(
     } catch {
       continue
     }
-    if (!computado) continue
+    if (computado) conferir(el, '', computado)
 
-    for (const prop of [...PROPRIEDADES_DE_COR, 'box-shadow'] as const) {
-      const valor = computado.getPropertyValue(prop)
-      if (!corNaoSuportada(valor)) continue
-
-      const nome = el.tagName.toLowerCase()
-      const classe = typeof el.className === 'string' && el.className
-        ? `.${el.className.trim().split(/\s+/).slice(0, 2).join('.')}`
-        : ''
-      achados.push(`${nome}${classe} { ${prop}: ${valor} }`)
-      break
+    /*
+      Os pseudo-elementos entram na conferência porque o html2canvas os
+      **desenha** — e ficam de fora da normalização porque não há estilo
+      inline em `::before`. Se um deles for o culpado, o erro passa a dizer
+      isso em vez de deixar a busca recomeçar do zero.
+    */
+    for (const pseudo of PSEUDO) {
+      if (achados.length >= limite) break
+      try {
+        const doPseudo = lerPseudo?.(el, pseudo)
+        if (doPseudo) conferir(el, pseudo, doPseudo)
+      } catch {
+        // Ambiente que não resolve pseudo-elemento; segue.
+      }
     }
   }
 
@@ -222,11 +385,14 @@ export function normalizarCores(
       trocas++
     }
 
-    // Sombra carrega cor embutida e não vale a conversão: num PDF de relatório
-    // ela não acrescenta nada, e mantê-la quebraria a captura do mesmo jeito.
-    const sombra = computado.getPropertyValue('box-shadow')
-    if (corNaoSuportada(sombra)) {
-      alvo.style.setProperty('box-shadow', 'none', 'important')
+    /*
+      As três que carregam cor embutida noutro valor. Zeradas só **quando**
+      carregam cor não suportada: `background-image` também guarda as fotos do
+      relatório, e apagá-las sempre trocaria um defeito por outro.
+    */
+    for (const prop of PROPRIEDADES_ZERADAS) {
+      if (!corNaoSuportada(computado.getPropertyValue(prop))) continue
+      alvo.style.setProperty(prop, 'none', 'important')
       trocas++
     }
   }
