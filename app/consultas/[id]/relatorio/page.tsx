@@ -27,7 +27,7 @@ import { CHECKLIST_CHI } from '../../../../src/lib/checklist-chi'
 import { FORMATOS, secoesDoFormato, formatoCorrespondente, paginasEstimadas } from '../../../../src/lib/formato-do-relatorio'
 import { faseLunar } from '../../../../src/lib/lunar'
 import { logger } from '../../../../src/lib/logger'
-import { normalizarCores, criarResolvedorCanvas, coresNaoSuportadasRestantes } from '../../../../src/lib/cores-canvas'
+import { normalizarCores, normalizarVariaveisDeCor, criarResolvedorCanvas, coresNaoSuportadasRestantes } from '../../../../src/lib/cores-canvas'
 import { BUCKET_IMOVEIS } from '../../../../src/lib/storage-imagens'
 import { rotuloReferencia } from '../../../../src/lib/declinacao-magnetica'
 import { compararSnapshots, type SnapshotScore } from '../../../../src/lib/reavaliacao'
@@ -307,9 +307,20 @@ export default function Relatorio() {
           const janelaDoClone = clonedDoc.defaultView ?? window
           const lerEstilo = (el: Element) => janelaDoClone.getComputedStyle(el)
 
-          const trocas = normalizarCores(clonedDoc, criarResolvedorCanvas(), lerEstilo)
+          const resolver = criarResolvedorCanvas()
+
+          /*
+            A paleta primeiro, na origem: 32 `oklch()` declarados como custom
+            properties no `:root`. Trocar a variável faz o browser substituir o
+            valor antes de o html2canvas ler — e alcança o que a varredura por
+            propriedade não alcança: `::before`, pontos de parada de gradiente,
+            `text-shadow`, `-webkit-text-stroke-color`.
+          */
+          const variaveis = normalizarVariaveisDeCor(clonedDoc, resolver, lerEstilo)
+          const trocas = normalizarCores(clonedDoc, resolver, lerEstilo)
           logger.info('Cores normalizadas para a captura', {
-            route: 'relatorio', action: 'normalizar-cores', consultaId: id, trocas,
+            route: 'relatorio', action: 'normalizar-cores', consultaId: id,
+            trocas, variaveis,
           })
 
           /*
@@ -324,7 +335,10 @@ export default function Relatorio() {
             três linhas adiante. O que se ganha é o erro **nomear o culpado**
             em vez de dizer só «unsupported color function "lab"».
           */
-          const restantes = coresNaoSuportadasRestantes(clonedDoc, lerEstilo)
+          const restantes = coresNaoSuportadasRestantes(
+            clonedDoc, lerEstilo, 5,
+            (el, pseudo) => janelaDoClone.getComputedStyle(el, pseudo)
+          )
           if (restantes.length > 0) {
             logger.error('Cor não suportada sobreviveu à normalização', {
               route: 'relatorio', action: 'normalizar-cores', consultaId: id,
