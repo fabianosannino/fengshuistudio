@@ -224,6 +224,74 @@ Ao mexer nisso:
   do próprio app use «guilemetes», senão o verificador cobra a frase como se
   fosse do livro.
 
+## Guarda que roda no ambiente errado passa
+
+A família de defeito mais cara deste conjunto de repositórios, e a que mais
+custou aqui: a verificação existe, é chamada, o teste é verde — e ela não faz
+nada, porque o ambiente do teste não é o ambiente real.
+
+Em 18/08 ela apareceu duas vezes no mesmo arquivo (`src/lib/cores-canvas.ts`),
+depois de já ter aparecido duas vezes nos outros portais:
+
+- **`instanceof` entre realms.** `normalizarCores` filtrava com
+  `el instanceof HTMLElement`. O clone do html2canvas vive num `<iframe>` —
+  outro realm, outro construtor —, então o filtro era sempre falso e **todo**
+  elemento era pulado. A varredura rodava a cada geração de PDF e não tocava
+  em nada. O jsdom monta tudo num realm só, e por isso a suíte aprovava.
+  *Regra:* em código que atravessa `iframe`, `postMessage` ou clone de
+  documento, pergunte pela **capacidade** (`typeof el.style?.setProperty`),
+  nunca pela identidade do construtor.
+- **Custom properties no jsdom.** O jsdom não as preserva nas regras de estilo,
+  então a descoberta de variáveis pelas folhas **não tem teste** — e é por isso
+  que ela é a segunda fonte de nomes, não a única. Está escrito no arquivo.
+  *Regra:* quando o ambiente de teste não alcança um caminho, ele não pode ser
+  o único caminho, e a limitação vai escrita ao lado.
+
+Os outros dois casos, para a família ficar reconhecível: na Veridia, `revoke`
+enumerado revoga o vazio num Postgres limpo (`TRUNCATE` ficou concedido a
+`anon` em três tabelas, com a suíte verde — migrações 0308/0309); no Ervatório,
+o andaime do teste declarava `status text` onde a produção tem enum, então a
+migração passava no teste e quebrava no banco real.
+
+**A pergunta que fecha os quatro:** *o que este teste provaria se a coisa
+estivesse quebrada?* Se a resposta for «nada, porque o ambiente é outro», o
+teste está medindo o próprio andaime.
+
+## Quem gera o PDF do relatório
+
+`app/consultas/[id]/relatorio/page.tsx` tem **dois** caminhos, e eles falham
+por motivos diferentes:
+
+- **«Imprimir / Salvar PDF»** — diálogo do navegador. Texto selecionável,
+  respeita `@media print`. É o caminho principal.
+- **«Baixar como imagem»** — `html2canvas` + `jsPDF`. Fotografa a tela. Só ele
+  passa por `src/lib/cores-canvas.ts`.
+
+A paleta do app é declarada em **`oklch()`** (32 custom properties no `:root`
+de `app/globals.css`), e o html2canvas 1.4.1 — último release, de 2022 — não
+conhece nenhuma função de cor moderna. Por isso a normalização existe.
+
+**Ela converte a variável, não o uso.** Trocar as custom properties na raiz do
+clone faz o browser substituir o valor antes de a biblioteca ler qualquer
+coisa, e isso alcança o que uma lista de propriedades nunca alcança:
+`::before`/`::after`, pontos de parada de gradiente, `text-shadow`. A varredura
+por propriedade continua como segunda linha, para cor escrita literalmente numa
+regra.
+
+**A lista de propriedades foi conferida na fonte da biblioteca**, não suposta:
+os cinco descritores `format: 'color'` (`background-color`,
+`border-<lado>-color`, `color`, `text-decoration-color`,
+`-webkit-text-stroke-color`) mais `box-shadow`, `text-shadow` e os gradientes de
+`background-image`. A versão anterior listava `outline-color`, `fill` e
+`stroke` — que ele **não** lê — e faltavam-lhe três das que ele lê. Antes de
+somar propriedade, releia a fonte; ela é o contrato.
+
+**Embrulho de rolagem numa tabela precisa de duas guardas.** As tabelas do
+relatório usam `.tabela-rolante` com `overflow-x: auto` para o telefone. Isso
+recortaria o PDF em silêncio, então há `overflow: visible` em `@media print`
+**e** no `onclone` do html2canvas — `@media print` não alcança a captura, que é
+uma tela e não uma impressão.
+
 ## Débitos e histórico
 
 `docs/auditoria/2026-07-18-auditoria-arquitetura-seguranca.md` lista os achados
