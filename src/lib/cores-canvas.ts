@@ -58,6 +58,12 @@ export function corNaoSuportada(valor: string | null | undefined): boolean {
 export type ResolvedorDeCor = (valor: string) => string | null
 
 /**
+ * Cor improvável usada para detectar quando o canvas **recusa** um valor.
+ * Ver `criarResolvedorCanvas`.
+ */
+const MARCADOR = '#010203'
+
+/**
  * Resolvedor apoiado no próprio browser: pinta a cor num canvas 1×1 e lê o
  * pixel. Devolve `null` fora do browser ou se o canvas 2D não existir.
  */
@@ -79,10 +85,27 @@ export function criarResolvedorCanvas(): ResolvedorDeCor {
     let resultado: string | null = null
     try {
       ctx.clearRect(0, 0, 1, 1)
-      // Se o browser não entender o valor, `fillStyle` fica com o anterior —
-      // por isso o marcador improvável antes, para detectar a recusa.
-      ctx.fillStyle = '#010203'
+      /*
+        Se o browser não entender o valor, `fillStyle` **não** lança: ele
+        simplesmente ignora a atribuição e mantém o que estava. Por isso o
+        marcador improvável antes — e a comparação depois.
+
+        Ela faltava. O marcador estava aqui desde o começo, com o comentário
+        dizendo que servia «para detectar a recusa», e nada o comparava: um
+        valor recusado virava `rgb(1, 2, 3)`, quase preto, em silêncio. O
+        comentário descrevia uma guarda que nunca foi escrita.
+
+        O preço do falso positivo é uma cor que por acaso resolva exatamente
+        para o marcador ser pulada — e o de pular é a cor original ficar, que
+        é o comportamento correto para «não sei converter isto».
+      */
+      ctx.fillStyle = MARCADOR
       ctx.fillStyle = valor
+      if (ctx.fillStyle === MARCADOR) {
+        cache.set(valor, null)
+        return null
+      }
+
       ctx.fillRect(0, 0, 1, 1)
       const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
       resultado = a === 255
@@ -95,6 +118,53 @@ export function criarResolvedorCanvas(): ResolvedorDeCor {
     cache.set(valor, resultado)
     return resultado
   }
+}
+
+/**
+ * O que sobrou depois da normalização.
+ *
+ * A varredura devolvia só um número, e ninguém o conferia — então zero trocas
+ * era indistinguível de «não havia o que trocar». Foi assim que a captura
+ * passou a falhar no iPhone com a mensagem opaca do html2canvas
+ * (`unsupported color function "lab"`), sem nada no log apontando onde.
+ *
+ * Esta função responde a pergunta que a mensagem do html2canvas não responde:
+ * **qual elemento, qual propriedade, qual valor.**
+ */
+export function coresNaoSuportadasRestantes(
+  raiz: Document | HTMLElement,
+  lerEstilo: (el: Element) => CSSStyleDeclaration = el => getComputedStyle(el),
+  limite = 5
+): string[] {
+  if (!('querySelectorAll' in raiz)) return []
+
+  const achados: string[] = []
+
+  for (const el of Array.from(raiz.querySelectorAll('*'))) {
+    if (achados.length >= limite) break
+
+    let computado: CSSStyleDeclaration
+    try {
+      computado = lerEstilo(el)
+    } catch {
+      continue
+    }
+    if (!computado) continue
+
+    for (const prop of [...PROPRIEDADES_DE_COR, 'box-shadow'] as const) {
+      const valor = computado.getPropertyValue(prop)
+      if (!corNaoSuportada(valor)) continue
+
+      const nome = el.tagName.toLowerCase()
+      const classe = typeof el.className === 'string' && el.className
+        ? `.${el.className.trim().split(/\s+/).slice(0, 2).join('.')}`
+        : ''
+      achados.push(`${nome}${classe} { ${prop}: ${valor} }`)
+      break
+    }
+  }
+
+  return achados
 }
 
 /**
@@ -114,7 +184,24 @@ export function normalizarCores(
   let trocas = 0
 
   for (const el of Array.from(escopo.querySelectorAll('*'))) {
-    if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) continue
+    /*
+      **Nada de `instanceof` aqui.**
+
+      O clone do html2canvas vive dentro de um `<iframe>` — outro realm, com
+      outro `HTMLElement`. `el instanceof HTMLElement` compara contra o
+      construtor **desta** janela e devolve `false` para todo elemento do
+      clone. A versão anterior fazia exatamente isso: pulava todos, devolvia
+      zero trocas, e a captura seguia com as cores `lab()` intactas até o
+      html2canvas estourar com «unsupported color function».
+
+      O teste não pegava porque o jsdom monta tudo num realm só — é a guarda
+      que passa por rodar no ambiente errado.
+
+      O que precisamos é escrever em `style`. Perguntar isso direto vale em
+      qualquer realm, e é a capacidade que de fato usamos.
+    */
+    const alvo = el as unknown as { style?: CSSStyleDeclaration }
+    if (!alvo.style || typeof alvo.style.setProperty !== 'function') continue
 
     let computado: CSSStyleDeclaration
     try {
@@ -131,7 +218,7 @@ export function normalizarCores(
       const convertida = resolver(valor)
       if (!convertida) continue
 
-      el.style.setProperty(prop, convertida, 'important')
+      alvo.style.setProperty(prop, convertida, 'important')
       trocas++
     }
 
@@ -139,7 +226,7 @@ export function normalizarCores(
     // ela não acrescenta nada, e mantê-la quebraria a captura do mesmo jeito.
     const sombra = computado.getPropertyValue('box-shadow')
     if (corNaoSuportada(sombra)) {
-      el.style.setProperty('box-shadow', 'none', 'important')
+      alvo.style.setProperty('box-shadow', 'none', 'important')
       trocas++
     }
   }
