@@ -25,8 +25,10 @@ são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o po
 ## Pull Requests
 
 A branch padrão deste repositório é **`master`**, não `main` — é o único do
-conjunto assim. Ela não tem branch protection, e o auto-merge nativo não está
-armado: não existe check obrigatório bloqueando merge.
+conjunto assim. Desde 18/09/2026, a proteção exige branch atualizada e os três
+checks de CI emitidos pelo GitHub Actions, inclusive para administradores.
+Force push e exclusão de master estão bloqueados. PR é obrigatório, com zero
+aprovações manuais exigidas; não usar bypass para contornar CI.
 
 - Fluxo padrão: abrir o PR, marcar como ready e **dar merge direto** (SQUASH).
   Não deixar PR parado esperando aprovação manual.
@@ -37,7 +39,7 @@ armado: não existe check obrigatório bloqueando merge.
   não distingue «o gatilho não casou» de «o Actions não rodou». Se nada
   disparou, rodar `npx tsc --noEmit && npm test && npm run lint` localmente **e**
   descobrir por que não rodou.
-- Nunca mergear com o CI vermelho, mesmo sem gate no GitHub para impedir.
+- Nunca mergear com o CI vermelho. Os gates remotos também exigem isso.
 
 ## Convenções
 
