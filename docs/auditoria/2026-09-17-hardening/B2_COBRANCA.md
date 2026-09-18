@@ -73,3 +73,37 @@ aprovados, lint com zero erros e 106 avisos anteriores. Runner PostgreSQL:
 37 verificações, incluindo reprodução da corrida e RPC concorrente. Antes da
 migration, inventário real: 13 clientes, 17 consultas e zero referências a
 cliente de outro proprietário. Nenhum dado de teste foi criado em produção.
+
+PR #194 integrado em `9a05c15144c59858814a111db9324e0ccbd6f64e`; produção READY
+em `dpl_AqZghxndo6wa3samZXwcKVWr2L8W`. A migration manteve 13 clientes e 17
+consultas, marcou 3 titulares (havia 4 contatos correspondentes, com duplicata
+do mesmo proprietário), corrigiu direitos e preservou os preços. RPC anônima
+negada, wrapper público invoker e mutex privado com RLS. Advisors: mesmos
+avisos/erro anteriores, mais um INFO esperado pela tabela técnica sem policies;
+ela não deve ter acesso de usuários.
+
+## Concessões — terceiro pacote
+
+Ativação de chave, concessão, projeção e auditoria ficam numa transação.
+Benefício administrativo e cancelamento passam a preservar origens distintas.
+Inventário real: seis chaves disponíveis, nenhuma usada, todas sem duração ou
+desconto especial. Nenhuma chave real foi usada nos testes. O runner isolado
+passou em 31 verificações de concorrência, rollback e prazo.
+
+Configuração Vercel `development` conferida apenas por indicadores, sem valores:
+chave Stripe **live** e quatro preços configurados. Não é ambiente de ensaio.
+A aplicação passa a impedir live fora da produção e test em produção. Não se
+alterou segredo nem se criou cobrança. Stripe MCP continua exigindo login;
+credenciais test e serviços isolados continuam sendo dependência externa.
+
+Continuação: coordenação durável de checkout, exclusividade e retomada de
+eventos, notificações idempotentes, conciliação de estornos sem falso sucesso,
+tratamento das projeções vencidas e ensaio test mode. A emissão de créditos
+administrativos e o estorno ainda exigem revisão específica; o registro local
+não basta para provar movimento financeiro no provedor.
+
+Validação do terceiro pacote: 1.405 testes em 109 arquivos, typecheck e build
+com configuração sintética aprovados. Lint sem erros (105 avisos). Runner
+PostgreSQL com 31 verificações. Não houve execução financeira live nem
+ativação de chave de produção. A revisão React manteve os estados derivados e
+o retorno do servidor como fonte da confirmação de plano.

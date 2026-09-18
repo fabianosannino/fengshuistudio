@@ -5,7 +5,7 @@ import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-a
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { planoEfetivo } from '../../../../src/lib/plano-utils'
-import { enumDoPlano } from '../../../../src/lib/plano-utils'
+import { conceder } from '../../../../src/lib/concessoes-de-plano'
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
@@ -46,15 +46,11 @@ export async function POST(request: Request) {
 
   const previousPlan = target.plano
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ plano: enumDoPlano('profissional') })
-    .eq('id', body.user_id)
-
-  if (error) {
-    logger.error('Admin promote error', { route: '/api/admin/promover', action: 'promote', userId: body.user_id, error: error.message })
-    return NextResponse.json({ error: 'Não foi possível atualizar o plano' }, { status: 500 })
-  }
+  const concedeu = await conceder(supabase, {
+    userId: body.user_id, plano: 'profissional', origem: 'cortesia',
+    referencia: `admin:${body.user_id}`, motivo: 'Benefício concedido pelo administrador', criadaPor: user.id,
+  }, '/api/admin/promover')
+  if (!concedeu) return NextResponse.json({ error: 'Não foi possível atualizar o benefício' }, { status: 503 })
 
   // Audit log
   const { error: erroAuditoria } = await supabase.from('admin_audit_log').insert({

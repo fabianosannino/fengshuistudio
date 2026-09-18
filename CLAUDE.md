@@ -60,7 +60,7 @@ armado: não existe check obrigatório bloqueando merge.
 - **O plano vem de concessões, não de um campo** (ADR 0029). `profiles.plano` é
   projeção; a verdade está em `concessoes_de_plano`, cada uma com origem
   (`assinatura`, `chave`, `cortesia`) e prazo. Escrever naquela coluna fora de
-  `recalcularPlanoDoPerfil` recria o defeito que originou a tabela: cancelar
+  `recalcularPlanoDoPerfil`/RPC transacional `recalcular_plano_do_perfil` recria o defeito que originou a tabela: cancelar
   uma assinatura apagava um Profissional vindo de chave, porque o valor não
   dizia de onde tinha vindo.
 - **Papel ≠ plano** (ADR 0024). `papelDoUsuario` responde «atende clientes ou

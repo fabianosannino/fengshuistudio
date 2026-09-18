@@ -120,9 +120,11 @@ export async function sincronizarAssinatura(
   }
 
   const slug = await planoDaAssinatura(assinatura)
-  const { data: plano } = slug
+  const { data: plano, error: erroPlano } = slug
     ? await supabase.from('plans').select('id, slug').eq('slug', slug).single()
-    : { data: null }
+    : { data: null, error: null }
+
+  if (erroPlano || (slug && !plano && ['active', 'trialing'].includes(assinatura.status))) return { situacao: 'falhou', motivo: 'Falha ao consultar catálogo de planos' }
 
   const fimDoPeriodo = instante(assinatura.items?.data?.[0]?.current_period_end ?? assinatura.current_period_end)
   const campos = {
