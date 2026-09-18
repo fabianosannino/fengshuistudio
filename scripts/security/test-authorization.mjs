@@ -45,7 +45,9 @@ async function eventually(check) {
 try {
   docker('network','create',prefix)
   docker('run','-d','--name',db,'--network',prefix,'-e','POSTGRES_PASSWORD=local-test-only',postgresImage)
-  await eventually(()=>docker('exec',db,'pg_isready','-U','postgres').includes('accepting'))
+  // O servidor temporário de initdb aceita socket, mas reinicia antes do real.
+  // TCP só fica disponível após essa fase; evita uma corrida no runner Linux.
+  await eventually(()=>docker('exec',db,'pg_isready','-h','127.0.0.1','-U','postgres').includes('accepting'))
   sql(source('supabase/tests/fixtures/authorization-baseline.sql'))
   sql(source('supabase/tests/fixtures/legacy-owner-policies.sql'))
   sql(source('supabase/migrations/20260724_restore_handle_new_user.sql'))

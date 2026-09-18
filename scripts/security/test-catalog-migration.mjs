@@ -26,7 +26,8 @@ function rejects(statement, constraint) {
 async function waitForDatabase() {
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
-      if (docker('exec', container, 'pg_isready', '-U', 'postgres').includes('accepting')) return
+      // O servidor temporário de initdb escuta apenas no socket Unix.
+      if (docker('exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres').includes('accepting')) return
     } catch { /* Disposable database is starting. */ }
     await new Promise(resolve => setTimeout(resolve, 500))
   }

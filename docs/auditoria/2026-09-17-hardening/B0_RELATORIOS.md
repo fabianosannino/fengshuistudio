@@ -27,6 +27,10 @@ Escopo: preservar entradas/versões/PDF antes das correções de domínio B1/C1.
   [PR #191](https://github.com/fabianosannino/fengshuistudio/pull/191).
 - Testes de UI usam mocks de renderização: aparência/captura real do PDF com
   uma sessão autenticada permanece sem atestado visual nesta execução.
+- O primeiro CI detectou uma corrida anterior à aplicação das migrações:
+  `pg_isready` via socket aceitava o servidor temporário do initdb. Os dois
+  runners agora aguardam TCP interno, disponível apenas no servidor definitivo,
+  conforme a [imagem oficial PostgreSQL](https://github.com/docker-library/docs/blob/master/postgres/README.md).
 
 ## Ordem de publicação
 
