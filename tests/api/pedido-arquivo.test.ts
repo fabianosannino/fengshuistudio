@@ -79,6 +79,22 @@ beforeEach(() => {
 })
 
 describe('GET /api/pedidos/arquivo', () => {
+  it.each([
+    [500, 0, 403], [1000, 0, 403], [0, 1000, 200], [0, 0, 200], [-1, 0, 403],
+  ])('autoriza pelo estado conferido: confirmado=%i, pendente=%i', async (confirmado, pendente, status) => {
+    respostas.pedido_itens = { data: itemPago({ pedidos: {
+      token_publico: 'tok-valido', token_expira_em: DAQUI_A_UM_MES,
+      pedido_eventos: [{ evento: 'pago' }, { evento: 'reembolsado' }, {
+        evento: 'reembolso_conferido', dados: { versao: 1, pago_centavos: 1000, confirmado_centavos: confirmado, pendente_centavos: pendente },
+      }],
+    } }) }
+    expect((await GET(req())).status).toBe(status)
+    if (status === 403) {
+      expect(assinar).not.toHaveBeenCalled()
+      expect(eventosGravados).toHaveLength(0)
+    } else expect(assinar).toHaveBeenCalledOnce()
+  })
+
   it('entrega a URL assinada quando o pedido está pago', async () => {
     const res = await GET(req())
     expect(res.status).toBe(200)

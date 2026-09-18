@@ -81,7 +81,7 @@ export function saldoPorParte(lancamentos: Lancamento[]): Record<ParteDoPedido, 
  */
 export function totalPagoPeloComprador(lancamentos: Lancamento[]): number {
   return lancamentos
-    .filter(l => l.pagador === 'comprador' && Number.isFinite(l.valor_centavos))
+    .filter(l => l.pagador === 'comprador' && (l.tipo === 'produto' || l.tipo === 'frete') && Number.isFinite(l.valor_centavos))
     .reduce((soma, l) => soma + l.valor_centavos, 0)
 }
 

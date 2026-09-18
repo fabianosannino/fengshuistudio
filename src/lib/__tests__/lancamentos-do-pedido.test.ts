@@ -66,6 +66,9 @@ describe('saldoPorParte', () => {
 })
 
 describe('razaoConfereComOTotal', () => {
+  it('ajuste de reembolso não vira uma segunda compra', () => {
+    expect(razaoConfereComOTotal([...VENDA_REAL, l('reembolso', 500, 'comprador', 'consultor')], 500)).toBe(true)
+  })
   /*
    * Este bloco começou como `razaoFecha`, que somava os saldos das quatro
    * partes e conferia se dava zero. Foi este teste que mostrou o problema: a

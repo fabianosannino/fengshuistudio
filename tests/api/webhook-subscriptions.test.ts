@@ -21,6 +21,8 @@ const paymentsList = vi.fn()
 const intentsRetrieve = vi.fn()
 const refundsList = vi.fn()
 const disputesRetrieve = vi.fn()
+const feesRetrieve = vi.fn()
+const feeRefundsList = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
   default: {
     subscriptions: { retrieve: (...a: unknown[]) => subscriptionsRetrieve(...a) },
@@ -34,6 +36,7 @@ vi.mock('../../src/lib/stripe', () => ({
     paymentIntents: { retrieve: (...a: unknown[]) => intentsRetrieve(...a) },
     refunds: { list: (...a: unknown[]) => refundsList(...a) },
     disputes: { retrieve: (...a: unknown[]) => disputesRetrieve(...a) },
+    applicationFees: { retrieve: (...a: unknown[]) => feesRetrieve(...a), listRefunds: (...a: unknown[]) => feeRefundsList(...a) },
   },
 }))
 
@@ -164,10 +167,41 @@ beforeEach(() => {
   intentsRetrieve.mockResolvedValue({ id: 'pi_1', livemode: false, customer: 'cus_123', currency: 'brl', status: 'succeeded', amount_received: 2000,
     latest_charge: { id: 'ch_1', livemode: false, customer: 'cus_123', payment_intent: 'pi_1', currency: 'brl', status: 'succeeded', paid: true, amount_captured: 2000 } })
   refundsList.mockResolvedValue({ has_more: false, data: [] })
+  chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false })
   disputesRetrieve.mockImplementation(async () => ({ livemode: false, ...constructEvent.mock.results.at(-1)?.value?.data?.object }))
 })
 
 describe('projeção financeira atual e retryable', () => {
+  it.each(['application_fee.refunded', 'application_fee.refund.updated'])('concilia comissão posterior pelo evento %s da plataforma', async type => {
+    constructEvent.mockReturnValue({ type, data: { object: type === 'application_fee.refunded' ? { id: 'fee_1' } : { id: 'fr_1', fee: 'fee_1' } } })
+    feesRetrieve.mockResolvedValue({ id: 'fee_1', account: 'acct_1', charge: 'ch_1', livemode: false, currency: 'brl', amount: 200, amount_refunded: 50 })
+    feeRefundsList.mockResolvedValue({ has_more: false, data: [{ id: 'fr_1', fee: 'fee_1', amount: 50, currency: 'brl', created: 1_786_555_000 }] })
+    const charge = { id: 'ch_1', application_fee: 'fee_1', livemode: false, payment_intent: 'pi_1', paid: true, status: 'succeeded', currency: 'brl', amount_captured: 2000 }
+    chargesRetrieve.mockResolvedValue(charge)
+    intentsRetrieve.mockResolvedValue({ id: 'pi_1', livemode: false, status: 'succeeded', currency: 'brl', amount_received: 2000, latest_charge: charge })
+    refundsList.mockResolvedValue({ has_more: false, data: [] })
+    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: { id: 'pedido-1', stripe_payment_intent: 'pi_1', stripe_account_id: 'acct_1', vendedor_tipo: 'consultor', vendedor_perfil_id: 'seller-1', total_centavos: 2000, taxa_plataforma_centavos: 200, moeda: 'brl' } }
+      : q.table === 'rpc:aplicar_reembolsos_pedido' ? { data: { versao: 2 } } : {})
+    expect((await POST(req())).status).toBe(200)
+    expect(chargesRetrieve).toHaveBeenCalledWith('ch_1', {}, expect.objectContaining({ stripeAccount: 'acct_1' }))
+    expect(feesRetrieve.mock.calls[0][2]).not.toHaveProperty('stripeAccount')
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_reembolsos_pedido')?.values?.p_dados)
+      .toMatchObject({ account: 'acct_1', estornos_comissao: [{ id: 'fr_1', centavos: 50 }] })
+  })
+
+  it('falha ao ler comissão não confirma o evento', async () => {
+    constructEvent.mockReturnValue({ type: 'application_fee.refunded', data: { object: { id: 'fee_1' } } })
+    feesRetrieve.mockRejectedValueOnce(new Error('unavailable'))
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_reembolsos_pedido')).toBe(false)
+  })
+
+  it('recusa comissão em evento de conta conectada', async () => {
+    constructEvent.mockReturnValue({ type: 'application_fee.refunded', account: 'acct_unexpected', data: { object: { id: 'fee_1' } } })
+    expect((await POST(req())).status).toBe(500)
+    expect(feesRetrieve).not.toHaveBeenCalled()
+  })
+
   const invoiceEvent = () => ({ type: 'invoice.paid', data: { object: { id: 'in_1', status: 'paid' } } })
   const refund = (status = 'succeeded', overrides = {}) => ({ id: 're_1', charge: 'ch_1', payment_intent: 'pi_1',
     currency: 'brl', amount: 500, status, created: 1_786_555_500, ...overrides })
@@ -191,18 +225,21 @@ describe('projeção financeira atual e retryable', () => {
     expect(invoicesRetrieve).not.toHaveBeenCalled()
     expect(appliedInvoice()).toBeUndefined()
   })
-  it('o caminho legado de reembolso da loja conserva a guarda de ordem', async () => {
+  it('reembolso da loja usa o estado atual em uma transação, sem filtro global de ordem', async () => {
     constructEvent.mockReturnValue({ type: 'charge.refunded', data: { object: { id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false } } })
-    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: { id: 'pedido_1' } }
+    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: { id: 'pedido_1', stripe_payment_intent: 'pi_1', stripe_account_id: null,
+      vendedor_tipo: 'plataforma', vendedor_perfil_id: null, moeda: 'brl', total_centavos: 2000, taxa_plataforma_centavos: 0 } }
+      : q.table === 'rpc:aplicar_reembolsos_pedido' ? { data: { versao: 1, confirmado_centavos: 0, pendente_centavos: 0 } }
       : q.table === 'eventos_stripe' ? { data: [{ event_id: 'evt_newer' }] } : defaultHandler(q))
     expect((await POST(req())).status).toBe(200)
     expect(invoicesRetrieve).not.toHaveBeenCalled()
-    expect(supabaseMock.queries.some(q => q.table === 'rpc:registrar_evento_pedido')).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_reembolsos_pedido')).toBe(true)
+    expect(supabaseMock.queries.some(q => q.table === 'eventos_stripe')).toBe(false)
   })
-  it('novo evento refund da loja fica retryable até conciliação própria', async () => {
+  it('falha ao identificar pedido fica retryable e não segue como fatura de assinatura', async () => {
     constructEvent.mockReturnValue({ type: 'refund.updated', data: { object: refund() } })
     chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false })
-    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: { id: 'pedido_1' } } : defaultHandler(q))
+    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: null, error: { message: 'unavailable' } } : defaultHandler(q))
     expect((await POST(req())).status).toBe(500)
     expect(invoicesRetrieve).not.toHaveBeenCalled()
     expect(supabaseMock.queries.some(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true)).toBe(false)

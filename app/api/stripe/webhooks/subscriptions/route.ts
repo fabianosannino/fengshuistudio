@@ -49,9 +49,9 @@ import {
 import { sincronizarAssinatura } from '../../../../../src/lib/sincronizar-assinatura'
 import { sincronizarFaturaStripe, sincronizarReembolsoDaAssinatura, sincronizarDisputaStripe } from '../../../../../src/lib/sincronizar-financeiro-stripe'
 import {
-  acharPedidoDaSessao, acharPedidoDoPagamento, registrarEvento, valoresDoPedido,
+  acharPedidoDaSessao, registrarEvento,
 } from '../../../../../src/lib/pedidos-da-loja'
-import { registrarLancamentosDoReembolso } from '../../../../../src/lib/lancamentos-da-venda'
+import { cobrancaDoEventoDeReembolso, processarReembolsoDaLoja, processarEstornoDeComissao } from '../../../../../src/lib/reembolsos-da-loja'
 import { confirmarVendaDaLoja } from '../../../../../src/lib/venda-da-loja'
 import { origemDaAplicacao } from '../../../../../src/lib/auth-rotas'
 
@@ -221,66 +221,20 @@ export async function POST(request: Request) {
         break
       }
 
-      case 'charge.refunded': {
-        const charge = event.data.object as Stripe.Charge & {
-          amount_refunded?: number
-          refunded?: boolean
-        }
-
-        /*
-         * Pedido da loja vem primeiro, e o `break` é o ponto.
-         *
-         * O tratamento abaixo é de assinatura: procura o perfil pelo
-         * `customer`. Numa venda da loja o comprador é convidado — não tem
-         * `customer` nem perfil —, então o reembolso morreria no `if
-         * (!customerId) break` e o pedido ficaria pago para sempre, com o
-         * dinheiro já devolvido.
-         */
-        const paymentIntentDaLoja = typeof charge.payment_intent === 'string'
-          ? charge.payment_intent
-          : null
-
-        if (paymentIntentDaLoja) {
-          const pedidoId = await acharPedidoDoPagamento(supabase, paymentIntentDaLoja, ROUTE)
-          if (pedidoId) {
-            if (objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) break
-            const ocorridoEm = new Date(event.created * 1000).toISOString()
-            await registrarEvento(supabase, {
-              pedidoId, evento: 'reembolsado', origem: 'webhook_stripe',
-              referencia: event.id, ocorridoEm,
-            }, ROUTE)
-
-            const valores = await valoresDoPedido(supabase, pedidoId, ROUTE)
-            await registrarLancamentosDoReembolso(supabase, {
-              pedidoId,
-              cobranca: charge,
-              vendedor: valores?.vendedor ?? 'plataforma',
-              referencia: event.id,
-              ocorridoEm,
-            }, ROUTE)
-
-            logger.info('Reembolso de pedido da loja registrado', { route: ROUTE, pedidoId })
-            break
-          }
-        }
-
-        await sincronizarReembolsoDaAssinatura(supabase, charge, ROUTE)
+      case 'application_fee.refunded':
+      case 'application_fee.refund.updated': {
+        await processarEstornoDeComissao(supabase, event)
         break
       }
-
+      case 'charge.refunded':
       case 'refund.created':
       case 'refund.updated':
       case 'refund.failed': {
-        const refund = event.data.object as Stripe.Refund
-        const chargeId = typeof refund.charge === 'string' ? refund.charge : refund.charge?.id
-        if (!chargeId) throw new Error('Reembolso sem cobrança')
-        const charge = await stripeClient.charges.retrieve(chargeId, {}, { timeout: 10_000, maxNetworkRetries: 0 })
-        if (charge.id !== chargeId) throw new Error('Cobrança do reembolso incompatível')
-        const intent = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
-        // Shop ledger is a separate contract. Do not acknowledge a refund we
-        // have not reconciled, and do not run its cumulative legacy writer here.
-        if (intent && await acharPedidoDoPagamento(supabase, intent, ROUTE)) throw new Error('Reembolso da loja requer conciliação específica')
-        await sincronizarReembolsoDaAssinatura(supabase, charge, ROUTE)
+        if (event.account) throw new Error('Evento de outra conta neste destino')
+        const charge = await cobrancaDoEventoDeReembolso(event)
+        if (!await processarReembolsoDaLoja(supabase, charge, null)) {
+          await sincronizarReembolsoDaAssinatura(supabase, charge, ROUTE)
+        }
         break
       }
 
@@ -307,4 +261,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
-

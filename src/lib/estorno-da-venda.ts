@@ -30,7 +30,7 @@ import type Stripe from 'stripe'
 
 /** Estados em que ainda faz sentido devolver dinheiro. */
 export const ESTORNAVEIS = new Set([
-  'pago', 'preparando', 'enviado', 'entregue', 'devolucao_solicitada',
+  'pago', 'preparando', 'enviado', 'entregue', 'devolucao_solicitada', 'reembolsado_parcial',
 ])
 
 export interface PedidoParaEstornar {

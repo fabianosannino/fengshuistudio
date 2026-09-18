@@ -25,7 +25,7 @@ function orcamentoDeLeitura() {
     return { timeout: Math.min(restante, 10_000), maxNetworkRetries: 0 }
   }
 }
-async function comReserva<T>(supabase: SupabaseClient, recurso: string, lerEAplicar: (token: string) => Promise<T>): Promise<T> {
+export async function comReservaFinanceira<T>(supabase: SupabaseClient, recurso: string, lerEAplicar: (token: string) => Promise<T>): Promise<T> {
   const reserva = await supabase.rpc('reservar_sincronizacao_financeira', { p_recurso: recurso })
   if (reserva.error || typeof reserva.data !== 'string' || !reserva.data) throw new Error('Sincronização financeira indisponível')
   let aplicado = false
@@ -94,7 +94,7 @@ async function reembolsosDaFatura(invoice: Stripe.Invoice, opcoes: () => Stripe.
 }
 
 export async function sincronizarFaturaStripe(supabase: SupabaseClient, faturaId: string, origem: string, customerEsperado?: string) {
-  const invoice = await comReserva(supabase, faturaId, async token => {
+  const invoice = await comReservaFinanceira(supabase, faturaId, async token => {
     const opcoes = orcamentoDeLeitura()
     const atual = await stripe.invoices.retrieve(faturaId, {}, opcoes())
     conferirObjeto(atual, faturaId)
@@ -133,7 +133,7 @@ export async function sincronizarReembolsoDaAssinatura(supabase: SupabaseClient,
 }
 
 export async function sincronizarDisputaStripe(supabase: SupabaseClient, disputaId: string, eventId: string) {
-  await comReserva(supabase, disputaId, async token => {
+  await comReservaFinanceira(supabase, disputaId, async token => {
     const opcoes = orcamentoDeLeitura()
     const disputa = await stripe.disputes.retrieve(disputaId, {}, opcoes())
     conferirObjeto(disputa, disputaId)

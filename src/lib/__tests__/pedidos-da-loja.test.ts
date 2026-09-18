@@ -10,6 +10,29 @@ function ev(evento: string, ocorrido_em?: string): EventoDoPedido {
 }
 
 describe('estadoDoPedido', () => {
+  const conferido = (versao: number, confirmado_centavos: number, pendente_centavos = 0): EventoDoPedido => ({ evento: 'reembolso_conferido',
+    dados: { versao, pago_centavos: 2000, confirmado_centavos, pendente_centavos } })
+  it('reembolso parcial não é anunciado como integral', () => {
+    expect(estadoDoPedido([ev('pago'), conferido(1, 500)])).toBe('reembolsado_parcial')
+    expect(estadoDoPedido([ev('pago'), conferido(2, 2000)])).toBe('reembolsado')
+  })
+  it('a revisão mais nova prevalece mesmo fora de ordem, preservando o histórico legado', () => {
+    expect(estadoDoPedido([conferido(2, 500), ev('reembolsado'), conferido(1, 2000), ev('pago')])).toBe('reembolsado_parcial')
+  })
+  it('falha posterior comprovada recupera o estado pago, sem apagar fatos antigos', () => {
+    expect(estadoDoPedido([ev('pago'), ev('reembolsado'), conferido(1, 2000), conferido(2, 0)])).toBe('pago')
+  })
+  it('pendência não equivale a dinheiro devolvido', () => {
+    expect(estadoDoPedido([ev('pago'), conferido(1, 0, 2000)])).toBe('pago')
+  })
+  it('snapshot ausente ou contraditório não autoriza download', () => {
+    expect(estadoDoPedido([ev('pago'), ev('reembolso_conferido')])).toBe('revisao_financeira')
+    expect(pedidoRendeuReceita([ev('pago'), ev('reembolso_conferido')])).toBe(false)
+    expect(estadoDoPedido([ev('pago'), conferido(1, 500), conferido(1, 1000)])).toBe('revisao_financeira')
+  })
+  it('a conferência de estorno não desfaz uma contestação', () => {
+    expect(estadoDoPedido([ev('pago'), ev('contestado'), conferido(1, 0)])).toBe('contestado')
+  })
   it('sem evento nenhum o pedido é iniciado — leitura incompleta não afirma pagamento', () => {
     // Todo pedido nasce com o seu `iniciado`. Lista vazia é leitura parcial,
     // e `iniciado` é o palpite que não afirma nada sobre dinheiro.

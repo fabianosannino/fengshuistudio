@@ -33,9 +33,9 @@ import {
   reivindicarEvento, marcarProcessado, marcarFalha, objetoDoEvento,
 } from '../../../../src/lib/eventos-stripe'
 import {
-  acharPedidoDaSessao, acharPedidoDoPagamento, registrarEvento, valoresDoPedido,
+  acharPedidoDaSessao, registrarEvento,
 } from '../../../../src/lib/pedidos-da-loja'
-import { registrarLancamentosDoReembolso } from '../../../../src/lib/lancamentos-da-venda'
+import { cobrancaDoEventoDeReembolso, processarReembolsoDaLoja, localizarPedidoDoReembolso } from '../../../../src/lib/reembolsos-da-loja'
 import { confirmarVendaDaLoja } from '../../../../src/lib/venda-da-loja'
 import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 
@@ -160,52 +160,24 @@ export async function POST(request: Request) {
       }
 
       case 'charge.refunded':
+      case 'refund.created':
+      case 'refund.updated':
+      case 'refund.failed': {
+        const charge = await cobrancaDoEventoDeReembolso(event)
+        if (!await processarReembolsoDaLoja(supabase, charge, event.account ?? null)) throw new Error('Reembolso sem pedido conciliado')
+        break
+      }
       case 'charge.dispute.created': {
-        const cobranca = event.data.object as Stripe.Charge | Stripe.Dispute
-        const paymentIntent = typeof cobranca.payment_intent === 'string'
-          ? cobranca.payment_intent
-          : null
-
-        if (!paymentIntent) {
-          logger.warn('Evento de cobrança sem payment_intent', { route: ROUTE, tipo: event.type })
-          break
-        }
-
-        const pedidoId = await acharPedidoDoPagamento(supabase, paymentIntent, ROUTE)
-        if (!pedidoId) {
-          // Pode ser cobrança de assinatura, que não é pedido da loja. Não é
-          // erro — é evento que não pertence a esta tabela.
-          logger.info('Cobrança sem pedido da loja correspondente', {
-            route: ROUTE, tipo: event.type, paymentIntent,
-          })
-          break
-        }
-
-        const ocorridoEm = new Date(event.created * 1000).toISOString()
-
-        await registrarEvento(supabase, {
-          pedidoId,
-          evento: event.type === 'charge.refunded' ? 'reembolsado' : 'contestado',
-          origem: 'webhook_stripe',
-          referencia: event.id,
-          ocorridoEm,
+        const disputa = event.data.object as Stripe.Dispute
+        const intent = typeof disputa.payment_intent === 'string' ? disputa.payment_intent : disputa.payment_intent?.id
+        if (!intent) throw new Error('Disputa sem pagamento')
+        const pedidoId = await localizarPedidoDoReembolso(supabase, intent, event.account ?? null)
+        if (!pedidoId) throw new Error('Disputa sem pedido conciliado')
+        const gravado = await registrarEvento(supabase, {
+          pedidoId, evento: 'contestado', origem: 'webhook_stripe', referencia: event.id,
+          ocorridoEm: new Date(event.created * 1000).toISOString(),
         }, ROUTE)
-
-        // Só o reembolso mexe no razão. A contestação ainda não moveu dinheiro
-        // — o `contestado` é aviso, e o valor só se resolve na disputa.
-        if (event.type === 'charge.refunded') {
-          const valores = await valoresDoPedido(supabase, pedidoId, ROUTE)
-          await registrarLancamentosDoReembolso(supabase, {
-            pedidoId,
-            cobranca: cobranca as Stripe.Charge,
-            // Quem devolve é quem recebeu. Sem isto, o estorno de uma venda
-            // própria sairia do saldo de «consultor» no razão — e o prejuízo
-            // da devolução apareceria no bolso errado.
-            vendedor: valores?.vendedor ?? 'consultor',
-            referencia: event.id,
-            ocorridoEm,
-          }, ROUTE)
-        }
+        if (!gravado) throw new Error('Contestação não registrada')
         break
       }
 

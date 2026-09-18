@@ -12,8 +12,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type Stripe from 'stripe'
 
 const constructEvent = vi.fn()
+const chargesRetrieve = vi.fn()
+const intentsRetrieve = vi.fn()
+const refundsList = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
-  default: { webhooks: { constructEvent: (...a: unknown[]) => constructEvent(...a) } },
+  default: { webhooks: { constructEvent: (...a: unknown[]) => constructEvent(...a) },
+    charges: { retrieve: (...a: unknown[]) => chargesRetrieve(...a) },
+    paymentIntents: { retrieve: (...a: unknown[]) => intentsRetrieve(...a) },
+    refunds: { list: (...a: unknown[]) => refundsList(...a) },
+  },
 }))
 
 interface Q {
@@ -49,7 +56,9 @@ function makeSupabaseMock(handler: Handler) {
   const rpc = async (name: string, values: Record<string, unknown>) => {
     const q: Q = { table: `rpc:${name}`, op: 'rpc', values, filters: [] }
     queries.push(q)
-    const data = name === 'reivindicar_evento_stripe' ? { situacao: 'reivindicado', token: 'attempt-1' } : true
+    const data = name === 'reivindicar_evento_stripe' ? { situacao: 'reivindicado', token: 'attempt-1' }
+      : name === 'reservar_sincronizacao_financeira' ? 'refund-token'
+      : name === 'aplicar_reembolsos_pedido' ? { versao: 1, confirmado_centavos: 2000, pendente_centavos: 0 } : true
     return { data, error: null, ...handler(q) }
   }
   return { client: { from, rpc }, queries }
@@ -80,7 +89,8 @@ function evento(type: string, object: Record<string, unknown>): Stripe.Event {
 }
 
 /** Pedido existe; nada mais devolve linha. */
-const padrao: Handler = q => (q.table === 'pedidos' ? { data: { id: 'pedido-1' } } : {})
+const padrao: Handler = q => (q.table === 'pedidos' ? { data: { id: 'pedido-1', stripe_payment_intent: 'pi_1', stripe_account_id: 'acct_123',
+  vendedor_tipo: 'consultor', vendedor_perfil_id: 'vendedor-1', total_centavos: 2000, taxa_plataforma_centavos: 0, moeda: 'brl' } } : {})
 
 function eventosGravados() {
   return supabaseMock.queries.filter(q => q.table === 'pedido_eventos' && q.op === 'insert')
@@ -89,6 +99,11 @@ function eventosGravados() {
 beforeEach(() => {
   vi.clearAllMocks()
   supabaseMock = makeSupabaseMock(padrao)
+  chargesRetrieve.mockResolvedValue({ id: 'ch_1', payment_intent: 'pi_1', livemode: false })
+  intentsRetrieve.mockResolvedValue({ id: 'pi_1', livemode: false, status: 'succeeded', currency: 'brl', amount_received: 2000,
+    latest_charge: { id: 'ch_1', livemode: false, payment_intent: 'pi_1', currency: 'brl', status: 'succeeded', paid: true, amount_captured: 2000 } })
+  refundsList.mockResolvedValue({ has_more: false, data: [{ id: 're_1', charge: 'ch_1', payment_intent: 'pi_1', currency: 'brl',
+    amount: 2000, status: 'succeeded', created: 1_770_000_000 }] })
 })
 
 describe('POST /api/stripe/webhooks', () => {
@@ -217,13 +232,17 @@ describe('POST /api/stripe/webhooks', () => {
     expect(eventosGravados()).toHaveLength(0)
   })
 
-  it('reembolso vira evento `reembolsado` no pedido da cobrança', async () => {
+  it('reembolso usa a conta conectada e aplica razão e evento juntos', async () => {
     constructEvent.mockReturnValue(evento('charge.refunded', {
       id: 'ch_1', payment_intent: 'pi_1',
     }))
 
-    await POST(req())
-    expect(eventosGravados()[0]?.values?.evento).toBe('reembolsado')
+    expect((await POST(req())).status).toBe(200)
+    expect(chargesRetrieve).toHaveBeenCalledWith('ch_1', {}, expect.objectContaining({ stripeAccount: 'acct_123' }))
+    expect(intentsRetrieve).toHaveBeenCalledWith('pi_1', expect.any(Object), expect.objectContaining({ stripeAccount: 'acct_123' }))
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_reembolsos_pedido')?.values?.p_dados)
+      .toMatchObject({ account: 'acct_123', reembolsos: [{ id: 're_1', centavos: 2000 }] })
+    expect(eventosGravados()).toHaveLength(0)
   })
 
   it('contestação vira evento `contestado`', async () => {
@@ -235,16 +254,15 @@ describe('POST /api/stripe/webhooks', () => {
     expect(eventosGravados()[0]?.values?.evento).toBe('contestado')
   })
 
-  it('cobrança que não é da loja não vira pedido órfão', async () => {
-    // Reembolso de assinatura chega por este mesmo endpoint. Não é erro — é
-    // evento que não pertence a esta tabela.
+  it('reembolso sem vínculo na conta conectada aguarda conciliação, sem pedido inventado', async () => {
     supabaseMock = makeSupabaseMock(q => q.op === 'rpc' ? {} : { data: null })
     constructEvent.mockReturnValue(evento('charge.refunded', {
       id: 'ch_9', payment_intent: 'pi_de_assinatura',
     }))
+    chargesRetrieve.mockResolvedValue({ id: 'ch_9', payment_intent: 'pi_de_assinatura', livemode: false })
 
     const res = await POST(req())
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(500)
     expect(eventosGravados()).toHaveLength(0)
   })
 

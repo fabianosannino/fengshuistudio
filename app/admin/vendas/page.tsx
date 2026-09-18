@@ -27,7 +27,7 @@ import { supabase } from '../../../src/lib/supabase'
 import { logger } from '../../../src/lib/logger'
 import AppShell from '../../components/AppShell'
 import ConfirmModal from '../../components/ConfirmModal'
-import { estadoDoPedido, type EstadoDoPedido } from '../../../src/lib/pedidos-da-loja'
+import { estadoDoPedido, rotuloDoEstado, type EventoDoPedido } from '../../../src/lib/pedidos-da-loja'
 import { ESTORNAVEIS } from '../../../src/lib/estorno-da-venda'
 
 interface PedidoDaPlataforma {
@@ -37,7 +37,7 @@ interface PedidoDaPlataforma {
   total_centavos: number
   comprador_email: string | null
   pedido_itens?: { nome: string }[]
-  pedido_eventos?: { evento: string; ocorrido_em: string }[]
+  pedido_eventos?: EventoDoPedido[]
 }
 
 const CORES: Record<string, { fundo: string; texto: string }> = {
@@ -71,7 +71,7 @@ export default function VendasDaPlataforma() {
       .select(`
         id, numero, criado_em, total_centavos, comprador_email,
         pedido_itens(nome),
-        pedido_eventos(evento, ocorrido_em)
+        pedido_eventos(evento, ocorrido_em, dados)
       `)
       .eq('vendedor_tipo', 'plataforma')
       .order('criado_em', { ascending: false })
@@ -147,7 +147,7 @@ export default function VendasDaPlataforma() {
       ) : (
         <div style={{ display: 'grid', gap: '12px' }}>
           {pedidos.map(pedido => {
-            const estado = estadoDoPedido(pedido.pedido_eventos ?? []) as EstadoDoPedido
+            const estado = estadoDoPedido(pedido.pedido_eventos ?? [])
             const cor = CORES[estado] ?? { fundo: '#F3F4F6', texto: '#6B7280' }
             const podeEstornar = ESTORNAVEIS.has(estado)
 
@@ -170,7 +170,7 @@ export default function VendasDaPlataforma() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ background: cor.fundo, color: cor.texto, padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
-                    {estado}
+                    {rotuloDoEstado(estado)}
                   </span>
                   <strong style={{ color: '#0E1B2C', fontSize: '16px' }}>
                     {reais(pedido.total_centavos)}
@@ -201,7 +201,7 @@ export default function VendasDaPlataforma() {
           variant="danger"
           title="Estornar esta venda?"
           message={
-            `Devolver ${reais(confirmando.total_centavos)} ao comprador do pedido ` +
+            `Devolver o saldo ainda não reembolsado ao comprador do pedido ` +
             `${confirmando.numero}. A tarifa do gateway não volta — o prejuízo da ` +
             `devolução é dela. A ação não pode ser desfeita.`
           }
