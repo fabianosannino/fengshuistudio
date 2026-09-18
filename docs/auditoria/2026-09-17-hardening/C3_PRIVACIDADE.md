@@ -42,3 +42,11 @@ INFO adicional esperado pela tabela técnica de exclusões sem policy de usuári
 Segundo pacote: scripts automáticos GA/Plausible suspensos até definir e
 verificar o contrato de coleta (ADR 0045). IDs de ambiente não bastam para
 reativar. Não se afirma que a revisão de consentimento/retenção esteja pronta.
+
+PR #201 integrado em `2677f114e233953e7cd46bea309c45c3577a7718`, CI
+35314899010 verde e produção READY `dpl_HXopnE1qmZtd5NBMXUMNXLN58pJM`.
+
+Terceiro pacote: validação e reencode de imagens nas quatro rotas do app,
+limites reais de multipart e pixels, remoção de metadados e troca de arquivos
+sem apagar a versão anterior. ADR 0046 registra a fronteira ainda pendente
+com a API direta de Storage e a retenção de versões. Não fecha C3 integralmente.

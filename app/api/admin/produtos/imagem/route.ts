@@ -37,7 +37,8 @@ import { exigirCapacidade, respostaDaGuarda } from '../../../../../src/lib/guard
 import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../../src/lib/rate-limit'
 import { logger } from '../../../../../src/lib/logger'
-import { validateUUID, imageExtensionForMime } from '../../../../../src/lib/validation'
+import { validateUUID } from '../../../../../src/lib/validation'
+import { ErroDeImagem, lerFormularioDeImagem, normalizarImagem } from '../../../../../src/lib/upload-imagem'
 import {
   BUCKET_PRODUTOS_IMAGENS, MAX_BYTES_DA_IMAGEM,
 } from '../../../../../src/lib/produtos-da-plataforma'
@@ -53,7 +54,8 @@ export async function POST(request: Request) {
   if (!guarda.ok) return respostaDaGuarda(guarda, ROUTE)
 
   let form: FormData
-  try { form = await request.formData() } catch {
+  try { form = await lerFormularioDeImagem(request) } catch (erro) {
+    if (erro instanceof ErroDeImagem) return NextResponse.json({ error: erro.message }, { status: erro.status })
     return NextResponse.json({ error: 'Envio inválido.' }, { status: 400 })
   }
 
@@ -62,50 +64,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Produto inválido.' }, { status: 400 })
   }
 
-  const imagem = form.get('imagem')
-  if (!(imagem instanceof File)) {
-    return NextResponse.json({ error: 'Escolha uma imagem.' }, { status: 400 })
-  }
-
-  const extensao = imageExtensionForMime(imagem.type)
-  if (!extensao) {
-    return NextResponse.json(
-      { error: 'Formato não aceito. Use JPG, PNG ou WebP.' },
-      { status: 400 }
-    )
-  }
-
-  if (imagem.size > MAX_BYTES_DA_IMAGEM) {
-    return NextResponse.json({ error: 'Imagem acima de 2 MB.' }, { status: 400 })
+  let imagem: Awaited<ReturnType<typeof normalizarImagem>>
+  try { imagem = await normalizarImagem(form.get('imagem'), MAX_BYTES_DA_IMAGEM) } catch (erro) {
+    if (erro instanceof ErroDeImagem) return NextResponse.json({ error: erro.message }, { status: erro.status })
+    return NextResponse.json({ error: 'Não foi possível validar a imagem.' }, { status: 503 })
   }
 
   const supabase = createSupabaseAdminClient()
-  const caminho = `${produtoId}/${randomUUID()}.${extensao}`
+  const { data: produto, error: erroDoProduto } = await supabase.from('produtos').select('id').eq('id', produtoId).maybeSingle()
+  if (erroDoProduto) return NextResponse.json({ error: 'Não foi possível verificar o produto.' }, { status: 503 })
+  if (!produto) return NextResponse.json({ error: 'Produto não encontrado.' }, { status: 404 })
+  const caminho = `${produtoId}/${randomUUID()}.${imagem.extensao}`
 
   const { error: erroDoUpload } = await supabase.storage
     .from(BUCKET_PRODUTOS_IMAGENS)
-    .upload(caminho, imagem, { contentType: imagem.type, upsert: false })
+    .upload(caminho, imagem.bytes, { contentType: imagem.mime, upsert: false })
 
   if (erroDoUpload) {
     logger.error('Falha ao subir a imagem do produto', {
-      route: ROUTE, produtoId, error: erroDoUpload.message,
+      route: ROUTE,
     })
     return NextResponse.json({ error: 'Não foi possível enviar a imagem.' }, { status: 503 })
   }
 
-  const { error: erroDaLinha } = await supabase
+  const { data: salvo, error: erroDaLinha } = await supabase
     .from('produtos')
     .update({ imagem_path: caminho })
     .eq('id', produtoId)
+    .select('id').maybeSingle()
 
-  if (erroDaLinha) {
+  if (erroDaLinha || !salvo) {
     /*
      * O objeto subiu e a linha não aponta para ele: o produto continua sem
      * foto e o admin vê o erro. É a falha certa entre as duas — a inversa
      * deixaria a vitrine com um `<img>` apontando para o que não existe.
      */
     logger.error('Imagem subiu mas o produto não foi atualizado', {
-      route: ROUTE, produtoId, caminho, error: erroDaLinha.message,
+      route: ROUTE,
     })
     return NextResponse.json({ error: 'Não foi possível registrar a imagem.' }, { status: 503 })
   }
