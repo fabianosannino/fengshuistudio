@@ -22,7 +22,9 @@ Escopo: preservar entradas/versões/PDF antes das correções de domínio B1/C1.
   reproduzidas antes das correções; restore em banco descartável aprovado.
 - Typecheck aprovado; suíte completa com 1.292 testes em 100 arquivos aprovada.
   Lint: zero erros e 115 avisos. Catálogo: 31 verificações aprovadas.
-  Build e CI serão registrados após a conclusão; pendente não é aprovação.
+  Build de produção aprovado com variáveis fictícias, sem credenciais reais.
+- Este registro antecede a publicação. Resultado final de CI, migração e deploy:
+  [PR #191](https://github.com/fabianosannino/fengshuistudio/pull/191).
 - Testes de UI usam mocks de renderização: aparência/captura real do PDF com
   uma sessão autenticada permanece sem atestado visual nesta execução.
 
