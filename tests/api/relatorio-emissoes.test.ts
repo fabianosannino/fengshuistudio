@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { jsonCanonico, MAX_PDF_RELATORIO, VERSOES_RELATORIO, type FonteRelatorio } from '../../src/lib/relatorio-emissao'
 import { secoesDoFormato } from '../../src/lib/formato-do-relatorio'
+import { referenciaDaAnalise } from '../../src/lib/analise-bagua'
+import type { BaguaEntrada } from '../../src/lib/types'
 
 vi.mock('server-only', () => ({}))
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -88,6 +90,18 @@ beforeEach(() => {
 })
 
 describe('preparação versionada', () => {
+  it('bloqueia bússola não confirmada e análise obsoleta antes de usar privilégio', async () => {
+    const be = { escola: 'bussola', orientacao_graus: 0, orientacao_estado: 'confirmada', orientacao_referencia: 'magnetico', orientacao_origem: 'manual', orientacao_confirmada_em: new Date().toISOString() } as BaguaEntrada
+    for (const bagua of [{ escola: 'bussola', orientacao_graus: 0 }, be, { ...be, analise_referencia: { entrada: 'antiga', versao: 'antiga' } }]) {
+      const alterada = { ...fonte, consulta: { ...fonte.consulta, bagua_entrada: bagua } }
+      source.mockResolvedValue(alterada)
+      expect((await PREPARAR(preparo({ fonte_sha256: hash(jsonCanonico(alterada)) }))).status).toBe(409)
+    }
+    expect(adminCriado).not.toHaveBeenCalled()
+    const atual = { ...fonte, consulta: { ...fonte.consulta, bagua_entrada: { ...be, analise_referencia: referenciaDaAnalise(be) } } }
+    source.mockResolvedValue(atual)
+    expect((await PREPARAR(preparo({ fonte_sha256: hash(jsonCanonico(atual)) }))).status).toBe(201)
+  })
   it('recusa página antiga depois de uma mudança de motor ou template', async () => {
     expect((await PREPARAR(preparo({ versoes: { ...VERSOES_RELATORIO, motor: 'anterior' } }))).status).toBe(409)
     expect(insercoes).toHaveLength(0)

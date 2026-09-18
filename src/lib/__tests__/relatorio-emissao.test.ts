@@ -17,7 +17,7 @@ describe('contrato de emissão', () => {
     const entrada = criarEntradaRelatorio(fonte, edicao, '2026-09-18T02:00:00.000Z', 'America/Sao_Paulo')
     expect(entrada.orientacao).toMatchObject({ estado: 'nao_confirmada', graus: 0, origem: 'nao_registrada' })
     expect(entrada.metodo).toBe('bussola')
-    expect(entrada.versoes.motor).toContain('legado')
+    expect(entrada.variante).toBe('ba-zhai-assento-octantes')
   })
   it('preserva ausência e não inventa método', () => {
     const sem = { ...fonte, consulta: { ...fonte.consulta, bagua_entrada: null } }

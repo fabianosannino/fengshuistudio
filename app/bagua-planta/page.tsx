@@ -10,6 +10,8 @@ import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
 import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/lib/reavaliacao'
 import { calcularGridOrder, guaDaPorta } from '../../src/lib/bagua-grid'
+import { AVISO_ORIENTACAO, lerOrientacao, type OrigemOrientacao } from '../../src/lib/orientacao'
+import { referenciaDaAnalise } from '../../src/lib/analise-bagua'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
 import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
 import { calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
@@ -158,7 +160,23 @@ function BaguaPlantaContent() {
   const [step,     setStep]     = useState<Step>('upload')
   const [rot,      setRot]      = useState(0)
   const [escola,   setEscola]   = useState<MetodologiaId>(METODOLOGIA_PADRAO)
-  const [orientacaoGraus, setOrientacaoGraus] = useState<number>(0)
+  const [orientacaoGraus, setOrientacaoGraus] = useState<number | null>(null)
+  const [orientacaoConfirmadaEm, setOrientacaoConfirmadaEm] = useState<string | null>(null)
+  const [orientacaoOrigem, setOrientacaoOrigem] = useState<OrigemOrientacao>('manual')
+  const analiseReferenciaRef = useRef<BaguaEntrada['analise_referencia']>(undefined)
+  const grausParaCalculo = orientacaoConfirmadaEm ? orientacaoGraus : null
+  function definirLeitura(graus: number | null, origem: OrigemOrientacao = 'manual') {
+    setOrientacaoGraus(typeof graus === 'number' && Number.isFinite(graus) ? normalizarGraus(graus) : null)
+    setOrientacaoOrigem(origem)
+    setOrientacaoConfirmadaEm(null)
+  }
+  function restaurarOrientacao(be: BaguaEntrada) {
+    const leitura = lerOrientacao(be)
+    setOrientacaoGraus(leitura.graus)
+    setOrientacaoConfirmadaEm(leitura.confirmadaEm)
+    setOrientacaoOrigem(leitura.origem === 'nao_registrada' ? 'legado_confirmado' : leitura.origem)
+    analiseReferenciaRef.current = be.analise_referencia
+  }
   // Referência de Norte da leitura + declinação do local (src/lib/declinacao-magnetica.ts).
   // Um grau sem referência é ambíguo: Luo Pan lê magnético, o Modo C deriva verdadeiro.
   const [orientacaoReferencia, setOrientacaoReferencia] = useState<ReferenciaNorte>('magnetico')
@@ -313,7 +331,7 @@ function BaguaPlantaContent() {
                 // então não atribuímos ao WMM. Proveniência só quando é fresca.
                 setDeclinacaoAuto(null)
               }
-              if(typeof be.orientacao_graus==='number') setOrientacaoGraus(be.orientacao_graus)
+              restaurarOrientacao(be)
               // Fallback do campo legado: só o ano, pelo mesmo motivo do backfill
               // da migration 20260812140000.
               if(be.data_construcao) setAnoConstrucao(atual=>atual||be.data_construcao!.slice(0,4))
@@ -358,7 +376,7 @@ function BaguaPlantaContent() {
       setRot(be.rotacao||0)
       setLado((be.lado||'centro') as Lado)
       setEscola((be.escola as MetodologiaId)||METODOLOGIA_PADRAO)
-      setOrientacaoGraus(typeof be.orientacao_graus==='number'?be.orientacao_graus:0)
+      restaurarOrientacao(be)
       // Consultas anteriores a este campo não declaravam a referência; assume-se
       // 'magnetico' porque era o que o rótulo do campo dizia na época ("direção
       // magnética") — retrocompatibilidade explícita, não suposição nova.
@@ -439,6 +457,7 @@ function BaguaPlantaContent() {
     setShowRetomar(false)
     rascunhoRef.current=null
     setImg(null); setStep('upload'); setRot(0)
+    definirLeitura(null); analiseReferenciaRef.current=undefined
     setBounds(null); boundsRef.current=null
     setPoligonoTaiJi(null); setEditandoPoligono(false)
     setEntrada(null); setSetores([]); setLh([1/3,2/3]); setLv([1/3,2/3])
@@ -508,7 +527,8 @@ function BaguaPlantaContent() {
 
     if(!bounds) return
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
-    const order=calcularGridOrder(escola,{lado,orientacaoGraus})
+    const order=calcularGridOrder(escola,{lado,orientacaoGraus:grausParaCalculo})
+    if(!order) return
 
     // ── setores ──
     for(let row=0;row<3;row++) for(let col=0;col<3;col++){
@@ -642,7 +662,7 @@ function BaguaPlantaContent() {
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[bounds,entrada,lado,escola,orientacaoGraus,lh,lv,modo,setores,ativo,marcacoes,desenhandoPreview])
+  },[bounds,entrada,lado,escola,grausParaCalculo,lh,lv,modo,setores,ativo,marcacoes,desenhandoPreview])
 
   // redesenha sempre que draw muda (state changes)
   useEffect(()=>{ draw() },[draw])
@@ -688,7 +708,8 @@ function BaguaPlantaContent() {
 
     if(!bounds) return
     const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
-    const order2=calcularGridOrder(escola,{lado,orientacaoGraus})
+    const order2=calcularGridOrder(escola,{lado,orientacaoGraus:grausParaCalculo})
+    if(!order2) return
 
     // Draw sectors
     for(let row=0;row<3;row++) for(let col=0;col<3;col++){
@@ -814,7 +835,7 @@ function BaguaPlantaContent() {
       ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fullscreen,bounds,entrada,lado,escola,orientacaoGraus,lh,lv,modo,setores,marcacoes,desenhandoPreview])
+  },[fullscreen,bounds,entrada,lado,escola,grausParaCalculo,lh,lv,modo,setores,marcacoes,desenhandoPreview])
 
   useEffect(()=>{ drawFS() },[drawFS])
 
@@ -944,6 +965,7 @@ function BaguaPlantaContent() {
       const i=new Image()
       i.onload=()=>{
         setImg(i); setRot(0); setStep('metragem')
+        definirLeitura(null); analiseReferenciaRef.current=undefined
         // Upload to Supabase storage and wait for URL
         if(consultaId){
           const fd=new FormData()
@@ -1047,6 +1069,10 @@ function BaguaPlantaContent() {
       lado:overrides?.ladoV??lado,
       escola,
       orientacao_graus:orientacaoGraus,
+      orientacao_estado:orientacaoGraus === null ? 'ausente' : orientacaoConfirmadaEm ? 'confirmada' : 'nao_confirmada',
+      orientacao_origem:orientacaoOrigem,
+      orientacao_confirmada_em:orientacaoConfirmadaEm,
+      analise_referencia:analiseReferenciaRef.current,
       orientacao_referencia:orientacaoReferencia,
       declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
       metragem_real:metragemRef.current||undefined,
@@ -1125,6 +1151,7 @@ function BaguaPlantaContent() {
 
   // ── calcular ───────────────────────────────────────────────────────────────
   function calcular(){
+    if(escola==='bussola' && grausParaCalculo===null){setMsg(AVISO_ORIENTACAO);setMsgTipo('erro');return}
     const r=rotRef.current; if(!r) return
     // Default bounds to full image with 5% margin
     const m5=0.05
@@ -1280,7 +1307,7 @@ function BaguaPlantaContent() {
   // ── critério ───────────────────────────────────────────────────────────────
   // ── salvar setor no banco ──────────────────────────────────────────────────
   async function salvarSetorDB(orderIdx:number){
-    if(!consultaId) return
+    if(!consultaId || !order) return
     const stDef=SETORES[order[orderIdx]]
     const sc=setores[orderIdx]
     // upsert setor_bagua
@@ -1339,6 +1366,7 @@ function BaguaPlantaContent() {
 
   async function finalizarAnalise(){
     if(!consultaId||setores.length!==9) return
+    if(!order){setMsg(AVISO_ORIENTACAO);setMsgTipo('erro');return}
     setSalvandoTudo(true)
     try{
       const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
@@ -1355,7 +1383,7 @@ function BaguaPlantaContent() {
           posicao_grid:String(i+1),
           score_percentual:scorePct
         },{onConflict:'consulta_id,numero'}).select('id').single()
-        if(e1||!setorRow) continue
+        if(e1||!setorRow) throw new Error('Falha ao salvar setor')
         const inserts=nomes
       .map((criterio,ci)=>({setor_id:setorRow.id,criterio,nota:sc.criterios[ci]}))
       .filter((r):r is {setor_id:string;criterio:string;nota:NotaCriterio}=>r.nota!==null)
@@ -1373,8 +1401,9 @@ function BaguaPlantaContent() {
       if(eSnaps) throw new Error('Falha ao consultar a evolução do diagnóstico: '+eSnaps.message)
       const ultimo = snapsExistentes?.[0]?.scores as SnapshotScore[] | undefined
       if(!ultimo || !snapshotsIguais(ultimo, snapshot)){
-        const {count}=await supabase.from('diagnostico_snapshots')
+        const {count,error:eCount}=await supabase.from('diagnostico_snapshots')
           .select('id',{count:'exact',head:true}).eq('consulta_id',consultaId)
+        if(eCount) throw new Error('Falha ao conferir evolução')
         const {error:eSnapIns}=await supabase.from('diagnostico_snapshots')
           .insert({consulta_id:consultaId,tipo:(count??0)>0?'reavaliacao':'inicial',scores:snapshot})
         if(eSnapIns) throw new Error('Falha ao registrar a evolução do diagnóstico: '+eSnapIns.message)
@@ -1386,6 +1415,9 @@ function BaguaPlantaContent() {
       const finalizacao:BaguaEntrada={
         x:entrada?.x??0, y:entrada?.y??0, lado,
         escola, orientacao_graus:orientacaoGraus,
+        orientacao_estado:orientacaoGraus === null ? 'ausente' : orientacaoConfirmadaEm ? 'confirmada' : 'nao_confirmada',
+        orientacao_origem:orientacaoOrigem,
+        orientacao_confirmada_em:orientacaoConfirmadaEm,
         orientacao_referencia:orientacaoReferencia,
         declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
           bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
@@ -1413,6 +1445,7 @@ function BaguaPlantaContent() {
       // ATENÇÃO: este await NÃO lança em erro de banco — o cliente Supabase resolve com
       // {error}. Sem a checagem abaixo, o try/catch em volta nunca disparava e o app
       // exibia "salvo com sucesso" e navegava para outra página com a análise perdida.
+      finalizacao.analise_referencia=referenciaDaAnalise(finalizacao)
       const {error:eFinal}=await supabase.from('consultas').update({
         bagua_imagem:dataUrl,
         bagua_entrada:finalizacao,
@@ -1426,21 +1459,23 @@ function BaguaPlantaContent() {
         setMsgTipo('erro')
         return
       }
+      analiseReferenciaRef.current=finalizacao.analise_referencia
       // Show toast
       setMsg('✓ Análise salva com sucesso. Todas as páginas foram atualizadas.'); setMsgTipo('sucesso')
       setTimeout(()=>{
         router.push(`/consultas/${consultaId}`)
       },1000)
-    }catch(err){
-      setMsg('Erro ao salvar: '+(err instanceof Error ? err.message : 'erro desconhecido')); setMsgTipo('erro')
+    }catch{
+      logger.error('Falha ao finalizar análise do Ba Guá',{action:'salvarTudo'})
+      setMsg('Não foi possível finalizar a análise. Confira os dados e tente novamente.'); setMsgTipo('erro')
     }finally{
       setSalvandoTudo(false)
     }
   }
 
-  const order  = calcularGridOrder(escola,{lado,orientacaoGraus})
+  const order  = calcularGridOrder(escola,{lado,orientacaoGraus:grausParaCalculo})
   const stepN  = {upload:0,metragem:1,configurar:2,entrada:3,resultado:4}[step]
-  const stAtivo= ativo!==null?SETORES[order[ativo]]:null
+  const stAtivo= ativo!==null&&order?SETORES[order[ativo]]:null
   const scAtivo= ativo!==null?setores[ativo]:null
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
@@ -1525,6 +1560,12 @@ function BaguaPlantaContent() {
           </div>
         )}
 
+        {escola==='bussola' && grausParaCalculo===null && img && !showRetomar && (
+          <div role="status" style={{padding:12,background:'#FFF4DB',color:'#714B0E',marginBottom:12}}>
+            {AVISO_ORIENTACAO}{' '}
+            <button type="button" onClick={()=>setStep('configurar')}>Revisar orientação</button>
+          </div>
+        )}
         {/* ════ UPLOAD ════ */}
         {step==='upload'&&!showRetomar&&!carregandoPlanta&&(
           <div style={{background:'#fff',borderRadius:'12px',padding:'48px',textAlign:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
@@ -1609,7 +1650,7 @@ function BaguaPlantaContent() {
               )}
               {step==='resultado'&&(
                 <div style={{marginBottom:'7px',padding:'6px 10px',background:'#F0F9FF',borderRadius:'6px',color:'#245F52',fontSize:'13px'}}>
-                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong> (guá <strong>{guaDaPorta(lado)}</strong>)</>} · Clique num setor para avaliar
+                  💡 Método: <strong>{METODOLOGIAS.find(m=>m.id===escola)?.nomeCurto}</strong> · {escola==='bussola'?<>Fachada: <strong>{orientacaoGraus === null ? "—" : orientacaoGraus.toFixed(1)}°</strong> (N {rotuloReferencia(orientacaoReferencia)})</>:<>Entrada: <strong>{lado}</strong> (guá <strong>{guaDaPorta(lado)}</strong>)</>} · Clique num setor para avaliar
                 </div>
               )}
 
@@ -1778,12 +1819,12 @@ function BaguaPlantaContent() {
                       {escola==='bussola'&&(
                         <div style={{marginTop:'8px',padding:'8px',background:'#EEF6F3',borderRadius:'6px',border:'1px solid #CFE6E0'}}>
                           <label htmlFor="input-orientacao" style={{display:'block',color:'#374151',fontSize:'13px',fontWeight:'bold',marginBottom:'5px'}}>
-                            🧭 Fachada voltada para <span style={{color:'#2E7D6B'}}>{orientacaoGraus.toFixed(1)}°</span>
+                            🧭 Fachada voltada para <span style={{color:'#2E7D6B'}}>{orientacaoGraus === null ? 'não informada' : `${orientacaoGraus.toFixed(1)}°`}</span>
                             {' '}<span style={{fontWeight:'normal',color:'#6B7280'}}>(Norte {rotuloReferencia(orientacaoReferencia)})</span>
                           </label>
                           <div style={{display:'flex',gap:'3px',flexWrap:'wrap',marginBottom:'5px'}}>
                             {[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]].map(([lbl,g])=>(
-                              <button type="button" key={lbl} onClick={()=>setOrientacaoGraus(g as number)} style={{
+                              <button type="button" key={lbl} onClick={()=>definirLeitura(g as number)} style={{
                                 padding:'3px 7px',borderRadius:'5px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
                                 borderColor:orientacaoGraus===g?'#2E7D6B':'#D1D5DB',background:orientacaoGraus===g?'#2E7D6B':'#fff',color:orientacaoGraus===g?'#fff':'#6B7280',
                               }}>{lbl}</button>
@@ -1794,7 +1835,7 @@ function BaguaPlantaContent() {
                                 Campo numérico e octantes continuam, para quem tem o valor exato. */}
                             <RosaDosVentos
                               graus={orientacaoGraus}
-                              onChange={g=>setOrientacaoGraus(arredondarGrau(g))}
+                              onChange={g=>definirLeitura(arredondarGrau(g))}
                               tamanho={210}
                               mostrarNomesMontanhas
                             />
@@ -1802,11 +1843,11 @@ function BaguaPlantaContent() {
                               {/* value arredondado: a média circular do assistente de 3 leituras
                                   produz floats como 0.4999998984606009, que apareciam crus no campo. */}
                               <input id="input-orientacao" type="number" min={0} max={359.9} step={0.1}
-                                value={arredondarGrau(orientacaoGraus)}
-                                onChange={e=>setOrientacaoGraus(normalizarGraus(Number(e.target.value)||0))}
+                                value={orientacaoGraus === null ? '' : arredondarGrau(orientacaoGraus)}
+                                onChange={e=>definirLeitura(e.target.value.trim()==='' ? null : e.target.valueAsNumber)}
                                 style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
                               <p style={{margin:'4px 0 0',fontSize:'12px',color:'#6B7280'}}>
-                                Direção que a porta/fachada principal encara. Arraste a agulha na bússola ou digite o grau.
+                                Direção da fachada, que pode ser diferente da porta principal. Arraste a agulha ou digite o grau e confirme a referência.
                               </p>
                             </div>
                           </div>
@@ -1819,7 +1860,7 @@ function BaguaPlantaContent() {
                             </span>
                             <div style={{display:'flex',gap:'4px',marginBottom:'5px'}}>
                               {([['magnetico','Magnético (Luo Pan)'],['verdadeiro','Verdadeiro (mapa)']] as [ReferenciaNorte,string][]).map(([id,lbl])=>(
-                                <button key={id} type="button" onClick={()=>setOrientacaoReferencia(id)} style={{
+                                <button key={id} type="button" onClick={()=>{setOrientacaoReferencia(id);setOrientacaoConfirmadaEm(null)}} style={{
                                   flex:1,padding:'4px 2px',fontSize:'12px',fontWeight:'bold',borderRadius:'5px',cursor:'pointer',border:'1px solid',
                                   borderColor:orientacaoReferencia===id?'#2E7D6B':'#D1D5DB',
                                   background:orientacaoReferencia===id?'#E6F2EF':'#fff',
@@ -1827,6 +1868,12 @@ function BaguaPlantaContent() {
                                 }}>{lbl}</button>
                               ))}
                             </div>
+                            <p role="status" style={{fontSize:'12px',color:'#374151'}}>{orientacaoConfirmadaEm ? 'Fachada e referência confirmadas.' : 'Leitura ainda não confirmada. Confira a fachada e a referência de Norte, inclusive em plantas antigas.'}</p>
+                            <button type="button" disabled={orientacaoGraus === null || !!orientacaoConfirmadaEm}
+                              onClick={()=>setOrientacaoConfirmadaEm(new Date().toISOString())}
+                              style={{padding:'6px',border:'1px solid #2E7D6B',borderRadius:'5px',color:'#245F52'}}>
+                              Confirmar fachada e referência de Norte
+                            </button>
                             <label htmlFor="input-declinacao" style={{display:'block',fontSize:'12px',color:'#374151',marginBottom:'3px'}}>
                               Declinação magnética do local <span style={{color:'#6B7280'}}>(graus, Leste positivo — no Brasil é negativa)</span>
                             </label>
@@ -1858,6 +1905,7 @@ function BaguaPlantaContent() {
                               </p>
                             )}
                             {(()=>{
+                              if (orientacaoGraus === null) return null
                               const bruto=declinacao.trim()
                               if(bruto==='') return (
                                 <p style={{margin:'5px 0 0',fontSize:'12px',color:'#8A6E2F'}}>
@@ -1885,7 +1933,7 @@ function BaguaPlantaContent() {
                                       ⚠ As duas referências caem em Montanhas diferentes ({mAtual.pinyin} vs {mConv.pinyin}). Confirme qual referência sua medição usou antes de fechar a carta.
                                     </p>
                                   )}
-                                  <button type="button" onClick={()=>{setOrientacaoGraus(convertida.graus);setOrientacaoReferencia(destino)}}
+                                  <button type="button" onClick={()=>{definirLeitura(convertida.graus,orientacaoOrigem);setOrientacaoReferencia(destino)}}
                                     style={{marginTop:'4px',padding:'3px 9px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                                     Converter para Norte {rotuloReferencia(destino)}
                                   </button>
@@ -1894,6 +1942,7 @@ function BaguaPlantaContent() {
                             })()}
                           </div>
                           {(()=>{
+                            if (orientacaoGraus === null) return null
                             const m=montanhaDoGrau(orientacaoGraus)
                             return (
                               <p style={{margin:'4px 0 0',fontSize:'12px',color:'#245F52'}}>
@@ -1925,7 +1974,7 @@ function BaguaPlantaContent() {
                                       Média circular: <strong>{media.toFixed(1)}°</strong> · desvio: <strong>{desvio.toFixed(1)}°</strong>
                                       {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
                                     </p>
-                                    <button type="button" onClick={()=>setOrientacaoGraus(arredondarGrau(media))}
+                                    <button type="button" onClick={()=>definirLeitura(arredondarGrau(media),'tres_leituras')}
                                       style={{marginTop:'4px',padding:'4px 10px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                                       Usar esta média
                                     </button>
@@ -1940,7 +1989,7 @@ function BaguaPlantaContent() {
                           </button>
                           {/* Magnetômetro do dispositivo lê Norte MAGNÉTICO, como o Luo Pan. */}
                           {bussolaVirtualAberta&&(
-                            <BussolaDispositivo onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('magnetico');setBussolaVirtualAberta(false)}}/>
+                            <BussolaDispositivo onAceitar={g=>{definirLeitura(g,'sensor');setOrientacaoReferencia('magnetico');setBussolaVirtualAberta(false)}}/>
                           )}
                           <button type="button" onClick={()=>setMapaAberto(v=>!v)}
                             style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
@@ -1948,7 +1997,7 @@ function BaguaPlantaContent() {
                           </button>
                           {/* O mapa (Web Mercator) deriva Norte VERDADEIRO — daí a referência ser marcada aqui. */}
                           {mapaAberto&&img&&(
-                            <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{setOrientacaoGraus(g);setOrientacaoReferencia('verdadeiro');setMapaAberto(false)}}/>
+                            <MapaAlinhamento imagemUrl={img.src} onAceitar={g=>{definirLeitura(g,'mapa');setOrientacaoReferencia('verdadeiro');setMapaAberto(false)}}/>
                           )}
                           <button type="button" onClick={()=>setFacingAberto(v=>!v)}
                             style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
@@ -1958,7 +2007,7 @@ function BaguaPlantaContent() {
                               não em que referência o grau foi medido — quem informou os graus das faces
                               já os informou na referência corrente. */}
                           {facingAberto&&(
-                            <QuestionarioFacing onAceitar={g=>{setOrientacaoGraus(g);setFacingAberto(false)}}/>
+                            <QuestionarioFacing onAceitar={g=>{definirLeitura(g,'questionario');setFacingAberto(false)}}/>
                           )}
                           <label htmlFor="input-ano-construcao" style={{display:'block',color:'#374151',fontSize:'13px',fontWeight:'bold',margin:'8px 0 5px'}}>
                             📅 Idade do imóvel <span style={{fontWeight:'normal',color:'#6B7280'}}>(opcional — habilita Estrelas Voadoras)</span>
@@ -2006,7 +2055,7 @@ function BaguaPlantaContent() {
                       </div>
                     </div>
                   </div>
-                  <button type="button" onClick={()=>setStep('entrada')}
+                  <button type="button" onClick={()=>setStep('entrada')} disabled={escola==='bussola'&&grausParaCalculo===null}
                     style={{width:'100%',background:'#0E1B2C',color:'#fff',border:'none',padding:'10px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
                     Continuar → Marcar entrada principal
                   </button>
@@ -2124,7 +2173,8 @@ function BaguaPlantaContent() {
 
                   {/* Kua da Casa (Oito Mansões) — só na Escola da Bússola, que tem orientação real */}
                   {escola==='bussola'&&(()=>{
-                    const casa=calcularKuaDaCasa(orientacaoGraus)
+                    if(grausParaCalculo===null) return <p role="status">{AVISO_ORIENTACAO}</p>
+                    const casa=calcularKuaDaCasa(grausParaCalculo)
                     return (
                       <div style={{marginTop:'12px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
                         <div style={{fontSize:'13px',fontWeight:'bold',color:'#245F52',marginBottom:'4px'}}>
@@ -2141,7 +2191,7 @@ function BaguaPlantaContent() {
                   {escola==='bussola'&&(()=>{
                     const doImovel=periodoDoImovel({anoConstrucao:anoParaBanco(anoConstrucao),anoReformaEstrutural:anoParaBanco(anoReforma)})
                     if(!doImovel) return null
-                    const mapa=calcularEstrelasVoadoras({facingGraus:orientacaoGraus,periodo:doImovel.periodo})
+                    const mapa=calcularEstrelasVoadoras({facingGraus:grausParaCalculo,periodo:doImovel.periodo})
                     if(!mapa) return null
                     const porPalacio=Object.fromEntries(mapa.palacios.map(p=>[p.palacio,p]))
                     const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
@@ -2151,7 +2201,7 @@ function BaguaPlantaContent() {
                     return (
                       <div style={{marginTop:'10px',padding:'9px',background:'#FAF3E0',borderRadius:'7px',border:'1px solid #EEDFB4'}}>
                         <div style={{fontSize:'13px',fontWeight:'bold',color:'#8A6E2F',marginBottom:'6px'}}>
-                          ⭐ Estrelas Voadoras — Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
+                          ⭐ Estrelas Voadoras — mapa experimental simplificado · Período {mapa.periodo}{gradeAnual&&` · Ano ${anoSolarAtual}`}
                         </div>
                         <div style={{fontSize:'12px',color:'#8A6E2F',marginBottom:'6px'}}>
                           Período {mapa.periodo} ({faixaDoPeriodo(doImovel.anoUsado).inicio}–{faixaDoPeriodo(doImovel.anoUsado).fim}),
@@ -2204,7 +2254,7 @@ function BaguaPlantaContent() {
                     <SustentacaoDoDiagnostico
                       mostrarRessalva={false}
                       dados={{
-                        orientacaoGraus,
+                        orientacaoGraus:grausParaCalculo,
                         setoresComScore: setores.filter(sc => sc.criterios.some(c => c !== null)).length,
                         anoDoImovel: anoParaBanco(anoConstrucao) ?? anoParaBanco(anoReforma),
                         nascimentoDoCliente: clienteDaConsulta?.data_nascimento ?? null,
@@ -2294,7 +2344,7 @@ function BaguaPlantaContent() {
                   )}
 
                   {/* Mini-cards 3x3 */}
-                  {setores.length>0&&(
+                  {setores.length>0&&order&&(
                     <div style={{marginTop:'12px'}}>
                       <div style={{fontSize:'13px',fontWeight:'bold',color:'#0E1B2C',marginBottom:'6px'}}>📊 Resumo por setor</div>
                       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>

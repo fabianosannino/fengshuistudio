@@ -42,7 +42,7 @@ function arcoMontanha(faixaInicioGraus: number): string {
 }
 
 export interface RosaDosVentosProps {
-  graus: number
+  graus: number | null
   /** Quando presente, a rosa aceita clique/arraste para definir o ângulo. */
   onChange?: (graus: number) => void
   /** Lado em px. Padrão 150. */
@@ -64,17 +64,19 @@ export default function RosaDosVentos({
   const arrastandoRef = useRef(false)
   const interativo = typeof onChange === 'function'
 
-  const montanha = montanhaDoGrau(graus)
+  const leitura = graus !== null && Number.isFinite(graus) ? normalizarGraus(graus) : null
+  const montanha = leitura === null ? null : montanhaDoGrau(leitura)
 
   /**
    * Converte a posição do ponteiro em graus de bússola.
    * Usa getBoundingClientRect + as proporções do viewBox, então funciona em
    * qualquer tamanho renderizado sem conta manual de escala.
    */
-  function grausDoPonteiro(e: { clientX: number; clientY: number }): number {
+  function grausDoPonteiro(e: { clientX: number; clientY: number }): number | null {
     const svg = svgRef.current
     if (!svg) return graus
     const r = svg.getBoundingClientRect()
+    if (r.width <= 0 || r.height <= 0) return null
     const lado = VIEWBOX_MARGEM * 2 + 200
     // Ponto do ponteiro nas coordenadas do viewBox.
     const x = ((e.clientX - r.left) / r.width) * lado - VIEWBOX_MARGEM
@@ -90,12 +92,14 @@ export default function RosaDosVentos({
     if (!interativo) return
     e.currentTarget.setPointerCapture(e.pointerId)
     arrastandoRef.current = true
-    onChange!(grausDoPonteiro(e))
+    const valor = grausDoPonteiro(e)
+    if (valor !== null) onChange!(valor)
   }
 
   function aoMover(e: React.PointerEvent) {
     if (!interativo || !arrastandoRef.current) return
-    onChange!(grausDoPonteiro(e))
+    const valor = grausDoPonteiro(e)
+    if (valor !== null) onChange!(valor)
   }
 
   function aoSoltar(e: React.PointerEvent) {
@@ -103,7 +107,7 @@ export default function RosaDosVentos({
     arrastandoRef.current = false
   }
 
-  const ponta = anguloParaXY(graus, RAIO_INTERNO - 10)
+  const ponta = leitura === null ? null : anguloParaXY(leitura, RAIO_INTERNO - 10)
 
   return (
     <svg
@@ -115,6 +119,15 @@ export default function RosaDosVentos({
       onPointerMove={aoMover}
       onPointerUp={aoSoltar}
       onPointerCancel={aoSoltar}
+      tabIndex={interativo ? 0 : undefined}
+      onKeyDown={e => {
+        if (!onChange) return
+        const delta = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key]
+        if (delta === undefined && e.key !== 'Home' && e.key !== 'End') return
+        e.preventDefault()
+        // O primeiro comando do usuário cria a leitura; ausência não cria agulha.
+        onChange(e.key === 'Home' ? 0 : e.key === 'End' ? 359 : normalizarGraus((leitura ?? 0) + delta!))
+      }}
       style={{
         flexShrink: 0,
         cursor: interativo ? 'grab' : 'default',
@@ -123,17 +136,16 @@ export default function RosaDosVentos({
       }}
       data-testid="rosa-dos-ventos"
       role={interativo ? 'slider' : 'img'}
-      aria-label={interativo
-        ? `Orientação da fachada: ${graus.toFixed(1)} graus, Montanha ${montanha.pinyin}. Arraste para ajustar.`
-        : `Orientação: ${graus.toFixed(1)} graus, Montanha ${montanha.pinyin}`}
-      aria-valuenow={interativo ? Math.round(graus) : undefined}
+      aria-label={leitura === null ? 'Orientação da fachada não informada. Use as setas ou o campo numérico.' : `Orientação da fachada: ${leitura.toFixed(1)} graus, Montanha ${montanha!.pinyin}.${interativo ? ' Use as setas ou arraste para ajustar.' : ''}`}
+      aria-valuetext={leitura === null ? 'Não informada' : `${leitura.toFixed(1)} graus`}
+      aria-valuenow={interativo && leitura !== null ? Math.round(leitura) : undefined}
       aria-valuemin={interativo ? 0 : undefined}
       aria-valuemax={interativo ? 359 : undefined}
     >
       <circle cx={CENTRO} cy={CENTRO} r={RAIO_EXTERNO} fill="#F9FAFB" stroke="#D1D5DB" />
 
       {/* Faixa da Montanha corrente (15°) */}
-      {destacarMontanha && (
+      {destacarMontanha && montanha && (
         <path d={arcoMontanha(montanha.faixaInicio)} fill="rgba(201,162,39,0.35)" data-testid="rosa-montanha-atual" />
       )}
 
@@ -182,9 +194,9 @@ export default function RosaDosVentos({
       })}
 
       {/* Agulha */}
-      <line x1={CENTRO} y1={CENTRO} x2={ponta.x} y2={ponta.y}
-        stroke="#B4533A" strokeWidth={2.5} data-testid="rosa-agulha" />
-      {interativo && (
+      {ponta && <line x1={CENTRO} y1={CENTRO} x2={ponta.x} y2={ponta.y}
+        stroke="#B4533A" strokeWidth={2.5} data-testid="rosa-agulha" />}
+      {interativo && ponta && (
         <circle cx={ponta.x} cy={ponta.y} r={5} fill="#B4533A" stroke="#fff" strokeWidth={1.5}
           style={{ cursor: 'grab' }} data-testid="rosa-alca" />
       )}

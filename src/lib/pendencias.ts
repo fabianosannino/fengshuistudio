@@ -20,6 +20,8 @@
  * uma seção do relatório.
  */
 
+import { grausConfirmados, type DadosOrientacao } from './orientacao'
+
 export type TipoDePendencia =
   | 'parcela_vencida'
   | 'relatorio_nao_emitido'
@@ -73,7 +75,7 @@ export interface ConsultaParaPendencias {
   relatorio_gerado_em?: string | null
   ano_construcao?: number | null
   ano_reforma_estrutural?: number | null
-  bagua_entrada?: { orientacao_graus?: number | null; data_construcao?: string | null } | null
+  bagua_entrada?: DadosOrientacao & { escola?: string; data_construcao?: string | null } | null
   clientes?: { nome_completo?: string | null } | null
 }
 
@@ -192,7 +194,7 @@ export function montarPendencias(
     // ── 3. Sem leitura de fachada ───────────────────────────────────────────
     // A consequência é o que importa: sem orientação não existe Kua da Casa nem
     // Estrelas Voadoras, e o relatório sai sem essas seções sem explicar por quê.
-    if (typeof c.bagua_entrada?.orientacao_graus !== 'number') {
+    if (c.bagua_entrada?.escola !== 'btb' && grausConfirmados(c.bagua_entrada) === null) {
       pendencias.push({
         tipo: 'sem_fachada',
         id: `sem_fachada:${c.id}`,

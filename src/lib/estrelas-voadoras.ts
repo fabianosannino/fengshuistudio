@@ -1,31 +1,9 @@
 /**
- * Estrelas Voadoras (Xuan Kong Fei Xing, 玄空飛星) — mapa natal base do imóvel.
- *
- * ESCOPO DESTE MÓDULO (deliberadamente limitado ao núcleo consensual do
- * método San Yuan Xuan Kong):
- *   1. Período de construção (元運) — de 1 a 9, ciclos de 20 anos.
- *   2. Grade do Período — os 9 números do Lo Shu "voando" a partir do centro.
- *   3. Estrela da Montanha (山星) e Estrela da Fachada (向星) — derivadas da
- *      grade do período pela regra padrão de voo par/ímpar.
- *
- * FORA DE ESCOPO — não implementado, de propósito:
- *   - Estrela de substituição (替卦/Xuan Kong Da Gua) para fachadas muito
- *     próximas do limite de um setor de 45°; aqui a fachada é sempre
- *     arredondada para o octante mais próximo (mesma granularidade da
- *     Bússola/Oito Mansões).
- *   - Estrelas anuais/mensais (sobreposição temporal).
- *   - Teoria de combinações de estrelas (interpretação além do básico
- *     universalmente aceito, como a cautela com a Estrela 5).
- *   - Ajuste de declinação magnética.
- *   Essas peças têm variação real entre escolas/autores; strongly recomenda-se
- *   validação por um consultor com formação em Xuan Kong antes de uso
- *   comercial com clientes.
- *
- * Base matemática (não-controversa, mesmo quadrado Lo Shu de oito-mansoes.ts):
- * o "caminho de voo" é uma sequência fixa de 9 posições (Centro, depois as 8
- * direções em ordem específica) por onde os números 1-9 sempre circulam.
- * Verificado por reconstrução manual contra a carta do Período 8 amplamente
- * publicada (ver testes) — bate exatamente.
+ * Experimento de Estrelas Voadoras em oito octantes.
+ * A regra simplificada de paridade não implementa a carta clássica de
+ * 24 montanhas, suas regras de voo e exceções. Não usar isoladamente para
+ * prescrições. A grade do período é distinta das hipóteses deste experimento.
+ * Nenhuma validação independente da carta completa é alegada aqui.
  */
 
 import { NOME_ELEMENTO, type Elemento } from './cinco-elementos'
@@ -67,7 +45,7 @@ export interface Palacio3Estrelas {
   periodo: number
   /** Estrela da Fachada (向星) — energia de recursos/oportunidades. */
   fachada: number
-  /** true quando alguma das 3 estrelas é o número 5 (Wu Huang) — cautela universal, sem exceção entre escolas. */
+  /** true quando alguma das 3 estrelas é o número 5 (Wu Huang) — sinalização deste experimento, não diagnóstico independente. */
   temEstrela5: boolean
 }
 
@@ -78,13 +56,13 @@ export interface MapaEstrelasVoadoras {
 }
 
 /**
- * Mapa natal completo. Precisa da orientação da fachada (0-359°, mesma
+ * Mapa simplificado por octantes, não carta clássica completa. Precisa da orientação da fachada (0-359°, mesma
  * captura da Bússola) e do período (derive com `periodoDaConstrucao` ou
  * informe direto). Devolve null se faltar dado — fail-closed.
  */
-export function calcularEstrelasVoadoras(opcoes: { facingGraus: number; periodo: number | null }): MapaEstrelasVoadoras | null {
+export function calcularEstrelasVoadoras(opcoes: { facingGraus: number | null | undefined; periodo: number | null }): MapaEstrelasVoadoras | null {
   const { facingGraus, periodo } = opcoes
-  if (periodo == null || periodo < 1 || periodo > 9) return null
+  if (typeof facingGraus !== 'number' || !Number.isFinite(facingGraus) || periodo == null || !Number.isInteger(periodo) || periodo < 1 || periodo > 9) return null
 
   const facingOctante = octanteDaOrientacao(facingGraus)
   const palacioFachada = PALACIO_POR_OCTANTE[facingOctante]

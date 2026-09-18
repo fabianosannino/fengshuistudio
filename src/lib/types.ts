@@ -120,16 +120,20 @@ export interface BaguaEntrada {
   /** Metodologia usada no diagnóstico ('btb' | 'bussola') — ver src/lib/metodologias.ts. */
   escola?: string
   /** Orientação da fachada (0–359°, 0=Norte) — só a Escola da Bússola usa. Ver `orientacao_referencia`. */
-  orientacao_graus?: number
+  orientacao_graus?: number | null
+  orientacao_estado?: 'ausente' | 'nao_confirmada' | 'confirmada'
+  orientacao_origem?: string
+  orientacao_confirmada_em?: string | null
+  /** Referência das entradas no último fechamento; divergência pede revisão. */
+  analise_referencia?: { versao: string; entrada: string }
   /**
    * Referência de Norte de `orientacao_graus` ('magnetico' | 'verdadeiro') —
    * ver `src/lib/declinacao-magnetica.ts`. Sem isto o grau é ambíguo: o Luo Pan
    * lê magnético, o Modo C (satélite) deriva verdadeiro, e a diferença no
    * Brasil chega a 2 Montanhas das 24.
    *
-   * Ausente = consultas antigas, anteriores a este campo. Nesse caso assume-se
-   * 'magnetico', que era o que a UI declarava na época (o rótulo do campo dizia
-   * "direção magnética") — retrocompatibilidade explícita, não suposição nova.
+   * Ausente = referência desconhecida. Exige confirmação para novos cálculos;
+   * não se atribui retroativamente uma medição magnética ao legado.
    */
   orientacao_referencia?: string
   /** Declinação magnética do local (graus, Leste positivo) — informada pelo consultor. */

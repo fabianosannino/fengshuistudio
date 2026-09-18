@@ -29,6 +29,7 @@ export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
 
 /** O que precisa estar no lugar para cada etapa contar como cumprida. */
 export interface DadosDaConsulta {
+  escola?: string | null
   /** `bagua_entrada.orientacao_graus` — a leitura da fachada. */
   orientacaoGraus?: number | null
   /** `bagua_entrada.finalizada_em` — a análise do Ba Guá foi fechada. */
@@ -64,7 +65,7 @@ export interface ProgressoDoDiagnostico {
 export function progressoDoDiagnostico(dados: DadosDaConsulta): ProgressoDoDiagnostico {
   const cumpridas = [
     true,
-    typeof dados.orientacaoGraus === 'number',
+    dados.escola === 'btb' || (typeof dados.orientacaoGraus === 'number' && Number.isFinite(dados.orientacaoGraus)),
     !!dados.baguaFinalizadaEm || (dados.setoresComScore ?? 0) > 0,
     (dados.prescricoes ?? 0) > 0,
     !!dados.relatorioGeradoEm,

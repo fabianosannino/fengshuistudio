@@ -358,7 +358,7 @@ Método de compatibilidade direcional entre pessoa e edificação. Simples, popu
 ### Cálculo — Gua da casa
 O Gua da casa é dado pela **direção do sitting** (坐山). Casa que senta ao Norte e olha ao Sul = casa **Kan**.
 
-> ✅ **Já implementado e testado**, como `calcularKuaDaCasa()` em `src/lib/oito-mansoes.ts` — usa a direção da FACHADA (facing), não do sitting, para chegar ao mesmo Gua da casa (facing e sitting são trigramas opostos; usar um ou outro como ponto de partida é equivalente porque a busca é pelo TRIGRAMA da casa, não pela direção específica de leitura). Testado com a propriedade de quadrado mágico Lo Shu.
+**Correção B1 (18/09/2026, ADR 0038):** a implementação anterior classificava pelo facing sem inverter e estava incorreta; a propriedade de quadrado mágico não detectava a inversão. `calcularKuaDaCasa` agora deriva `assento = normalizar(fachada + 180°)`. Fachada Sul → casa Kan (1); fachada Oeste → casa Zhen (3). A inversão é exclusiva do Kua da casa e não rotaciona a grade da Bússola nem o mapa experimental de estrelas. Fontes e oito vetores independentes estão no ADR 0038.
 
 ### Cálculo — Ming Gua (número pessoal)
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   montarPendencias, DIAS_ATE_COBRAR_RELATORIO, DIAS_ATE_CONSULTA_PARADA,
-  type EntradasDePendencias,
+  type EntradasDePendencias, type ConsultaParaPendencias,
 } from '../pendencias'
 
 const AGORA = new Date('2026-08-12T10:00:00-03:00')
@@ -20,13 +20,13 @@ function isoDiasAtras(n: number): string {
 const VAZIO: EntradasDePendencias = { consultas: [], pagamentos: [], rituais: [] }
 
 /** Consulta sem nenhuma pendência: tudo preenchido e tocada hoje. */
-const CONSULTA_OK = {
+const CONSULTA_OK: ConsultaParaPendencias = {
   id: 'c1',
   nome_imovel: 'Apto Vila Madalena',
   status: 'em_andamento',
   atualizado_em: isoDiasAtras(0),
   ano_construcao: 1998,
-  bagua_entrada: { orientacao_graus: 42.5 },
+  bagua_entrada: { escola: 'bussola', orientacao_graus: 42.5, orientacao_estado: 'confirmada', orientacao_referencia: 'magnetico', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T00:00:00.000Z' },
   clientes: { nome_completo: 'Carlos Tavares' },
 }
 

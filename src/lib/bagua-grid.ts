@@ -87,6 +87,7 @@ export function guaDaPorta(lado: string): string {
  * por metodologias mais granulares como Estrelas Voadoras).
  */
 export function gridOrderBussola(facingGraus: number): number[] {
+  if (!Number.isFinite(facingGraus)) throw new RangeError('Fachada deve ser um ângulo finito')
   const normalizado = ((facingGraus % 360) + 360) % 360
   const octante = Math.round(normalizado / 45) % 8
   const anel = CELULAS_HORARIO_DESDE_NORTE
@@ -99,13 +100,15 @@ export function gridOrderBussola(facingGraus: number): number[] {
 
 export interface OpcoesGrid {
   lado?: string
-  orientacaoGraus?: number
+  /** Somente uma leitura já confirmada; null mantém a grade bloqueada. */
+  orientacaoGraus?: number | null
 }
 
 /** Dispatcher usado pela tela do Ba Guá — decide o cálculo pela metodologia ativa. */
-export function calcularGridOrder(metodologia: string, opcoes: OpcoesGrid): number[] {
-  if (metodologia === 'bussola' && opcoes.orientacaoGraus != null) {
+export function calcularGridOrder(metodologia: string, opcoes: OpcoesGrid): number[] | null {
+  if (metodologia === 'btb') return gridOrderBTB(opcoes.lado ?? 'centro')
+  if (metodologia === 'bussola' && typeof opcoes.orientacaoGraus === 'number' && Number.isFinite(opcoes.orientacaoGraus)) {
     return gridOrderBussola(opcoes.orientacaoGraus)
   }
-  return gridOrderBTB(opcoes.lado ?? 'centro')
+  return null
 }
