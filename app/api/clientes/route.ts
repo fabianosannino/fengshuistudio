@@ -8,7 +8,7 @@ import { validateEmail, validatePhone } from '../../../src/lib/validation'
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success, remaining } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
@@ -24,11 +24,15 @@ export async function POST(request: Request) {
   }
 
   // Check plan
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('plano, tipo_usuario, role')
     .eq('id', user.id)
     .single()
+
+  if (profileError || !profile) {
+    return NextResponse.json({ error: 'Não foi possível verificar seu plano.' }, { status: 503 })
+  }
 
   const planoDoUsuario = planoUsuario(profile)
   const limiteDeClientes = limiteClientes(planoDoUsuario)
@@ -43,10 +47,11 @@ export async function POST(request: Request) {
       .select('*', { count: 'exact', head: true })
       .eq('consultor_id', user.id)
       .eq('ativo', true)
+      .is('titular_id', null)
 
     if (erroContagem) {
       logger.error('Falha ao contar clientes do consultor', {
-        route: '/api/clientes', userId: user.id, error: erroContagem.message,
+        route: '/api/clientes', code: erroContagem.code,
       })
       return NextResponse.json({ error: 'Não foi possível verificar seu limite de clientes.' }, { status: 500 })
     }
@@ -119,7 +124,10 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    logger.error('Cliente insert error', { route: '/api/clientes', error: error.message, code: error.code, details: error.details })
+    if (error.code === 'P0001' && error.message === 'cota_clientes_excedida') {
+      return NextResponse.json({ error: mensagemLimiteClientes(planoDoUsuario) }, { status: 403 })
+    }
+    logger.error('Cliente insert error', { route: '/api/clientes', code: error.code })
     return NextResponse.json({ error: 'Erro ao cadastrar cliente.' }, { status: 400 })
   }
 
