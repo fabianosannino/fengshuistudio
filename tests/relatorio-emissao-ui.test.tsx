@@ -6,9 +6,9 @@ import type { BaguaEntrada, Consulta } from '../src/lib/types'
 import { referenciaDaAnalise } from '../src/lib/analise-bagua'
 
 const mocks = vi.hoisted(() => ({
-  router: { push: vi.fn() }, capture: vi.fn(), output: vi.fn(), fetch: vi.fn(), download: vi.fn(),
+  router: { push: vi.fn() }, capture: vi.fn(), output: vi.fn(), fetch: vi.fn(), download: vi.fn(), busca:'',
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => mocks.router, useParams: () => ({ id: '00000000-0000-4000-8000-000000000001' }) }))
+vi.mock('next/navigation', () => ({ useRouter: () => mocks.router, useSearchParams: () => new URLSearchParams(mocks.busca), useParams: () => ({ id: '00000000-0000-4000-8000-000000000001' }) }))
 vi.mock('../src/lib/supabase', () => ({ supabase: {} }))
 vi.mock('../app/components/useUrlsAssinadas', () => ({ useUrlsAssinadas: () => ({ resolver: () => null, carregando: false }) }))
 // jsdom não mede layout nem renderiza canvas. Estes testes verificam o fluxo
@@ -33,6 +33,7 @@ beforeEach(() => {
   vi.clearAllMocks(); respostas.preparo.length = 0; respostas.uploads.length = 0
   falharUpload = false; statusFalha = 503; falharHistoricoDepois = false; leiturasHistorico = 0; foto = null; bagua = {}
   dadosDaConsulta = {}
+  mocks.busca=''
   mocks.capture.mockResolvedValue({ width: 1000, height: 1000, toDataURL: () => 'data:image/png;base64,fixture' })
   mocks.output.mockReturnValue(new Blob(['%PDF-1.4\nfixture\n%%EOF'], { type: 'application/pdf' }))
   vi.stubGlobal('fetch', mocks.fetch)
@@ -69,6 +70,14 @@ async function emitir() {
 }
 
 describe('emissão pela página', () => {
+  it('D1 — emite a versão selecionada e inclui sua identificação na prévia',async()=>{
+    mocks.busca='analise=00000000-0000-4000-8000-000000000040'
+    await emitir()
+    await waitFor(()=>expect(respostas.preparo).toHaveLength(1))
+    expect(respostas.preparo[0].analise_id).toBe('00000000-0000-4000-8000-000000000040')
+    expect(mocks.fetch).toHaveBeenCalledWith(expect.stringContaining('&analise=00000000-0000-4000-8000-000000000040'))
+    expect(screen.getByText(/Relatório da análise preservada/)).toBeInTheDocument()
+  })
   it('D0-02/04 — relatório mostra os resultados por método e a limitação experimental', async () => {
     bagua = { escola: 'bussola', orientacao_graus: 0, orientacao_referencia: 'magnetico', orientacao_estado: 'confirmada', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T12:00:00Z' }
     bagua.analise_referencia = referenciaDaAnalise(bagua as BaguaEntrada)

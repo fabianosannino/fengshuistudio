@@ -6,6 +6,8 @@ import { criarEntradaRelatorio, hashValido, idValido, jsonCanonico, objeto, refe
 import { rateLimit, ipDaRequisicao } from '../../../../../src/lib/rate-limit'
 import { logger } from '../../../../../src/lib/logger'
 import { impedimentoDaAnalise } from '../../../../../src/lib/analise-bagua'
+import { lerAnalise } from '../../../../../src/lib/historico-analises-servidor'
+import { VERSAO_MOTOR_ANALISE } from '../../../../../src/lib/historico-analises'
 
 export async function POST(request: Request) {
   const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 20, windowMs: 60_000, escopo: 'POST:/api/consultas/relatorio/preparar', exigirCompartilhado: true })
@@ -21,6 +23,7 @@ export async function POST(request: Request) {
     body = JSON.parse(text)
   } catch { return NextResponse.json({ error: 'Solicitação inválida' }, { status: 400 }) }
   if (!objeto(body) || !idValido(body.consulta_id) || !idValido(body.id) || !hashValido(body.fonte_sha256)
+    || (body.analise_id != null && !idValido(body.analise_id))
     || !referenciaValida(body.referencia_temporal, body.fuso, new Date())) {
     return NextResponse.json({ error: 'Recarregue o relatório antes de emitir.' }, { status: 400 })
   }
@@ -29,7 +32,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'O relatório foi atualizado. Recarregue a página antes de emitir.' }, { status: 409 })
   }
   try {
-    const fonte = await carregarFonteRelatorio(client, body.consulta_id, user.id)
+    const analise=body.analise_id?await lerAnalise(client,body.analise_id as string,body.consulta_id,user.id):null
+    if(body.analise_id&&!analise)return NextResponse.json({error:'Análise não encontrada'},{status:404})
+    if(analise&&analise.versao_motor!==VERSAO_MOTOR_ANALISE)return NextResponse.json({error:'Registre uma versão com o motor atual antes de emitir novamente.'},{status:409})
+    const fonte = analise?.fonte ?? await carregarFonteRelatorio(client, body.consulta_id, user.id)
     if (!fonte) return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
     if (sha256(jsonCanonico(fonte)) !== body.fonte_sha256) {
       return NextResponse.json({ error: 'Os dados mudaram. Recarregue o relatório e confira a nova prévia.' }, { status: 409 })
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
     if (!edicao) return NextResponse.json({ error: 'Seções ou textos inválidos' }, { status: 400 })
     const impedimento = impedimentoDaAnalise(fonte.consulta.bagua_entrada, edicao.secoes)
     if (impedimento) return NextResponse.json({ error: impedimento }, { status: 409 })
-    const entrada = criarEntradaRelatorio(fonte, edicao, body.referencia_temporal as string, body.fuso as string)
+    const entrada = criarEntradaRelatorio(fonte, edicao, body.referencia_temporal as string, body.fuso as string, analise)
     const entradaHash = sha256(jsonCanonico(entrada))
     // Só criar o cliente privilegiado depois da consulta sob RLS e ownership.
     const admin = createSupabaseAdminClient()
@@ -55,6 +61,7 @@ export async function POST(request: Request) {
     if (anterior.error) throw new Error('Falha ao ler revisão anterior')
     const row = {
       id: body.id, consulta_id: body.consulta_id, consultor_id: user.id, estado: 'preparada', revisao_de: anterior.data?.id ?? null,
+      analise_id: analise?.id ?? null,
       entrada, entrada_sha256: entradaHash, versao_entrada: VERSOES_RELATORIO.entrada,
       versao_motor: VERSOES_RELATORIO.motor, versao_template: VERSOES_RELATORIO.template,
       pdf_path: `${body.consulta_id}/emissoes/${body.id}.pdf`,

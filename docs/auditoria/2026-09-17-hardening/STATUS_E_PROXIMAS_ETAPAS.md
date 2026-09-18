@@ -89,15 +89,26 @@ concluído depende de sua validação de domínio e da jornada correspondente.
 | ID | Entrega / estado | Aceite e próximo passo |
 |---|---|---|
 | D0 | Primeira base de resultados versionados — publicada no PR #214 | Mesmos adaptadores na bancada/relatório; estados e limitações explícitos; snapshot em novas emissões; experimento não determina recomendação. Cenários D0-01–05 e ADR 0056; CI 35339415046/35339673192 verde, deployment `dpl_DPf2jjNW6dkrkTKtcTFaq3ovxqyN` READY para `4cbd344` |
-| D1 | Execuções independentes — pendente, próxima implementação | Método/variante/versão por execução, idempotência, concorrência, fonte imutável, relatório vinculado, comparação e obsolescência; ownership/RLS/exportação/exclusão desde o início |
+| D1 | Execuções independentes — implementadas, validação/publicação nesta entrega | Fontes/resultados imutáveis por método, registro idempotente, comparação, relatório vinculado e estado derivado. Ownership/RLS/exportação/exclusão incluídos; ADR 0059 e D1-01–07. Homologação visual continua em AC-02 |
 | D2 | Clássico Essencial — em desenvolvimento; cadastro de mobiliário nesta entrega | Tela própria com múltiplos móveis/ambientes, dados pessoais opcionais, direção numérica/na planta, referências e persistência com RLS/CAS. Restam orientação/incerteza completa, cadastro independente de moradores, Formas, variantes, vetores de domínio e piloto; D-MOB-01–06 não encerram D2 |
 | D3 | Fei Xing completo — pendente | Variante e fontes definidas, 24 Montanhas/polaridade/voos e regras aplicáveis, período exato e casos limítrofes; validar cartas externas antes de remover o status experimental |
 | D4 | Outros módulos — pendente | Liu Fa, San He e Da Gua separados; BaZi/seleção de datas como complementos com escopo próprio; requisitos, resultados, proveniência e testes por módulo |
 
 BTB e Bússola continuam disponíveis na etapa **Configurar → Método**, em
-`/bagua-planta`. D0 não adiciona escolas ainda não implementadas ao seletor, nem
-cria histórico independente de execuções: seus resultados ficam no snapshot
-de novas emissões do relatório. As cartas/PDFs anteriores são preservados.
+`/bagua-planta`. D1 acrescenta **Histórico de análises por método** na consulta:
+registrar a planta finalizada antes de trocar método ou revisar dados, abrir duas
+versões e preparar relatório da escolhida. O rascunho continua único e editável;
+abrir uma versão não o substitui. Escolas não implementadas não entram no seletor.
+As cartas/PDFs anteriores são preservados.
+
+Publicação anterior conferida: PR #217, merge `d50ec4c`, deployment
+`dpl_FVSr4HYSLnhFroTdb5u9Q7azG9X8` READY; 1.863 testes e 168 verificações SQL.
+D1 local: 1.882 testes em 141 arquivos aprovados; TypeScript aprovado. Revisão
+final, três gates remotos e publicação devem ser vinculados ao PR desta entrega.
+Supabase ainda sem ambiente/branch de teste e Docker local sem daemon em 18/09;
+integração SQL será executada no CI descartável. Isso não encerra AC-01 nem
+contorna o bloqueio anterior do servidor local. Próxima etapa independente:
+preservar as leituras originais de orientação e explicitar dispersão/limites em D2.
 
 Validação local de D0: **1.798 testes em 131 arquivos aprovados**, TypeScript e
 build aprovados; lint sem erros, com os mesmos 102 avisos anteriores. A revisão

@@ -128,6 +128,24 @@ tela cheia, rede interrompida, reabertura e PDF rasterizado. A recusa anterior
 do servidor local (`blocked by policy`, AC-02) não foi contornada. Resultados
 jsdom não substituem essa evidência nem encerram AC-02/AC-06/D2.
 
+## D1 — histórico independente por método
+
+| ID | Contexto → ação → resultado esperado | Execução e evidência |
+|---|---|---|
+| D1-01 | BTB finalizado com falta analítica de 25%, nota não avaliada e dados pessoais → registrar; mudar para Bússola → registrar → duas fontes/resultados preservados, nota ausente não vira zero | `src/lib/__tests__/historico-analises.test.ts`, fixture sintética; cálculo novo no servidor, leitura histórica sem recálculo |
+| D1-02 | Planta incompleta/alterada, hash antigo, corpo com dono/resultado forjado ou erro do banco → salvar → recusa explícita, sem sucesso falso; retry após timeout reutiliza UUID | `tests/api/analises.test.ts` e `tests/historico-analises-ui.test.tsx`; I/O simulado, inclusive fonte já alterada depois de registro bem-sucedido |
+| D1-03 | Duas contas, anon, RPC direta, UPDATE do serviço, mesmo UUID concorrente e alteração do nascimento → ler/gravar → isolamento, imutabilidade, uma versão por retry e conflito da fonte antiga | `scripts/security/test-authorization.mjs`: migration real em PostgreSQL 17/PostgREST 16.1 descartáveis; execução obrigatória no CI, não executável localmente com daemon Docker indisponível |
+| D1-04 | Mais de 20 versões, BTB/Bússola e motor antigo → paginar/abrir/comparar → apenas metadados na lista, resultados independentes, divergência derivada e nenhuma classificação de escola superior | Testes de API/página reais com transporte simulado; fontes carregadas sob demanda, rascunho não regravado |
+| D1-05 | Versão selecionada enquanto cadastro atual mudou → emitir → fonte/métodos da versão, plano de acesso atual e FK de mesmo dono; motor antigo/corrupção/alheio → recusar | `tests/api/analises.test.ts`, `tests/api/relatorio-emissoes.test.ts`, `tests/relatorio-emissao-ui.test.tsx` e teste SQL de FK positiva/negativa; não prova pixels do PDF |
+| D1-06 | Titular exporta com identificação alheia na URL; excluir consulta com histórico/relatório; conta em exclusão → exportar/limpar/registrar → só seus snapshots, PDF removido antes da análise, cascade sem órfão e novas versões bloqueadas | `tests/api/conta-dados.test.ts`, testes SQL e revisão do inventário/limpeza das raízes privadas; nenhuma exclusão real como ensaio |
+| D1-07 | Revisar ajuda, ADR, inventário, versões do relatório e roadmap → limites claros e A–C preservados | Revisão documental; preview da branch desativada, sem backfill ou migração de fontes antigas |
+
+Evidência local inicial: **1.882 testes em 141 arquivos aprovados**, TypeScript
+aprovado. Revisão final e CI do commit exato ficam registrados no PR. Homologação
+visual pendente: duas versões sintéticas, desktop/celular, comparação, navegação
+de volta, falha de rede e PDF rasterizado da versão histórica. Não usar dados
+reais para exclusão/testes financeiros nem declarar jsdom como aceite de toque.
+
 ## A–C — pendências de aceite que não podem ser esquecidas
 
 Todos os cenários abaixo permanecem **pendentes de execução completa**. Usar

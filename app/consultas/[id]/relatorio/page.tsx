@@ -4,17 +4,17 @@ import Link from 'next/link'
 import { grausConfirmados } from '../../../../src/lib/orientacao'
 import { introducaoDoMetodo, impedimentoDaAnalise } from '../../../../src/lib/analise-bagua'
 import { redirecionarParaLogin } from '../../../../src/lib/auth-rotas'
-import { Fragment, useEffect, useState, useRef } from 'react'
+import { Fragment, Suspense, useEffect, useState, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { AVISO_PDF_EXCESSIVO, MAX_PDF_RELATORIO, VERSOES_RELATORIO, type EmissaoRelatorio, type FonteRelatorio } from '../../../../src/lib/relatorio-emissao'
 import { CORTE_URGENTE, CORTE_ATENCAO } from '../../../../src/lib/modelos-pontuacao'
 import { supabase } from '../../../../src/lib/supabase'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 // jsPDF and html2canvas are lazy-loaded in handleDownloadPDF() to reduce initial bundle size
 import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
-import { executarMetodos } from '../../../../src/lib/execucao-metodos'
+import { executarMetodos, type ExecucoesMetodos } from '../../../../src/lib/execucao-metodos'
 import { compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
 import type { Palacio } from '../../../../src/lib/estrelas-voadoras'
 import { faixaDoPeriodo } from '../../../../src/lib/periodo-do-imovel'
@@ -121,10 +121,11 @@ async function waitForImages(el: HTMLElement): Promise<void> {
   )
 }
 
-export default function Relatorio() {
+function RelatorioContent() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+  const analiseId = useSearchParams().get('analise')
   const printRef = useRef<HTMLDivElement>(null)
 
   const [consulta, setConsulta] = useState<Consulta | null>(null)
@@ -138,6 +139,8 @@ export default function Relatorio() {
   const [referenciaTemporal, setReferenciaTemporal] = useState('')
   const [emissaoAtual, setEmissaoAtual] = useState<string | null>(null)
   const [erroEmissao, setErroEmissao] = useState<string | null>(null)
+  const [metodosSalvos,setMetodosSalvos] = useState<ExecucoesMetodos|null>(null)
+  const [planoAtual,setPlanoAtual] = useState<string|null>(null)
   const pendente = useRef<{ id: string; blob: Blob; nome: string } | null>(null)
   const [snapshots, setSnapshots] = useState<Array<{ tipo: string; scores: SnapshotScore[]; criado_em: string }>>([])
   // Nudge para marcar a consulta (entrega) como concluída após gerar o relatório.
@@ -179,7 +182,7 @@ export default function Relatorio() {
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
-    const p = (profile?.plano || '').toLowerCase().trim()
+    const p = (planoAtual ?? profile?.plano ?? '').toLowerCase().trim()
     if (p === 'pro' || p === 'profissional') return 'profissional' as const
     if (p === 'simples') return 'simples' as const
     return 'free' as const
@@ -191,18 +194,21 @@ export default function Relatorio() {
   useEffect(() => {
     let cancelado = false
     async function load() {
+      setLoading(true);setErroEmissao(null);pendente.current=null;setEmissaoAtual(null)
       try {
         const [res, hist] = await Promise.all([
-          fetch(`/api/consultas/relatorio/entrada?consulta_id=${id}`),
+          fetch(`/api/consultas/relatorio/entrada?consulta_id=${id}${analiseId?`&analise=${encodeURIComponent(analiseId)}`:''}`),
           fetch(`/api/consultas/relatorio?consulta_id=${id}&historico=1`),
         ])
         if (res.status === 401) { redirecionarParaLogin(); return }
         if (res.status === 404) { router.push('/consultas'); return }
         if (!res.ok || !hist.ok) throw new Error('Não foi possível carregar o relatório. Recarregue a página.')
-        const data = await res.json() as { fonte: FonteRelatorio; fonte_sha256: string; referencia_temporal: string }
+        const data = await res.json() as { fonte: FonteRelatorio; fonte_sha256: string; referencia_temporal: string; execucoes_metodos?: ExecucoesMetodos; plano_atual?: string }
         const versoes = (await hist.json()).emissoes as EmissaoRelatorio[]
         if (cancelado) return
         setProfile(data.fonte.perfil)
+        setMetodosSalvos(data.execucoes_metodos??null)
+        setPlanoAtual(data.plano_atual??null)
         setConsulta(data.fonte.consulta)
         setTextoIntroducao(introducaoDoMetodo(data.fonte.consulta.bagua_entrada?.escola))
         setSetores(data.fonte.setores)
@@ -220,7 +226,7 @@ export default function Relatorio() {
     }
     load()
     return () => { cancelado = true }
-  }, [id, router])
+  }, [id, router, analiseId])
 
   function scoreGeral() {
     const avaliados = setores.filter(s => s.score_percentual != null)
@@ -304,7 +310,7 @@ export default function Relatorio() {
     setTimeout(() => URL.revokeObjectURL(url), 30_000)
     pendente.current = null
     setErroEmissao(null)
-    if (consulta?.status !== 'finalizada') setShowConcluirNudge(true)
+    if (!analiseId && consulta?.status !== 'finalizada') setShowConcluirNudge(true)
     // O PDF já foi confirmado. Falha de atualização da lista não desfaz o sucesso.
     try {
       const hist = await fetch(`/api/consultas/relatorio?consulta_id=${id}&historico=1`)
@@ -339,6 +345,7 @@ export default function Relatorio() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: emissaoId, consulta_id: id, fonte_sha256: fonteHash, referencia_temporal: referenciaTemporal, versoes: VERSOES_RELATORIO,
+          analise_id: analiseId,
           fuso: Intl.DateTimeFormat().resolvedOptions().timeZone,
           edicao: { secoes: selectedSections, textos: { introducao: textoIntroducao, curas: textoCuras, chi: textoChi, conclusao: textoConclusao }, recomendacoes: recsAdicionais },
         }),
@@ -574,7 +581,7 @@ export default function Relatorio() {
     )
   }
 
-  const execucoesMetodos = executarMetodos(consulta)
+  const execucoesMetodos = metodosSalvos ?? executarMetodos(consulta)
   const geral = scoreGeral()
   const geralLevel = scoreLevelLabel(geral)
   const top3 = getTop3()
@@ -703,6 +710,7 @@ export default function Relatorio() {
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <fieldset disabled={downloading} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+      {analiseId&&<p role="status" className="no-print" style={{padding:16,background:'#EAF1EE',color:'#17372F'}}>Relatório da análise preservada {analiseId}. Os dados desta prévia pertencem à versão selecionada. <Link href={`/consultas/${id}/analises`}>Voltar ao histórico de análises</Link></p>}
       <div className="no-print barra-do-relatorio" style={{ background: '#0E1B2C' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => router.push(`/consultas/${id}`)}>☯</span>
@@ -766,6 +774,7 @@ export default function Relatorio() {
         <ul>{historico.map(v => <li key={v.id} style={{ marginTop: 10 }}>
           {v.estado === 'preparada' ? 'Preparação — salvamento não concluído' : v.estado === 'legado' ? 'Legado — entradas e versões desconhecidas' : `Emitido em ${new Date(v.concluido_em!).toLocaleString('pt-BR')}`}
           {v.revisao_de && <span> · Revisão de {v.revisao_de.slice(0, 8)}</span>}
+          {v.analise_id&&<Link href={`/consultas/${id}/analises`} style={{marginLeft:12}}>Análise vinculada {v.analise_id.slice(0,8)}</Link>}
           {v.estado !== 'preparada' && <button type="button" onClick={() => baixarVersaoSalva(v.id)} style={{ marginLeft: 12 }}>Baixar esta versão</button>}
         </li>)}</ul>
       </details>}
@@ -2212,6 +2221,7 @@ export default function Relatorio() {
           {' '} · Referência: {new Date(referenciaTemporal).toLocaleDateString('pt-BR')}
           <div style={{ marginTop: 6 }}>
             {emissaoAtual ? `Emissão ${emissaoAtual}` : 'Prévia — sem emissão salva'}
+            {analiseId&&` · Análise preservada ${analiseId}`}
             {` · Modelo ${VERSOES_RELATORIO.template} · Cálculos ${VERSOES_RELATORIO.motor}`}
           </div>
         </div>
@@ -2220,4 +2230,8 @@ export default function Relatorio() {
       </fieldset>
     </>
   )
+}
+
+export default function Relatorio() {
+  return <Suspense fallback={<p>Carregando relatório…</p>}><RelatorioContent /></Suspense>
 }

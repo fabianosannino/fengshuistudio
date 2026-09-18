@@ -3,10 +3,11 @@ import type { Consulta, Profile, SetorBagua } from './types'
 import type { SnapshotScore } from './reavaliacao'
 import { lerOrientacao, type Orientacao } from './orientacao'
 import { executarMetodos, type ExecucoesMetodos } from './execucao-metodos'
+import type { AnaliseSalva } from './historico-analises'
 
 /** D0: resultados e limites por método preservados nas novas emissões. */
 export const VERSOES_RELATORIO = {
-  entrada: '4', motor: 'fengshui-2026.09-saldo-v2', template: 'relatorio-2.5.0',
+  entrada: '5', motor: 'fengshui-2026.09-historico-1', template: 'relatorio-2.6.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.
@@ -15,7 +16,7 @@ export const AVISO_PDF_EXCESSIVO = 'O PDF ultrapassou 4 MB. Escolha menos seçõ
 export const MAX_ENTRADA_RELATORIO = 2 * 1024 * 1024
 export const BUCKET_RELATORIO = 'relatorios'
 export const TABELA_EMISSOES = 'relatorio_emissoes'
-export const CAMPOS_HISTORICO_RELATORIO = 'id,consulta_id,estado,revisao_de,criado_em,concluido_em,versao_motor,versao_template,entrada_sha256,pdf_sha256'
+export const CAMPOS_HISTORICO_RELATORIO = 'id,consulta_id,estado,revisao_de,analise_id,criado_em,concluido_em,versao_motor,versao_template,entrada_sha256,pdf_sha256'
 export const PRAZO_PREPARACAO_MS = 15 * 60 * 1000
 export const ESPERA_EXCLUSAO_PREPARADA_MS = 30 * 60 * 1000
 
@@ -41,12 +42,14 @@ export interface EntradaRelatorio {
   variante: 'btb-porta' | 'ba-zhai-assento-octantes' | 'nao_informada'
   orientacao: Orientacao
   execucoes_metodos: ExecucoesMetodos
+  analise: { id: string; fonte_sha256: string; versao_motor: string } | null
 }
 export interface EmissaoRelatorio {
   id: string
   consulta_id: string
   estado: 'preparada' | 'concluida' | 'legado'
   revisao_de: string | null
+  analise_id?: string | null
   criado_em: string
   concluido_em: string | null
   versao_motor: string | null
@@ -96,14 +99,15 @@ export function referenciaValida(iso: unknown, fuso: unknown, agora: Date): bool
   try { new Intl.DateTimeFormat('pt-BR', { timeZone: fuso }); return true } catch { return false }
 }
 
-export function criarEntradaRelatorio(fonte: FonteRelatorio, edicao: EdicaoRelatorio, referencia: string, fuso: string): EntradaRelatorio {
+export function criarEntradaRelatorio(fonte: FonteRelatorio, edicao: EdicaoRelatorio, referencia: string, fuso: string, analise?: AnaliseSalva | null): EntradaRelatorio {
   const bagua = fonte.consulta.bagua_entrada
   return {
     versoes: { ...VERSOES_RELATORIO }, fonte, edicao, referencia_temporal: referencia, fuso,
     metodo: bagua?.escola || 'nao_informado',
     variante: bagua?.escola === 'bussola' ? 'ba-zhai-assento-octantes' : bagua?.escola === 'btb' ? 'btb-porta' : 'nao_informada',
     orientacao: lerOrientacao(bagua),
-    execucoes_metodos: executarMetodos(fonte.consulta),
+    execucoes_metodos: analise ? structuredClone(analise.resultado.metodos) : executarMetodos(fonte.consulta),
+    analise: analise ? {id:analise.id,fonte_sha256:analise.fonte_sha256,versao_motor:analise.versao_motor} : null,
   }
 }
 

@@ -234,6 +234,54 @@ try {
   ok((await request(`consultas?id=eq.${actor(1)}`,1,{method:'PATCH',body:{mobiliario:{versao:null,revisao:1,itens:[],referencia_planta:'s'}}})).status,400,'mobiliario CHECK rejects null version')
   ok(sql(`begin; delete from consultas where id='${actor(1)}'; select count(*) from consultas where id='${actor(1)}'; rollback;`),'0','mobiliario deleted with consultation, no independent orphan')
 
+  // D1: fonte consistente, isolamento, idempotência, concorrência e cascata.
+  sql(`alter table consultas add column if not exists cliente_id uuid;
+    alter table clientes add column if not exists data_nascimento date;
+    update consultas set cliente_id=id;
+    update clientes set data_nascimento='1990-06-01';
+    create table public.exclusoes_de_conta(user_id uuid primary key);
+    grant select on public.exclusoes_de_conta to service_role;`)
+  sql(source('supabase/migrations/20260918181948_analises_independentes.sql'))
+  const fonteArgs={p_consulta:actor(1),p_consultor:actor(1)}
+  await eventually(async()=>{const r=await request('rpc/ler_fonte_analise',1,{method:'POST',body:fonteArgs});return r.status===200&&r.data?.consulta?.id===actor(1)})
+  const fonteAnalise=(await request('rpc/ler_fonte_analise',1,{method:'POST',body:fonteArgs})).data
+  ok((await request('rpc/ler_fonte_analise',2,{method:'POST',body:fonteArgs})).data,null,'D1 no cross-owner source even with forged owner argument')
+  denied(await request('rpc/ler_fonte_analise',1,{role:'anon',method:'POST',body:fonteArgs}),'D1 anon cannot read source')
+  ok(Object.hasOwn(fonteAnalise.perfil,'stripe_customer_id'),false,'D1 source excludes privileged future fields')
+  ok(fonteAnalise.consulta.clientes.data_nascimento,'1990-06-01','D1 source includes owned personal calculation data')
+  sql(`update consultas set bagua_entrada=jsonb_set(bagua_entrada,'{escola}','"btb"') where id='${actor(1)}';`)
+  const fonteBtb=(await request('rpc/ler_fonte_analise',1,{method:'POST',body:fonteArgs})).data
+  const registro={p_id:actor(31),p_consulta:actor(1),p_consultor:actor(1),p_hash:'a'.repeat(64),p_fonte:fonteBtb,p_resultado:{setores:[]},p_motor:'fixture-1'}
+  denied(await request('rpc/registrar_analise',1,{method:'POST',body:registro}),'D1 authenticated cannot forge computed results')
+  for(const method of ['POST','PATCH','DELETE'])denied(await request('analises_execucoes',1,{method,body:method==='DELETE'?undefined:{id:actor(33)}}),`D1 client cannot ${method} history`)
+  const repetidos=await Promise.all([1,2].map(()=>request('rpc/registrar_analise',1,{role:'service_role',method:'POST',body:registro})))
+  ok(repetidos.map(r=>r.data),[actor(31),actor(31)],'D1 concurrent retries resolve same ID')
+  ok(sql('select count(*) from analises_execucoes'),'1','D1 retry has one row')
+  ok((await request('analises_execucoes',2)).data,[],'D1 other owner cannot read saved source')
+  denied(await request('analises_execucoes',1,{role:'anon'}),'D1 anon cannot read history')
+  denied(await request('analises_execucoes',1,{role:'service_role',method:'PATCH',body:{resultado:{forged:true}}}),'D1 service has no UPDATE privilege')
+  sql('grant update on analises_execucoes to service_role;')
+  denied(await request('analises_execucoes',1,{role:'service_role',method:'PATCH',body:{resultado:{forged:true}}}),'D1 immutable trigger blocks accidental privileged rewrite')
+  sql('revoke update on analises_execucoes from service_role;')
+  ok((await request('rpc/registrar_analise',1,{role:'service_role',method:'POST',body:{...registro,p_hash:'b'.repeat(64)}})).status,409,'D1 same ID different payload conflicts')
+  sql(`update clientes set data_nascimento='1991-06-01' where id='${actor(1)}';`)
+  ok((await request('rpc/registrar_analise',1,{role:'service_role',method:'POST',body:{...registro,p_id:actor(32)}})).status,409,'D1 concurrent personal input change invalidates source')
+  ok((await request('rpc/registrar_analise',1,{role:'service_role',method:'POST',body:registro})).data,actor(31),'D1 retry still works after source changes')
+  sql(`update consultas set bagua_entrada=jsonb_set(bagua_entrada,'{escola}','"bussola"') where id='${actor(1)}';`)
+  const fonteBussola=(await request('rpc/ler_fonte_analise',1,{method:'POST',body:fonteArgs})).data
+  ok((await request('rpc/registrar_analise',1,{role:'service_role',method:'POST',body:{...registro,p_id:actor(32),p_hash:'b'.repeat(64),p_fonte:fonteBussola}})).data,actor(32),'D1 second method gets independent execution')
+  ok((await request(`analises_execucoes?id=eq.${actor(31)}`,1)).data[0].fonte,fonteBtb,'D1 original source stays byte-logically equal')
+  ok((await request('relatorio_emissoes',1,{role:'service_role',method:'POST',body:{...report(2),id:actor(34),analise_id:actor(31),pdf_path:`${actor(2)}/emissoes/${actor(34)}.pdf`}})).status,409,'D1 report cannot link analysis of another consultation')
+  const reportAnalise={...report(1),id:actor(36),analise_id:actor(31),pdf_path:`${actor(1)}/emissoes/${actor(36)}.pdf`}
+  ok((await request('relatorio_emissoes',1,{role:'service_role',method:'POST',body:reportAnalise})).status,201,'D1 report links own analysis')
+  ok((await request(`analises_execucoes?id=eq.${actor(31)}`,1,{role:'service_role',method:'DELETE'})).status,409,'D1 linked report prevents deleting its analysis')
+  ok((await request('rpc/excluir_emissoes_relatorio',1,{role:'service_role',method:'POST',body:{p_consultor:actor(1),p_ids:[actor(36)]}})).status,204,'D1 report retention cleanup permits later consultation deletion')
+  sql(`insert into exclusoes_de_conta values('${actor(1)}');`)
+  ok((await request('rpc/registrar_analise',1,{role:'service_role',method:'POST',body:{...registro,p_id:actor(35)}})).status,409,'D1 deletion intent blocks new snapshots')
+  sql(`delete from exclusoes_de_conta;`)
+  ok(sql(`begin; delete from consultas where id='${actor(1)}'; select count(*) from analises_execucoes; rollback;`),'0','D1 history removed with consultation, no orphan')
+  for(const role of ['anon','authenticated'])ok(sql(`select has_table_privilege('${role}','analises_execucoes','TRUNCATE') or has_table_privilege('${role}','analises_execucoes','MAINTAIN')`),'f',`D1 ${role} cannot bypass immutability`)
+
   // Restore rehearsal of this disposable schema/data, never a production backup.
   const dump = execFileSync('docker',['exec',db,'pg_dump','-U','postgres','--no-owner'],{encoding:'utf8'})
   sql('create database restore_check;')
