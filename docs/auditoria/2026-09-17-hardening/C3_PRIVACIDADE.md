@@ -178,3 +178,11 @@ antes do fetch. Nenhuma migration necessária.
 Pendências mantidas explícitas: parser/processador de documentos com limites
 de páginas/descompressão, antivírus/quarentena quando aplicável e upload de
 arquivos maiores com fluxo próprio. Limitar bytes não resolve esses requisitos.
+
+O primeiro CI deste pacote (35332809799) revelou uma corrida no runner de
+checkout: `pg_isready` via socket aceitou o PostgreSQL temporário do initdb,
+que parou antes da criação do schema. A imagem fixada inicia esse servidor
+com `listen_addresses=''`. Os quatro runners financeiros ainda afetados
+passaram a esperar TCP em 127.0.0.1, como os demais já faziam. Reexecução local
+aprovou 196 verificações PostgreSQL (46 + 48 + 61 + 41), sem chamadas Stripe.
+Nenhuma asserção de autorização, concorrência ou atomicidade foi relaxada.

@@ -31,7 +31,7 @@ try {
   docker('run','-d','--name',container,'--network','none','-e','POSTGRES_PASSWORD=local-test-only',image)
   let ready=false
   for(let i=0;i<60;i++) {
-    try {ready=docker('exec',container,'pg_isready','-U','postgres').includes('accepting')} catch { /* Startup. */ }
+    try {ready=docker('exec',container,'pg_isready','-h','127.0.0.1','-U','postgres').includes('accepting')} catch { /* Startup. */ }
     if(ready)break
     await new Promise(r=>setTimeout(r,500))
   }
