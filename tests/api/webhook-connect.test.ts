@@ -18,7 +18,7 @@ vi.mock('../../src/lib/stripe', () => ({
 
 interface Q {
   table: string
-  op: 'select' | 'insert' | 'update'
+  op: 'select' | 'insert' | 'update' | 'rpc'
   values?: Record<string, unknown>
   filters: Array<[string, unknown]>
   cols?: string
@@ -46,7 +46,13 @@ function makeSupabaseMock(handler: Handler) {
     })
     return b
   }
-  return { client: { from }, queries }
+  const rpc = async (name: string, values: Record<string, unknown>) => {
+    const q: Q = { table: `rpc:${name}`, op: 'rpc', values, filters: [] }
+    queries.push(q)
+    const data = name === 'reivindicar_evento_stripe' ? { situacao: 'reivindicado', token: 'attempt-1' } : true
+    return { data, error: null, ...handler(q) }
+  }
+  return { client: { from, rpc }, queries }
 }
 
 let supabaseMock = makeSupabaseMock(() => ({}))
@@ -86,6 +92,30 @@ beforeEach(() => {
 })
 
 describe('POST /api/stripe/webhooks', () => {
+  it.each(['ocupado', 'sem_garantia'])('recusa processamento quando controle retorna %s', async situacao => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:reivindicar_evento_stripe'
+      ? { data: situacao === 'ocupado' ? { situacao } : null, error: situacao === 'sem_garantia' ? { message: 'falha' } : null } : padrao(q))
+    constructEvent.mockReturnValue(evento('checkout.session.completed', { id: 'cs_1', payment_status: 'paid' }))
+    const res = await POST(req())
+    expect(res.status).toBe(503)
+    expect(res.headers.get('Retry-After')).toBe('60')
+    expect(eventosGravados()).toHaveLength(0)
+  })
+  it('não confirma ao Stripe se a conclusão não foi persistida', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true
+      ? { data: false } : padrao(q))
+    constructEvent.mockReturnValue(evento('account.updated', { id: 'acct_123' }))
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries).toEqual(expect.arrayContaining([expect.objectContaining({
+      table: 'rpc:finalizar_evento_stripe', values: { p_event_id: 'evt_1', p_token: 'attempt-1', p_sucesso: false },
+    })]))
+  })
+  it('evento concluído é descartado sem efeitos repetidos', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:reivindicar_evento_stripe' ? { data: { situacao: 'repetido' } } : padrao(q))
+    constructEvent.mockReturnValue(evento('checkout.session.completed', { id: 'cs_1', payment_status: 'paid' }))
+    expect(await (await POST(req())).json()).toEqual({ received: true, repetido: true })
+    expect(eventosGravados()).toHaveLength(0)
+  })
   it('sem assinatura válida nada é processado', async () => {
     const res = await POST(req(false))
     expect(res.status).toBe(400)
@@ -177,7 +207,7 @@ describe('POST /api/stripe/webhooks', () => {
   })
 
   it('sessão paga sem pedido correspondente não inventa pedido', async () => {
-    supabaseMock = makeSupabaseMock(() => ({ data: null }))
+    supabaseMock = makeSupabaseMock(q => q.op === 'rpc' ? {} : { data: null })
     constructEvent.mockReturnValue(evento('checkout.session.completed', {
       id: 'cs_desconhecida', payment_status: 'paid', metadata: {},
     }))
@@ -208,7 +238,7 @@ describe('POST /api/stripe/webhooks', () => {
   it('cobrança que não é da loja não vira pedido órfão', async () => {
     // Reembolso de assinatura chega por este mesmo endpoint. Não é erro — é
     // evento que não pertence a esta tabela.
-    supabaseMock = makeSupabaseMock(() => ({ data: null }))
+    supabaseMock = makeSupabaseMock(q => q.op === 'rpc' ? {} : { data: null })
     constructEvent.mockReturnValue(evento('charge.refunded', {
       id: 'ch_9', payment_intent: 'pi_de_assinatura',
     }))

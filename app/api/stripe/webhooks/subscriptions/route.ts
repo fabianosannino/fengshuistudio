@@ -56,6 +56,7 @@ import { origemDaAplicacao } from '../../../../../src/lib/auth-rotas'
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
 const ROUTE = '/api/stripe/webhooks/subscriptions'
+export const maxDuration = 60
 
 /**
  * Executa uma escrita no Supabase e loga falha em vez de engolir o erro.
@@ -85,8 +86,8 @@ export async function POST(request: Request) {
 
   try {
     event = stripeClient.webhooks.constructEvent(body, sig, webhookSecret)
-  } catch (err) {
-    logger.error('Webhook signature verification failed', { route: '/api/stripe/webhooks/subscriptions', error: String(err) })
+  } catch {
+    logger.error('Webhook signature verification failed', { route: ROUTE })
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -102,23 +103,24 @@ export async function POST(request: Request) {
     id: event.id, type: event.type, created: event.created, endpoint: ROUTE, objetoId,
   })
 
-  if (reivindicacao.situacao === 'sem_garantia') return NextResponse.json({ error: 'Controle de eventos indisponível' }, { status: 503 })
   if (reivindicacao.situacao === 'repetido') {
     logger.info('Evento repetido — descartado', { route: ROUTE, eventId: event.id, tipo: event.type })
     return NextResponse.json({ received: true, repetido: true })
   }
-
-  // Entrega fora de ordem: aplicar um evento antigo sobre um estado mais novo
-  // faria a assinatura voltar a um passado que já não é verdade.
-  if (objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) {
-    logger.warn('Evento fora de ordem — descartado', {
-      route: ROUTE, eventId: event.id, tipo: event.type, objetoId,
-    })
-    await marcarProcessado(supabase, event.id, ROUTE)
-    return NextResponse.json({ received: true, foraDeOrdem: true })
+  if (!('token' in reivindicacao)) {
+    return NextResponse.json({ error: 'Processamento indisponível. Aguarde nova tentativa.' }, { status: 503, headers: { 'Retry-After': '60' } })
   }
 
   try {
+    // A read error stays retryable; it cannot silently authorize an old event.
+    if (objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) {
+      logger.warn('Evento fora de ordem — descartado', {
+        route: ROUTE, eventId: event.id, tipo: event.type, objetoId,
+      })
+      await marcarProcessado(supabase, event.id, ROUTE, reivindicacao.token)
+      return NextResponse.json({ received: true, foraDeOrdem: true })
+    }
+
     switch (event.type) {
       case 'customer.subscription.created': {
         const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id) as Stripe.Subscription & {
@@ -349,13 +351,14 @@ export async function POST(request: Request) {
         }
 
         // Create notification
-        await logWrite('insert-refund-notification', supabase.from('payment_notifications').insert({
+        await logWrite('insert-refund-notification', supabase.from('payment_notifications').upsert({
           user_id: profile.id,
+          referencia_evento: event.id,
           type: 'refund_processed',
           channel: 'in_app',
           sent_at: new Date().toISOString(),
           content: `Reembolso de ${((charge.amount_refunded || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} processado com sucesso.`,
-        }))
+        }, { onConflict: 'user_id,type,referencia_evento', ignoreDuplicates: true }))
 
         break
       }
@@ -373,13 +376,13 @@ export async function POST(request: Request) {
         logger.info('Unhandled subscription event', { route: ROUTE, type: event.type })
     }
 
-    await marcarProcessado(supabase, event.id, ROUTE)
+    await marcarProcessado(supabase, event.id, ROUTE, reivindicacao.token)
     return NextResponse.json({ received: true })
-  } catch (err) {
+  } catch {
     // A reivindicação fica sem `processado_em`, então a reentrega do Stripe
     // refaz em vez de descartar. O motivo fica na própria linha.
-    await marcarFalha(supabase, event.id, ROUTE, String(err))
-    logger.error('Subscription webhook handler error', { route: ROUTE, error: String(err) })
+    await marcarFalha(supabase, event.id, ROUTE, reivindicacao.token)
+    logger.error('Subscription webhook handler error', { route: ROUTE, eventId: event.id })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
@@ -451,13 +454,14 @@ async function registrarDisputa(supabase: SupabaseClient, event: Stripe.Event): 
   }, { onConflict: 'id' }))
 
   if (perfil && disputa.status === 'lost') {
-    await logWrite('insert-disputa-notification', supabase.from('payment_notifications').insert({
+    await logWrite('insert-disputa-notification', supabase.from('payment_notifications').upsert({
       user_id: perfil.id,
+      referencia_evento: disputa.id,
       type: 'dispute_lost',
       channel: 'in_app',
       sent_at: new Date().toISOString(),
       content: `Uma contestação de ${((disputa.amount || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} foi decidida em favor do portador do cartão.`,
-    }))
+    }, { onConflict: 'user_id,type,referencia_evento', ignoreDuplicates: true }))
   }
 }
 
@@ -545,11 +549,13 @@ async function findProfileByCustomerId(
   supabase: SupabaseClient,
   customerId: string
 ) {
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('id')
     .eq('stripe_customer_id', customerId)
-    .single()
+    .maybeSingle()
+
+  if (error) throw new Error('Perfil da cobrança indisponível')
 
   if (!profile) {
     logger.warn('No profile found for Stripe customer', { customerId })

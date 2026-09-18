@@ -1,131 +1,65 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  reivindicarEvento, houveEventoMaisNovo, objetoDoEvento,
-} from '../eventos-stripe'
-
-vi.mock('../logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
-
-const EVENTO = {
-  id: 'evt_1',
-  type: 'customer.subscription.updated',
-  created: 1_786_556_000,
-  endpoint: '/api/stripe/webhooks/subscriptions',
-  objetoId: 'sub_1',
+import { reivindicarEvento, marcarProcessado, marcarFalha, houveEventoMaisNovo, objetoDoEvento } from '../eventos-stripe'
+vi.mock('../logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }))
+const evento = { id: 'evt_1', type: 'customer.subscription.updated', created: 1_786_556_000, endpoint: '/test', objetoId: 'sub_1' }
+function client(data: unknown, error: unknown = null) {
+  const rpc = vi.fn().mockResolvedValue({ data, error })
+  return { rpc, supabase: { rpc } as unknown as SupabaseClient }
 }
-
-/** Duplo do client: só o que estas funções usam. */
-function supabaseFalso(opcoes: {
-  erroDoInsert?: { code: string; message: string } | null
-  linhaExistente?: { processado_em: string | null } | null
-  erroDaLeitura?: { message: string } | null
-  maisNovos?: { event_id: string }[]
-  erroDaOrdem?: { message: string } | null
-}) {
-  return {
-    from() {
-      return {
-        insert: async () => ({ error: opcoes.erroDoInsert ?? null }),
-        select() {
-          const encadeavel = {
-            eq: () => encadeavel,
-            not: () => encadeavel,
-            gt: () => encadeavel,
-            limit: async () => ({ data: opcoes.maisNovos ?? [], error: opcoes.erroDaOrdem ?? null }),
-            single: async () => ({
-              data: opcoes.linhaExistente ?? null,
-              error: opcoes.erroDaLeitura ?? null,
-            }),
-          }
-          return encadeavel
-        },
-      }
-    },
-  } as unknown as SupabaseClient
-}
-
-describe('reivindicarEvento', () => {
-  it('evento inédito é reivindicado', async () => {
-    const r = await reivindicarEvento(supabaseFalso({}), EVENTO)
-    expect(r.situacao).toBe('reivindicado')
+describe('reivindicação durável de eventos', () => {
+  it.each(['reivindicado', 'retomado'])('devolve o token para %s', async situacao => {
+    const c = client({ situacao, token: 'token-1' })
+    expect(await reivindicarEvento(c.supabase, evento)).toEqual({ situacao, token: 'token-1' })
+    expect(c.rpc).toHaveBeenCalledWith('reivindicar_evento_stripe', expect.objectContaining({ p_event_id: evento.id, p_objeto_id: evento.objetoId }))
   })
-
-  it('evento já concluído é repetido — descartar', async () => {
-    // O Stripe reentrega quando o endpoint demora ou responde erro. Sem isto,
-    // um `charge.refunded` reentregue estornaria a comissão duas vezes.
-    const r = await reivindicarEvento(supabaseFalso({
-      erroDoInsert: { code: '23505', message: 'duplicate key' },
-      linhaExistente: { processado_em: '2026-08-12T20:00:00Z' },
-    }), EVENTO)
-    expect(r.situacao).toBe('repetido')
+  it.each(['ocupado', 'repetido'])('não fornece direito de processar para %s', async situacao => {
+    expect(await reivindicarEvento(client({ situacao }).supabase, evento)).toEqual({ situacao })
   })
-
-  it('reivindicação sem conclusão é retomada, não descartada', async () => {
-    // Uma tentativa anterior morreu no meio. Descartar aqui perderia o evento
-    // para sempre — é por isso que `processado_em` é data, não booleano.
-    const r = await reivindicarEvento(supabaseFalso({
-      erroDoInsert: { code: '23505', message: 'duplicate key' },
-      linhaExistente: { processado_em: null },
-    }), EVENTO)
-    expect(r.situacao).toBe('retomado')
+  it.each([null, {}, { situacao: 'retomado' }, { situacao: 'surpresa', token: 'x' }])('falha fechada para resposta inválida %j', async data => {
+    expect(await reivindicarEvento(client(data).supabase, evento)).toEqual({ situacao: 'sem_garantia' })
   })
-
-  it('falha de banco não bloqueia o evento — segue sem garantia', async () => {
-    // Recusar por causa da tabela de controle trocaria um risco pequeno
-    // (processar duas vezes) por um grande (perder o evento).
-    const r = await reivindicarEvento(supabaseFalso({
-      erroDoInsert: { code: '08006', message: 'connection failure' },
-    }), EVENTO)
-    expect(r.situacao).toBe('sem_garantia')
+  it('não processa se o banco está indisponível', async () => {
+    expect(await reivindicarEvento(client(null, { code: '08006' }).supabase, evento)).toEqual({ situacao: 'sem_garantia' })
   })
-
-  it('conflito que não dá para reler também segue', async () => {
-    const r = await reivindicarEvento(supabaseFalso({
-      erroDoInsert: { code: '23505', message: 'duplicate key' },
-      erroDaLeitura: { message: 'timeout' },
-    }), EVENTO)
-    expect(r.situacao).toBe('sem_garantia')
+  it('timestamp inválido não é substituído por agora', async () => {
+    const c = client({ situacao: 'reivindicado', token: 'x' })
+    expect(await reivindicarEvento(c.supabase, { ...evento, created: NaN })).toEqual({ situacao: 'sem_garantia' })
+    expect(c.rpc).not.toHaveBeenCalled()
+  })
+  it.each([false, null])('conclusão rejeitada não confirma sucesso (%s)', async data => {
+    await expect(marcarProcessado(client(data).supabase, 'evt_1', '/test', 'token-1')).rejects.toThrow()
+  })
+  it('erro de banco não confirma conclusão', async () => {
+    await expect(marcarProcessado(client(true, { code: '08006' }).supabase, 'evt_1', '/test', 'token-1')).rejects.toThrow()
+  })
+  it('conclusão e falha carregam o token da tentativa', async () => {
+    const c = client(true)
+    await marcarProcessado(c.supabase, 'evt_1', '/test', 'token-1')
+    await marcarFalha(c.supabase, 'evt_1', '/test', 'token-1')
+    expect(c.rpc).toHaveBeenNthCalledWith(1, 'finalizar_evento_stripe', { p_event_id: 'evt_1', p_token: 'token-1', p_sucesso: true })
+    expect(c.rpc).toHaveBeenNthCalledWith(2, 'finalizar_evento_stripe', { p_event_id: 'evt_1', p_token: 'token-1', p_sucesso: false })
+  })
+  it('falha ao liberar não esconde a resposta de erro do handler', async () => {
+    await expect(marcarFalha(client(null, {}).supabase, 'evt_1', '/test', 'token-1')).resolves.toBeUndefined()
   })
 })
-
-describe('houveEventoMaisNovo', () => {
-  it('acusa quando já houve evento posterior sobre o mesmo objeto', async () => {
-    // Sem isto, um `updated` de dez minutos atrás reentregue agora
-    // sobrescreveria o cancelamento que veio depois.
-    const r = await houveEventoMaisNovo(
-      supabaseFalso({ maisNovos: [{ event_id: 'evt_2' }] }), 'sub_1', EVENTO.created, 'evt_1')
-    expect(r).toBe(true)
+describe('ordem de eventos', () => {
+  function ordem(data: unknown, error: unknown = null) {
+    const b = { select: () => b, eq: () => b, not: () => b, gt: () => b, limit: async () => ({ data, error }) }
+    return { from: () => b } as unknown as SupabaseClient
+  }
+  it('identifica um evento mais recente', async () => {
+    expect(await houveEventoMaisNovo(ordem([{ event_id: 'evt_2' }]), 'sub_1', evento.created, evento.id)).toBe(true)
+    expect(await houveEventoMaisNovo(ordem([]), 'sub_1', evento.created, evento.id)).toBe(false)
   })
-
-  it('nada posterior significa em ordem', async () => {
-    const r = await houveEventoMaisNovo(
-      supabaseFalso({ maisNovos: [] }), 'sub_1', EVENTO.created, 'evt_1')
-    expect(r).toBe(false)
-  })
-
-  it('falha de consulta não descarta o evento', async () => {
-    // Entre não aplicar um evento legítimo e aplicar um antigo, o primeiro
-    // erro é o mais caro.
-    const r = await houveEventoMaisNovo(
-      supabaseFalso({ erroDaOrdem: { message: 'timeout' } }), 'sub_1', EVENTO.created, 'evt_1')
-    expect(r).toBe(false)
+  it('indisponibilidade não significa ordem válida', async () => {
+    await expect(houveEventoMaisNovo(ordem(null, {}), 'sub_1', evento.created, evento.id)).rejects.toThrow()
   })
 })
-
-describe('objetoDoEvento', () => {
-  it('extrai o id do objeto', () => {
+describe('objeto do evento', () => {
+  it('ausência e tipo inválido não inventam identidade', () => {
+    for (const object of [null, {}, { id: '' }, { id: 42 }]) expect(objetoDoEvento({ data: { object } })).toBeNull()
     expect(objetoDoEvento({ data: { object: { id: 'sub_123' } } })).toBe('sub_123')
-  })
-
-  it('objeto sem id devolve null — ausência não é ordem', () => {
-    for (const evento of [
-      {}, { data: {} }, { data: { object: null } },
-      { data: { object: {} } }, { data: { object: { id: '' } } },
-      { data: { object: { id: 42 } } },
-    ]) {
-      expect(objetoDoEvento(evento as { data?: { object?: unknown } })).toBeNull()
-    }
   })
 })

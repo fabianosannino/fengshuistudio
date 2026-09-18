@@ -42,6 +42,7 @@ import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 const ROUTE = '/api/stripe/webhooks'
+export const maxDuration = 60
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -55,21 +56,15 @@ export async function POST(request: Request) {
 
   try {
     event = stripeClient.webhooks.constructEvent(body, sig, webhookSecret)
-  } catch (err) {
-    logger.error('Webhook signature verification failed', { route: '/api/stripe/webhooks', error: String(err) })
+  } catch {
+    logger.error('Webhook signature verification failed', { route: ROUTE })
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
   const supabase = createSupabaseAdminClient()
 
-  // Mesma garantia do webhook de assinaturas: um evento processado uma vez só.
-  //
-  // Continua sem checagem de ordem, e agora por dois motivos diferentes:
-  // `account.updated` descreve o estado atual da conta, então reaplicar um
-  // estado antigo é corrigido pela entrega seguinte; e os eventos de pedido
-  // não sofrem com ordem por construção — o estado sai da precedência entre os
-  // fatos, não de quem chegou por último (`src/lib/pedidos-da-loja.ts`).
-  // Duplicata é barrada pelo índice de idempotência da própria tabela.
+  // Active retries wait. Effects retain their own idempotency keys; a claim
+  // does not make the full handler one transaction.
   const reivindicacao = await reivindicarEvento(supabase, {
     id: event.id,
     type: event.type,
@@ -81,6 +76,9 @@ export async function POST(request: Request) {
   if (reivindicacao.situacao === 'repetido') {
     logger.info('Evento repetido — descartado', { route: ROUTE, eventId: event.id, tipo: event.type })
     return NextResponse.json({ received: true, repetido: true })
+  }
+  if (!('token' in reivindicacao)) {
+    return NextResponse.json({ error: 'Processamento indisponível. Aguarde nova tentativa.' }, { status: 503, headers: { 'Retry-After': '60' } })
   }
 
   try {
@@ -215,11 +213,11 @@ export async function POST(request: Request) {
         logger.info('Unhandled event type', { route: '/api/stripe/webhooks', type: event.type })
     }
 
-    await marcarProcessado(supabase, event.id, ROUTE)
+    await marcarProcessado(supabase, event.id, ROUTE, reivindicacao.token)
     return NextResponse.json({ received: true })
-  } catch (err) {
-    await marcarFalha(supabase, event.id, ROUTE, String(err))
-    logger.error('Stripe webhook error', { route: ROUTE, error: String(err) })
+  } catch {
+    await marcarFalha(supabase, event.id, ROUTE, reivindicacao.token)
+    logger.error('Stripe webhook error', { route: ROUTE, eventId: event.id })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

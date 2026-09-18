@@ -9,7 +9,8 @@
       "codex/cobranca-b2": false,
       "codex/cotas-b2": false,
       "codex/retries-cobranca-b2": false,
-      "codex/comunicacao-b3": false
+      "codex/comunicacao-b3": false,
+      "codex/eventos-cobranca-b2": false
     }
   },
   "crons": [

@@ -114,3 +114,23 @@ Readback: 13 clientes, 17 consultas, uma concessão e seis chaves disponíveis;
 RPC de ativação autorizada somente para `service_role`, negada a `anon` e
 `authenticated`. Nenhuma chave de produção foi ativada.
 Vercel `dpl_B6vq9kXs8Po34N84GayY6ntLLcPj` READY no mesmo SHA.
+
+## Reserva de webhooks — quarto pacote
+
+RPC com token e prazo impede admissão simultânea da mesma entrega. Ambos os
+endpoints falham em 503 se não conseguirem reservar; só confirmam sucesso
+após persistir conclusão. Tentativa antiga não libera nem conclui uma nova.
+23 verificações PostgreSQL cobrem concorrência, retomada, ACL e notificações.
+Inventário real anterior à migração: 24 eventos, zero pendentes e uma
+notificação. RLS ativo em ambas as tabelas. O pacote não é uma transação única
+dos efeitos do webhook; limites e continuação estão no ADR 0042.
+Verificação local do quarto pacote: 1.431 testes em 110 arquivos, typecheck,
+build e lint aprovados (zero erros, 105 avisos existentes).
+
+O primeiro CI do quarto pacote identificou uma corrida no relógio da projeção
+de concessões, descrita no ADR 0042. A ordem foi reproduzida de forma controlada
+e corrigida numa migration adicional; runner agora tem 34 verificações. Não
+houve merge com check vermelho. Leitura agregada de produção encontrou um
+perfil Pro sem concessão vigente e outro Pro coerente; não foi feito recálculo
+em massa nem retirada de direito legado. A origem do perfil divergente precisa
+ser reconciliada antes de abandonar a projeção nas leituras de autorização.

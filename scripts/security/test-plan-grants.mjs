@@ -19,6 +19,27 @@ const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`
 const grant = (n,plan,origin,ref) => `select public.alterar_concessao_de_plano('${id(n)}','conceder','${origin}','${ref}','${plan}')`
 const activate = (n,key='SYNTHETIC',plan='profissional') => `select public.ativar_chave_de_plano('${id(n)}','${key}','${plan}')`
 const service = statement => `set role service_role; ${statement};`
+// Begin the lower-grant transaction first, but commit the higher grant before
+// letting it acquire the profile lock. No scheduler-dependent race or sleeps.
+async function reverseTransactionOrder(n) {
+  const child = spawn('docker',args,{stdio:['pipe','pipe','pipe']})
+  let out='',err=''
+  child.stdout.on('data',c=>{out+=c}); child.stderr.on('data',c=>{err+=c})
+  const started = new Promise((resolve,reject) => {
+    child.stdout.once('data',resolve); child.once('error',reject)
+  })
+  const completed = new Promise((resolve,reject) => {
+    child.once('error',reject)
+    child.once('close',code=>code===0?resolve(out):reject(new Error(err)))
+  })
+  child.stdin.write('set role service_role; begin; select now();\n')
+  await started
+  try {
+    sql(service(grant(n,'profissional','cortesia',`clock_high_${n}`)))
+    child.stdin.end(`${grant(n,'simples','assinatura',`clock_low_${n}`)}; commit;\n`)
+  } catch (error) { child.stdin.end('rollback;\n'); await completed; throw error }
+  await completed
+}
 let checks=0
 const equal=(a,b,m)=>{assert.deepEqual(a,b,m);checks++}
 const rejects=(s,m)=>{assert.throws(()=>sql(s),e=>e.stderr?.includes(m));checks++}
@@ -48,6 +69,13 @@ try {
     update activation_keys set duration_months=1 where key='LIMITED';
     update activation_keys set discount_percent=50 where key='DISCOUNT';`)
   sql(readFileSync(new URL('../../supabase/migrations/20260918043003_durable_billing_coordination.sql',import.meta.url),'utf8'))
+  await reverseTransactionOrder(7)
+  equal(sql(`select plano from profiles where id='${id(7)}'`),'starter','baseline: transaction clock excludes intervening higher grant')
+  sql(readFileSync(new URL('../../supabase/migrations/20260918052201_grant_projection_clock.sql',import.meta.url),'utf8'))
+  await reverseTransactionOrder(8)
+  equal(sql(`select plano from profiles where id='${id(8)}'`),'pro','current clock includes intervening higher grant')
+  sql(service(`select public.recalcular_plano_do_perfil('${id(7)}')`))
+  equal(sql(`select plano from profiles where id='${id(7)}'`),'pro','fresh recalculation repairs stale projection')
   for(const role of ['anon','authenticated']) {
     rejects(`set role ${role}; ${activate(1)}`,'permission denied')
     rejects(`set role ${role}; ${grant(1,'profissional','cortesia','forged')}`,'permission denied')
@@ -58,7 +86,7 @@ try {
   equal(races.filter(r=>r.code===0).length,1,'one owner consumes key')
   equal(races.filter(r=>r.err.includes('chave_invalida')).length,1,'other owner denied')
   const winner=races[0].code===0?1:2
-  equal(sql('select count(*) from concessoes_de_plano'),'1','one key grant created')
+  equal(sql("select count(*) from concessoes_de_plano where origem='chave'"),'1','one key grant created')
   equal(sql(service(activate(winner))),'profissional','same owner retry returns effective plan')
   equal(sql('select count(*) from admin_audit_log'),'1','retry does not duplicate audit')
   // Audit failure must not consume the key or confer a partial benefit.
