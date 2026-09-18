@@ -139,3 +139,16 @@ PR #197 integrado em `c3463631097a15ad85856c89f34e802e755363be`, após CI
 35310713236 verde. Migrations remotas `20260918053120` e `20260918053127`;
 inventário e ACL verificados após aplicação. Produção READY em
 `dpl_DSgbJWBqvqFX1uuQpLkDRe7u39hZ`, mesmo SHA.
+
+## Contenção das ações financeiras administrativas
+
+Os caminhos legados mark_paid/refund foram removidos e recebem 409 sem
+movimentação ou falsa confirmação. Inclui crédito que antes era apenas
+anotação. A implementação completa continua pendente de coordenação durável
+e ensaio test mode (ADR 0045). Não se executou reembolso real.
+
+Investigação agregada da divergência de plano: o perfil Pro sem concessão é
+cliente e tem uma assinatura legada `gratuidade`, valor zero, sem gateway,
+sem chave, com motivo e sem prazo. O outro Pro é administrador com concessão
+vigente. Isso identifica o direito legado a preservar numa migração futura;
+nenhum direito foi recalculado ou retirado nesta leitura.

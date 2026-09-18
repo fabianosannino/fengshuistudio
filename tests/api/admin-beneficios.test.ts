@@ -23,6 +23,17 @@ beforeEach(() => {
   m.list.mockResolvedValue({ data: [{ id: 'sub_fixture', status: 'active' }], has_more: false })
 })
 describe('benefícios administrativos mantêm outras origens', () => {
+  it.each([
+    { action: 'mark_paid', invoice_id: 'other-invoice' },
+    { action: 'refund', invoice_id: 'other-invoice', refund_amount: 0 },
+    { action: 'refund', invoice_id: 'other-invoice', refund_amount: -10 },
+    { action: 'refund', invoice_id: 'other-invoice', is_credit: true },
+  ])('operação sem coordenação não fabrica fato financeiro: %j', async action => {
+    const response = await POST(req(action))
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe('operacao_financeira_indisponivel')
+    expect(m.writes).toEqual([]); expect(m.rpc).not.toHaveBeenCalled(); expect(m.list).not.toHaveBeenCalled()
+  })
   it('gratuidade usa concessão própria e não cancela nem fabrica assinatura', async () => {
     expect((await POST(req({ action: 'gratuidade', plan_slug: 'profissional', duration_months: 2 }))).status).toBe(200)
     expect(m.rpc).toHaveBeenCalledWith('alterar_concessao_de_plano', expect.objectContaining({ p_usuario: 'owner', p_origem: 'cortesia', p_referencia: 'admin:owner', p_operacao: 'conceder', p_criada_por: 'admin' }))

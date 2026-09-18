@@ -38,3 +38,7 @@ contas existentes têm vínculo comercial e passam a exigir encerramento
 coordenado. Produção READY `dpl_Hp5GzA5QjKi7CuBi7t1arsvgT6za`, mesmo SHA.
 Advisors mantiveram o ERROR da view pública e dois WARN anteriores, com um
 INFO adicional esperado pela tabela técnica de exclusões sem policy de usuário.
+
+Segundo pacote: scripts automáticos GA/Plausible suspensos até definir e
+verificar o contrato de coleta (ADR 0045). IDs de ambiente não bastam para
+reativar. Não se afirma que a revisão de consentimento/retenção esteja pronta.

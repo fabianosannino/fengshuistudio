@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
-import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
+import { escreverBestEffort } from '../../../../src/lib/supabase-escrita'
 import { conceder, encerrarConcessao, concessoesVivas } from '../../../../src/lib/concessoes-de-plano'
 import { sincronizarAssinatura } from '../../../../src/lib/sincronizar-assinatura'
 import stripeClient from '../../../../src/lib/stripe'
@@ -185,8 +185,8 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ metrics, users: filteredUsers, total: count, page, pageSize })
-  } catch (err) {
-    logger.error('Admin subscriptions error', { route: '/api/admin/subscriptions', error: String(err) })
+  } catch {
+    logger.error('Admin subscriptions error', { route: ROUTE })
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
   const action = body.action as string
   const targetUserId = body.user_id as string
 
-  if (!action || !targetUserId) {
+  if (typeof action !== 'string' || typeof targetUserId !== 'string' || !action || !targetUserId) {
     return NextResponse.json({ error: 'action e user_id são obrigatórios' }, { status: 400 })
   }
 
@@ -289,184 +289,20 @@ export async function POST(request: Request) {
         )
       }
 
-      case 'mark_paid': {
-        const invoiceId = body.invoice_id as string
-        const paidDate = body.paid_date as string
-        const paidMethod = body.paid_method as string
-        const observation = body.observation as string
-
-        if (!invoiceId) return NextResponse.json({ error: 'invoice_id é obrigatório' }, { status: 400 })
-
-        const { data: invoice } = await supabase.from('invoices').select('*').eq('id', invoiceId).single()
-        if (!invoice) return NextResponse.json({ error: 'Fatura não encontrada' }, { status: 404 })
-
-        // Prevent double-marking
-        if (invoice.status === 'paid') {
-          return NextResponse.json({ error: 'Fatura já está marcada como paga' }, { status: 400 })
-        }
-
-        await escreverOuFalhar(
-          supabase.from('invoices').update({
-            status: 'paid',
-            paid_at: paidDate || new Date().toISOString(),
-            amount_paid: invoice.amount,
-            paid_manually: true,
-            paid_method: paidMethod || 'manual',
-            paid_by_admin: admin.user.id,
-            notes: observation || null,
-          }).eq('id', invoiceId),
-          { rota: ROUTE, operacao: 'update-invoice-paid', userId: targetUserId }
-        )
-
-        // Reactivate subscription if it was past_due
-        if (invoice.subscription_id) {
-          await escreverOuFalhar(
-            supabase.from('subscriptions').update({ status: 'active', updated_at: new Date().toISOString() })
-              .eq('id', invoice.subscription_id).eq('status', 'past_due'),
-            { rota: ROUTE, operacao: 'reactivate-subscription', userId: targetUserId }
-          )
-        }
-
-        const auditoriaOk = await registrarAuditoria(supabase, {
-          action: 'mark_paid',
-          target_type: 'invoice',
-          target_id: invoiceId,
-          details: { user_nome: targetProfile.nome_completo, amount: invoice.amount, paid_method: paidMethod, observation },
-        }, admin.user.id)
-
-        return respostaDeAcao('Fatura marcada como paga', auditoriaOk)
-      }
-
+      case 'mark_paid':
       case 'refund': {
-        const invoiceId = body.invoice_id as string
-        const refundAmount = body.refund_amount as number
-        const motivo = body.motivo as string
-        const isCredit = body.is_credit as boolean
-
-        if (!invoiceId || !motivo) return NextResponse.json({ error: 'invoice_id e motivo são obrigatórios' }, { status: 400 })
-
-        const { data: invoice } = await supabase.from('invoices').select('*').eq('id', invoiceId).single()
-        if (!invoice) return NextResponse.json({ error: 'Fatura não encontrada' }, { status: 404 })
-
-        if (invoice.status === 'refunded') {
-          return NextResponse.json({ error: 'Fatura já foi reembolsada' }, { status: 400 })
-        }
-
-        const amount = refundAmount || invoice.amount_paid
-        let stripeRefundId: string | null = null
-
-        // Process real Stripe refund if the invoice has a gateway_invoice_id and it's not just a credit
-        if (!isCredit && invoice.gateway_invoice_id) {
-          try {
-            // Get the Stripe invoice to find the payment intent
-            // Stripe SDK v22 returns Response<Invoice>, cast to access properties
-            const stripeInvoiceResponse = await stripeClient.invoices.retrieve(invoice.gateway_invoice_id) as unknown as Record<string, unknown>
-            const piField = stripeInvoiceResponse.payment_intent
-            const paymentIntentId = typeof piField === 'string'
-              ? piField
-              : (piField as { id: string } | null)?.id
-
-            if (paymentIntentId) {
-              const refund = await stripeClient.refunds.create({
-                payment_intent: paymentIntentId,
-                amount: Math.round(amount * 100), // Convert BRL to centavos
-                reason: 'requested_by_customer',
-                metadata: {
-                  admin_id: admin.user.id,
-                  motivo,
-                  invoice_id: invoiceId,
-                },
-              })
-              stripeRefundId = refund.id
-              logger.info('Stripe refund processed', {
-                route: '/api/admin/subscriptions',
-                refundId: refund.id,
-                amount,
-                invoiceId,
-              })
-            }
-          } catch (err) {
-            logger.error('Stripe refund failed', {
-              route: '/api/admin/subscriptions',
-              error: String(err),
-              invoiceId,
-            })
-            // Detalhe do erro fica no logger acima — ao cliente vai a
-            // informação acionável, sem eco da mensagem do gateway (ADR 0019).
-            return NextResponse.json({
-              error: 'Não foi possível processar o reembolso no Stripe. ' +
-                'Use "crédito" para registrar sem reembolso real.',
-            }, { status: 500 })
-          }
-        }
-
-        // O dinheiro já saiu do Stripe neste ponto. Se a gravação local falhar,
-        // lançar devolveria "erro" para um reembolso que aconteceu — e o admin
-        // tentaria de novo, reembolsando duas vezes. Por isso aqui é
-        // best-effort com resposta explícita, não exceção.
-        const invoiceGravada = await escreverBestEffort(
-          supabase.from('invoices').update({
-            status: isCredit ? 'paid' : 'refunded',
-            refunded_at: new Date().toISOString(),
-            refund_amount: amount,
-            notes: `${isCredit ? 'Crédito' : 'Reembolso'}: ${motivo}${stripeRefundId ? ` (Stripe: ${stripeRefundId})` : ''}`,
-          }).eq('id', invoiceId),
-          { rota: ROUTE, operacao: 'update-invoice-refunded', userId: targetUserId }
-        )
-
-        if (!invoiceGravada && stripeRefundId) {
-          logger.error('Reembolso processado no Stripe sem registro local', {
-            route: ROUTE, invoiceId, stripeRefundId, userId: targetUserId,
-          })
-          return NextResponse.json({
-            error: `O reembolso FOI processado no Stripe (${stripeRefundId}), mas não foi possível ` +
-              'registrá-lo na fatura. NÃO repita a operação — corrija o registro manualmente.',
-            stripe_refund_id: stripeRefundId,
-          }, { status: 500 })
-        }
-
-        // Notify user
-        await escreverBestEffort(
-          supabase.from('payment_notifications').insert({
-            user_id: targetUserId,
-            invoice_id: invoiceId,
-            type: isCredit ? 'credit_applied' : 'refund_processed',
-            channel: 'in_app',
-            sent_at: new Date().toISOString(),
-            content: isCredit
-              ? `Crédito de R$ ${amount.toFixed(2)} aplicado à sua conta. Motivo: ${motivo}`
-              : `Reembolso de R$ ${amount.toFixed(2)} processado. O valor será devolvido ao seu meio de pagamento original.`,
-          }),
-          { rota: ROUTE, operacao: 'insert-notification-reembolso', userId: targetUserId }
-        )
-
-        const auditoriaOk = await registrarAuditoria(supabase, {
-          action: isCredit ? 'credit' : 'refund',
-          target_type: 'invoice',
-          target_id: invoiceId,
-          details: {
-            user_nome: targetProfile.nome_completo,
-            amount,
-            motivo,
-            is_credit: isCredit,
-            stripe_refund_id: stripeRefundId,
-          },
-        }, admin.user.id)
-
-        return respostaDeAcao(
-          isCredit
-            ? 'Crédito registrado'
-            : `Reembolso de R$ ${amount.toFixed(2)} processado${stripeRefundId ? ' via Stripe' : ''}`,
-          auditoriaOk,
-          { stripe_refund_id: stripeRefundId }
-        )
+        // Provider movements need durable coordination and confirmed outcomes.
+        // Do not fabricate a local settlement, credit, or refund in their absence.
+        return NextResponse.json({
+          error: 'Esta operação financeira está indisponível neste painel. Use o Dashboard do Stripe para conferir e tratar a cobrança. Nenhum pagamento, crédito ou reembolso foi registrado por esta solicitação.',
+          code: 'operacao_financeira_indisponivel',
+        }, { status: 409 })
       }
-
       default:
         return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
     }
-  } catch (err) {
-    logger.error('Admin subscription action error', { route: '/api/admin/subscriptions', action, error: String(err) })
+  } catch {
+    logger.error('Admin subscription action error', { route: ROUTE })
     return NextResponse.json({ error: 'Erro ao executar ação.' }, { status: 500 })
   }
 }
