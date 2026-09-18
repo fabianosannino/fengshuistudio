@@ -1,4 +1,3 @@
-import { createHash, randomInt } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
@@ -7,6 +6,9 @@ import { logger } from '../../../../src/lib/logger'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 import { COMBINACOES_ASSINATURA, escolhaAssinatura, idDoPreco, modoStripe, problemasDoPreco } from '../../../../src/lib/catalogo-assinaturas'
+import { CheckoutEmAndamento, prepararCheckoutAssinatura } from '../../../../src/lib/checkout-assinatura'
+
+export const maxDuration = 60
 
 const ROUTE = '/api/stripe/subscribe'
 const indisponivel = () => NextResponse.json({ error: 'Não foi possível preparar a assinatura. Tente novamente mais tarde.' }, { status: 503 })
@@ -39,43 +41,10 @@ export async function POST(request: Request) {
       logger.error('Catálogo de assinatura inconsistente', { route: ROUTE, plano: escolha.plan_slug, ciclo: escolha.billing_cycle, problemas })
       return indisponivel()
     }
-    const { data: profile, error: erroPerfil } = await supabase.from('profiles').select('stripe_customer_id').eq('id', user.id).single()
-    if (erroPerfil || !profile) return indisponivel()
-    const anterior = profile.stripe_customer_id as string | null
-    let customerId = anterior
-    if (customerId) {
-      try {
-        const existente = await stripeClient.customers.retrieve(customerId)
-        if (existente.deleted) customerId = null
-      } catch (erro) {
-        // Timeout, rate limit, credencial inválida e indisponibilidade NÃO provam inexistência.
-        const e = erro as { code?: string; statusCode?: number }
-        if (e.code === 'resource_missing' && e.statusCode === 404) customerId = null
-        else throw erro
-      }
-    }
-    if (!customerId) {
-      const chave = createHash('sha256').update(`${user.id}:${live}:${anterior ?? 'inicial'}`).digest('hex')
-      const customer = await stripeClient.customers.create({ email: user.email, metadata: { supabase_user_id: user.id } }, { idempotencyKey: `customer-v2-${chave}` })
-      customerId = customer.id
-      const { data: vinculado, error } = await createSupabaseAdminClient().from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id).select('id').single()
-      if (error || !vinculado) return indisponivel()
-    }
-    const existentes = await stripeClient.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })
-    if (existentes.has_more || existentes.data.some(s => !['canceled', 'incomplete_expired'].includes(s.status))) {
-      return NextResponse.json({ error: 'Você já tem uma assinatura em andamento. Use o portal de cobrança para gerenciá-la.', portal: true }, { status: 409 })
-    }
-    const origin = origemDaAplicacao(request)
-    const session = await stripeClient.checkout.sessions.create({
-      integration_identifier: `fengshui-subscription-${Array.from({length:8},()=>String.fromCharCode(97+randomInt(26))).join('')}`,
-      customer: customerId, mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { metadata: { ...escolha, supabase_user_id: user.id } },
-      success_url: `${origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}&type=subscription`,
-      cancel_url: `${origin}/planos?plano=${escolha.plan_slug}&ciclo=${escolha.billing_cycle}`,
-      allow_promotion_codes: true,
-    })
-    return NextResponse.json({ url: session.url, session_id: session.id })
-  } catch {
+    const resultado = await prepararCheckoutAssinatura(createSupabaseAdminClient(), stripeClient, user.id, escolha, priceId, live, origemDaAplicacao(request))
+    return NextResponse.json(resultado)
+  } catch (erro) {
+    if (erro instanceof CheckoutEmAndamento) return NextResponse.json({ error: erro.message, portal: erro.portal }, { status: 409 })
     logger.error('Falha ao preparar checkout de assinatura', { route: ROUTE })
     return indisponivel()
   }

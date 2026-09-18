@@ -64,3 +64,12 @@ no CI. Decisão, impacto de disponibilidade e limites no ADR 0048.
 Verificação local do quarto pacote: 1.615 testes em 121 arquivos, typecheck e
 build aprovados, lint sem erros (103 avisos). Oito verificações Redis reais,
 incluindo 32 trabalhadores concorrentes; nenhuma credencial de produção.
+
+PR #204 integrado em `faa8df46ce62769dcfcbc36d4075e4800fddce68`, CI
+35318757268 verde e produção READY `dpl_ExqgP2ELwfxTqdjKH46BCGpyQBeB`.
+GET sem sessão em `/api/conta/dados` respondeu 401 após passar pelo contador
+compartilhado; verifica conectividade/EVAL sem executar portabilidade.
+
+Coordenação de checkout (ADR 0049) amplia a recusa de exclusão a tentativas
+de cobrança ainda não reconciliadas e inclui suas referências na exportação
+do titular. Encerramento comercial/retencão continuam pendentes.

@@ -48,6 +48,7 @@ beforeEach(() => {
   state.user = { id: 'owner', email: 'owner@example.invalid', email_confirmed_at: '2026-01-01', created_at: '2026-01-01' }
   state.rows = {
     profiles: [{ id: 'owner' }, { id: 'other' }],
+    checkouts_assinatura: [{ id: 'checkout', user_id: 'owner' }, { id: 'other-checkout', user_id: 'other' }],
     clientes: [{ id: 'client', consultor_id: 'owner', foto_url: 'owner/photo.jpg' }, { id: 'other-client', consultor_id: 'other' }],
     consultas: [{ id: 'visit', consultor_id: 'owner', bagua_entrada: { planta_url: 'visit/plan.png' } }, { id: 'other-visit', consultor_id: 'other' }],
     fotos_consulta: [{ id: 'photo', consulta_id: 'visit', url: 'visit/photo.jpg' }, { id: 'other-photo', consulta_id: 'other-visit' }],
@@ -71,6 +72,7 @@ describe('portabilidade do titular', () => {
     expect(response.headers.get('cache-control')).toContain('no-store')
     const data = await response.json()
     expect(data.perfil.id).toBe('owner')
+    expect(data.checkouts_assinatura.map((c: { id: string }) => c.id)).toEqual(['checkout'])
     expect(data.clientes.map((c: { id: string }) => c.id)).toEqual(['client'])
     expect(data.fotos_consulta.map((c: { id: string }) => c.id)).toEqual(['photo'])
     expect(data.diagnostico_criterios.map((c: { id: string }) => c.id)).toEqual(['criterion'])

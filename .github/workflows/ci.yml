@@ -67,6 +67,8 @@ jobs:
         run: npm run test:privacy-deletion
       - name: Verificar limite atomico e expiracao em Redis isolado
         run: npm run test:rate-limit
+      - name: Verificar admissao e retomada duravel do checkout
+        run: npm run test:checkout-intents
 
   quality:
     name: Dependency Security
