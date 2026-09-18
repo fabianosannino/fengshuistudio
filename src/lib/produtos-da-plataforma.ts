@@ -77,8 +77,8 @@ const MIME_ACEITO: Record<string, string> = {
 
 export const MIMES_DE_PRODUTO_DIGITAL = Object.keys(MIME_ACEITO)
 
-/** Teto do arquivo, igual ao do bucket. Recusar antes do upload poupa a subida. */
-export const MAX_BYTES_DO_ARQUIVO = 100 * 1024 * 1024
+/** Teto do envio pela API, abaixo do limite de corpo da hospedagem com multipart. */
+export const MAX_BYTES_DO_ARQUIVO = 4 * 1024 * 1024
 
 export function extensaoParaMimeDeProduto(mime: string): string | null {
   return MIME_ACEITO[mime] ?? null

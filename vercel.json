@@ -24,7 +24,8 @@
       "codex/download-pago-c3": false,
       "codex/reembolsos-loja-b2": false,
       "codex/storage-validado-c3": false,
-      "codex/logs-minimizados-c3": false
+      "codex/logs-minimizados-c3": false,
+      "codex/uploads-limitados-c3": false
     }
   },
   "crons": [

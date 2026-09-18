@@ -23,7 +23,7 @@ const rejects=(s,msg)=>{assert.throws(()=>sql(s),e=>e.stderr?.includes(msg));che
 try {
   docker('run','-d','--name',container,'--network','none','-e','POSTGRES_PASSWORD=local-test-only',image)
   let ready=false
-  for(let i=0;i<60;i++){try{ready=docker('exec',container,'pg_isready','-U','postgres').includes('accepting')}catch{/* Startup. */}if(ready)break;await new Promise(r=>setTimeout(r,500))}
+  for(let i=0;i<60;i++){try{ready=docker('exec',container,'pg_isready','-h','127.0.0.1','-U','postgres').includes('accepting')}catch{/* Startup. */}if(ready)break;await new Promise(r=>setTimeout(r,500))}
   assert.ok(ready)
   // Only financial-claim dependencies of the earlier migration are exercised here.
   sql(`create role anon;create role authenticated;create role service_role bypassrls;create schema app_private;
