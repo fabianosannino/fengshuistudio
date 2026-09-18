@@ -150,3 +150,31 @@ lint sem erros (103 avisos existentes). A suíte inclui oito verificações de
 minimização/contrato de código e uma de correlação concorrente. Três expectativas
 antigas de logs foram revisadas porque exigiam texto bruto ou userId, contrariando
 o contrato novo; a classificação e o tratamento das falhas foram preservados.
+
+PR #211 integrado em `e13ad1e419738c393ed189351ba40459f2fb64a6`, CI
+35331528362 verde; produção READY `dpl_rtrCUCgVKsqrMLWswHUdMAQTP6W2`, mesmo
+SHA. Smoke sem sessão em checkout e PDF retornou 401 no middleware, antes da
+rota: não foi usado como prova do header de correlação, coberto por teste da
+função. Nenhuma sessão financeira foi criada.
+
+## Leitura limitada dos formulários (ADR 0055)
+
+PDF e arquivo digital passam a limitar o corpo antes do parser, com contagem
+real independente do Content-Length. O leitor também atende imagens e usa
+um buffer limitado mesmo diante de fragmentos pequenos. Produtos admitem até
+4 MiB por envio, informados na interface; o limite antigo de 100 MiB da API
+excedia o teto da hospedagem. Arquivos existentes e limite do bucket preservados.
+
+O upload digital confere existência antes do Storage e só declara sucesso se
+o vínculo for confirmado. A comparação com o caminho anterior impede perder
+uma substituição concorrente; nenhuma falha dispara exclusão ambígua de objeto.
+
+Validação: 1.767 testes em 130 arquivos, incluindo 24 casos novos; os cinco
+arquivos direcionados somam 98 testes. TypeScript/build aprovados; lint sem
+erros (102 avisos existentes, um a menos pela remoção de variável sem uso). A revisão da única
+tela alterada preserva hooks e fluxo, acrescentando informação e recusa local
+antes do fetch. Nenhuma migration necessária.
+
+Pendências mantidas explícitas: parser/processador de documentos com limites
+de páginas/descompressão, antivírus/quarentena quando aplicável e upload de
+arquivos maiores com fluxo próprio. Limitar bytes não resolve esses requisitos.

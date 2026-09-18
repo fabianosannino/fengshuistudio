@@ -5,6 +5,7 @@ import { jsonCanonico, MAX_PDF_RELATORIO, VERSOES_RELATORIO, type FonteRelatorio
 import { secoesDoFormato } from '../../src/lib/formato-do-relatorio'
 import { referenciaDaAnalise } from '../../src/lib/analise-bagua'
 import type { BaguaEntrada } from '../../src/lib/types'
+import { MARGEM_MULTIPART } from '../../src/lib/multipart-limitado'
 
 vi.mock('server-only', () => ({}))
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -134,6 +135,15 @@ describe('preparação versionada', () => {
 })
 
 describe('upload e confirmação', () => {
+  it.each([undefined, '1'])('limita o corpo inteiro com Content-Length=%s antes de consultar emissões', async length => {
+    const cancel = vi.fn()
+    const headers: Record<string, string> = { 'content-type': 'multipart/form-data; boundary=x' }
+    if (length) headers['content-length'] = length
+    const body = new ReadableStream({ start(c) { c.enqueue(new Uint8Array(MAX_PDF_RELATORIO + MARGEM_MULTIPART + 1)) }, cancel })
+    const request = new Request('https://example.invalid', { method: 'POST', headers, body, duplex: 'half' } as RequestInit)
+    expect((await POST(request)).status).toBe(413)
+    expect(cancel).toHaveBeenCalledOnce(); expect(adminCriado).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled(); expect(rpc).not.toHaveBeenCalled()
+  })
   it('recusa arquivo acima do limite da hospedagem antes de acessar storage', async () => {
     expect((await POST(envio('x'.repeat(MAX_PDF_RELATORIO + 1)))).status).toBe(400)
     expect(adminCriado).not.toHaveBeenCalled()

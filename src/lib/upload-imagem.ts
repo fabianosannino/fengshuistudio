@@ -1,6 +1,7 @@
 import 'server-only'
 import sharp from 'sharp'
 import { imageExtensionForMime } from './validation'
+import { ErroDeFormulario, lerFormularioLimitado } from './multipart-limitado'
 import { MAX_BYTES_FORMULARIO_IMAGEM, MAX_BYTES_IMAGEM, MAX_LADO_IMAGEM, MAX_PIXELS_IMAGEM } from './upload-imagem-limites'
 
 export class ErroDeImagem extends Error {
@@ -9,34 +10,14 @@ export class ErroDeImagem extends Error {
 
 /** Limita os bytes lidos, inclusive quando Content-Length falta ou mente. */
 export async function lerFormularioDeImagem(request: Request): Promise<FormData> {
-  const tipo = request.headers.get('content-type') ?? ''
-  if (!tipo.toLowerCase().startsWith('multipart/form-data;') || !request.body) {
-    throw new ErroDeImagem('Envio inválido.')
-  }
-  if (Number(request.headers.get('content-length')) > MAX_BYTES_FORMULARIO_IMAGEM) {
-    throw new ErroDeImagem('Envio muito grande. Use até 4 MB no total.', 413)
-  }
-  const reader = request.body.getReader()
-  const partes: Uint8Array[] = []
-  let bytes = 0
   try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      bytes += value.byteLength
-      if (bytes > MAX_BYTES_FORMULARIO_IMAGEM) {
-        await reader.cancel()
-        throw new ErroDeImagem('Envio muito grande. Use até 4 MB no total.', 413)
-      }
-      partes.push(value)
-    }
-    return await new Request('https://upload.invalid', {
-      method: 'POST', headers: { 'content-type': tipo }, body: Buffer.concat(partes),
-    }).formData()
+    return await lerFormularioLimitado(request, MAX_BYTES_FORMULARIO_IMAGEM)
   } catch (erro) {
-    if (erro instanceof ErroDeImagem) throw erro
+    if (erro instanceof ErroDeFormulario) {
+      throw new ErroDeImagem(erro.status === 413 ? 'Envio muito grande. Use até 4 MB no total.' : erro.message, erro.status)
+    }
     throw new ErroDeImagem('Não foi possível ler o envio.')
-  } finally { reader.releaseLock() }
+  }
 }
 
 // FormData pode vir de outro realm; conferir capacidades, não o construtor File.

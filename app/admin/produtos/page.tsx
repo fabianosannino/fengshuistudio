@@ -16,7 +16,7 @@ import { formatarMoeda } from '../../../src/lib/formato'
 import { Upload, Package, Eye, EyeOff, Pencil, Image as ImageIcon } from 'lucide-react'
 import EditarProduto, { SeloDaPromocao } from './EditarProduto'
 import { precoVigente } from '../../../src/lib/promocao-do-produto'
-import { urlPublicaDaImagem } from '../../../src/lib/produtos-da-plataforma'
+import { MAX_BYTES_DO_ARQUIVO, urlPublicaDaImagem } from '../../../src/lib/produtos-da-plataforma'
 
 interface ProdutoAdmin {
   id: string
@@ -154,6 +154,10 @@ export default function AdminProdutos() {
   }
 
   async function enviarArquivo(produtoId: string, arquivo: File) {
+    if (arquivo.size === 0 || arquivo.size > MAX_BYTES_DO_ARQUIVO) {
+      setAviso('Escolha um arquivo não vazio de até 4 MB.')
+      return
+    }
     setEnviandoDe(produtoId)
     setAviso('')
 
@@ -340,6 +344,9 @@ export default function AdminProdutos() {
               }}>{produto.ativo ? 'Publicado' : 'Rascunho'}</span>
             </div>
 
+            {produto.modo_de_venda !== 'indicacao' && (
+              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '12px' }}>Arquivo digital: PDF, EPUB, ZIP, MP3 ou MP4 de até 4 MB.</p>
+            )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
               <input
                 type="file" hidden

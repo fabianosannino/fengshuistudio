@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { comCorrelacao } from '../../../../src/lib/correlacao-requisicao'
+import { ErroDeFormulario, lerFormularioLimitado, MARGEM_MULTIPART } from '../../../../src/lib/multipart-limitado'
 import { BUCKET_RELATORIO, idValido, MAX_PDF_RELATORIO, pdfTemAssinatura, PRAZO_PREPARACAO_MS, TABELA_EMISSOES } from '../../../../src/lib/relatorio-emissao'
 import { listarHistoricoRelatorio } from '../../../../src/lib/relatorio-retencao'
 import { sha256 } from '../../../../src/lib/relatorio-fonte'
@@ -24,7 +25,9 @@ export const POST = comCorrelacao(async (request, correlationId) => {
   const { data: { user } } = await client.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   let form: FormData
-  try { form = await request.formData() } catch { return NextResponse.json({ error: 'Envio inválido' }, { status: 400 }) }
+  try { form = await lerFormularioLimitado(request, MAX_PDF_RELATORIO + MARGEM_MULTIPART) } catch (erro) {
+    return NextResponse.json({ error: 'Envie um PDF de até 4 MB.' }, { status: erro instanceof ErroDeFormulario ? erro.status : 400 })
+  }
   const file = form.get('pdf')
   const id = form.get('emissao_id')
   const consultaId = form.get('consulta_id')
