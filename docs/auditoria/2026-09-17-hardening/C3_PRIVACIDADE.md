@@ -186,3 +186,8 @@ com `listen_addresses=''`. Os quatro runners financeiros ainda afetados
 passaram a esperar TCP em 127.0.0.1, como os demais já faziam. Reexecução local
 aprovou 196 verificações PostgreSQL (46 + 48 + 61 + 41), sem chamadas Stripe.
 Nenhuma asserção de autorização, concorrência ou atomicidade foi relaxada.
+
+PR #212 integrado em `96fa0ce900d5ef229a56266bbdcd2b1df547f707`, CI
+35333275412 verde. Produção READY `dpl_3bUYqKZTD8LaWJVpNVioRRKiitxv`, mesmo
+SHA. As duas rotas de upload responderam 401 sem sessão no middleware. Esse
+smoke confirma recusa de acesso, não substitui o ensaio autenticado de arquivos.

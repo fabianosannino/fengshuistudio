@@ -81,6 +81,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -91,3 +93,6 @@ jobs:
 
       - name: Audit de dependências
         run: npm audit --audit-level=high
+
+      - name: Verificar segredos no histórico e controle positivo sem rede
+        run: npm run test:secrets
