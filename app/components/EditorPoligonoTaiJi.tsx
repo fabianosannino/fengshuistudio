@@ -2,9 +2,9 @@
 
 import { useCallback, useRef, useState } from 'react'
 import {
-  calcularTaiJi, coberturaPorCelula, setoresAusentes, setoresExtensao,
-  retanguloDelimitador, type Ponto,
+  calcularTaiJi, retanguloDelimitador, type Ponto, type Retangulo,
 } from '../../src/lib/poligono'
+import { analisarContornoNaGrade } from '../../src/lib/contorno-na-grade'
 
 /**
  * Editor de polígono para o Tai Ji real do imóvel. Espaço de coordenadas
@@ -15,10 +15,10 @@ import {
  * - Standalone (`transparente` omitido/false): caixa autocontida com fundo
  *   próprio, do jeito que foi construído e testado originalmente (ver ADR
  *   0010) — desacoplado do canvas de app/bagua-planta/page.tsx.
- * - Overlay (`transparente=true`): preenche 100% do elemento pai sem fundo
- *   nem caixa própria, pensado para ser posicionado por cima de uma imagem
- *   real (ex.: a foto da planta) por quem usa o componente — mesma técnica
- *   de sobreposição já usada no marcador de entrada em bagua-planta/page.tsx
+ * - Overlay (`transparente=true`): o SVG ocupa `tamanhoExibicao` sobre a imagem
+ *   num pai com position:relative. O rodapé permanece no fluxo, abaixo da
+ *   imagem, sem cobrir os controles da bancada — mesma técnica
+ *   de sobreposição usada no marcador de entrada em bagua-planta/page.tsx
  *   (viewBox nas unidades "naturais" da imagem + getBoundingClientRect para
  *   mapear cliques, sem precisar saber nada sobre zoom/CSS scale).
  */
@@ -29,8 +29,14 @@ export interface EditorPoligonoTaiJiProps {
   /** Unidades do viewBox — não precisam ser pixels de tela. Padrão 400×400. */
   largura?: number
   altura?: number
-  /** Preenche 100% do elemento pai, sem fundo próprio — para uso como overlay. */
+  /** Posiciona somente o SVG sobre o canvas; o rodapé fica no fluxo normal. */
   transparente?: boolean
+  /** Bordas da análise: editar vértices nunca redefine esta referência. */
+  referencia?: Retangulo
+  lh?: readonly number[]
+  lv?: readonly number[]
+  /** Tamanho CSS do canvas sobre o qual o SVG é posicionado. */
+  tamanhoExibicao?: { largura: string; altura: string }
 }
 
 const MINIMO_VERTICES = 3
@@ -46,9 +52,11 @@ function retanguloPadrao(largura: number, altura: number): Ponto[] {
 }
 
 export default function EditorPoligonoTaiJi({
-  pontosIniciais, onChange, largura = 400, altura = 400, transparente = false,
+  pontosIniciais, onChange, largura = 400, altura = 400, transparente = false, referencia, lh, lv, tamanhoExibicao,
 }: EditorPoligonoTaiJiProps) {
   const [pontos, setPontos] = useState<Ponto[]>(pontosIniciais ?? retanguloPadrao(largura, altura))
+  const [referenciaInicial] = useState(() => retanguloDelimitador(pontosIniciais ?? []) ?? retanguloDelimitador(retanguloPadrao(largura, altura))!)
+  const grade = referencia ?? referenciaInicial
   const [arrastando, setArrastando] = useState<number | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -104,7 +112,10 @@ export default function EditorPoligonoTaiJi({
   }
 
   function restaurarRetangulo() {
-    atualizarPontos(retanguloPadrao(largura, altura))
+    atualizarPontos([
+      { x: grade.x, y: grade.y }, { x: grade.x + grade.w, y: grade.y },
+      { x: grade.x + grade.w, y: grade.y + grade.h }, { x: grade.x, y: grade.y + grade.h },
+    ])
   }
 
   // Raio dos handles em unidades do viewBox — proporcional, não um pixel fixo:
@@ -115,15 +126,12 @@ export default function EditorPoligonoTaiJi({
   const larguraTraco = Math.max(1, raioVertice * 0.15)
 
   const taiJi = calcularTaiJi(pontos)
-  const bbox = retanguloDelimitador(pontos)
-  const celulas = coberturaPorCelula(pontos)
-  const ausentes = setoresAusentes(pontos)
-  const extensoes = setoresExtensao(pontos)
-  const ehAusente = (linha: number, coluna: number) => ausentes.some(c => c.linha === linha && c.coluna === coluna)
-  const ehExtensao = (linha: number, coluna: number) => extensoes.some(c => c.linha === linha && c.coluna === coluna)
+  const celulas = analisarContornoNaGrade(pontos, grade, lh, lv)
+  const ausentes = celulas.filter(c => c.ausente)
+  const extensoes = celulas.filter(c => c.excessoArea > 0)
 
   return (
-    <div style={transparente ? { width: '100%', height: '100%' } : undefined}>
+    <div>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${largura} ${altura}`}
@@ -132,7 +140,8 @@ export default function EditorPoligonoTaiJi({
         onPointerUp={soltarPonteiro}
         onPointerLeave={soltarPonteiro}
         style={transparente ? {
-          width: '100%', height: '100%', display: 'block', touchAction: 'none',
+          position: 'absolute', left: 0, top: 0,
+          width: tamanhoExibicao?.largura ?? '100%', height: tamanhoExibicao?.altura ?? '100%', display: 'block', touchAction: 'none',
         } : {
           width: '100%', maxWidth: '400px', aspectRatio: `${largura} / ${altura}`,
           background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px',
@@ -147,25 +156,22 @@ export default function EditorPoligonoTaiJi({
           strokeWidth={larguraTraco * 1.3}
         />
 
-        {bbox && celulas.map(c => {
-          const larguraCelula = bbox.w / 3
-          const alturaCelula = bbox.h / 3
-          const ausente = ehAusente(c.linha, c.coluna)
-          const extensao = ehExtensao(c.linha, c.coluna)
-          if (!ausente && !extensao) return null
-          return (
+        <rect x={grade.x} y={grade.y} width={grade.w} height={grade.h}
+          fill="none" stroke="#0E1B2C" strokeWidth={larguraTraco} pointerEvents="none" data-testid="bordas-referencia-contorno" />
+        {celulas.map(c => (
+          <g key={`celula-${c.linha}-${c.coluna}`} pointerEvents="none">
             <rect
-              key={`celula-${c.linha}-${c.coluna}`}
-              x={bbox.x + c.coluna * larguraCelula} y={bbox.y + c.linha * alturaCelula}
-              width={larguraCelula} height={alturaCelula}
-              fill={ausente ? 'rgba(220,38,38,0.15)' : 'rgba(217,119,6,0.2)'}
-              stroke={ausente ? '#B4533A' : '#8A6E2F'}
+              x={c.limites.x} y={c.limites.y} width={c.limites.w} height={c.limites.h}
+              fill={c.ausente ? 'rgba(220,38,38,0.15)' : 'none'}
+              stroke={c.ausente ? '#B4533A' : '#6B7280'}
               strokeWidth={larguraTraco} strokeDasharray={`${larguraTraco * 4} ${larguraTraco * 3}`}
-              pointerEvents="none"
-              data-testid={ausente ? `celula-ausente-${c.linha}-${c.coluna}` : `celula-extensao-${c.linha}-${c.coluna}`}
+              data-testid={c.ausente ? `celula-ausente-${c.linha}-${c.coluna}` : `celula-referencia-${c.linha}-${c.coluna}`}
             />
-          )
-        })}
+            {c.poligonosExternos.map((p, i) => <polygon key={i}
+              points={p.map(v => `${v.x},${v.y}`).join(' ')} fill="rgba(217,119,6,0.2)" stroke="#8A6E2F"
+              strokeWidth={larguraTraco} data-testid={`extensao-externa-${c.linha}-${c.coluna}-${i}`} />)}
+          </g>
+        ))}
 
         {pontos.map((p, i) => {
           const proximo = pontos[(i + 1) % pontos.length]
@@ -205,6 +211,10 @@ export default function EditorPoligonoTaiJi({
       </svg>
 
       <div style={{ marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
+        <p style={{ margin: '0 0 8px' }}>As bordas e os nove setores permanecem fixos. Os pontos verdes editam o contorno construído;
+          o centro geométrico pode mudar sem deslocar a grade. Extensões aparecem somente fora das bordas.</p>
+        <p style={{ margin: '0 0 8px' }}>Este contorno é uma leitura geométrica auxiliar. Para atualizar os percentuais da análise,
+          use Marcar Falta/Excesso e Recalcular.</p>
         {taiJi?.centroForaDaArea && (
           <p style={{ color: '#B4533A', fontWeight: 'bold', margin: '0 0 4px' }} data-testid="aviso-centro-fora">
             ⚠ O centro (Tai Ji) cai fora da área construída — comum em plantas em L, U ou T. É um diagnóstico em si, não um erro de desenho.
@@ -217,7 +227,7 @@ export default function EditorPoligonoTaiJi({
         )}
         {extensoes.length > 0 && (
           <p style={{ color: '#8A6E2F', margin: '0 0 4px' }} data-testid="resumo-extensoes">
-            Extensão (área hachurada laranja): {extensoes.length} célula(s) da grade 3×3.
+            Extensão externa (laranja): {extensoes.length} setor(es) da borda.
           </p>
         )}
         <p style={{ margin: '0 0 8px' }}>
@@ -233,7 +243,7 @@ export default function EditorPoligonoTaiJi({
             borderRadius: '6px', cursor: 'pointer',
           }}
         >
-          Restaurar retângulo
+          Restaurar contorno às bordas definidas
         </button>
       </div>
     </div>

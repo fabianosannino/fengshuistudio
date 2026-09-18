@@ -65,6 +65,36 @@ Registrar navegador, dispositivo e resultado visual. O bloqueio anterior do
 servidor local descrito em AC-02 não foi contornado. Automação de jsdom não
 encerra esse aceite nem AC-02/AC-06.
 
+## E — contorno real com referência fixa (pontos brancos/verdes)
+
+O relato seguinte identificou outro editor: os pontos brancos acrescentam
+vértices verdes ao contorno real. Não eram os retângulos do PR #215.
+Reprodução na página antes da correção: com bordas `(100,100,600,600)`, criar
+um recuo pelo ponto branco superior e uma extensão pelo ponto branco direito
+mudou a célula ausente superior-central de `x=300,w=200` para
+`x=366,67,w=266,67`. O editor usava um bounding box dinâmico diferente das
+bordas da análise. ADR 0057 define uma única referência para essa sobreposição.
+
+| ID / mudança | Dado / quando | Então | Execução / limites |
+|---|---|---|---|
+| E-CONT-01 — reprodução e persistência | BTB, imagem 1.000 × 800, bordas definidas; inserir ponto branco superior, puxar para dentro; inserir ponto direito, puxar para fora; concluir e reabrir | Os nove limites permanecem iguais, a falta não se desloca, a extensão fica externa, bordas/divisórias/polígono são preservados | `tests/bagua-marcacoes-ui.test.tsx`, eventos mouse e touch; falha reproduzida antes da correção e aprovada depois; I/O simulado |
+| E-CONT-02 — geometria independente | Recuo 100 × 100 e extensão 60 × 100 em referência 300 × 300; contorno côncavo, quatro lados/cantos, vértices invertidos, divisórias não uniformes e dados inválidos | Falta original permanece; 6.000 px² externos no setor direito; cantos contados uma vez; centroide pode mudar sem mover a grade; dados inválidos não produzem números enganosos | `src/lib/__tests__/contorno-na-grade.test.ts`; vetores geométricos analíticos, não aceite da regra tradicional por escola |
+| E-CONT-03 — restaurar | Alterar o contorno e acionar Restaurar contorno às bordas definidas | Retorna às quatro coordenadas escolhidas, sem usar a margem da imagem ou mudar as bordas | Teste de página e payload de rascunho |
+| E-CONT-04 — editores exclusivos | Abrir contorno, inserir vértice, selecionar Marcar Excesso, desenhar; voltar ao contorno e ligar comparação | Sobreposição encerra ao trocar de ferramenta, ambos os desenhos são preservados, comparação oculta o editor; sem disputa de gestos | Teste de página; não comprova rolagem/captura/posição visual do rodapé em navegador real |
+| E-CONT-05 — comunicação, arquitetura e continuidade | Revisar instruções, resumo, ADR, estado dos métodos, preview e roadmap | Referência fixa e distinção entre centroide/grade claras; contorno auxiliar não se apresenta como pontuação; A–C e homologação física continuam abertos | Revisão manual dos documentos e correspondência com código/testes; preview da branch desativada |
+
+Evidência local em 18/09/2026: 1.841 testes em 134 arquivos aprovados,
+incluindo 14 novos casos (`npm test -- --maxWorkers=2`, 151 s); TypeScript
+aprovado e lint sem erros, com os mesmos 94 avisos anteriores. E-CONT-05
+revisado manualmente nos documentos/código. Build e CI do commit final são
+registrados no PR, sem confundir estes resultados com homologação física.
+
+Homologação física permanece pendente: repetir E-CONT-01 em desktop e celular,
+conferir sobreposição após resize/rolagem e posição do rodapé, mudar entre
+contorno/marcações/Bordas/comparação/tela cheia e salvar/reabrir. Registrar
+navegador/dispositivo e imagens sintéticas. O bloqueio anterior do servidor
+local descrito em AC-02 não foi contornado.
+
 ## A–C — pendências de aceite que não podem ser esquecidas
 
 Todos os cenários abaixo permanecem **pendentes de execução completa**. Usar

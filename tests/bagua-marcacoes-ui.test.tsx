@@ -4,7 +4,7 @@ import BaguaPlanta from '../app/bagua-planta/page'
 import type { BaguaEntrada } from '../src/lib/types'
 import { calcularSetores, type Marcacao } from '../src/lib/geometria-bagua'
 
-const mocks = vi.hoisted(() => ({ salvos: [] as { bagua_entrada: BaguaEntrada; bagua_imagem?: string }[], router: { push: vi.fn() } }))
+const mocks = vi.hoisted(() => ({ salvos: [] as { bagua_entrada: BaguaEntrada; bagua_imagem?: string }[], restaurado: null as BaguaEntrada | null, router: { push: vi.fn() } }))
 const bordas = { x: 100, y: 100, w: 600, h: 600 }
 const existente = { id: 'original', tipo: 'falta' as const, x: 150, y: 150, w: 300, h: 300 }
 const fonte = { planta_url: 'sintetica/planta.png', escola: 'btb', etapa: 'resultado', bordas, marcacoes: [existente], metragem_real: 90 }
@@ -17,7 +17,7 @@ vi.mock('../src/lib/supabase', () => ({ supabase: {
     const q = {
       select: () => q, eq: () => q, order: () => q, limit: () => q,
       upsert: () => q, delete: () => q, insert: () => q,
-      single: async () => ({ data: tabela === 'consultas' ? { nome_imovel: 'Planta sintética', bagua_entrada: fonte } : { id: 'setor-sintetico' } }),
+      single: async () => ({ data: tabela === 'consultas' ? { nome_imovel: 'Planta sintética', bagua_entrada: mocks.restaurado ?? fonte } : { id: 'setor-sintetico' } }),
       update: (v: { bagua_entrada: BaguaEntrada }) => { mocks.salvos.push(structuredClone(v)); return q },
       then: (resolve: (r: unknown) => unknown) => Promise.resolve({ data: [], count: 0, error: null }).then(resolve),
     }
@@ -40,6 +40,7 @@ class PonteiroDeTeste extends MouseEvent {
 }
 beforeEach(() => {
   mocks.salvos.length = 0
+  mocks.restaurado = null
   vi.clearAllMocks()
   capturado = null
   vi.stubGlobal('PointerEvent', PonteiroDeTeste)
@@ -79,8 +80,9 @@ function arrastar(cv: HTMLCanvasElement, de: [number, number], para: [number, nu
   fireEvent.pointerUp(cv, ponto(cv, para, tipo))
 }
 async function salvo() {
+  const antes = mocks.salvos.length
   fireEvent.click(screen.getByRole('button', { name: /Recalcular/ }))
-  await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
+  await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(antes))
   return mocks.salvos.at(-1)!.bagua_entrada
 }
 
@@ -256,5 +258,70 @@ describe('E-MARC-01 — reprodução com mouse e bordas preservadas', () => {
     await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
     expect(mocks.salvos.at(-1)!.bagua_entrada.marcacoes).toHaveLength(2)
     expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual(bordas)
+  })
+  it.each(['mouse', 'touch'])('E-CONT-01 — extensão pelos pontos brancos com %s não reposiciona a falta; salvar/reabrir preserva a referência', async pointerType => {
+    await abrir()
+    fireEvent.click(screen.getByRole('button', { name: /Desenhar contorno real/ }))
+    const svg = screen.getByTestId('editor-poligono-tai-ji')
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800, toJSON() {} })
+    fireEvent.pointerDown(screen.getByTestId('handle-meio-0'), { pointerId: 1, pointerType })
+    fireEvent.pointerDown(screen.getByTestId('vertice-1'), { pointerId: 1, pointerType })
+    fireEvent.pointerMove(svg, { clientX: 400, clientY: 500, pointerId: 1, pointerType })
+    fireEvent.pointerUp(svg, { clientX: 400, clientY: 500, pointerId: 1, pointerType })
+    const geometria = () => {
+      const falta = screen.getByTestId('celula-ausente-0-1')
+      return ['x', 'y', 'width', 'height'].map(a => falta.getAttribute(a))
+    }
+    expect(geometria()).toEqual(['300', '100', '200', '200'])
+    const todasAsCelulas = () => Array.from(svg.querySelectorAll('g > rect')).map(c => ['x', 'y', 'width', 'height'].map(a => c.getAttribute(a)))
+    const gradeAnterior = todasAsCelulas()
+    fireEvent.pointerDown(screen.getByTestId('handle-meio-2'), { pointerId: 1, pointerType })
+    fireEvent.pointerDown(screen.getByTestId('vertice-3'), { pointerId: 1, pointerType })
+    fireEvent.pointerMove(svg, { clientX: 900, clientY: 400, pointerId: 1, pointerType })
+    fireEvent.pointerUp(svg, { clientX: 900, clientY: 400, pointerId: 1, pointerType })
+    expect(geometria()).toEqual(['300', '100', '200', '200'])
+    expect(todasAsCelulas()).toHaveLength(9)
+    expect(todasAsCelulas()).toEqual(gradeAnterior)
+    expect(screen.getAllByTestId(/extensao-externa-/).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /Concluir edição/ }))
+    await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
+    expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual(bordas)
+    expect(mocks.salvos.at(-1)!.bagua_entrada.tai_ji_poligono).toContainEqual({ x: 900, y: 400 })
+    expect(mocks.salvos.at(-1)!.bagua_entrada.lh).toEqual([1 / 3, 2 / 3])
+    expect(mocks.salvos.at(-1)!.bagua_entrada.lv).toEqual([1 / 3, 2 / 3])
+    mocks.restaurado = mocks.salvos.at(-1)!.bagua_entrada
+    cleanup()
+    await abrir()
+    fireEvent.click(screen.getByRole('button', { name: /Editar contorno/ }))
+    expect(geometria()).toEqual(['300', '100', '200', '200'])
+    expect(screen.getByTestId('vertice-3')).toHaveAttribute('cx', '900')
+  })
+  it('E-CONT-03 — restaurar o contorno usa as bordas escolhidas, não as margens da imagem', async () => {
+    await abrir()
+    fireEvent.click(screen.getByRole('button', { name: /Desenhar contorno real/ }))
+    fireEvent.pointerDown(screen.getByTestId('handle-meio-0'), { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: /Restaurar contorno às bordas definidas/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Concluir edição/ }))
+    await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
+    expect(mocks.salvos.at(-1)!.bagua_entrada.tai_ji_poligono).toEqual([
+      { x: 100, y: 100 }, { x: 700, y: 100 }, { x: 700, y: 700 }, { x: 100, y: 700 },
+    ])
+    expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual(bordas)
+  })
+  it('E-CONT-04 — trocar do contorno para marcações encerra a sobreposição e mantém os dois desenhos', async () => {
+    const cv = await abrir()
+    fireEvent.click(screen.getByRole('button', { name: /Desenhar contorno real/ }))
+    fireEvent.pointerDown(screen.getByTestId('handle-meio-0'), { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Excesso' }))
+    expect(screen.queryByTestId('editor-poligono-tai-ji')).not.toBeInTheDocument()
+    arrastar(cv, [650, 200], [800, 300])
+    const r = await salvo()
+    expect(r.bordas).toEqual(bordas)
+    expect(r.tai_ji_poligono).toHaveLength(5)
+    expect(r.marcacoes).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: /Editar contorno/ }))
+    expect(screen.getByRole('button', { name: '▭ Marcar Excesso' })).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ver planta sem sobreposições' }))
+    expect(screen.queryByTestId('editor-poligono-tai-ji')).not.toBeInTheDocument()
   })
 })
