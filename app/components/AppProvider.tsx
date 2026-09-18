@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { supabase } from '../../src/lib/supabase'
 import { usePreferenciaBooleana, PREFERENCIA_TEMA_ESCURO } from './hooks-cliente'
@@ -70,32 +72,25 @@ export default function AppProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkMode] = usePreferenciaBooleana(PREFERENCIA_TEMA_ESCURO, false)
   const [loading, setLoading] = useState(true)
   const [online, setOnline] = useState(true)
+  const [perfilIndisponivel, setPerfilIndisponivel] = useState(false)
 
   const refreshProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setUser(null); setProfile(null); return }
     setUser(user)
 
-    const cached = getCached<Profile>(`profile:${user.id}`)
-    if (cached) { setProfile(cached); return }
-
-    const { data } = await supabase
+    const { data } = await carregarPerfilComPlano<Profile>(supabase, supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .single())
 
     if (data) {
       setProfile(data)
-      setCache(`profile:${user.id}`, data)
+      setPerfilIndisponivel(false)
     } else {
-      const fallback: Profile = {
-        nome_completo: user.user_metadata?.nome_completo || '',
-        tipo_usuario: user.user_metadata?.tipo_usuario || '',
-        role: user.user_metadata?.role || '',
-        plano: 'freemium',
-      }
-      setProfile(fallback)
+      setProfile(null)
+      setPerfilIndisponivel(true)
     }
   }, [])
 
@@ -136,6 +131,10 @@ export default function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{ user, profile, darkMode, loading, online, toggleDarkMode, refreshProfile }}>
+      {perfilIndisponivel && <div role="alert">
+        Não foi possível verificar seu perfil e plano.{' '}
+        <button type="button" onClick={() => void refreshProfile()}>Tentar novamente</button>
+      </div>}
       {!online && (
         <div role="alert" style={{
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,

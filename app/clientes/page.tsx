@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { grausConfirmados } from '../../src/lib/orientacao'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState, useCallback } from 'react'
@@ -266,11 +268,11 @@ export default function Clientes() {
       if (!user) { redirecionarParaLogin(); return }
       setUser(user)
       setUserId(user.id)
-      const { data: prof } = await supabase
+      const { data: prof } = await carregarPerfilComPlano(supabase, supabase
         .from('profiles')
         .select('plano')
         .eq('id', user.id)
-        .single()
+        .single())
       setProfile(prof)
       await loadClientes(0, user.id)
     }
@@ -492,7 +494,8 @@ export default function Clientes() {
         </div>
       </div>
 
-      {!podeClientes(planoEfetivo(profile?.plano)) && (
+      {!profile && <p role="alert">Não foi possível verificar seu plano. Recarregue antes de cadastrar outro cliente.</p>}
+      {profile && !podeClientes(planoEfetivo(profile.plano)) && (
         <div style={{
           marginBottom: '16px', padding: '12px 16px', borderRadius: '8px',
           background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '13px'

@@ -38,11 +38,10 @@ describe('concessaoViva', () => {
     expect(concessaoViva(concessao({ valido_ate: exato }), AGORA)).toBe(false)
   })
 
-  it('data ilegível não invalida a concessão', () => {
-    // Entre tirar acesso de quem paga e manter por causa de um campo corrompido,
-    // o primeiro erro é o caro.
-    expect(concessaoViva(concessao({ valido_ate: 'não é data' }), AGORA)).toBe(true)
-    expect(concessaoViva(concessao({ valido_de: 'nem esta' }), AGORA)).toBe(true)
+  it('data ilegível não prova uma concessão vigente', () => {
+    expect(concessaoViva(concessao({ valido_ate: 'não é data' }), AGORA)).toBe(false)
+    expect(concessaoViva(concessao({ valido_de: 'nem esta' }), AGORA)).toBe(false)
+    expect(concessaoViva(concessao(), new Date('invalid'))).toBe(false)
   })
 })
 

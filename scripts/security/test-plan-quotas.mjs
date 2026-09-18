@@ -22,6 +22,19 @@ const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`
 const as = n => `set role authenticated; set request.jwt.claim.sub='${id(n)}';`
 const ownClient = n => `(select id from clientes where consultor_id='${id(n)}' order by criado_em,id limit 1)`
 const property = (n, status='em_andamento') => `insert into consultas(consultor_id,cliente_id,status) values('${id(n)}',${ownClient(n)},'${status}')`
+// Hold a real transaction open before the grant mutation; no timing guesses.
+async function admissionAfterSnapshot(n, isolation, between) {
+  const child = spawn('docker',args,{stdio:['pipe','pipe','pipe']})
+  let out='',err=''
+  child.stdout.on('data',c=>{out+=c}); child.stderr.on('data',c=>{err+=c})
+  const started = new Promise((resolve,reject)=>{child.stdout.once('data',resolve);child.once('error',reject)})
+  const completed = new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',code=>resolve({code,out,err}))})
+  child.stdin.write(`${as(n)} begin isolation level ${isolation}; select count(*) from profiles;\n`)
+  await started
+  try { sql(between); child.stdin.end(`${property(n)}; commit;\n`) }
+  catch (error) { child.stdin.end('rollback;\n'); await completed; throw error }
+  return completed
+}
 let checks = 0
 const equal = (a,b,label) => { assert.deepEqual(a,b,label); checks++ }
 const rejects = (statement, message) => {
@@ -127,6 +140,65 @@ try {
   rejects(`${as(6)} ${property(6)}`,'direitos_indisponiveis')
   sql(`delete from auth.users where id='${id(3)}'`)
   equal(sql(`select count(*) from app_private.cotas_serializacao where titular_id='${id(3)}'`),'0','privacy deletion cascades technical mutex')
+  // An expired entitlement still passed admissions when the cached profile was Pro.
+  sql(`update plans set features=features||'{"versao":"2026-09-18.1"}'::jsonb where slug='free';
+    create table concessoes_de_plano(id uuid primary key default gen_random_uuid(),user_id uuid not null references profiles(id),
+      plano text not null,origem text not null,referencia text,valido_de timestamptz not null default now(),valido_ate timestamptz,encerrada_em timestamptz,motivo text,
+      unique(origem,referencia));
+    create table subscriptions(id uuid primary key default gen_random_uuid(),user_id uuid not null references profiles(id),plan_id uuid references plans(id),
+      status text,price_paid numeric,gateway_subscription_id text,activated_by_key uuid,gratuidade_motivo text,cancelled_at timestamptz,
+      cancel_at_period_end boolean,current_period_start timestamptz,started_at timestamptz,created_at timestamptz not null default now(),current_period_end timestamptz);
+    insert into concessoes_de_plano(user_id,plano,origem,valido_ate) values
+      ('${id(2)}','simples','assinatura',null),('${id(4)}','profissional','chave',now()-interval '1 day');
+    insert into subscriptions(user_id,plan_id,status,price_paid,gratuidade_motivo)
+      values('${id(5)}',(select id from plans where slug='profissional'),'gratuidade',0,'Synthetic documented courtesy');
+    update profiles set plano='pro' where id='${id(8)}';
+    ${property(4)};`)
+  equal(sql(`select count(*) from consultas where consultor_id='${id(4)}'`),'13','baseline: expired grant bypasses quota through stale Pro cache')
+  const currentPlanMigration = readFileSync(new URL('../../supabase/migrations/20260918064534_effective_plan_from_current_grants.sql',import.meta.url),'utf8')
+  rejects(currentPlanMigration,'perfil_pago_sem_origem_verificavel')
+  equal(sql('select count(*) from concessoes_de_plano'), '2', 'unknown paid profile rolls back the entire migration, including courtesy backfill')
+  sql(`update profiles set plano='freemium' where id='${id(8)}'`)
+  const legacyData = sql('select jsonb_agg(to_jsonb(s) order by id) from subscriptions s')
+  sql(currentPlanMigration)
+  equal(sql('select jsonb_agg(to_jsonb(s) order by id) from subscriptions s'),legacyData,'legacy subscription unchanged')
+  equal(sql(`select plano from profiles where id='${id(5)}'`),'agencia','backfill does not mass rewrite cached profiles')
+  equal(sql(`${as(5)} select public.obter_meu_plano()`),'profissional','documented legacy courtesy preserved')
+  equal(sql(`${as(4)} select public.obter_meu_plano()`),'free','expired grant no longer confers access despite Pro cache')
+  equal(sql(`${as(2)} select public.obter_meu_plano()`),'simples','reads only the authenticated owner entitlement')
+  rejects('set role anon; select public.obter_meu_plano()','permission denied')
+  rejects(`set role authenticated; select app_private.plano_vigente('${id(5)}',now())`,'permission denied')
+  rejects('set role authenticated; select public.obter_meu_plano()','nao_autenticado')
+  rejects(`${as(4)} ${property(4)}`,'cota_imoveis_excedida')
+  rejects(`${as(4)} insert into clientes(consultor_id,nome_completo) values('${id(4)}','External')`,'cota_clientes_excedida')
+  sql(`${as(4)} update consultas set nome_imovel='Preserved after expiry';`)
+  equal(sql(`select count(*) from consultas where consultor_id='${id(4)}' and nome_imovel='Preserved after expiry'`),'13','expired plan preserves reading/editing existing properties')
+  sql(`${as(5)} ${property(5)};`)
+  equal(sql(`select count(*) from consultas where consultor_id='${id(5)}'`),'13','legacy courtesy still admits properties')
+  sql(`insert into concessoes_de_plano(user_id,plano,origem,valido_de) values('${id(4)}','profissional','cortesia',now()+interval '1 day');
+    insert into concessoes_de_plano(user_id,plano,origem,encerrada_em) values('${id(4)}','profissional','cortesia',now());`)
+  equal(sql(`${as(4)} select public.obter_meu_plano()`),'free','future and revoked grants do not revive expired rights')
+  sql(`grant select,update on profiles to service_role; grant select on concessoes_de_plano to service_role;`)
+  equal(sql(`set role service_role; select public.recalcular_plano_do_perfil('${id(4)}')`),'free','service projection uses the same effective rule')
+  equal(sql(`select plano from profiles where id='${id(4)}'`),'freemium','stale cache recalculated')
+  // New admissions still serialize after the effective-plan migration.
+  sql(`${as(6)} ${property(6)}; ${property(6)};`)
+  const freshRace = await Promise.all([1,2].map(()=>concurrent(`${as(6)} begin; ${property(6)}; select pg_sleep(1); commit;`)))
+  equal(freshRace.filter(r=>r.code===0).length,1,'one admission after current-plan migration')
+  equal(freshRace.filter(r=>r.err.includes('cota_imoveis_excedida')).length,1,'effective free limit survives concurrent admissions')
+  sql(`${as(7)} ${property(7)}; ${property(7)}; ${property(7)};
+    ${as(8)} ${property(8)}; ${property(8)}; ${property(8)};`)
+  const confer = n => `begin; select 1 from profiles where id='${id(n)}' for update;
+    insert into concessoes_de_plano(user_id,plano,origem,valido_de) values('${id(n)}','profissional','cortesia',clock_timestamp());
+    select public.recalcular_plano_do_perfil('${id(n)}'); commit;`
+  const freshGrant = await admissionAfterSnapshot(7,'read committed',confer(7))
+  equal(freshGrant.code,0,'admission sees grant started after its transaction began')
+  const staleSnapshot = await admissionAfterSnapshot(8,'repeatable read',confer(8))
+  equal(staleSnapshot.err.includes('could not serialize'),true,'stale entitlement snapshot fails before admission')
+  const expiredWhileOpen = await admissionAfterSnapshot(7,'read committed',`begin;
+    select 1 from profiles where id='${id(7)}' for update;
+    update concessoes_de_plano set valido_ate=clock_timestamp() where user_id='${id(7)}'; commit;`)
+  equal(expiredWhileOpen.err.includes('cota_imoveis_excedida'),true,'admission uses actual time after lock, not transaction start time')
   process.stdout.write(JSON.stringify({passed:checks,baselineRaceReproduced:true,database:'PostgreSQL 17'})+'\n')
 } finally {
   try { docker('rm','-f','-v',container) } catch { /* Only the random task-owned container. */ }

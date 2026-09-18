@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -53,7 +55,7 @@ export default function Planos() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { redirecionarParaLogin(); return }
       setUser(user)
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      const { data } = await carregarPerfilComPlano<Profile>(supabase, supabase.from('profiles').select('*').eq('id', user.id).single())
       setProfile(data)
 
       // Load current subscription
@@ -200,6 +202,11 @@ export default function Planos() {
 
   const planoAtualLabel = PLANOS.find(p => p.id === planoAtualEfetivo)?.nome || 'Free'
   const planoAtualCor = PLANOS.find(p => p.id === planoAtualEfetivo)?.cor || '#6B7280'
+
+  if (!profile) return <AppShell currentPage="planos"><div role="alert">
+    <p>Não foi possível verificar seu plano. Recarregue para conferir seus benefícios.</p>
+    <button type="button" onClick={() => window.location.reload()}>Tentar novamente</button>
+  </div></AppShell>
 
   return (
     <AppShell currentPage="planos">

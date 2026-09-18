@@ -75,15 +75,16 @@ export function concessaoViva(concessao: Concessao, agora: Date = new Date()): b
   if (concessao.encerrada_em) return false
 
   const instante = agora.getTime()
+  if (!Number.isFinite(instante)) return false
 
   if (concessao.valido_de) {
     const inicio = Date.parse(concessao.valido_de)
-    if (Number.isFinite(inicio) && inicio > instante) return false
+    if (!Number.isFinite(inicio) || inicio > instante) return false
   }
 
   if (concessao.valido_ate) {
     const fim = Date.parse(concessao.valido_ate)
-    if (Number.isFinite(fim) && fim <= instante) return false
+    if (!Number.isFinite(fim) || fim <= instante) return false
   }
 
   return true

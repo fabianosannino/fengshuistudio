@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoUsuario,
-         limiteImoveis, mensagemLimiteImoveis, STATUS_LIBERAM_VAGA } from '../../../src/lib/plano-utils'
+import { limiteImoveis, mensagemLimiteImoveis, STATUS_LIBERAM_VAGA } from '../../../src/lib/plano-utils'
+import { obterMeuPlano } from '../../../src/lib/plano-vigente'
 import { ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../../src/lib/periodo-do-imovel'
 
 export async function POST(request: Request) {
@@ -23,18 +23,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  // Check profile and plan
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError || !profile) {
+  const plano = await obterMeuPlano(supabase)
+  if (plano === null) {
     return NextResponse.json({ error: 'Não foi possível verificar seu plano.' }, { status: 503 })
   }
 
-  const plano = planoUsuario(profile)
 
   // A regra e a mensagem vêm de `plano-utils`, não daqui: quando cada rota
   // escrevia a sua, a API dizia «limite de 1 imóvel ativo» enquanto a tela

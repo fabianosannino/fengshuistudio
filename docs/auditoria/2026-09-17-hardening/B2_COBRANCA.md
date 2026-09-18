@@ -152,3 +152,17 @@ cliente e tem uma assinatura legada `gratuidade`, valor zero, sem gateway,
 sem chave, com motivo e sem prazo. O outro Pro é administrador com concessão
 vigente. Isso identifica o direito legado a preservar numa migração futura;
 nenhum direito foi recalculado ou retirado nesta leitura.
+
+## Plano vigente e preservação de origem (ADR 0047)
+
+Cotas passam a consultar a maior concessão vigente após serializar pelo
+perfil, sem depender do cache profiles.plano. APIs, telas centrais e fonte
+para novas emissões consultam a mesma regra. Indisponibilidade não é Free.
+Backfill estrito preserva uma gratuidade legada documentada, de preço zero,
+sem gateway, sem chave e sem cancelamento; perfil pago restante sem origem
+faz a migração inteira falhar. Nenhuma assinatura real foi criada/cancelada.
+
+Validação: 1.595 testes em 121 arquivos, TypeScript aprovado e 60 verificações
+PostgreSQL, incluindo bypass anterior, rollback do backfill, ACLs, dados
+existentes preservados, concorrência e concessão/vencimento após início da
+transação. Migração será aplicada somente após os gates remotos passarem.

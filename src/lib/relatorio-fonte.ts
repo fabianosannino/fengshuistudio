@@ -2,6 +2,7 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { jsonCanonico, MAX_ENTRADA_RELATORIO, type FonteRelatorio } from './relatorio-emissao'
+import { carregarPerfilComPlano } from './plano-vigente'
 
 export function sha256(valor: string | Uint8Array): string {
   return createHash('sha256').update(valor).digest('hex')
@@ -21,7 +22,7 @@ export async function carregarFonteRelatorio(client: SupabaseClient, consultaId:
   if (consulta.error) throw new Error('Falha ao ler consulta')
   if (!consulta.data) return null
   const [perfil, setores, evolucao, custom] = await Promise.all([
-    client.from('profiles').select(COLUNAS_PERFIL).eq('id', userId).single(),
+    carregarPerfilComPlano(client, client.from('profiles').select(COLUNAS_PERFIL).eq('id', userId).single()),
     client.from('setores_bagua').select('id,consulta_id,nome,numero,elemento,cor_associada,posicao_grid,score_percentual,recomendacoes_custom,comodo_tipo,comodos,diagnostico_criterios(criterio,score,notas,setor_id)')
       .eq('consulta_id', consultaId).order('numero').order('id'),
     client.from('diagnostico_snapshots').select('tipo,scores,criado_em').eq('consulta_id', consultaId).order('criado_em').order('id'),

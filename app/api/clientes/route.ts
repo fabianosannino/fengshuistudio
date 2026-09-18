@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoUsuario, limiteClientes, mensagemLimiteClientes } from '../../../src/lib/plano-utils'
+import { limiteClientes, mensagemLimiteClientes } from '../../../src/lib/plano-utils'
+import { obterMeuPlano } from '../../../src/lib/plano-vigente'
 import { validateEmail, validatePhone } from '../../../src/lib/validation'
 
 
@@ -23,18 +24,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  // Check plan
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('plano, tipo_usuario, role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError || !profile) {
+  const planoDoUsuario = await obterMeuPlano(supabase)
+  if (planoDoUsuario === null) {
     return NextResponse.json({ error: 'Não foi possível verificar seu plano.' }, { status: 503 })
   }
 
-  const planoDoUsuario = planoUsuario(profile)
   const limiteDeClientes = limiteClientes(planoDoUsuario)
 
   if (limiteDeClientes !== null) {
