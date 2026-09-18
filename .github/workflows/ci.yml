@@ -71,6 +71,8 @@ jobs:
         run: npm run test:checkout-intents
       - name: Verificar projecao atomica de assinatura e prazo do beneficio
         run: npm run test:subscription-sync
+      - name: Verificar faturas, reembolsos e disputas em transacao
+        run: npm run test:financial-sync
 
   quality:
     name: Dependency Security

@@ -37,6 +37,7 @@ const TABELAS_DIRETAS = [
   ['clientes', 'consultor_id'], ['consultas', 'consultor_id'],
   ['subscriptions', 'user_id'], ['invoices', 'user_id'], ['concessoes_de_plano', 'user_id'],
   ['checkouts_assinatura', 'user_id'],
+  ['disputas_stripe', 'user_id'],
   ['pagamentos', 'consultor_id'], ['rituais', 'consultor_id'],
   ['consultor_checklist_chi_custom', 'consultor_id'], ['consultor_curas_custom', 'consultor_id'],
   ['payment_notifications', 'user_id'], ['servicos_do_parceiro', 'perfil_id'],

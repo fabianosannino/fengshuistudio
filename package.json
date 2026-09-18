@@ -17,7 +17,8 @@
     "test:rate-limit": "node scripts/security/test-rate-limit.mjs",
     "test:checkout-intents": "node scripts/security/test-checkout-intents.mjs",
     "test:subscription-sync": "node scripts/security/test-subscription-sync.mjs",
-    "test:ephemeris": "node scripts/domain/generate-li-chun.mjs --check"
+    "test:ephemeris": "node scripts/domain/generate-li-chun.mjs --check",
+    "test:financial-sync": "node scripts/security/test-financial-sync.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

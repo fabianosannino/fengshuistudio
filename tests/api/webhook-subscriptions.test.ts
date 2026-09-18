@@ -6,7 +6,7 @@
  *  - sem assinatura Stripe válida, nada é processado (400);
  *  - idempotência: evento repetido não duplica assinatura;
  *  - preço desconhecido NUNCA concede plano (fail-closed);
- *  - cancelamento rebaixa o perfil para 'free'.
+ *  - eventos financeiros leem o estado atual antes de gravar sob reserva.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type Stripe from 'stripe'
@@ -17,6 +17,10 @@ const subscriptionsRetrieve = vi.fn()
 const invoicesList = vi.fn()
 const invoicesRetrieve = vi.fn()
 const chargesRetrieve = vi.fn()
+const paymentsList = vi.fn()
+const intentsRetrieve = vi.fn()
+const refundsList = vi.fn()
+const disputesRetrieve = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
   default: {
     subscriptions: { retrieve: (...a: unknown[]) => subscriptionsRetrieve(...a) },
@@ -26,6 +30,10 @@ vi.mock('../../src/lib/stripe', () => ({
       retrieve: (...a: unknown[]) => invoicesRetrieve(...a),
     },
     charges: { retrieve: (...a: unknown[]) => chargesRetrieve(...a) },
+    invoicePayments: { list: (...a: unknown[]) => paymentsList(...a) },
+    paymentIntents: { retrieve: (...a: unknown[]) => intentsRetrieve(...a) },
+    refunds: { list: (...a: unknown[]) => refundsList(...a) },
+    disputes: { retrieve: (...a: unknown[]) => disputesRetrieve(...a) },
   },
 }))
 
@@ -80,6 +88,8 @@ function makeSupabaseMock(handler: Handler) {
     queries.push(q)
     const data = name === 'reivindicar_evento_stripe' ? { situacao: 'reivindicado', token: 'attempt-1' }
       : name === 'reservar_sincronizacao_assinatura' ? 'sync-token'
+      : name === 'reservar_sincronizacao_financeira' ? 'financial-token'
+      : name === 'aplicar_fatura_stripe' ? 'invoice-row'
       : name === 'aplicar_sincronizacao_assinatura' ? { situacao: 'criada', linhaId: 'linha-sintetica', cancelamentoAgendado: false }
       : true
     return { data, error: null, ...handler(q) }
@@ -147,6 +157,131 @@ beforeEach(() => {
   vi.clearAllMocks()
   supabaseMock = makeSupabaseMock(defaultHandler)
   subscriptionsRetrieve.mockImplementation(async () => constructEvent.mock.results.at(-1)?.value?.data?.object)
+  invoicesRetrieve.mockImplementation(async invoiceId => ({ id: invoiceId, livemode: false, customer: 'cus_123', currency: 'brl',
+    total: 2000, amount_paid: 2000, status: 'paid', created: 1_786_555_000, status_transitions: { paid_at: 1_786_556_000 } }))
+  paymentsList.mockImplementation(async params => ({ has_more: false, data: [{ id: 'inpay_1', invoice: params.invoice ?? invoicesRetrieve.mock.calls.at(-1)?.[0] ?? 'in_1',
+    livemode: false, currency: 'brl', amount_paid: 2000, status: 'paid', payment: { type: 'payment_intent', payment_intent: 'pi_1' } }] }))
+  intentsRetrieve.mockResolvedValue({ id: 'pi_1', livemode: false, customer: 'cus_123', currency: 'brl', status: 'succeeded', amount_received: 2000,
+    latest_charge: { id: 'ch_1', livemode: false, customer: 'cus_123', payment_intent: 'pi_1', currency: 'brl', status: 'succeeded', paid: true, amount_captured: 2000 } })
+  refundsList.mockResolvedValue({ has_more: false, data: [] })
+  disputesRetrieve.mockImplementation(async () => ({ livemode: false, ...constructEvent.mock.results.at(-1)?.value?.data?.object }))
+})
+
+describe('projeção financeira atual e retryable', () => {
+  const invoiceEvent = () => ({ type: 'invoice.paid', data: { object: { id: 'in_1', status: 'paid' } } })
+  const refund = (status = 'succeeded', overrides = {}) => ({ id: 're_1', charge: 'ch_1', payment_intent: 'pi_1',
+    currency: 'brl', amount: 500, status, created: 1_786_555_500, ...overrides })
+  const appliedInvoice = () => supabaseMock.queries.find(q => q.table === 'rpc:aplicar_fatura_stripe')?.values
+
+  it('reserva a fatura antes da leitura e não usa o filtro global de eventos antigos', async () => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    const original = invoicesRetrieve.getMockImplementation()!
+    invoicesRetrieve.mockImplementation(async (...args) => {
+      expect(supabaseMock.queries.some(q => q.table === 'rpc:reservar_sincronizacao_financeira')).toBe(true)
+      return original(...args)
+    })
+    expect((await POST(req())).status).toBe(200)
+    expect(appliedInvoice()?.p_token).toBe('financial-token')
+    expect(supabaseMock.queries.some(q => q.table === 'eventos_stripe')).toBe(false)
+  })
+  it('reserva financeira ocupada não permite leitura nem escrita', async () => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:reservar_sincronizacao_financeira' ? { data: null } : defaultHandler(q))
+    expect((await POST(req())).status).toBe(500)
+    expect(invoicesRetrieve).not.toHaveBeenCalled()
+    expect(appliedInvoice()).toBeUndefined()
+  })
+  it('o caminho legado de reembolso da loja conserva a guarda de ordem', async () => {
+    constructEvent.mockReturnValue({ type: 'charge.refunded', data: { object: { id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false } } })
+    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: { id: 'pedido_1' } }
+      : q.table === 'eventos_stripe' ? { data: [{ event_id: 'evt_newer' }] } : defaultHandler(q))
+    expect((await POST(req())).status).toBe(200)
+    expect(invoicesRetrieve).not.toHaveBeenCalled()
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:registrar_evento_pedido')).toBe(false)
+  })
+  it('novo evento refund da loja fica retryable até conciliação própria', async () => {
+    constructEvent.mockReturnValue({ type: 'refund.updated', data: { object: refund() } })
+    chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false })
+    supabaseMock = makeSupabaseMock(q => q.table === 'pedidos' ? { data: { id: 'pedido_1' } } : defaultHandler(q))
+    expect((await POST(req())).status).toBe(500)
+    expect(invoicesRetrieve).not.toHaveBeenCalled()
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true)).toBe(false)
+  })
+  it.each(['succeeded', 'pending', 'failed', 'canceled', 'requires_action'])('invoice.paid atrasado inclui o reembolso atual %s na mesma transação', async status => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    refundsList.mockResolvedValue({ has_more: false, data: [refund(status)] })
+    expect((await POST(req())).status).toBe(200)
+    expect(appliedInvoice()?.p_dados).toMatchObject({ reembolsos: [{ id: 're_1', centavos: 500, status }] })
+    expect(supabaseMock.queries.some(q => q.table === 'invoices' || q.table === 'payment_notifications')).toBe(false)
+  })
+  it.each(['pagamentos', 'reembolsos', 'vinculos'])('lista incompleta de %s nunca vira resultado parcial confirmado', async alvo => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    if (alvo === 'reembolsos') refundsList.mockResolvedValue({ has_more: true, data: [refund()] })
+    else {
+      const original = paymentsList.getMockImplementation()!
+      paymentsList.mockImplementation(async params => ({ ...await original(params), has_more: alvo === 'pagamentos' ? !!params.invoice : !!params.payment }))
+    }
+    expect((await POST(req())).status).toBe(500)
+    expect(appliedInvoice()).toBeUndefined()
+  })
+  it('pagamento compartilhado entre duas faturas não atribui o estorno inteiro a uma delas', async () => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    const original = paymentsList.getMockImplementation()!
+    paymentsList.mockImplementation(async params => {
+      const result = await original(params)
+      return params.payment ? { ...result, data: [...result.data, { ...result.data[0], id: 'inpay_2', invoice: 'in_outro' }] } : result
+    })
+    expect((await POST(req())).status).toBe(500)
+    expect(appliedInvoice()).toBeUndefined()
+  })
+  it.each([{ currency: 'usd' }, { amount: 3000 }, { status: 'unknown' }, { charge: 'ch_outro' }, { amount: 0.5 }])('recusa reembolso incompatível %j', async delta => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    refundsList.mockResolvedValue({ has_more: false, data: [refund('succeeded', delta)] })
+    expect((await POST(req())).status).toBe(500)
+    expect(appliedInvoice()).toBeUndefined()
+  })
+  it('não associa pagamento de outro titular à fatura', async () => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    const current = await intentsRetrieve()
+    intentsRetrieve.mockResolvedValue({ ...current, customer: 'cus_outro' })
+    expect((await POST(req())).status).toBe(500)
+    expect(appliedInvoice()).toBeUndefined()
+  })
+  it('falha da transação não conclui evento nem perde a possibilidade de repetir', async () => {
+    constructEvent.mockReturnValue(invoiceEvent())
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:aplicar_fatura_stripe' ? { data: null, error: { message: 'expired' } } : defaultHandler(q))
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:liberar_sincronizacao_financeira')?.values)
+      .toEqual({ p_recurso: 'in_1', p_token: 'financial-token' })
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true)).toBe(false)
+  })
+  it('usa InvoicePayments para localizar fatura do reembolso, sem janela das dez últimas', async () => {
+    constructEvent.mockReturnValue({ type: 'charge.refunded', data: { object: { id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false } } })
+    refundsList.mockResolvedValue({ has_more: false, data: [refund()] })
+    expect((await POST(req())).status).toBe(200)
+    expect(paymentsList).toHaveBeenCalledWith({ payment: { type: 'payment_intent', payment_intent: 'pi_1' }, status: 'paid', limit: 100 }, expect.any(Object))
+    expect(invoicesList).not.toHaveBeenCalled()
+  })
+  it.each(['refund.created', 'refund.updated', 'refund.failed'])('%s reconcilia a fatura sem declarar sucesso pelo snapshot do evento', async type => {
+    constructEvent.mockReturnValue({ type, data: { object: refund() } })
+    chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123', payment_intent: 'pi_1', livemode: false })
+    refundsList.mockResolvedValue({ has_more: false, data: [refund('failed')] })
+    expect((await POST(req())).status).toBe(200)
+    expect(appliedInvoice()?.p_dados).toMatchObject({ reembolsos: [{ status: 'failed' }] })
+  })
+  it('disputa aberta atrasada consulta o desfecho atual', async () => {
+    constructEvent.mockReturnValue({ type: 'charge.dispute.created', data: { object: { id: 'dp_1', status: 'needs_response' } } })
+    disputesRetrieve.mockResolvedValue({ id: 'dp_1', livemode: false, charge: 'ch_1', amount: 2000, currency: 'brl', status: 'won', reason: 'general', created: 1_786_555_000 })
+    chargesRetrieve.mockResolvedValue({ id: 'ch_1', livemode: false, currency: 'brl', customer: 'cus_123' })
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_disputa_stripe')?.values?.p_dados).toMatchObject({ status: 'won' })
+  })
+  it('falha ao identificar o titular da disputa não é confirmação sem titular', async () => {
+    constructEvent.mockReturnValue({ type: 'charge.dispute.created', data: { object: { id: 'dp_1', charge: 'ch_1', amount: 2000, currency: 'brl', status: 'needs_response' } } })
+    chargesRetrieve.mockRejectedValue(new Error('provider unavailable'))
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_disputa_stripe')).toBe(false)
+  })
 })
 
 // ── Testes ───────────────────────────────────────────────────────────────────
@@ -159,14 +294,11 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     expect(subscriptionsRetrieve).not.toHaveBeenCalled()
     expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano')).toBe(false)
   })
-  it('erro ao verificar ordem responde falha e libera apenas a tentativa atual', async () => {
+  it('assinatura não descarta evento por consulta genérica de ordem', async () => {
     supabaseMock = makeSupabaseMock(q => q.table === 'eventos_stripe' ? { error: { message: 'falha' } } : defaultHandler(q))
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
-    expect((await POST(req())).status).toBe(500)
-    expect(subscriptionsRetrieve).not.toHaveBeenCalled()
-    expect(supabaseMock.queries).toEqual(expect.arrayContaining([expect.objectContaining({
-      table: 'rpc:finalizar_evento_stripe', values: { p_event_id: 'evt_1', p_token: 'attempt-1', p_sucesso: false },
-    })]))
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.some(q => q.table === 'eventos_stripe')).toBe(false)
   })
   it('conclusão não confirmada não responde sucesso', async () => {
     supabaseMock = makeSupabaseMock(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true
@@ -294,9 +426,6 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     // `invoice.paid`. Escutar só o antigo deixaria a renovação passar em
     // branco se ele sair — e o objeto do evento novo traz o id da fatura,
     // não a fatura.
-    invoicesRetrieve.mockResolvedValue({
-      id: 'in_1', customer: 'cus_123', amount_paid: 2000, number: 'A-1', due_date: null,
-    })
     constructEvent.mockReturnValue({
       type: 'invoice_payment.paid',
       id: 'evt_ip',
@@ -306,13 +435,13 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
 
     const res = await POST(req())
     expect(res.status).toBe(200)
-    expect(invoicesRetrieve).toHaveBeenCalledWith('in_1')
+    expect(invoicesRetrieve).toHaveBeenCalledWith('in_1', {}, expect.any(Object))
 
-    const fatura = supabaseMock.queries.find(q => q.table === 'invoices' && q.op !== 'select')
-    expect(fatura?.values).toMatchObject({ status: 'paid', amount_paid: 20 })
+    const fatura = supabaseMock.queries.find(q => q.table === 'rpc:aplicar_fatura_stripe')
+    expect(fatura?.values?.p_dados).toMatchObject({ status: 'paid', pago_centavos: 2000 })
   })
 
-  it('invoice_payment.paid sem id de fatura não quebra nem inventa', async () => {
+  it('invoice_payment.paid sem id de fatura permanece pendente para retry', async () => {
     constructEvent.mockReturnValue({
       type: 'invoice_payment.paid',
       id: 'evt_ip2',
@@ -321,14 +450,14 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     } as unknown as Stripe.Event)
 
     const res = await POST(req())
-    expect(res.status).toBe(200)
-    expect(supabaseMock.queries.some(q => q.table === 'invoices')).toBe(false)
+    expect(res.status).toBe(500)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_fatura_stripe')).toBe(false)
   })
 
   it('contestação aberta é registrada e NÃO rebaixa o plano', async () => {
     // Disputa aberta não é venda perdida: pode ser ganha, e tirar o acesso de
     // quem contestou por engano seria punir antes do veredito.
-    chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123' })
+    chargesRetrieve.mockResolvedValue({ id: 'ch_1', customer: 'cus_123', livemode: false, currency: 'brl' })
     constructEvent.mockReturnValue({
       type: 'charge.dispute.created',
       id: 'evt_dp',
@@ -345,9 +474,9 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     const res = await POST(req())
     expect(res.status).toBe(200)
 
-    const disputa = supabaseMock.queries.find(q => q.table === 'disputas_stripe')
-    expect(disputa?.values).toMatchObject({
-      id: 'dp_1', charge_id: 'ch_1', valor: 49.9, status: 'needs_response', desfecho: null,
+    const disputa = supabaseMock.queries.find(q => q.table === 'rpc:aplicar_disputa_stripe')
+    expect(disputa?.values?.p_dados).toMatchObject({
+      charge: 'ch_1', centavos: 4990, status: 'needs_response',
     })
 
     const rebaixamento = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
@@ -355,7 +484,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
   })
 
   it('contestação perdida registra o desfecho', async () => {
-    chargesRetrieve.mockResolvedValue({ id: 'ch_2', customer: 'cus_123' })
+    chargesRetrieve.mockResolvedValue({ id: 'ch_2', customer: 'cus_123', livemode: false, currency: 'brl' })
     constructEvent.mockReturnValue({
       type: 'charge.dispute.closed',
       id: 'evt_dp2',
@@ -371,8 +500,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     const res = await POST(req())
     expect(res.status).toBe(200)
 
-    const disputa = supabaseMock.queries.find(q => q.table === 'disputas_stripe')
-    expect(disputa?.values).toMatchObject({ id: 'dp_2', status: 'lost', desfecho: 'lost' })
-    expect(disputa?.values?.fechada_em).toBeTruthy()
+    const disputa = supabaseMock.queries.find(q => q.table === 'rpc:aplicar_disputa_stripe')
+    expect(disputa?.values).toMatchObject({ p_recurso: 'dp_2', p_dados: { status: 'lost' } })
   })
 })
