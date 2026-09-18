@@ -60,6 +60,14 @@ beforeEach(() => {
   state.iniciar.mockResolvedValue({ data: 'pronto', error: null }); state.signOut.mockResolvedValue({ error: null })
 })
 describe('portabilidade do titular', () => {
+  it('inclui mobiliário e nascimento apenas nas consultas do titular', async () => {
+    const proprio={versao:1,revisao:1,itens:[{ambiente:'Cozinha',nascimento:'1980-10-10'}]}
+    state.rows.consultas[0].mobiliario=proprio
+    state.rows.consultas[1].mobiliario={itens:[{nascimento:'1990-01-01'}]}
+    const data=await (await GET(new Request('https://example.invalid/api/conta/dados'))).json()
+    expect(data.consultas).toHaveLength(1)
+    expect(data.consultas[0].mobiliario).toEqual(proprio)
+  })
   it('inventário usa a mesma sessão e não confunde erro de contagem com zero', async () => {
     const req = new Request('https://example.invalid/api/conta/dados?resumo=1&user_id=other')
     expect(await (await GET(req)).json()).toEqual({ clientes: 1, consultas: 1, pedidosComoComprador: 1, pedidosComoVendedor: 0 })

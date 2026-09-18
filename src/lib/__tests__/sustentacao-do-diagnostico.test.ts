@@ -34,7 +34,7 @@ describe('D0-02 — disponibilidade deriva do cálculo, com limites visíveis', 
   it('sem contorno a limitação geométrica permanece declarada', () => {
     const r = sustentacaoDoDiagnostico({ ...completo(), temPoligonoTaiJi: false })[1]
     expect(r.disponivel).toBe(false)
-    expect(r.oQueFalta).toContain('falta e excesso de área não são calculáveis')
+    expect(r.oQueFalta).toContain('marcações de falta e excesso são calculadas separadamente')
   })
   it('consulta recém-criada não sustenta nada', () => {
     const r = sustentacaoDoDiagnostico({ execucoes: executarMetodos({}) })

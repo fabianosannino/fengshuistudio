@@ -207,6 +207,24 @@ try {
     ok(sql(`select has_table_privilege('${role}','relatorio_emissoes','TRUNCATE') or has_table_privilege('${role}','relatorio_emissoes','MAINTAIN')`),'f',`${role}: cannot bypass history using table-wide privileges`)
   }
 
+  // D-MOB-03: coluna real JSONB, RPC invoker, dados sintéticos e CAS concorrente.
+  sql('alter table public.consultas add column if not exists bagua_entrada jsonb;')
+  sql(source('supabase/migrations/20260918135136_mobiliario_consulta.sql'))
+  await eventually(async()=>(await request('consultas?select=mobiliario',1)).status===200)
+  const cadastro = {versao:1,revisao:1,referencia_planta:'sintetica',itens:[{ambiente:'Cozinha',tipo:'mesa',nascimento:'1980-10-10'},{ambiente:'Cozinha',tipo:'fogao'}]}
+  const salvarMovel = {p_consulta:actor(1),p_revisao:0,p_entrada:null,p_cadastro:cadastro}
+  denied(await request('rpc/salvar_mobiliario_consulta',1,{role:'anon',method:'POST',body:salvarMovel}),'mobiliario anonymous RPC denied')
+  ok((await request('rpc/salvar_mobiliario_consulta',2,{method:'POST',body:salvarMovel})).data,false,'mobiliario foreign owner cannot write')
+  const concorrentes = await Promise.all([1,2].map(()=>request('rpc/salvar_mobiliario_consulta',1,{method:'POST',body:salvarMovel})))
+  ok(concorrentes.filter(r=>r.data===true).length,1,'mobiliario only one concurrent revision wins')
+  ok(concorrentes.filter(r=>r.data===false).length,1,'mobiliario stale writer gets conflict')
+  ok((await request(`consultas?id=eq.${actor(1)}&select=mobiliario`,1)).data[0].mobiliario,cadastro,'mobiliario persists multiple rows including optional birth data')
+  ok((await request(`consultas?id=eq.${actor(1)}&select=mobiliario`,2)).data,[],'mobiliario third-party personal data is private')
+  sql(`update consultas set bagua_entrada='{"bordas":{"x":0,"y":0,"w":300,"h":300}}' where id='${actor(1)}';`)
+  ok((await request('rpc/salvar_mobiliario_consulta',1,{method:'POST',body:{...salvarMovel,p_revisao:1,p_cadastro:{...cadastro,revisao:2}}})).data,false,'mobiliario geometry race cannot silently accept old positions')
+  ok((await request(`consultas?id=eq.${actor(1)}`,1,{method:'PATCH',body:{mobiliario:{versao:null,revisao:1,itens:[],referencia_planta:'s'}}})).status,400,'mobiliario CHECK rejects null version')
+  ok(sql(`begin; delete from consultas where id='${actor(1)}'; select count(*) from consultas where id='${actor(1)}'; rollback;`),'0','mobiliario deleted with consultation, no independent orphan')
+
   // Restore rehearsal of this disposable schema/data, never a production backup.
   const dump = execFileSync('docker',['exec',db,'pg_dump','-U','postgres','--no-owner'],{encoding:'utf8'})
   sql('create database restore_check;')

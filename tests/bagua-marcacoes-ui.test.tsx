@@ -4,9 +4,9 @@ import BaguaPlanta from '../app/bagua-planta/page'
 import type { BaguaEntrada } from '../src/lib/types'
 import { calcularSetores, type Marcacao } from '../src/lib/geometria-bagua'
 
-const mocks = vi.hoisted(() => ({ salvos: [] as { bagua_entrada: BaguaEntrada; bagua_imagem?: string }[], restaurado: null as BaguaEntrada | null, router: { push: vi.fn() } }))
+const mocks = vi.hoisted(() => ({ salvos: [] as { bagua_entrada: BaguaEntrada; bagua_imagem?: string }[], restaurado: null as BaguaEntrada | null, falhar: false, router: { push: vi.fn() } }))
 const bordas = { x: 100, y: 100, w: 600, h: 600 }
-const existente = { id: 'original', tipo: 'falta' as const, x: 150, y: 150, w: 300, h: 300 }
+const existente = { id: 'original', tipo: 'falta' as const, x: 100, y: 100, w: 100, h: 100 }
 const fonte = { planta_url: 'sintetica/planta.png', escola: 'btb', etapa: 'resultado', bordas, marcacoes: [existente], metragem_real: 90 }
 vi.mock('next/navigation', () => ({ useRouter: () => mocks.router, useSearchParams: () => new URLSearchParams('consultaId=sintetica') }))
 vi.mock('../app/components/FlowLayout', () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
@@ -19,7 +19,7 @@ vi.mock('../src/lib/supabase', () => ({ supabase: {
       upsert: () => q, delete: () => q, insert: () => q,
       single: async () => ({ data: tabela === 'consultas' ? { nome_imovel: 'Planta sintética', bagua_entrada: mocks.restaurado ?? fonte } : { id: 'setor-sintetico' } }),
       update: (v: { bagua_entrada: BaguaEntrada }) => { mocks.salvos.push(structuredClone(v)); return q },
-      then: (resolve: (r: unknown) => unknown) => Promise.resolve({ data: [], count: 0, error: null }).then(resolve),
+      then: (resolve: (r: unknown) => unknown) => Promise.resolve({ data: [], count: 0, error: mocks.falhar ? {message:'falha sintética'} : null }).then(resolve),
     }
     return q
   },
@@ -40,7 +40,7 @@ class PonteiroDeTeste extends MouseEvent {
 }
 beforeEach(() => {
   mocks.salvos.length = 0
-  mocks.restaurado = null
+  mocks.restaurado = null; mocks.falhar = false
   vi.clearAllMocks()
   capturado = null
   vi.stubGlobal('PointerEvent', PonteiroDeTeste)
@@ -48,6 +48,12 @@ beforeEach(() => {
     setPointerCapture: { configurable: true, value: vi.fn((id: number) => { capturado = id }) },
     hasPointerCapture: { configurable: true, value: (id: number) => capturado === id },
     releasePointerCapture: { configurable: true, value: vi.fn(() => { capturado = null }) },
+  })
+  Object.defineProperties(SVGElement.prototype, {
+    setPointerCapture: {configurable:true,value:(id:number)=>{capturado=id}},
+    hasPointerCapture: {configurable:true,value:(id:number)=>capturado===id},
+    releasePointerCapture: {configurable:true,value:()=>{capturado=null}},
+    getBoundingClientRect: {configurable:true,value:()=>({x:0,y:0,left:0,top:0,right:1000,bottom:800,width:1000,height:800,toJSON(){}})},
   })
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(desenho as unknown as CanvasRenderingContext2D)
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000)
@@ -65,263 +71,149 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 async function abrir() {
   const { container } = render(<BaguaPlanta />)
   fireEvent.click(await screen.findByRole('button', { name: /Continuar/ }))
-  await screen.findByRole('button', { name: '▭ Marcar Falta' })
+  await screen.findByRole('button', { name: 'Editar planta e marcações' })
   const cv = container.querySelector('canvas')!
   await waitFor(() => expect(cv.width).toBeGreaterThan(0))
   return cv
 }
-function ponto(cv: HTMLCanvasElement, xy: [number, number], pointerType = 'mouse', pointerId = 1) {
-  const s = cv.width / 1000
-  return { clientX: xy[0] * s, clientY: xy[1] * cv.height / 800, pointerType, pointerId, isPrimary: true, button: 0 }
+
+async function editar(confirmar = true) {
+  fireEvent.click(screen.getByRole('button', { name: 'Editar planta e marcações' }))
+  if (confirmar) {
+    fireEvent.click(screen.getByRole('button', { name: '1. Marcar bordas' }))
+    fireEvent.click(screen.getByRole('button', { name: 'OK — confirmar bordas' }))
+    await screen.findByText(/Bordas revisadas e confirmadas/)
+  }
+  return screen.getByLabelText('Editor de polígonos da planta')
 }
-function arrastar(cv: HTMLCanvasElement, de: [number, number], para: [number, number], tipo = 'mouse', intermediario = true) {
-  fireEvent.pointerDown(cv, ponto(cv, de, tipo))
-  if (intermediario) fireEvent.pointerMove(cv, { ...ponto(cv, para, tipo), buttons: 1 })
-  fireEvent.pointerUp(cv, ponto(cv, para, tipo))
+function desenhar(svg: HTMLElement, pts: [number, number][], tipo = 'mouse') {
+  for (const [x,y] of pts) {
+    fireEvent.pointerDown(svg,{clientX:x,clientY:y,pointerId:1,pointerType:tipo,isPrimary:true,button:0})
+    fireEvent.pointerUp(svg,{clientX:x,clientY:y,pointerId:1,pointerType:tipo,isPrimary:true,button:0})
+  }
+}
+async function confirmar(tipo: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'OK — confirmar '+tipo }))
+  await screen.findByText(/Marcação confirmada e salva/)
 }
 async function salvo() {
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir edição' }))
   const antes = mocks.salvos.length
   fireEvent.click(screen.getByRole('button', { name: /Recalcular/ }))
   await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(antes))
   return mocks.salvos.at(-1)!.bagua_entrada
 }
 
-describe('E-MARC-01 — reprodução com mouse e bordas preservadas', () => {
-  it('cria uma falta em espaço livre sem alterar as bordas nem a imagem original', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    arrastar(cv, [500, 200], [560, 270])
-    const r = await salvo()
-    expect(r.bordas).toEqual(bordas)
-    expect(r.planta_url).toBe(fonte.planta_url)
-    expect(r.marcacoes).toHaveLength(2)
+describe('E-POL-03 — fluxo completo da página, confirmações e regressões', () => {
+  it('orienta sem afirmar detecção automática e deixa revisão de bordas explícita', async () => {
+    await abrir(); await editar(false)
+    expect(screen.getByRole('button', {name:'2. Marcar Falta'})).toBeDisabled()
+    expect(screen.getByText(/sem confirmação neste fluxo/)).toBeInTheDocument()
+    expect(screen.getByText(/não detecta automaticamente as paredes/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', {name:'1. Marcar bordas'}))
+    expect(screen.getByText(/tracejado = antes/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Borda x'),{target:{value:'80'}})
+    expect(mocks.salvos).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button',{name:'OK — confirmar bordas'}))
+    await screen.findByText(/Bordas revisadas e confirmadas/)
+    expect(mocks.salvos.at(-1)?.bagua_entrada.bordas?.x).toBe(80)
   })
-  it('cria outra falta começando sobre uma marcação existente, sem movê-la', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    arrastar(cv, [220, 220], [280, 290])
-    const r = await salvo()
-    expect(r.marcacoes).toHaveLength(2)
-    expect(r.marcacoes?.[0]).toEqual(existente)
-    expect(r.bordas).toEqual(bordas)
-  })
-  it.each(['mouse', 'touch', 'pen'])('E-MARC-02 — excesso externo por %s preserva bordas, imagem e marca anterior', async tipo => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Excesso' }))
-    arrastar(cv, [650, 200], [800, 300], tipo)
-    const r = await salvo()
-    expect(r.bordas).toEqual(bordas)
-    expect(r.planta_url).toBe(fonte.planta_url)
-    expect(r.marcacoes?.[0]).toEqual(existente)
-    expect(r.marcacoes?.[1]).toMatchObject({ tipo: 'excesso', x: 650, y: 200, w: 150, h: 100 })
-    const setores = calcularSetores(r.bordas!, r.lh!, r.lv!, r.marcacoes as Marcacao[])
-    expect(setores.reduce((total, setor) => total + setor.excessoArea, 0)).toBe(10000)
+  it.each(['mouse','touch','pen'])('cria polígonos de falta e excesso por %s preservando referências e marcas antigas',async tipo=>{
+    await abrir();const svg=await editar()
+    fireEvent.click(screen.getByRole('button',{name:'2. Marcar Falta'}))
+    desenhar(svg,[[300,100],[400,100],[350,180]],tipo)
+    await confirmar('falta')
+    fireEvent.click(screen.getByRole('button',{name:'3. Marcar Excesso'}))
+    desenhar(svg,[[300,100],[350,30],[400,100]],tipo)
+    await confirmar('excesso')
+    const be=await salvo()
+    expect(be.bordas).toEqual(bordas);expect(be.marcacoes?.[0]).toEqual(existente)
+    expect(be.marcacoes).toHaveLength(3);expect(be.marcacoes?.[1].pontos).toHaveLength(3)
+    expect(be.geometria_regra).toBe('saldo-v2');expect(be.planta_url).toBe(fonte.planta_url)
+    const sc=calcularSetores(be.bordas!,be.lh!,be.lv!,be.marcacoes as Marcacao[],'saldo-v2')[1]
+    expect(sc.faltaArea).toBe(4000);expect(sc.excessoArea).toBe(3500);expect(sc.geo).toBe(98.75)
     expect(capturado).toBeNull()
   })
-  it('E-MARC-02 — usa o ponto final mesmo sem pointermove', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    arrastar(cv, [280, 290], [220, 220], 'touch', false)
-    expect((await salvo()).marcacoes?.[1]).toMatchObject({ x: 220, y: 220, w: 60, h: 70 })
+  it('sobrepor uma marca nova não move a antiga nem desliga a edição',async()=>{
+    await abrir();const svg=await editar()
+    fireEvent.click(screen.getByRole('button',{name:'2. Marcar Falta'}))
+    desenhar(svg,[[100,100],[190,100],[100,190]])
+    fireEvent.click(screen.getByRole('button',{name:'3. Marcar Excesso'}))
+    expect(screen.getByRole('alert')).toHaveTextContent(/Confirme com OK/)
+    expect(screen.getByTestId('ponto-0')).toBeInTheDocument()
+    await confirmar('falta');const be=await salvo()
+    expect(be.marcacoes?.[0]).toEqual(existente);expect(be.marcacoes).toHaveLength(2)
   })
-  it('E-MARC-02 — posição e escala CSS não deslocam o toque na imagem', async () => {
-    const cv = await abrir()
-    vi.spyOn(cv, 'getBoundingClientRect').mockReturnValue({ x: 70, y: 90, left: 70, top: 90, right: 570, bottom: 490, width: 500, height: 400, toJSON() {} })
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    fireEvent.pointerDown(cv, { clientX: 180, clientY: 200, pointerId: 1, pointerType: 'touch' })
-    fireEvent.pointerUp(cv, { clientX: 210, clientY: 235, pointerId: 1, pointerType: 'touch' })
-    expect((await salvo()).marcacoes?.[1]).toMatchObject({ x: 220, y: 220, w: 60, h: 70 })
+  it('bloqueia área desconectada, permite corrigir pelos campos e só salva no OK',async()=>{
+    await abrir();const svg=await editar();const antes=mocks.salvos.length
+    fireEvent.click(screen.getByRole('button',{name:'2. Marcar Falta'}))
+    desenhar(svg,[[400,200],[500,200],[450,250]])
+    fireEvent.click(screen.getByRole('button',{name:'OK — confirmar falta'}))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Conecte/)
+    expect(mocks.salvos).toHaveLength(antes)
+    fireEvent.change(screen.getByLabelText('Ponto para ajustar'),{target:{value:'0'}})
+    fireEvent.change(screen.getByLabelText('Ponto y'),{target:{value:'100'}})
+    fireEvent.change(screen.getByLabelText('Ponto para ajustar'),{target:{value:'1'}})
+    fireEvent.change(screen.getByLabelText('Ponto y'),{target:{value:'100'}})
+    await confirmar('falta')
   })
-  it.each(['cancel', 'escape', 'lostcapture'])('E-MARC-03 — %s descarta a marcação em curso sem salvá-la', async evento => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    fireEvent.pointerDown(cv, ponto(cv, [220, 220], 'touch'))
-    fireEvent.pointerMove(cv, ponto(cv, [280, 290], 'touch'))
-    if (evento === 'cancel') fireEvent.pointerCancel(cv, ponto(cv, [280, 290], 'touch'))
-    else if (evento === 'escape') fireEvent.keyDown(window, { key: 'Escape' })
-    else fireEvent.lostPointerCapture(cv, ponto(cv, [280, 290], 'touch'))
-    fireEvent.pointerUp(cv, ponto(cv, [280, 290], 'touch'))
-    expect(screen.getByRole('button', { name: /Recalcular/ })).toBeDisabled()
-    expect(mocks.salvos).toHaveLength(0)
+  it('reabre marcas antigas com alças; ajusta vértice sem mover a grade',async()=>{
+    await abrir();const svg=await editar()
+    fireEvent.click(screen.getByRole('button',{name:'Editar marcações'}))
+    fireEvent.change(screen.getByLabelText('Marcação para editar'),{target:{value:'original'}})
+    expect(screen.getAllByTestId(/^ponto-/)).toHaveLength(4)
+    fireEvent.pointerDown(screen.getByTestId('ponto-2'),{clientX:200,clientY:200,pointerId:1,button:0})
+    fireEvent.pointerUp(svg,{clientX:230,clientY:210,pointerId:1,button:0})
+    await confirmar('revisão')
+    const be=await salvo();expect(be.bordas).toEqual(bordas)
+    expect(be.marcacoes?.[0].pontos?.[2]).toEqual({x:230,y:210})
+    cleanup();mocks.restaurado=be;await abrir();await editar(false)
+    fireEvent.click(screen.getByRole('button',{name:'Editar marcações'}))
+    fireEvent.change(screen.getByLabelText('Marcação para editar'),{target:{value:'original'}})
+    expect(screen.getAllByTestId(/^ponto-/)).toHaveLength(4)
   })
-  it('E-MARC-03 — sair da área do canvas não termina o desenho antes de soltar', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    fireEvent.pointerDown(cv, ponto(cv, [220, 220]))
-    fireEvent.pointerMove(cv, ponto(cv, [280, 290]))
-    fireEvent.pointerLeave(cv, ponto(cv, [1005, 800]))
-    expect(screen.getByRole('button', { name: /Recalcular/ })).toBeDisabled()
-    fireEvent.pointerUp(cv, ponto(cv, [320, 300]))
-    expect((await salvo()).marcacoes?.[1]).toMatchObject({ x: 220, y: 220, w: 100, h: 80 })
+  it.each(['cancel','lostcapture','escape'])('cancelamento %s do gesto mantém o polígono anterior',async evento=>{
+    await abrir();const svg=await editar()
+    fireEvent.click(screen.getByRole('button',{name:'Editar marcações'}))
+    fireEvent.change(screen.getByLabelText('Marcação para editar'),{target:{value:'original'}})
+    fireEvent.pointerDown(screen.getByTestId('ponto-2'),{clientX:200,clientY:200,pointerId:1,button:0})
+    fireEvent.pointerMove(svg,{clientX:300,clientY:250,pointerId:1,buttons:1})
+    if(evento==='cancel')fireEvent.pointerCancel(svg,{pointerId:1})
+    else if(evento==='lostcapture')fireEvent.lostPointerCapture(svg,{pointerId:1})
+    else fireEvent.keyDown(svg,{key:'Escape'})
+    expect(screen.getByTestId('ponto-2')).toHaveAttribute('cx','200')
+    expect(screen.getByTestId('ponto-2')).toHaveAttribute('cy','200')
   })
-  it('E-MARC-03 — outro ponteiro não move ou conclui o gesto ativo', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    fireEvent.pointerDown(cv, ponto(cv, [220, 220], 'touch'))
-    fireEvent.pointerMove(cv, ponto(cv, [600, 600], 'touch', 2))
-    fireEvent.pointerUp(cv, ponto(cv, [600, 600], 'touch', 2))
-    expect(screen.getByRole('button', { name: /Recalcular/ })).toBeDisabled()
-    fireEvent.pointerUp(cv, ponto(cv, [280, 290], 'touch'))
-    expect((await salvo()).marcacoes?.[1]).toMatchObject({ w: 60, h: 70 })
+  it('falha de gravação não confirma a etapa nem descarta a edição',async()=>{
+    await abrir();await editar(false)
+    fireEvent.click(screen.getByRole('button',{name:'1. Marcar bordas'}))
+    mocks.falhar=true
+    fireEvent.click(screen.getByRole('button',{name:'OK — confirmar bordas'}))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Não foi possível salvar/)
+    expect(screen.getByLabelText('Borda x')).toBeInTheDocument()
+    expect(screen.getByRole('button',{name:'2. Marcar Falta'})).toBeDisabled()
   })
-  it('E-MARC-04 — editar explicitamente move somente a marca escolhida', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: 'Editar marcações' }))
-    arrastar(cv, [220, 220], [280, 290])
-    const r = await salvo()
-    expect(r.marcacoes).toEqual([{ ...existente, x: 210, y: 220 }])
-    expect(r.bordas).toEqual(bordas)
-    expect(screen.queryByText(/Bordas alteradas/)).not.toBeInTheDocument()
+  it('exporta o desenho de polígonos mesmo quando a comparação esconde sobreposições',async()=>{
+    const cv=await abrir();const svg=await editar()
+    fireEvent.click(screen.getByRole('button',{name:'2. Marcar Falta'}))
+    desenhar(svg,[[300,100],[400,100],[350,180]]);await confirmar('falta');await salvo()
+    fireEvent.click(screen.getByRole('checkbox',{name:'Ver planta sem sobreposições'}))
+    const png=vi.spyOn(cv,'toDataURL').mockReturnValue('data:image/png;base64,synthetic')
+    await waitFor(()=>expect(screen.getByRole('button',{name:/Recalcular/})).toBeDisabled())
+    const finalizar=screen.getByRole('button',{name:/Salvar e continuar análise/})
+    fireEvent.click(finalizar)
+    await waitFor(()=>expect(png).toHaveBeenCalled())
+    expect(mocks.salvos.at(-1)?.bagua_entrada.marcacoes?.[1].pontos).toHaveLength(3)
   })
-  it('E-MARC-04 — canto superior direito redimensiona, sem excluir a marca', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: 'Editar marcações' }))
-    fireEvent.change(screen.getByRole('combobox', { name: /Marcação para editar/ }), { target: { value: existente.id } })
-    arrastar(cv, [450, 150], [500, 120])
-    expect((await salvo()).marcacoes).toEqual([{ ...existente, y: 120, w: 350, h: 330 }])
-  })
-  it('E-MARC-04 — cancelar uma edição restaura o retângulo anterior', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: 'Editar marcações' }))
-    fireEvent.pointerDown(cv, ponto(cv, [220, 220]))
-    fireEvent.pointerMove(cv, ponto(cv, [280, 290]))
-    fireEvent.pointerCancel(cv, ponto(cv, [280, 290]))
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Falta' }))
-    arrastar(cv, [500, 200], [560, 270])
-    expect((await salvo()).marcacoes?.[0]).toEqual(existente)
-  })
-  it('E-MARC-05 — comparação oculta apenas as sobreposições e conserva a referência', async () => {
-    const cv = await abrir()
-    desenho.drawImage.mockClear(); desenho.strokeRect.mockClear(); desenho.fillText.mockClear()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Ver planta sem sobreposições' }))
-    expect(desenho.drawImage).toHaveBeenCalled()
-    const escala = cv.width / 1000
-    expect(desenho.strokeRect).toHaveBeenCalledWith(100 * escala, 100 * escala, 600 * escala, 600 * escala)
-    expect(desenho.fillText).not.toHaveBeenCalled()
-    expect(mocks.salvos).toHaveLength(0)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Ver planta sem sobreposições' }))
-    expect(desenho.fillText.mock.calls.some(c => String(c[0]).startsWith('FALTA'))).toBe(true)
-  })
-  it('E-MARC-06 — excesso inteiramente interno explica o efeito zero sem pedir alteração das bordas', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Excesso' }))
-    arrastar(cv, [500, 200], [560, 270])
-    expect(screen.getByText(/Este excesso está inteiramente dentro das bordas/)).toBeInTheDocument()
-    expect((await salvo()).bordas).toEqual(bordas)
-  })
-  it('E-MARC-04 — exclusão usa o botão explícito e preserva as bordas', async () => {
-    await abrir()
-    fireEvent.click(screen.getByRole('button', { name: 'Editar marcações' }))
-    expect(screen.getByRole('button', { name: 'Excluir marcação selecionada' })).toBeDisabled()
-    fireEvent.change(screen.getByRole('combobox', { name: /Marcação para editar/ }), { target: { value: existente.id } })
-    fireEvent.click(screen.getByRole('button', { name: 'Excluir marcação selecionada' }))
-    const r = await salvo()
-    expect(r.marcacoes ?? []).toEqual([])
-    expect(r.bordas).toEqual(bordas)
-  })
-  it('E-MARC-04 — somente Bordas altera o retângulo-base, sem mover as marcações', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: '⬜ Bordas' }))
-    arrastar(cv, [700, 400], [750, 400], 'touch')
-    await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
-    expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual({ ...bordas, w: 650 })
-    expect(mocks.salvos.at(-1)!.bagua_entrada.marcacoes).toEqual([existente])
-  })
-  it('E-MARC-05 — finalizar durante comparação salva a análise com sobreposições', async () => {
-    await abrir()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Ver planta sem sobreposições' }))
-    desenho.fillText.mockClear()
-    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => {
-      expect(desenho.fillText.mock.calls.some(c => String(c[0]).startsWith('FALTA'))).toBe(true)
-      desenho.fillText.mockClear()
-      return 'data:image/png;base64,c2ludGV0aWNh'
-    })
-    fireEvent.click(screen.getByRole('button', { name: /Salvar e continuar análise/i }))
-    await waitFor(() => expect(mocks.salvos.at(-1)?.bagua_entrada.finalizada_em).toBeTruthy())
-    expect(mocks.salvos.at(-1)?.bagua_imagem).toBe('data:image/png;base64,c2ludGV0aWNh')
-    expect(desenho.fillText).not.toHaveBeenCalled()
-    expect(screen.getByRole('checkbox', { name: 'Ver planta sem sobreposições' })).toBeChecked()
-  })
-  it('E-MARC-02 — tela cheia usa o mesmo gesto de toque e mantém a referência', async () => {
-    await abrir()
-    fireEvent.click(screen.getByRole('button', { name: /Tela cheia/ }))
-    const editor = within(screen.getByRole('region', { name: 'Editor em tela cheia' }))
-    fireEvent.click(editor.getByRole('button', { name: '▭ Marcar Falta' }))
-    const cv = editor.getByLabelText('Planta em tela cheia para marcar falta e excesso') as HTMLCanvasElement
-    const larguraAnterior = cv.width
-    vi.stubGlobal('innerWidth', 600)
-    fireEvent(window, new Event('resize'))
-    expect(cv.width).toBeLessThan(larguraAnterior)
-    expect(cv.width / cv.height).toBeCloseTo(1000 / 800, 2)
-    arrastar(cv, [220, 220], [280, 290], 'touch')
-    fireEvent.click(editor.getByRole('button', { name: /Recalcular/ }))
-    await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
-    expect(mocks.salvos.at(-1)!.bagua_entrada.marcacoes).toHaveLength(2)
-    expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual(bordas)
-  })
-  it.each(['mouse', 'touch'])('E-CONT-01 — extensão pelos pontos brancos com %s não reposiciona a falta; salvar/reabrir preserva a referência', async pointerType => {
-    await abrir()
-    fireEvent.click(screen.getByRole('button', { name: /Desenhar contorno real/ }))
-    const svg = screen.getByTestId('editor-poligono-tai-ji')
-    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800, toJSON() {} })
-    fireEvent.pointerDown(screen.getByTestId('handle-meio-0'), { pointerId: 1, pointerType })
-    fireEvent.pointerDown(screen.getByTestId('vertice-1'), { pointerId: 1, pointerType })
-    fireEvent.pointerMove(svg, { clientX: 400, clientY: 500, pointerId: 1, pointerType })
-    fireEvent.pointerUp(svg, { clientX: 400, clientY: 500, pointerId: 1, pointerType })
-    const geometria = () => {
-      const falta = screen.getByTestId('celula-ausente-0-1')
-      return ['x', 'y', 'width', 'height'].map(a => falta.getAttribute(a))
-    }
-    expect(geometria()).toEqual(['300', '100', '200', '200'])
-    const todasAsCelulas = () => Array.from(svg.querySelectorAll('g > rect')).map(c => ['x', 'y', 'width', 'height'].map(a => c.getAttribute(a)))
-    const gradeAnterior = todasAsCelulas()
-    fireEvent.pointerDown(screen.getByTestId('handle-meio-2'), { pointerId: 1, pointerType })
-    fireEvent.pointerDown(screen.getByTestId('vertice-3'), { pointerId: 1, pointerType })
-    fireEvent.pointerMove(svg, { clientX: 900, clientY: 400, pointerId: 1, pointerType })
-    fireEvent.pointerUp(svg, { clientX: 900, clientY: 400, pointerId: 1, pointerType })
-    expect(geometria()).toEqual(['300', '100', '200', '200'])
-    expect(todasAsCelulas()).toHaveLength(9)
-    expect(todasAsCelulas()).toEqual(gradeAnterior)
-    expect(screen.getAllByTestId(/extensao-externa-/).length).toBeGreaterThan(0)
-    fireEvent.click(screen.getByRole('button', { name: /Concluir edição/ }))
-    await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
-    expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual(bordas)
-    expect(mocks.salvos.at(-1)!.bagua_entrada.tai_ji_poligono).toContainEqual({ x: 900, y: 400 })
-    expect(mocks.salvos.at(-1)!.bagua_entrada.lh).toEqual([1 / 3, 2 / 3])
-    expect(mocks.salvos.at(-1)!.bagua_entrada.lv).toEqual([1 / 3, 2 / 3])
-    mocks.restaurado = mocks.salvos.at(-1)!.bagua_entrada
-    cleanup()
-    await abrir()
-    fireEvent.click(screen.getByRole('button', { name: /Editar contorno/ }))
-    expect(geometria()).toEqual(['300', '100', '200', '200'])
-    expect(screen.getByTestId('vertice-3')).toHaveAttribute('cx', '900')
-  })
-  it('E-CONT-03 — restaurar o contorno usa as bordas escolhidas, não as margens da imagem', async () => {
-    await abrir()
-    fireEvent.click(screen.getByRole('button', { name: /Desenhar contorno real/ }))
-    fireEvent.pointerDown(screen.getByTestId('handle-meio-0'), { pointerId: 1 })
-    fireEvent.click(screen.getByRole('button', { name: /Restaurar contorno às bordas definidas/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Concluir edição/ }))
-    await waitFor(() => expect(mocks.salvos.length).toBeGreaterThan(0))
-    expect(mocks.salvos.at(-1)!.bagua_entrada.tai_ji_poligono).toEqual([
-      { x: 100, y: 100 }, { x: 700, y: 100 }, { x: 700, y: 700 }, { x: 100, y: 700 },
-    ])
-    expect(mocks.salvos.at(-1)!.bagua_entrada.bordas).toEqual(bordas)
-  })
-  it('E-CONT-04 — trocar do contorno para marcações encerra a sobreposição e mantém os dois desenhos', async () => {
-    const cv = await abrir()
-    fireEvent.click(screen.getByRole('button', { name: /Desenhar contorno real/ }))
-    fireEvent.pointerDown(screen.getByTestId('handle-meio-0'), { pointerId: 1 })
-    fireEvent.click(screen.getByRole('button', { name: '▭ Marcar Excesso' }))
-    expect(screen.queryByTestId('editor-poligono-tai-ji')).not.toBeInTheDocument()
-    arrastar(cv, [650, 200], [800, 300])
-    const r = await salvo()
-    expect(r.bordas).toEqual(bordas)
-    expect(r.tai_ji_poligono).toHaveLength(5)
-    expect(r.marcacoes).toHaveLength(2)
-    fireEvent.click(screen.getByRole('button', { name: /Editar contorno/ }))
-    expect(screen.getByRole('button', { name: '▭ Marcar Excesso' })).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Ver planta sem sobreposições' }))
-    expect(screen.queryByTestId('editor-poligono-tai-ji')).not.toBeInTheDocument()
+  it('tela cheia usa o mesmo editor, com confirmações e bordas fixas',async()=>{
+    await abrir();fireEvent.click(screen.getByRole('button',{name:/Tela cheia/}))
+    const fs=within(screen.getByRole('region',{name:'Editor em tela cheia'}))
+    fireEvent.click(fs.getByRole('button',{name:'Editar planta e marcações'}))
+    fireEvent.click(fs.getByRole('button',{name:'1. Marcar bordas'}))
+    fireEvent.click(fs.getByRole('button',{name:'OK — confirmar bordas'}))
+    await fs.findByText(/Bordas revisadas e confirmadas/)
+    expect(fs.getByTestId('referencia-editor')).toHaveAttribute('width','600')
+    fireEvent.click(fs.getByRole('button',{name:'Concluir edição'}))
+    fireEvent.click(fs.getByRole('button',{name:'✓ OK — Voltar'}))
   })
 })

@@ -30,6 +30,7 @@
     "jspdf": "4.2.1",
     "lucide-react": "^1.27.0",
     "next": "16.3.5",
+    "polygon-clipping": "0.15.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",

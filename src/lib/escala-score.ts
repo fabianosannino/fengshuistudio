@@ -43,6 +43,7 @@ export const ROTULO_SEM_NOTA = 'Não avaliado'
  * desequilíbrio.
  */
 const TOLERANCIA_EQUILIBRIO = 0.5
+const TOLERANCIA_SALDO_PCT = 1e-7
 
 export function corTotal(total: number | null): string {
   if (total === null) return COR_SEM_NOTA
@@ -61,12 +62,21 @@ export function rotuloTotal(total: number | null): string {
  * diferente e recebem cores diferentes — o remédio para um não serve ao outro.
  */
 export function corGeo(geo: number, setor?: Setor): string {
+  if (setor?.regraGeometria === 'saldo-v2' && setor.ajusteManual === null) {
+    const saldo = setor.excessoPct - setor.faltaPct
+    return Math.abs(saldo) < TOLERANCIA_SALDO_PCT ? COR_EXCELENTE : saldo > 0 ? '#24724F' : COR_CRITICO
+  }
   if (Math.abs(geo - 100) < TOLERANCIA_EQUILIBRIO) return COR_EXCELENTE
-  if (setor && setor.excessoPct > setor.faltaPct) return COR_REGULAR
+  if (setor && setor.excessoPct > setor.faltaPct) return setor.regraGeometria === 'saldo-v2' ? '#24724F' : COR_REGULAR
   return COR_CRITICO
 }
 
 export function rotuloGeo(geo: number, setor?: Setor): string {
+  if (setor?.regraGeometria === 'saldo-v2' && setor.ajusteManual === null) {
+    const saldo = setor.excessoPct - setor.faltaPct
+    if (Math.abs(saldo) >= TOLERANCIA_SALDO_PCT) return saldo > 0 ? 'Excesso' : 'Falta'
+    return setor.faltaPct > 0 && setor.excessoPct > 0 ? 'Equilibrado por saldo' : 'Equilibrado'
+  }
   if (Math.abs(geo - 100) < TOLERANCIA_EQUILIBRIO) return 'Equilibrado'
   if (setor && setor.excessoPct > setor.faltaPct) return 'Excesso'
   if (setor && setor.faltaPct > setor.excessoPct) return 'Falta'

@@ -95,6 +95,39 @@ contorno/marcações/Bordas/comparação/tela cheia e salvar/reabrir. Registrar
 navegador/dispositivo e imagens sintéticas. O bloqueio anterior do servidor
 local descrito em AC-02 não foi contornado.
 
+## E-POL — editor único, confirmação e cálculo por saldo
+
+Este fluxo substitui na página as interações E-MARC/E-CONT descritas acima.
+Os cenários antigos permanecem como evidência das entregas anteriores; os testes
+da página foram adaptados ao novo contrato, sem simular os antigos botões.
+
+| ID | Contexto → ação → resultado esperado | Execução e evidência |
+|---|---|---|
+| E-POL-01 | Setor de 40.000 px², falta de 10.000 e excesso de 5.000 → calcular → 25% falta, 12,5% excesso, 12,5% falta líquida, geo 87,5; inverter predominância e igualar áreas | `src/lib/__tests__/marcacoes-poligonais.test.ts`: vetores analíticos, triângulo, concavidade, união de duplicatas, excesso sem mover grade, centro sem excesso externo; aprovado localmente |
+| E-POL-02 | Marcas desconectadas, cruzadas, degeneradas, contato por canto e lado errado → OK → avisar, não aceitar; corrigir conexão → aceitar | Testes puros e `tests/bagua-marcacoes-ui.test.tsx`; limites de pontos/coordenadas e regra incompatível também cobertos |
+| E-POL-03 | Planta antiga com marcas → Editar, bordas, OK, nova falta/excesso, OK, concluir, recalcular → confirmar etapas sem perder referências/polígonos | Página real React/jsdom, mouse/touch/pen, sobreposição, troca de ferramenta com rascunho, seleção dos pontos, salvar/reabrir; testes aprovados localmente |
+| E-POL-04 | Arrastar ponto, cancelar ponteiro/Esc/perda de captura; simular falha de escrita → manter confirmado e rascunho recuperável | Página React/jsdom; captura é simulada, não nativa |
+| E-POL-05 | Comparação oculta marcas; salvar imagem; repetir em tela cheia → exportação contém polígonos; grade mantém coordenadas | Payload de imagem e desenho da página sob jsdom; rasterização/posição física ainda pendentes |
+| E-POL-06 | Revisar instruções e regra antiga/nova → não afirmar detecção automática, distinguir retângulo inicial/confirmado, conexão obrigatória, saldo/brutos, política versionada e necessidade de finalizar | Revisão textual do JSX, ADR 0058, teste de texto da página e hash legado/novo. PDFs anteriores não são regravados |
+
+## D-MOB — cadastro de ambientes e mobiliário
+
+| ID | Contexto → ação → resultado esperado | Execução e evidência |
+|---|---|---|
+| D-MOB-01 | Mesa e fogão no mesmo setor, posições/direções distintas → cadastrar/avaliar → itens independentes, vazio ≠ 0°, sem deduzir Norte pelo BTB | `src/lib/__tests__/mobiliario.test.ts`: dados inválidos, nascimento completo/futuro, direção, referência, conversão, campo vazio, posições e seta |
+| D-MOB-02 | Anônimo, outra conta, corpo adulterado, revisão antiga, planta alterada ou falha de banco → GET/PUT → recusa sem sucesso vazio nem sobrescrita | `tests/api/mobiliario.test.ts`; mocks de I/O, sem alegar prova de RLS por esses testes |
+| D-MOB-03 | Duas identidades e escritas concorrentes em banco descartável → RPC/GET/excluir → uma revisão vence, alheio/anon negados, geometria concorrente rejeitada, consulta excluída não deixa cadastro órfão | `scripts/security/test-authorization.mjs`, PostgreSQL 17/PostgREST 16.1 no gate obrigatório do CI; execução remota ainda a vincular nesta entrega |
+| D-MOB-04 | Tela separada → adicionar dois móveis, editar um, reabrir, excluir, falhar com 503/409 → campos e registros preservados corretamente | `tests/mobiliario-ui.test.tsx`; sete testes aprovados localmente, incluindo posição/direção em imagem com escala CSS e revisão da planta |
+| D-MOB-05 | Titular exporta dados com `user_id` alheio na URL → incluir apenas móveis/nascimento de suas consultas; emitir fonte nova → cadastro é privado no snapshot | `tests/api/conta-dados.test.ts`, fonte allowlist do relatório e revisão da coluna independente; exclusão física coberta em D-MOB-03 |
+| D-MOB-06 | Sem fachada/ano/nascimento → painel explica e oferece caminho de configuração/cadastro; abrir ajuda → Ba Zhai, Ming Gua, Norte e expressão chinesa explicados | Revisão de textos/ações e testes de página do mobiliário. O escopo permanece comparação pessoal de direção; não certifica posicionamento físico ou carta Fei Xing completa |
+
+**Aceite visual E-POL/D-MOB pendente:** executar com mouse desktop e toque em
+celular/tablet, usando imagem sintética; conferir alças, rolagem, contraste,
+legibilidade dos setores, desenho da seta, seleção entre móveis próximos,
+tela cheia, rede interrompida, reabertura e PDF rasterizado. A recusa anterior
+do servidor local (`blocked by policy`, AC-02) não foi contornada. Resultados
+jsdom não substituem essa evidência nem encerram AC-02/AC-06/D2.
+
 ## A–C — pendências de aceite que não podem ser esquecidas
 
 Todos os cenários abaixo permanecem **pendentes de execução completa**. Usar

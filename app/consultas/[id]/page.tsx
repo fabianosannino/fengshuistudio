@@ -985,6 +985,10 @@ export default function ConsultaDetalhe() {
           )
         })()}
 
+        <div style={{margin:'0 0 18px',padding:14,border:'1px solid #CFE6E0',borderRadius:8,background:'#F4F8F6'}}>
+          <strong>Ambientes e mobiliário</strong><p style={{margin:'6px 0'}}>Cadastre vários móveis no mesmo setor, com posições, direções e pessoas de referência próprias.</p>
+          <button type="button" onClick={()=>router.push(`/consultas/${id}/mobiliario`)} style={{minHeight:44,padding:'8px 14px',border:'1px solid #245F52',borderRadius:6,color:'#245F52',background:'#fff'}}>Abrir cadastro de mobiliário</button>
+        </div>
         {/* ── Tab Navigation ───────────────────────────────────────────────── */}
         <div style={{
           display: 'flex', gap: '4px', marginBottom: '24px',

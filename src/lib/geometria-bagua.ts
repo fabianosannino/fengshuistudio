@@ -12,6 +12,10 @@
  */
 
 import type { NotaCriterio } from './modelos-pontuacao'
+import { areasPoligonaisPorSetor } from './marcacoes-poligonais'
+import type { Ponto } from './poligono'
+
+export type RegraGeometria = 'descontos-v1' | 'saldo-v2'
 
 /** Retângulo que delimita a planta dentro da imagem. */
 export interface Bounds {
@@ -34,9 +38,11 @@ export interface Marcacao {
   y: number
   w: number
   h: number
+  pontos?: Ponto[]
 }
 
 export interface Setor {
+  regraGeometria?: RegraGeometria
   /** Uma posição por critério. `null` = não avaliado (≠ «Neutro»). */
   criterios: (NotaCriterio | null)[]
   /** 100 − faltaPct − excessoPct, limitada ao intervalo 0–100. */
@@ -156,7 +162,8 @@ export function calcularSetores(
   b: Bounds,
   lh: number[],
   lv: number[],
-  marcacoes: Marcacao[]
+  marcacoes: Marcacao[],
+  regra: RegraGeometria = 'descontos-v1'
 ): Setor[] {
   validarRetangulo(b)
   for (const linhas of [lh, lv]) {
@@ -167,22 +174,25 @@ export function calcularSetores(
     validarRetangulo(m)
     if (m.tipo !== 'falta' && m.tipo !== 'excesso') throw new Error(AVISO_GEOMETRIA_INVALIDA)
   }
-  const excessoExterno = distribuirExcessoExterno(marcacoes, b, lh, lv)
+  const poligonais = regra === 'saldo-v2' ? areasPoligonaisPorSetor(marcacoes, b, lh, lv) : null
+  if (!poligonais && marcacoes.some(m => m.pontos)) throw new Error(AVISO_GEOMETRIA_INVALIDA)
+  const excessoExterno = poligonais ? poligonais.map(s => s.excessoArea) : distribuirExcessoExterno(marcacoes, b, lh, lv)
 
   return Array.from({ length: SETORES_NO_GRID }, (_, idx) => {
     const { x0, x1, y0, y1 } = limitesDoSetor(idx, b, lh, lv)
 
     const areaDoSetor = (x1 - x0) * (y1 - y0)
     if (!Number.isFinite(areaDoSetor) || areaDoSetor <= 0) throw new Error(AVISO_GEOMETRIA_INVALIDA)
-    const faltaArea = areaMarcada(marcacoes, 'falta', { x0, x1, y0, y1 })
+    const faltaArea = poligonais?.[idx].faltaArea ?? areaMarcada(marcacoes, 'falta', { x0, x1, y0, y1 })
     const excessoArea = excessoExterno[idx]
     const faltaPct = (faltaArea / areaDoSetor) * 100
     const excessoPct = (excessoArea / areaDoSetor) * 100
     if (![faltaArea, excessoArea, faltaPct, excessoPct].every(Number.isFinite)) throw new Error(AVISO_GEOMETRIA_INVALIDA)
 
     return {
+      ...(regra === 'saldo-v2' ? { regraGeometria: regra } : {}),
       criterios: new Array<NotaCriterio | null>(CRITERIOS_POR_SETOR).fill(null),
-      geo: Math.max(0, Math.min(100, 100 - faltaPct - excessoPct)),
+      geo: Math.max(0, Math.min(100, 100 - (regra === 'saldo-v2' ? Math.abs(faltaPct - excessoPct) : faltaPct + excessoPct))),
       faltaArea,
       excessoArea,
       faltaPct,

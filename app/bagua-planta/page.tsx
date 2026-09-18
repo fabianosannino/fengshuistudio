@@ -6,8 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
 import FlowLayout from '../components/FlowLayout'
-import ControlesMarcacoes from '../components/ControlesMarcacoes'
-import { DIMENSAO_MINIMA_MARCACAO, encontrarMarcacao, redimensionarMarcacao, retanguloEntrePontos, type ArrastePlanta, type ModoEdicaoPlanta } from '../../src/lib/edicao-marcacoes'
+import EditorMarcacoesPlanta from '../components/EditorMarcacoesPlanta'
+import { pontosDaMarcacao } from '../../src/lib/marcacoes-poligonais'
 import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
 import { montarSnapshot, snapshotsIguais, type SnapshotScore } from '../../src/lib/reavaliacao'
@@ -24,13 +24,11 @@ import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/gr
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
 import { dataSolar } from '../../src/lib/data-solar'
-import { avisoAnoSolar } from '../../src/lib/ano-solar'
 import { zhengShenLingShen } from '../../src/lib/liu-fa'
-import { calcularMingGua, normalizarGenero } from '../../src/lib/ming-gua'
-import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
 import {
   calcularSetores,
   AVISO_GEOMETRIA_INVALIDA,
+  type RegraGeometria,
   type Bounds,
   type Marcacao,
   type Setor,
@@ -46,10 +44,7 @@ import {
 } from '../../src/lib/escala-score'
 import { urlExibivel } from '../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../src/lib/storage-imagens'
-import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
-import { calcularTaiJi, type Ponto } from '../../src/lib/poligono'
-import { analisarContornoNaGrade } from '../../src/lib/contorno-na-grade'
-import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
+import { areaPoligono, type Ponto } from '../../src/lib/poligono'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
 import QuestionarioFacing from '../components/QuestionarioFacing'
@@ -104,9 +99,6 @@ const SETORES = [
 // Assistente de 3 leituras (Modo A de orientação, fengshui-metodos-referencia.md §2.2):
 // acima deste desvio entre as 3 leituras, a medição não é confiável.
 const DESVIO_ALERTA_GRAUS = 3
-const ALCANCE_ALCA_MARCACAO_CSS = 12
-const ALCANCE_BORDA_CSS = 18
-const DIMENSAO_MINIMA_BORDAS = 30
 /**
  * Arredonda um grau para 1 decimal, para exibição e armazenamento.
  * A média circular (`mediaCircular`) e o arraste da rosa dos ventos produzem
@@ -116,16 +108,6 @@ const DIMENSAO_MINIMA_BORDAS = 30
 const arredondarGrau = (g: number): number => Math.round(g * 10) / 10
 const NOME_YUAN_LONG = { terra: 'Terra', ceu: 'Céu', humano: 'Humano' } as const
 const NOME_SETOR = { N: 'Norte', NE: 'Nordeste', E: 'Leste', SE: 'Sudeste', S: 'Sul', SW: 'Sudoeste', W: 'Oeste', NW: 'Noroeste' } as const
-
-// Correspondência fixa Escola da Bússola (setor nomeado → direção cardinal real,
-// glossary.md: "Carreira é sempre Norte, Fama é sempre Sul…"). Mesma tabela das
-// posições dos SETORES acima, só que já convertida para o código de Setor
-// (N/NE/E/SE/S/SW/W/NW) usado por avaliarPosicionamento/DIRECOES_POR_KUA.
-// Centro fica de fora — Ba Zhai não classifica o Centro como favorável/desfavorável.
-const SETOR_NOMEADO_PARA_COMPASSO: [string, SetorCompasso][] = [
-  ['Carreira', 'N'], ['Espiritualidade', 'NE'], ['Família', 'E'], ['Prosperidade', 'SE'],
-  ['Fama/Reputação', 'S'], ['Relacionamentos', 'SW'], ['Criatividade', 'W'], ['Pessoas Úteis', 'NW'],
-]
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -146,6 +128,12 @@ function buildRot(img: HTMLImageElement, deg: number): HTMLCanvasElement {
 // ─── NEW SCORING SYSTEM ──────────────────────────────────────────────────────
 /** Estado físico normalizado 0–100. `null` = nenhum critério avaliado. */
 function scoreFisico(c:readonly (NotaCriterio|null)[]):number|null{return pontuacaoFisica(c)}
+function desenharContornoAuxiliar(ctx:CanvasRenderingContext2D,pontos:Ponto[]|null,escala:number){
+  if(!pontos?.length)return
+  ctx.save();ctx.beginPath()
+  pontos.forEach((p,i)=>i===0?ctx.moveTo(p.x*escala,p.y*escala):ctx.lineTo(p.x*escala,p.y*escala))
+  ctx.closePath();ctx.strokeStyle='#2563EB';ctx.lineWidth=2;ctx.setLineDash([3,5]);ctx.stroke();ctx.restore()
+}
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
 function BaguaPlantaContent() {
@@ -153,11 +141,10 @@ function BaguaPlantaContent() {
   const searchParams = useSearchParams()
   const consultaId  = searchParams.get('consultaId')
   const [consultaNome, setConsultaNome] = useState('')
+  const [clienteId, setClienteId] = useState<string|null>(null)
   const cvRef    = useRef<HTMLCanvasElement>(null)
   const fileRef  = useRef<HTMLInputElement>(null)
   const rotRef   = useRef<HTMLCanvasElement|null>(null)
-  const dragRef  = useRef<ArrastePlanta|null>(null)
-  const isDrag   = useRef(false)
 
   const [img,      setImg]      = useState<HTMLImageElement|null>(null)
   const [step,     setStep]     = useState<Step>('upload')
@@ -174,6 +161,9 @@ function BaguaPlantaContent() {
     setOrientacaoConfirmadaEm(null)
   }
   function restaurarOrientacao(be: BaguaEntrada) {
+    regraGeometriaRef.current=be.geometria_regra==='saldo-v2'?'saldo-v2':'descontos-v1'
+    setRegraGeometria(regraGeometriaRef.current)
+    setBordasConfirmadasEm(be.bordas_confirmadas_em);bordasConfirmadasRef.current=be.bordas_confirmadas_em
     const leitura = lerOrientacao(be)
     setOrientacaoGraus(leitura.graus)
     setOrientacaoConfirmadaEm(leitura.confirmadaEm)
@@ -207,23 +197,19 @@ function BaguaPlantaContent() {
   const [mapaAberto, setMapaAberto] = useState(false)
   // Questionário de determinação de facing (§2.5) — idem.
   const [facingAberto, setFacingAberto] = useState(false)
-  // Calculadora de Posicionamento de Mobiliário (Ba Zhai) — estado local, não persistido ainda.
-  const [mobiliarioAberto, setMobiliarioAberto] = useState(false)
-  const [mobiliarioTipo, setMobiliarioTipo] = useState<'cama' | 'fogao' | 'mesa'>('cama')
-  const [mobiliarioDataNascimento, setMobiliarioDataNascimento] = useState('')
-  const [mobiliarioGenero, setMobiliarioGenero] = useState('')
-  const [mobiliarioLocalizacao, setMobiliarioLocalizacao] = useState<SetorCompasso>('N')
-  const [mobiliarioDirecaoGraus, setMobiliarioDirecaoGraus] = useState(180)
   const [lado,     setLado]     = useState<Lado>('centro')
   const [entrada,  setEntrada]  = useState<{x:number;y:number}|null>(null)
   const [bounds,   setBounds]   = useState<Bounds|null>(null)
   // Tai Ji real (contorno de polígono, src/lib/poligono.ts) — independente da metodologia (BTB ou Bússola).
   const [poligonoTaiJi, setPoligonoTaiJi] = useState<Ponto[]|null>(null)
-  const [editandoPoligono, setEditandoPoligono] = useState(false)
+  const [editandoPlanta, setEditandoPlanta] = useState(false)
+  const [regraGeometria, setRegraGeometria] = useState<RegraGeometria>('saldo-v2')
+  const regraGeometriaRef = useRef<RegraGeometria>('saldo-v2')
+  const [bordasConfirmadasEm, setBordasConfirmadasEm] = useState<string|undefined>()
+  const bordasConfirmadasRef = useRef<string|undefined>(undefined)
   const poligonoTaiJiRef = useRef<Ponto[]|null>(null)
   const [lh,       setLh]       = useState([1/3,2/3])
   const [lv,       setLv]       = useState([1/3,2/3])
-  const [modo,     setModo]     = useState<ModoEdicaoPlanta>('nenhum')
   const [setores,  setSetores]  = useState<Setor[]>([])
   // Modelo de pontuação escolhido pelo consultor. Gravado NA CONSULTA para que
   // reabrir uma análise antiga não a repontue sob um padrão novo.
@@ -239,6 +225,8 @@ function BaguaPlantaContent() {
   const [ultimoRecalculo,setUltimoRecalculo] = useState<string|null>(null)
   const fsCvRef = useRef<HTMLCanvasElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
+  const [tamanhoCanvas,setTamanhoCanvas] = useState({width:'0px',height:'0px'})
+  const [tamanhoCanvasFS,setTamanhoCanvasFS] = useState({width:'0px',height:'0px'})
   // Refs to always have latest values (avoids stale closures in drag handlers)
   const boundsRef = useRef<Bounds|null>(null)
   const lhRef = useRef([1/3,2/3])
@@ -253,32 +241,22 @@ function BaguaPlantaContent() {
   // Falta/Excesso manual rectangles
   const [marcacoes, setMarcacoes] = useState<Marcacao[]>([])
   const marcacoesRef = useRef<Marcacao[]>([])
-  const desenhandoRef = useRef<{startX:number;startY:number;tipo:'falta'|'excesso'}|null>(null)
-  const [desenhandoPreview, setDesenhandoPreview] = useState<{x:number;y:number;w:number;h:number}|null>(null)
-  const [marcacaoSelecionada, setMarcacaoSelecionada] = useState<string|null>(null)
   const [semSobreposicoes, setSemSobreposicoes] = useState(false)
-  const previewRef = useRef<Bounds|null>(null)
-  const gestoRef = useRef<{ ponteiro: number; canvas: HTMLCanvasElement; inicio: {x:number;y:number}; bordas: Bounds; marcacoes: Marcacao[] }|null>(null)
 
-  const cancelarGesto = useCallback(()=>{
-    const gesto = gestoRef.current
-    if(gesto){
-      setBounds(gesto.bordas); boundsRef.current=gesto.bordas
-      setMarcacoes(gesto.marcacoes); marcacoesRef.current=gesto.marcacoes
-      gestoRef.current=null
-      if(gesto.canvas.hasPointerCapture(gesto.ponteiro)) gesto.canvas.releasePointerCapture(gesto.ponteiro)
-    }
-    desenhandoRef.current=null; dragRef.current=null; previewRef.current=null
-    setDesenhandoPreview(null); isDrag.current=false
-  },[])
-
-  function mudarModo(novo:ModoEdicaoPlanta){
-    cancelarGesto(); setModo(novo)
-    if(editandoPoligono){setEditandoPoligono(false);void salvarRascunho()}
-    if(novo!=='nenhum') setSemSobreposicoes(false)
-  }
-  function compararPlanta(valor:boolean){
-    mudarModo('nenhum'); setSemSobreposicoes(valor)
+  async function confirmarGeometria(b:Bounds, marcas:Marcacao[]):Promise<boolean> {
+    let novos:Setor[]
+    try { novos=calcularSetores(b,lhRef.current,lvRef.current,marcas,'saldo-v2') }
+    catch(e) { setMsg(e instanceof Error ? e.message : AVISO_GEOMETRIA_INVALIDA);setMsgTipo('erro');return false }
+    const antes={b:boundsRef.current,m:marcacoesRef.current,r:regraGeometriaRef.current,c:bordasConfirmadasRef.current}
+    boundsRef.current=b;marcacoesRef.current=marcas;regraGeometriaRef.current='saldo-v2';bordasConfirmadasRef.current=new Date().toISOString()
+    const merged=novos.map((n,i)=>({...n,criterios:setores[i]?.criterios??n.criterios,ajusteManual:setores[i]?.ajusteManual??null,ajusteTipo:setores[i]?.ajusteTipo??null,obs:setores[i]?.obs??''}))
+    let ok:boolean|undefined
+    try { ok=await salvarRascunho({etapa:'resultado',bordas:b,setoresV:merged}) }
+    catch { ok=false }
+    if(consultaId&&!ok){boundsRef.current=antes.b;marcacoesRef.current=antes.m;regraGeometriaRef.current=antes.r;bordasConfirmadasRef.current=antes.c;return false}
+    setBounds(b);setMarcacoes(marcas);setRegraGeometria('saldo-v2');setBordasConfirmadasEm(bordasConfirmadasRef.current);setSetores(merged)
+    setRecalculoPendente(true);setBordaModificada(false)
+    return true
   }
 
   // Metragem real (m²)
@@ -288,18 +266,6 @@ function BaguaPlantaContent() {
   const [recalculoPendente, setRecalculoPendente] = useState(false)
 
   // Instruction accordion (no longer dismissed permanently)
-
-  // ESC key to exit fullscreen
-  useEffect(()=>{
-    function handleKey(e:KeyboardEvent){
-      if(e.key!=='Escape') return
-      if(gestoRef.current){cancelarGesto(); return}
-      if(fullscreen){cancelarGesto();setModo('nenhum');setFullscreen(false)}
-      else setModo('nenhum')
-    }
-    window.addEventListener('keydown',handleKey)
-    return ()=>window.removeEventListener('keydown',handleKey)
-  },[fullscreen,cancelarGesto])
 
   // Sync refs with state (so drag end handlers always read latest values)
   useEffect(()=>{ boundsRef.current=bounds },[bounds])
@@ -317,9 +283,10 @@ function BaguaPlantaContent() {
         .order('criado_em',{ascending:false}).then(({data})=>setConsultas(data||[])).then(null,(e: Error)=>logger.error('Falha ao carregar a lista de consultas',{route:'/bagua-planta',error:e.message}))
       // Se veio com consultaId, carrega nome e dados existentes
       if(consultaId){
-        supabase.from('consultas').select('nome_imovel,bagua_entrada,modelo_pontuacao,peso_geo,ano_construcao,ano_reforma_estrutural,clientes(data_nascimento,genero)').eq('id',consultaId).single()
+        supabase.from('consultas').select('nome_imovel,cliente_id,bagua_entrada,modelo_pontuacao,peso_geo,ano_construcao,ano_reforma_estrutural,clientes(data_nascimento,genero)').eq('id',consultaId).single()
           .then(({data})=>{
             if(data) setConsultaNome(data.nome_imovel)
+            if(data?.cliente_id) setClienteId(data.cliente_id)
             // Colunas primeiro; o `be.data_construcao` abaixo é o fallback das
             // consultas anteriores à migration 20260812140000.
             if(typeof data?.ano_construcao==='number') setAnoConstrucao(String(data.ano_construcao))
@@ -438,7 +405,7 @@ function BaguaPlantaContent() {
         // Recalculate sectors if we have bounds
         // Restore marcacoes
         const savedMarcacoes:Marcacao[]=Array.isArray(be.marcacoes)?be.marcacoes.map((m:BaguaMarcacaoJSON):Marcacao=>({
-          id:m.id||Date.now().toString(36),tipo:m.tipo as Marcacao['tipo'],x:m.x??0,y:m.y??0,w:m.w??0,h:m.h??0
+          id:m.id||crypto.randomUUID(),tipo:m.tipo as Marcacao['tipo'],x:m.x??0,y:m.y??0,w:m.w??0,h:m.h??0,...(m.pontos?{pontos:m.pontos}:{})
         })):[]
         setMarcacoes(savedMarcacoes); marcacoesRef.current=savedMarcacoes
 
@@ -447,7 +414,7 @@ function BaguaPlantaContent() {
           const lhRestored=be.lh||[1/3,2/3]
           const lvRestored=be.lv||[1/3,2/3]
           let novos:Setor[]
-          try { novos=calcularSetores(bRestored,lhRestored,lvRestored,savedMarcacoes) }
+          try { novos=calcularSetores(bRestored,lhRestored,lvRestored,savedMarcacoes,regraGeometriaRef.current) }
           catch {
             setSetores([]); setStep('configurar'); setMsg(AVISO_GEOMETRIA_INVALIDA); setMsgTipo('erro')
             setCarregandoPlanta(false); restaurandoRef.current=false
@@ -497,7 +464,7 @@ function BaguaPlantaContent() {
     setImg(null); setStep('upload'); setRot(0)
     definirLeitura(null); analiseReferenciaRef.current=undefined
     setBounds(null); boundsRef.current=null
-    setPoligonoTaiJi(null); setEditandoPoligono(false)
+    setPoligonoTaiJi(null); setEditandoPlanta(false)
     setEntrada(null); setSetores([]); setLh([1/3,2/3]); setLv([1/3,2/3])
     lhRef.current=[1/3,2/3]; lvRef.current=[1/3,2/3]
     // Clear saved draft (keep planta_url for storage but clear state)
@@ -528,6 +495,8 @@ function BaguaPlantaContent() {
     cv.width=Math.round(r.width*s); cv.height=Math.round(r.height*s)
     cv.style.width  = cv.width  + 'px'
     cv.style.height = cv.height + 'px'
+    const tamanho={width:cv.style.width,height:cv.style.height}
+    setTamanhoCanvas(antes=>antes.width===tamanho.width&&antes.height===tamanho.height?antes:tamanho)
   },[])
 
   useEffect(()=>{
@@ -546,7 +515,7 @@ function BaguaPlantaContent() {
     // reset posicionamento ao girar (o polígono do Tai Ji também: as coordenadas são
     // relativas à imagem rotacionada, então giram invalidam um contorno já desenhado)
     setBounds(null); setEntrada(null); setSetores([])
-    setPoligonoTaiJi(null); setEditandoPoligono(false)
+    setPoligonoTaiJi(null); setEditandoPlanta(false)
   },[img,rot,resizeCanvas])
 
   // ── escala pixels do rotCanvas → pixels do canvas de exibição ─────────────
@@ -594,19 +563,11 @@ function BaguaPlantaContent() {
     }
 
     // ── borda externa ──
-    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#0E1B2C'
-    ctx.lineWidth=modo==='bordas'?3:2.5
-    ctx.setLineDash(modo==='bordas'?[6,4]:[])
+    ctx.strokeStyle='#0E1B2C'
+    ctx.lineWidth=2.5
+    ctx.setLineDash([])
     ctx.strokeRect(bx,by,bw,bh); ctx.setLineDash([])
 
-    // ── alças bordas ──
-    if(modo==='bordas'){
-      [[bx+bw/2,by],[bx+bw/2,by+bh],[bx,by+bh/2],[bx+bw,by+bh/2]].forEach(([hx,hy])=>{
-        ctx.beginPath(); ctx.arc(hx,hy,10,0,Math.PI*2)
-        ctx.fillStyle='#FF4500'; ctx.fill()
-        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
-      })
-    }
 
     // ── linhas grid (fixas 1/3 x 1/3, sem arraste) ──
     ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,4])
@@ -667,12 +628,11 @@ function BaguaPlantaContent() {
     const drawMarcacao=(m:Marcacao,s2:number)=>{
       const mx=m.x*s2,my=m.y*s2,mw=m.w*s2,mh=m.h*s2
       const isFalta=m.tipo==='falta'
-      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
-      ctx.fillRect(mx,my,mw,mh)
-      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
-      ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(36,114,79,0.15)'
+      ctx.beginPath(); pontosDaMarcacao(m).forEach((p,i)=>i===0?ctx.moveTo(p.x*s2,p.y*s2):ctx.lineTo(p.x*s2,p.y*s2));ctx.closePath();ctx.fill()
+      ctx.strokeStyle=isFalta?'#B4533A':'#24724F';ctx.lineWidth=2;ctx.stroke()
       // Label
-      const marcArea=m.w*m.h
+      const marcArea=areaPoligono(pontosDaMarcacao(m))
       const boundsArea=bounds?bounds.w*bounds.h:1
       const pctArea=Math.round((marcArea/boundsArea)*100)
       const label=`${isFalta?'FALTA':'EXCESSO'} · ${pctArea}%`
@@ -680,27 +640,11 @@ function BaguaPlantaContent() {
       ctx.font=`bold ${fs2}px Arial`; ctx.textAlign='center'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
       ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
-      if(modo==='editarMarcacao'&&m.id===marcacaoSelecionada&&!paraExportacao){
-        const hs=6
-        ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
-          ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
-          ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
-          ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
-        })
-      }
     }
     for(const m of marcacoes) drawMarcacao(m,s)
-    // Drawing preview
-    if(desenhandoPreview&&!paraExportacao){
-      const isFalta=modo==='marcarFalta'
-      const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
-      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
-      ctx.fillRect(px,py,pw,ph)
-      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
-      ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
-    }
+    desenharContornoAuxiliar(ctx,poligonoTaiJi,s)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[bounds,entrada,lado,escola,grausParaCalculo,lh,lv,modo,setores,ativo,marcacoes,desenhandoPreview,marcacaoSelecionada,semSobreposicoes])
+  },[bounds,entrada,lado,escola,grausParaCalculo,lh,lv,setores,ativo,marcacoes,semSobreposicoes,poligonoTaiJi])
 
   // redesenha sempre que draw muda (state changes)
   useEffect(()=>{ draw() },[draw])
@@ -740,6 +684,8 @@ function BaguaPlantaContent() {
     const s = Math.min(maxW/r.width, maxH/r.height)
     cv.width = r.width*s; cv.height = r.height*s
     cv.style.width = cv.width+'px'; cv.style.height = cv.height+'px'
+    const tamanho={width:cv.style.width,height:cv.style.height}
+    setTamanhoCanvasFS(antes=>antes.width===tamanho.width&&antes.height===tamanho.height?antes:tamanho)
 
     ctx.clearRect(0,0,cv.width,cv.height)
     ctx.drawImage(r,0,0,cv.width,cv.height)
@@ -774,19 +720,11 @@ function BaguaPlantaContent() {
     }
 
     // Boundary
-    ctx.strokeStyle=modo==='bordas'?'#FF4500':'#0E1B2C'
-    ctx.lineWidth=modo==='bordas'?3:2.5
-    ctx.setLineDash(modo==='bordas'?[8,5]:[])
+    ctx.strokeStyle='#0E1B2C'
+    ctx.lineWidth=2.5
+    ctx.setLineDash([])
     ctx.strokeRect(bx,by,bw,bh); ctx.setLineDash([])
 
-    // Border handles
-    if(modo==='bordas'){
-      [[bx+bw/2,by],[bx+bw/2,by+bh],[bx,by+bh/2],[bx+bw,by+bh/2]].forEach(([hx,hy])=>{
-        ctx.beginPath(); ctx.arc(hx,hy,14,0,Math.PI*2)
-        ctx.fillStyle='#FF4500'; ctx.fill()
-        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke()
-      })
-    }
 
     // Grid lines (fixed 1/3 x 1/3)
     ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1; ctx.setLineDash([6,4])
@@ -843,11 +781,10 @@ function BaguaPlantaContent() {
     const drawMarcacaoFS=(m:Marcacao)=>{
       const mx=m.x*s,my=m.y*s,mw=m.w*s,mh=m.h*s
       const isFalta=m.tipo==='falta'
-      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
-      ctx.fillRect(mx,my,mw,mh)
-      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
-      ctx.strokeRect(mx,my,mw,mh); ctx.setLineDash([])
-      const marcArea2=m.w*m.h
+      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(36,114,79,0.15)'
+      ctx.beginPath(); pontosDaMarcacao(m).forEach((p,i)=>i===0?ctx.moveTo(p.x*s,p.y*s):ctx.lineTo(p.x*s,p.y*s));ctx.closePath();ctx.fill()
+      ctx.strokeStyle=isFalta?'#B4533A':'#24724F';ctx.lineWidth=2;ctx.stroke()
+      const marcArea2=areaPoligono(pontosDaMarcacao(m))
       const boundsArea2=bounds?bounds.w*bounds.h:1
       const pctArea2=Math.round((marcArea2/boundsArea2)*100)
       const label=`${isFalta?'FALTA':'EXCESSO'} · ${pctArea2}%`
@@ -855,26 +792,11 @@ function BaguaPlantaContent() {
       ctx.font=`bold ${fs2}px Arial`; ctx.textAlign='center'
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
       ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
-      if(modo==='editarMarcacao'&&m.id===marcacaoSelecionada){
-        const hs=6
-        ;[[mx,my],[mx+mw,my],[mx,my+mh],[mx+mw,my+mh]].forEach(([hx,hy])=>{
-          ctx.fillStyle=isFalta?'#B4533A':'#C9A227'
-          ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2)
-          ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2)
-        })
-      }
     }
     for(const m of marcacoes) drawMarcacaoFS(m)
-    if(desenhandoPreview){
-      const isFalta=modo==='marcarFalta'
-      const px=desenhandoPreview.x*s,py=desenhandoPreview.y*s,pw=desenhandoPreview.w*s,ph=desenhandoPreview.h*s
-      ctx.fillStyle=isFalta?'rgba(220,38,38,0.15)':'rgba(245,158,11,0.15)'
-      ctx.fillRect(px,py,pw,ph)
-      ctx.strokeStyle=isFalta?'#B4533A':'#C9A227'; ctx.lineWidth=2; ctx.setLineDash([6,4])
-      ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([])
-    }
+    desenharContornoAuxiliar(ctx,poligonoTaiJi,s)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fullscreen,bounds,entrada,lado,escola,grausParaCalculo,lh,lv,modo,setores,marcacoes,desenhandoPreview,marcacaoSelecionada,semSobreposicoes])
+  },[fullscreen,bounds,entrada,lado,escola,grausParaCalculo,lh,lv,setores,marcacoes,semSobreposicoes,poligonoTaiJi])
 
   useEffect(()=>{
     if(!fullscreen) return
@@ -989,6 +911,8 @@ function BaguaPlantaContent() {
     const curLv=overrides?.lvV??lvRef.current
     const draft:BaguaEntrada={
       planta_url:url,
+      geometria_regra:regraGeometriaRef.current,
+      bordas_confirmadas_em:bordasConfirmadasRef.current,
       etapa:overrides?.etapa??step,
       rotacao:overrides?.rotacao??rot,
       lado:overrides?.ladoV??lado,
@@ -1023,7 +947,7 @@ function BaguaPlantaContent() {
     // Save marcacoes (falta/excesso rectangles)
     const curMarcacoes=marcacoesRef.current
     if(curMarcacoes.length>0){
-      draft.marcacoes=curMarcacoes.map(m=>({id:m.id,tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h}))
+      draft.marcacoes=curMarcacoes.map(m=>({...m}))
     }
     // O cliente Supabase RESOLVE com {error} em vez de lançar — sem esta checagem o
     // rascunho se perdia em silêncio (RLS, rede, linha inexistente) e o consultor seguia
@@ -1042,7 +966,6 @@ function BaguaPlantaContent() {
 
   // ── click ──────────────────────────────────────────────────────────────────
   function onClick(e:React.MouseEvent<HTMLCanvasElement>){
-    if(isDrag.current) return
     const{cx,cy}=cc(e); const s=scale()
     if(step==='entrada'){
       const ex=cx/s, ey=cy/s
@@ -1053,7 +976,7 @@ function BaguaPlantaContent() {
       salvarRascunho({etapa:'entrada',entradaV:{x:ex,y:ey},ladoV:newLado})
       return
     }
-    if(step==='resultado'&&modo==='nenhum'&&bounds){
+    if(step==='resultado'&&!editandoPlanta&&bounds){
       const bx=bounds.x*s,by=bounds.y*s,bw=bounds.w*s,bh=bounds.h*s
       if(cx>=bx&&cx<=bx+bw&&cy>=by&&cy<=by+bh){
         const col=(cx-bx)/bw<lv[0]?0:(cx-bx)/bw<lv[1]?1:2
@@ -1063,133 +986,41 @@ function BaguaPlantaContent() {
     }
   }
 
-  // ── marcação helpers — just mark as pending, don't auto-recalculate ─────
-  function marcacaoAlterada(){
-    setRecalculoPendente(true)
-  }
-  function removeMarcacao(id:string){
-    cancelarGesto()
-    const next=marcacoesRef.current.filter(m=>m.id!==id)
-    setMarcacoes(next); marcacoesRef.current=next
-    setMarcacaoSelecionada(null)
-    setRecalculoPendente(true)
-  }
-
   // ── calcular ───────────────────────────────────────────────────────────────
   function calcular(){
     if(escola==='bussola' && grausParaCalculo===null){setMsg(AVISO_ORIENTACAO);setMsgTipo('erro');return}
     const r=rotRef.current; if(!r) return
     // Default bounds to full image with 5% margin
     const m5=0.05
-    const b={x:Math.round(r.width*m5),y:Math.round(r.height*m5),w:Math.round(r.width*(1-2*m5)),h:Math.round(r.height*(1-2*m5))}
+    const b=boundsRef.current??{x:Math.round(r.width*m5),y:Math.round(r.height*m5),w:Math.round(r.width*(1-2*m5)),h:Math.round(r.height*(1-2*m5))}
     setBounds(b); boundsRef.current=b
-    setLh([1/3,2/3]); lhRef.current=[1/3,2/3]
-    setLv([1/3,2/3]); lvRef.current=[1/3,2/3]
     let novosSetores:Setor[]
-    try { novosSetores=calcularSetores(b,[1/3,2/3],[1/3,2/3],marcacoesRef.current) }
+    try { novosSetores=calcularSetores(b,lhRef.current,lvRef.current,marcacoesRef.current,regraGeometriaRef.current).map((n,i)=>({...n,criterios:setores[i]?.criterios??n.criterios,ajusteManual:setores[i]?.ajusteManual??null,ajusteTipo:setores[i]?.ajusteTipo??null,obs:setores[i]?.obs??''})) }
     catch { setMsg(AVISO_GEOMETRIA_INVALIDA); setMsgTipo('erro'); return }
     setSetores(novosSetores)
-    setStep('resultado'); setModo('nenhum')
+    setStep('resultado')
     setBordaModificada(false)
     setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
     // Save draft
-    salvarRascunho({etapa:'resultado',bordas:b,lhV:[1/3,2/3],lvV:[1/3,2/3],setoresV:novosSetores})
+    salvarRascunho({etapa:'resultado',bordas:b,lhV:lhRef.current,lvV:lvRef.current,setoresV:novosSetores})
   }
 
-  function recalcular(){
+  async function recalcular(){
     const b=boundsRef.current
     const curLh=lhRef.current
     const curLv=lvRef.current
-    if(!b) return
+    if(!b||editandoPlanta) return
     let novos:Setor[]
-    try { novos=calcularSetores(b,curLh,curLv,marcacoesRef.current) }
+    try { novos=calcularSetores(b,curLh,curLv,marcacoesRef.current,regraGeometriaRef.current) }
     catch { setMsg(AVISO_GEOMETRIA_INVALIDA); setMsgTipo('erro'); return }
-    setSetores(prev=>{
-      const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios,
-        ajusteManual:prev[i]?.ajusteManual??null,ajusteTipo:prev[i]?.ajusteTipo??null,obs:prev[i]?.obs??''}))
-      salvarRascunho({etapa:'resultado',bordas:b,lhV:curLh,lvV:curLv,setoresV:merged})
-      return merged
-    })
+    const merged=novos.map((n,i)=>({...n,criterios:setores[i]?.criterios??n.criterios,
+      ajusteManual:setores[i]?.ajusteManual??null,ajusteTipo:setores[i]?.ajusteTipo??null,obs:setores[i]?.obs??''}))
+    const salvo=await salvarRascunho({etapa:'resultado',bordas:b,lhV:curLh,lvV:curLv,setoresV:merged})
+    if(consultaId&&!salvo) return
+    setSetores(merged)
     setRecalculoPendente(false)
     setBordaModificada(false)
     setUltimoRecalculo(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))
-  }
-
-  // Mesmo gesto para mouse, toque e caneta, na bancada e na tela cheia.
-  function pontoDoPonteiro(e:React.PointerEvent<HTMLCanvasElement>){
-    const r=rotRef.current!, rect=e.currentTarget.getBoundingClientRect()
-    return {x:Math.max(0,Math.min(r.width,(e.clientX-rect.left)*r.width/rect.width)),
-      y:Math.max(0,Math.min(r.height,(e.clientY-rect.top)*r.height/rect.height))}
-  }
-  function iniciarGesto(e:React.PointerEvent<HTMLCanvasElement>){
-    if(e.button!==0||!e.isPrimary||gestoRef.current||!rotRef.current||!boundsRef.current||modo==='nenhum'||semSobreposicoes) return
-    const ponto=pontoDoPonteiro(e), b=boundsRef.current
-    const rect=e.currentTarget.getBoundingClientRect(), r=rotRef.current
-    const tolerancia={x:ALCANCE_ALCA_MARCACAO_CSS*r.width/rect.width,y:ALCANCE_ALCA_MARCACAO_CSS*r.height/rect.height}
-    isDrag.current=false
-    if(modo==='marcarFalta'||modo==='marcarExcesso'){
-      desenhandoRef.current={startX:ponto.x,startY:ponto.y,tipo:modo==='marcarFalta'?'falta':'excesso'}
-    }else if(modo==='editarMarcacao'){
-      const alvo=encontrarMarcacao(marcacoesRef.current,ponto,tolerancia,marcacaoSelecionada)
-      setMarcacaoSelecionada(alvo&&'id' in alvo?alvo.id:null)
-      if(!alvo) return
-      dragRef.current=alvo
-    }else if(modo==='bordas'){
-      const tx=ALCANCE_BORDA_CSS*r.width/rect.width, ty=ALCANCE_BORDA_CSS*r.height/rect.height
-      if(Math.abs(ponto.y-b.y)<ty&&ponto.x>=b.x-tx&&ponto.x<=b.x+b.w+tx) dragRef.current={tipo:'borda',lado:'top'}
-      else if(Math.abs(ponto.y-b.y-b.h)<ty&&ponto.x>=b.x-tx&&ponto.x<=b.x+b.w+tx) dragRef.current={tipo:'borda',lado:'bottom'}
-      else if(Math.abs(ponto.x-b.x)<tx&&ponto.y>=b.y-ty&&ponto.y<=b.y+b.h+ty) dragRef.current={tipo:'borda',lado:'left'}
-      else if(Math.abs(ponto.x-b.x-b.w)<tx&&ponto.y>=b.y-ty&&ponto.y<=b.y+b.h+ty) dragRef.current={tipo:'borda',lado:'right'}
-      else return
-    }
-    gestoRef.current={ponteiro:e.pointerId,canvas:e.currentTarget,inicio:ponto,bordas:b,marcacoes:marcacoesRef.current}
-    e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId)
-  }
-  function moverGesto(e:React.PointerEvent<HTMLCanvasElement>){
-    const gesto=gestoRef.current
-    if(!gesto||gesto.ponteiro!==e.pointerId) return
-    const p=pontoDoPonteiro(e)
-    if(p.x!==gesto.inicio.x||p.y!==gesto.inicio.y) isDrag.current=true
-    if(desenhandoRef.current){
-      const preview=retanguloEntrePontos(gesto.inicio,p)
-      previewRef.current=preview; setDesenhandoPreview(preview); return
-    }
-    const alvo=dragRef.current
-    if(!alvo) return
-    if(alvo.tipo==='borda'){
-      const b={...gesto.bordas}
-      if(alvo.lado==='top'){b.y=Math.min(p.y,b.y+b.h-DIMENSAO_MINIMA_BORDAS);b.h=gesto.bordas.y+gesto.bordas.h-b.y}
-      if(alvo.lado==='bottom') b.h=Math.max(DIMENSAO_MINIMA_BORDAS,p.y-b.y)
-      if(alvo.lado==='left'){b.x=Math.min(p.x,b.x+b.w-DIMENSAO_MINIMA_BORDAS);b.w=gesto.bordas.x+gesto.bordas.w-b.x}
-      if(alvo.lado==='right') b.w=Math.max(DIMENSAO_MINIMA_BORDAS,p.x-b.x)
-      boundsRef.current=b; setBounds(b); return
-    }
-    const next=gesto.marcacoes.map(m=>m.id!==alvo.id?m:alvo.tipo==='marcacao-mover'
-      ? {...m,x:p.x-alvo.offX,y:p.y-alvo.offY}:redimensionarMarcacao(m,alvo.canto,p))
-    marcacoesRef.current=next; setMarcacoes(next)
-  }
-  function concluirGesto(e:React.PointerEvent<HTMLCanvasElement>){
-    const gesto=gestoRef.current
-    if(!gesto||gesto.ponteiro!==e.pointerId) return
-    // O ponto final pode chegar sem um pointermove intermediário.
-    moverGesto(e)
-    const preview=previewRef.current
-    if(desenhandoRef.current&&preview&&preview.w>=DIMENSAO_MINIMA_MARCACAO&&preview.h>=DIMENSAO_MINIMA_MARCACAO){
-      const m:Marcacao={id:crypto.randomUUID(),tipo:desenhandoRef.current.tipo,...preview}
-      const next=[...marcacoesRef.current,m]
-      marcacoesRef.current=next; setMarcacoes(next); setMarcacaoSelecionada(m.id)
-      marcacaoAlterada()
-    }else if(dragRef.current&&isDrag.current){
-      if(dragRef.current.tipo==='borda'){setBordaModificada(true);recalcular()}
-      else marcacaoAlterada()
-    }
-    gestoRef.current=null; desenhandoRef.current=null; dragRef.current=null; previewRef.current=null
-    setDesenhandoPreview(null)
-    if(e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
-    setTimeout(()=>{isDrag.current=false},50)
-  }
-  function cancelarPonteiro(e:React.PointerEvent<HTMLCanvasElement>){
-    if(gestoRef.current?.ponteiro===e.pointerId) cancelarGesto()
   }
 
   // ── critério ───────────────────────────────────────────────────────────────
@@ -1257,8 +1088,8 @@ function BaguaPlantaContent() {
     if(!order){setMsg(AVISO_ORIENTACAO);setMsgTipo('erro');return}
     try {
       const b=boundsRef.current
-      if(!b||recalculoPendente||bordaModificada) throw new Error('Geometria pendente')
-      const atuais=calcularSetores(b,lhRef.current,lvRef.current,marcacoesRef.current)
+      if(!b||editandoPlanta||recalculoPendente||bordaModificada) throw new Error('Geometria pendente')
+      const atuais=calcularSetores(b,lhRef.current,lvRef.current,marcacoesRef.current,regraGeometriaRef.current)
       if(setores.some((s,i)=>s.faltaArea!==atuais[i].faltaArea||s.excessoArea!==atuais[i].excessoArea||s.geo!==atuais[i].geo)) throw new Error('Geometria mudou')
     } catch { setMsg('Revise os limites e recalcule a geometria antes de finalizar a análise.');setMsgTipo('erro');return }
     setSalvandoTudo(true)
@@ -1311,6 +1142,8 @@ function BaguaPlantaContent() {
       }
       const b=boundsRef.current
       const finalizacao:BaguaEntrada={
+        geometria_regra:regraGeometriaRef.current,
+        bordas_confirmadas_em:bordasConfirmadasRef.current,
         x:entrada?.x??0, y:entrada?.y??0, lado,
         escola, orientacao_graus:orientacaoGraus,
         orientacao_estado:orientacaoGraus === null ? 'ausente' : orientacaoConfirmadaEm ? 'confirmada' : 'nao_confirmada',
@@ -1338,7 +1171,7 @@ function BaguaPlantaContent() {
       }
       // Save marcacoes
       if(marcacoes.length>0){
-        finalizacao.marcacoes=marcacoes.map(m=>({id:m.id,tipo:m.tipo,x:m.x,y:m.y,w:m.w,h:m.h}))
+        finalizacao.marcacoes=marcacoes.map(m=>({...m}))
       }
       // ATENÇÃO: este await NÃO lança em erro de banco — o cliente Supabase resolve com
       // {error}. Sem a checagem abaixo, o try/catch em volta nunca disparava e o app
@@ -1596,75 +1429,18 @@ function BaguaPlantaContent() {
                 </div>
               )}
 
-              {/* Tai Ji real (contorno de polígono) — regra do terço (setor ausente/extensão) */}
-              {step==='resultado'&&bounds&&(
-                <div style={{marginBottom:'8px',padding:'8px 10px',background:'#EEF6F3',borderRadius:'6px',border:'1px solid #CFE6E0'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',flexWrap:'wrap'}}>
-                    <span style={{fontSize:'13px',color:'#1D4D43',fontWeight:600}}>
-                      🔷 Tai Ji real (contorno do imóvel) — avançado, opcional
-                    </span>
-                    <button
-                      type="button"
-                      onClick={()=>{
-                        if(!editandoPoligono){mudarModo('nenhum');setSemSobreposicoes(false)}
-                        if(!editandoPoligono&&!poligonoTaiJiRef.current&&bounds){
-                          const padrao:Ponto[]=[
-                            {x:bounds.x,y:bounds.y},
-                            {x:bounds.x+bounds.w,y:bounds.y},
-                            {x:bounds.x+bounds.w,y:bounds.y+bounds.h},
-                            {x:bounds.x,y:bounds.y+bounds.h},
-                          ]
-                          setPoligonoTaiJi(padrao); poligonoTaiJiRef.current=padrao
-                        }
-                        if(editandoPoligono) salvarRascunho()
-                        setEditandoPoligono(v=>!v)
-                      }}
-                      style={{padding:'4px 10px',fontSize:'13px',fontWeight:'bold',background:editandoPoligono?'#2E7D6B':'#fff',color:editandoPoligono?'#fff':'#2E7D6B',border:'1px solid #2E7D6B',borderRadius:'6px',cursor:'pointer'}}
-                    >
-                      {editandoPoligono?'✓ Concluir edição':(poligonoTaiJi?'✏️ Editar contorno':'✏️ Desenhar contorno real')}
-                    </button>
-                  </div>
-                  {!editandoPoligono&&(()=>{
-                    const pontosResumo=poligonoTaiJi??(bounds?[
-                      {x:bounds.x,y:bounds.y},{x:bounds.x+bounds.w,y:bounds.y},
-                      {x:bounds.x+bounds.w,y:bounds.y+bounds.h},{x:bounds.x,y:bounds.y+bounds.h},
-                    ]:[])
-                    const taiJi=calcularTaiJi(pontosResumo)
-                    const celulas=analisarContornoNaGrade(pontosResumo,bounds,lh,lv)
-                    const ausentes=celulas.filter(c=>c.ausente)
-                    const extensoes=celulas.filter(c=>c.excessoArea>0)
-                    if(!poligonoTaiJi) return (
-                      <p style={{margin:'6px 0 0',fontSize:'13px',color:'#245F52'}}>
-                        Ainda usando o retângulo das bordas como contorno (sem ganho sobre o bounding box). Desenhe o contorno real para detectar setor ausente/extensão.
-                      </p>
-                    )
-                    return (
-                      <div style={{margin:'6px 0 0',fontSize:'13px',color:'#245F52'}}>
-                        {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#B4533A',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
-                        {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#B4533A'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
-                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#8A6E2F'}}>Extensão externa: {extensoes.length} setor(es) da borda.</p>}
-                        {ausentes.length===0&&extensoes.length===0&&<p style={{margin:0}}>Contorno regular — sem setor ausente ou extensão detectados.</p>}
-                      </div>
-                    )
-                  })()}
-                </div>
-              )}
+              {step==='resultado'&&poligonoTaiJi&&<details style={{marginBottom:8}}><summary>Contorno auxiliar da análise anterior</summary><p>O contorno antigo foi preservado e aparece em tracejado azul, apenas para referência. No novo editor, registre os recuos e extensões como polígonos de falta e excesso para integrá-los ao saldo. Esse contorno auxiliar não modifica os setores.</p></details>}
 
               {/* ══ CANVAS ÚNICO — nunca sai do DOM ══ */}
               <div ref={canvasContainerRef} style={{position:'relative',display:'inline-block',width:'100%'}}>
                 <canvas ref={cvRef}
                   onClick={step==='entrada'||step==='resultado'?onClick:undefined}
                   aria-label="Planta para marcar falta e excesso"
-                  onPointerDown={step==='resultado'?iniciarGesto:undefined}
-                  onPointerMove={step==='resultado'?moverGesto:undefined}
-                  onPointerUp={step==='resultado'?concluirGesto:undefined}
-                  onPointerCancel={cancelarPonteiro}
-                  onLostPointerCapture={cancelarPonteiro}
                   style={{
                     display:'block',
                     border:'1px solid #E5E7EB',borderRadius:'8px',
-                    cursor: step==='entrada'?'crosshair':(modo==='marcarFalta'||modo==='marcarExcesso')?'crosshair':modo!=='nenhum'?'move':'pointer',
-                    userSelect:'none', touchAction:step==='resultado'&&modo!=='nenhum'?'none':'auto',
+                    cursor: step==='entrada'?'crosshair':'pointer',
+                    userSelect:'none', touchAction:'auto',
                   }}
                 />
                 {/* Pulse animation overlay for entrance marker */}
@@ -1685,25 +1461,11 @@ function BaguaPlantaContent() {
                     }}/>
                   )
                 })()}
-                {/* Editor interativo do contorno real (Tai Ji) — overlay transparente sobre o canvas.
-                    Dimensionado com o tamanho renderizado do PRÓPRIO canvas (cv.style.width/height,
-                    já em px CSS — ver resizeCanvas), não do container: quando a escala é limitada pela
-                    altura (fotos em retrato), o canvas fica mais estreito que o container (width:100%),
-                    e um overlay preenchendo o container inteiro ficaria desalinhado com a imagem. */}
-                {editandoPoligono&&bounds&&rotRef.current&&cvRef.current&&(
-                    <EditorPoligonoTaiJi
-                      largura={rotRef.current.width}
-                      altura={rotRef.current.height}
-                      referencia={bounds} lh={lh} lv={lv}
-                      tamanhoExibicao={{largura:cvRef.current.style.width,altura:cvRef.current.style.height}}
-                      pontosIniciais={poligonoTaiJi??[
-                        {x:bounds.x,y:bounds.y},{x:bounds.x+bounds.w,y:bounds.y},
-                        {x:bounds.x+bounds.w,y:bounds.y+bounds.h},{x:bounds.x,y:bounds.y+bounds.h},
-                      ]}
-                      onChange={p=>{setPoligonoTaiJi(p);poligonoTaiJiRef.current=p}}
-                      transparente
-                    />
-                )}
+                {step==='resultado'&&!fullscreen&&bounds&&rotRef.current&&<EditorMarcacoesPlanta
+                  bordas={bounds} marcacoes={marcacoes} largura={rotRef.current.width} altura={rotRef.current.height}
+                  tamanho={tamanhoCanvas} lh={lh} lv={lv}
+                  confirmadoEm={bordasConfirmadasEm} legado={regraGeometria==='descontos-v1'} aoConfirmar={confirmarGeometria}
+                  aoEditar={v=>{setEditandoPlanta(v);setSemSobreposicoes(v)}} />}
               </div>
 
               {/* Controles CONFIGURAR */}
@@ -2003,38 +1765,17 @@ function BaguaPlantaContent() {
                     <span style={{fontSize:'14px',color:'#6B7280',transition:'transform 0.2s',transform:instrucaoAberta?'rotate(0deg)':'rotate(180deg)'}}>{instrucaoAberta?'▲':'▼'}</span>
                   </button>
                   {instrucaoAberta&&(
-                    <div style={{padding:'0 18px 16px 18px'}}>
-                      <div style={{display:'flex',gap:'10px',alignItems:'flex-start',marginBottom:'12px'}}>
-                        <span style={{fontSize:'20px',flexShrink:0}}>ℹ️</span>
-                        <div>
-                          <div style={{fontWeight:'bold',color:'#0E1B2C',fontSize:'13px',marginBottom:'6px'}}>Como ajustar a análise para sua planta</div>
-                          <p style={{color:'#374151',fontSize:'13px',lineHeight:'1.6',margin:'0 0 8px 0'}}>
-                            A análise automática considera o retângulo envolvente detectado na imagem. Para resultados precisos:
-                          </p>
-                          <ol style={{color:'#374151',fontSize:'13px',lineHeight:'1.7',margin:'0 0 10px 0',paddingLeft:'16px'}}>
-                            <li>Clique em <strong>&quot;Bordas&quot;</strong>.</li>
-                            <li>Arraste as alças nos 4 lados até coincidir com as <strong>paredes externas</strong> da área construída — ignore jardins, pátios e calçadas.</li>
-                            <li>Clique em <strong>&quot;Recalcular&quot;</strong>.</li>
-                          </ol>
-                          <div style={{fontWeight:'bold',color:'#8A6E2F',fontSize:'13px',marginBottom:'6px'}}>⚠ O que acontece após o ajuste:</div>
-                          <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'12px',color:'#374151',lineHeight:'1.5'}}>
-                            <div style={{padding:'6px 8px',background:'#FAEEE9',borderRadius:'5px',borderLeft:'3px solid #B4533A'}}>
-                              <strong style={{color:'#B4533A'}}>VAZIO dentro das bordas</strong> — área sem construção (jardim interno, pátio, recuo). É descontada do setor → indica <strong>FALTA</strong> de energia naquele Guá.
-                            </div>
-                            <div style={{padding:'6px 8px',background:'#FAF3E0',borderRadius:'5px',borderLeft:'3px solid #A9613C'}}>
-                              <strong style={{color:'#A9613C'}}>CONSTRUÇÃO fora das bordas</strong> — parte da construção extrapola as bordas (edícula, saliência). Também é descontada → indica <strong>EXCESSO</strong> não integrado ao mapa.
-                            </div>
-                            <div style={{padding:'6px 8px',background:'#F0F6F3',borderRadius:'5px',borderLeft:'3px solid #2E7D6B'}}>
-                              <strong style={{color:'#2E7D6B'}}>Setor sem falta nem excesso</strong> — todo construído dentro das bordas → setor <strong>EQUILIBRADO</strong> ✓.
-                            </div>
-                          </div>
-                          <p style={{color:'#6B7280',fontSize:'12px',margin:'8px 0 0 0',fontStyle:'italic'}}>Os descontos são proporcionais à área afetada em relação à área total do setor.</p>
-                        </div>
-                      </div>
-                      <button type="button" onClick={()=>{setInstrucaoAberta(false);mudarModo('bordas')}} style={{
-                        width:'100%',padding:'10px',background:'#2E7D6B',color:'#fff',border:'none',
-                        borderRadius:'7px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'
-                      }}>Entendido — ajustar bordas</button>
+                    <div style={{padding:'0 18px 16px',fontSize:14,lineHeight:1.6}}>
+                      <p>A imagem recebe um retângulo inicial de referência; o sistema não detecta automaticamente as paredes. Delimite a área construída analisada, conforme a escola escolhida, e não o terreno inteiro.</p>
+                      <ol><li>Clique em <strong>Editar planta e marcações</strong>, depois em <strong>Marcar bordas</strong>.</li>
+                        <li>Ajuste as quatro bordas. O tracejado mostra a posição anterior. Clique em <strong>OK — confirmar bordas</strong>, mesmo ao revisar uma planta antiga.</li>
+                        <li>Em <strong>Marcar Falta</strong>, toque nos cantos de um novo polígono dentro da referência. Conecte-o a um trecho da borda e confirme com OK.</li>
+                        <li>Em <strong>Marcar Excesso</strong>, desenhe a extensão externa conectada à borda e confirme. Bordas e faltas anteriores permanecem.</li>
+                        <li>Use <strong>Editar marcações</strong> para selecionar, mover pontos, inserir pontos ou excluir. Confirme cada revisão.</li>
+                        <li>Clique em <strong>Concluir edição</strong> e depois em <strong>Recalcular</strong>. Finalize a análise para atualizar o relatório.</li></ol>
+                      <p>Na regra por saldo, cada setor mostra as áreas de falta e excesso e sua diferença: mais falta → vermelho; mais excesso → verde; diferença nula → equilibrado por saldo. As áreas originais continuam registradas, mesmo quando se compensam.</p>
+                      <p>Sobreposições do mesmo tipo contam uma vez. Falta só conta dentro da referência; excesso só conta fora, nos setores da borda, sem reposicionar a grade. Áreas isoladas e pátios internos não são aceitos por esta ferramenta de recuos e extensões.</p>
+                      <p>Saldo é uma regra de área deste aplicativo, não uma conclusão automática sobre energia nem uma regra universal de todas as escolas. Análises antigas mantêm os descontos anteriores até confirmar a revisão.</p>
                     </div>
                   )}
                 </div>
@@ -2044,28 +1785,21 @@ function BaguaPlantaContent() {
               {step==='resultado'&&(
                 <>
                   <div style={{marginTop:'9px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                    <button type="button" onClick={()=>mudarModo(modo==='bordas'?'nenhum':'bordas')}
-                      style={{background:modo==='bordas'?'#B4533A':'#8A6E2F',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
-                      {modo==='bordas'?'🔒 Finalizar':'⬜ Bordas'}
-                    </button>
-                    <ControlesMarcacoes modo={modo} aoMudarModo={mudarModo} marcacoes={marcacoes}
-                      selecionada={marcacaoSelecionada} aoSelecionar={id=>{cancelarGesto();setMarcacaoSelecionada(id||null)}}
-                      aoExcluir={removeMarcacao} semSobreposicoes={semSobreposicoes} aoComparar={compararPlanta} bordas={bounds} />
-                    <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
+                    <label><input type="checkbox" checked={semSobreposicoes} disabled={editandoPlanta} onChange={e=>setSemSobreposicoes(e.target.checked)} /> Ver planta sem sobreposições</label>
+                    <button type="button" onClick={recalcular} disabled={editandoPlanta||(!bordaModificada&&!recalculoPendente)}
                       style={{background:recalculoPendente?'#A9613C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                         animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                       🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
-                    <button type="button" onClick={()=>{cancelarGesto();if(editandoPoligono)mudarModo('nenhum');setFullscreen(true)}}
+                    <button type="button" disabled={editandoPlanta} onClick={()=>setFullscreen(true)}
                       style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       🔍 Tela cheia
                     </button>
-                    <button type="button" onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setModo('nenhum');setSetores([]);setAtivo(null);setMarcacoes([])}}
+                    <button type="button" onClick={()=>{setStep('upload');setImg(null);setBounds(null);setEntrada(null);setSetores([]);setAtivo(null);setMarcacoes([])}}
                       style={{background:'transparent',color:'#6B7280',border:'1px solid #D1D5DB',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',cursor:'pointer'}}>
                       ↩ Nova planta
                     </button>
                   </div>
-                  {modo==='bordas'&&<div style={{marginTop:'5px',padding:'5px 9px',background:'#FAF3E0',borderRadius:'5px',color:'#8A6E2F',fontSize:'12px'}}>Arraste as alças laranja nas bordas do retângulo</div>}
                   {msg&&(()=>{
                     const isError=msgTipo==='erro'
                     return <div style={{marginTop:'5px',padding:'6px 10px',background:isError?'#FAEEE9':'#F0F6F3',borderRadius:'5px',color:isError?'#B4533A':'#2E7D6B',fontSize:'13px',fontWeight:'bold'}}>{isError?'⚠':'✅'} {msg}</div>
@@ -2155,6 +1889,11 @@ function BaguaPlantaContent() {
                   <div style={{marginTop:'10px',padding:'13px',background:'#fff',borderRadius:'10px',border:'1px solid #E7E1D6'}}>
                     <SustentacaoDoDiagnostico
                       mostrarRessalva={false}
+                      acoes={editandoPlanta ? undefined : {
+                        'Kua da Casa · Oito Mansões': {texto:'Configurar método e confirmar fachada',executar:()=>setStep('configurar')},
+                        'Estrelas Voadoras': {texto:'Revisar fachada e ano do imóvel',executar:()=>setStep('configurar')},
+                        ...(clienteId?{'Ming Gua do morador':{texto:'Completar nascimento no cadastro do cliente',executar:()=>router.push(`/clientes/${clienteId}`)}}:{}),
+                      }}
                       dados={{
                         execucoes: execucoesMetodos,
                         setoresComScore: setores.filter(sc => sc.criterios.some(c => c !== null)).length,
@@ -2163,87 +1902,10 @@ function BaguaPlantaContent() {
                     />
                   </div>
 
-                  {/* Posicionamento de Mobiliário (Ba Zhai) — calculadora "sentar no mal, olhar para o bem" */}
-                  {escola==='bussola'&&(
-                    <div style={{marginTop:'10px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
-                      <button type="button" onClick={()=>setMobiliarioAberto(v=>!v)}
-                        style={{background:'none',border:'none',padding:0,color:'#245F52',fontSize:'13px',fontWeight:'bold',cursor:'pointer',textAlign:'left',width:'100%'}}>
-                        {mobiliarioAberto?'▾':'▸'} 🛋️ Posicionamento de Mobiliário (Ba Zhai)
-                      </button>
-                      {mobiliarioAberto&&(()=>{
-                        const genero=normalizarGenero(mobiliarioGenero)
-                        const mingGua=calcularMingGua(mobiliarioDataNascimento||null,genero)
-                        const avisoNascimento=avisoAnoSolar(mobiliarioDataNascimento)
-                        const octante=Math.round(((mobiliarioDirecaoGraus%360)+360)%360/45)%8
-                        const direcaoSetor=(['N','NE','E','SE','S','SW','W','NW'] as SetorCompasso[])[octante]
-                        const avaliacao=mingGua?avaliarPosicionamento(mingGua.direcoes,mobiliarioLocalizacao,direcaoSetor):null
-                        return (
-                          <div style={{marginTop:'8px'}}>
-                            {avisoNascimento ? <p role="status" style={{fontSize:'12px',color:'#7A3D2C'}}>{avisoNascimento}</p> : null}
-                            <p style={{margin:'0 0 8px',fontSize:'12px',color:'#4C1D95'}}>
-                              Regra 坐凶向吉 (&ldquo;sentar no mal, olhar para o bem&rdquo;): o corpo do objeto pode estar num setor
-                              desfavorável — é onde essas coisas normalmente já estão — mas a direção para a qual ele
-                              aponta (boca do fogão, perpendicular à cabeceira da cama, olhar na mesa) deve ser favorável
-                              para quem o usa.
-                            </p>
-                            <div style={{display:'flex',gap:'4px',marginBottom:'8px',flexWrap:'wrap'}}>
-                              {(['cama','fogao','mesa'] as const).map(t=>(
-                                <button type="button" key={t} onClick={()=>setMobiliarioTipo(t)} style={{
-                                  padding:'4px 10px',borderRadius:'5px',border:'1px solid',fontSize:'12px',fontWeight:'bold',cursor:'pointer',
-                                  borderColor:mobiliarioTipo===t?'#2E7D6B':'#D1D5DB',background:mobiliarioTipo===t?'#2E7D6B':'#fff',color:mobiliarioTipo===t?'#fff':'#6B7280',
-                                }}>{t==='cama'?'Cama':t==='fogao'?'Fogão':'Mesa'}</button>
-                              ))}
-                            </div>
-                            <label style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
-                              De quem é o Ming Gua a considerar (quem dorme na cama, cozinha, ou usa a mesa)?
-                            </label>
-                            <div style={{display:'flex',gap:'6px',marginBottom:'8px',flexWrap:'wrap'}}>
-                              <input type="date" value={mobiliarioDataNascimento} onChange={e=>setMobiliarioDataNascimento(e.target.value)}
-                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
-                              <select value={mobiliarioGenero} onChange={e=>setMobiliarioGenero(e.target.value)}
-                                style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}>
-                                <option value="">Gênero...</option>
-                                <option value="masculino">Masculino</option>
-                                <option value="feminino">Feminino</option>
-                              </select>
-                            </div>
-                            <label style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
-                              Localização (setor onde o corpo do objeto está)
-                            </label>
-                            <select value={mobiliarioLocalizacao} onChange={e=>setMobiliarioLocalizacao(e.target.value as SetorCompasso)}
-                              style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px',marginBottom:'8px',width:'100%'}}>
-                              {SETOR_NOMEADO_PARA_COMPASSO.map(([nome,setor])=>(
-                                <option key={setor} value={setor}>{nome} ({NOME_SETOR[setor]})</option>
-                              ))}
-                            </select>
-                            <label style={{display:'block',fontSize:'12px',fontWeight:'bold',color:'#374151',marginBottom:'4px'}}>
-                              Direção (para onde o objeto aponta): <span style={{color:'#2E7D6B'}}>{mobiliarioDirecaoGraus.toFixed(1)}°</span> ({NOME_SETOR[direcaoSetor]})
-                            </label>
-                            <input type="number" min={0} max={359.9} step={0.1} value={mobiliarioDirecaoGraus}
-                              onChange={e=>setMobiliarioDirecaoGraus(normalizarGraus(Number(e.target.value)||0))}
-                              style={{width:'70px',padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px',marginBottom:'8px'}}/>
-                            {!genero&&mobiliarioGenero&&(
-                              <p style={{margin:'4px 0',fontSize:'12px',color:'#B4533A'}}>Gênero não reconhecido.</p>
-                            )}
-                            {mingGua&&avaliacao&&(
-                              <div style={{padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
-                                <p style={{margin:'0 0 4px',fontSize:'12px',color:'#374151'}}>
-                                  Ming Gua {mingGua.kua} (grupo {mingGua.grupo==='leste'?'Leste':'Oeste'})
-                                </p>
-                                <p style={{margin:0,fontSize:'13px',fontWeight:'bold',color:avaliacao.direcaoFavoravel?'#2E7D6B':'#B4533A'}}>
-                                  {avaliacao.direcaoFavoravel
-                                    ?'✅ Direção favorável — bem posicionado.'
-                                    :'⚠ Direção desfavorável — considere reposicionar para uma direção favorável.'}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })()}
-                    </div>
-                  )}
+                  {consultaId&&<div style={{marginTop:12,padding:14,background:'#EEF6F3',borderRadius:8}}><strong>Ambientes e mobiliário</strong><p>Cadastre vários móveis no mesmo setor, com ambiente, posição, direção e pessoa de referência, em uma tela própria.</p><button type="button" disabled={editandoPlanta||recalculoPendente} onClick={async()=>{if(await salvarRascunho())router.push(`/consultas/${consultaId}/mobiliario`)}}>Abrir cadastro de mobiliário</button></div>}
 
                   {/* Mini-cards 3x3 */}
+                  {regraGeometria==='saldo-v2'&&<div style={{marginTop:12,fontSize:13}}><strong>Áreas e saldo por setor</strong><p>Percentuais relativos à área-base de cada setor; positivo = excesso, negativo = falta. O saldo não apaga as áreas brutas.</p><div style={{overflowX:'auto'}}><table style={{width:'100%',textAlign:'left'}}><thead><tr><th>Setor</th><th>Falta</th><th>Excesso</th><th>Saldo</th></tr></thead><tbody>{setores.map((s,i)=><tr key={i}><td>{i+1} · {order?SETORES[order[i]].nome:''}</td><td>{s.faltaPct.toFixed(1)}%</td><td>{s.excessoPct.toFixed(1)}%</td><td>{(s.excessoPct-s.faltaPct).toFixed(1)}% · {lblGeo(s.geo,s)}</td></tr>)}</tbody></table></div></div>}
                   {setores.length>0&&order&&(
                     <div style={{marginTop:'12px'}}>
                       <div style={{fontSize:'13px',fontWeight:'bold',color:'#0E1B2C',marginBottom:'6px'}}>📊 Resumo por setor</div>
@@ -2558,59 +2220,33 @@ const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#EAF1EE','#D9EBE4']
                 <span style={{color:'rgba(255,255,255,0.5)',fontSize:'12px'}}>— Tela cheia</span>
               </div>
               <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
-                <button type="button" onClick={()=>mudarModo(modo==='bordas'?'nenhum':'bordas')}
-                  style={{background:modo==='bordas'?'#B4533A':'#8A6E2F',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
-                  {modo==='bordas'?'🔒 Finalizar bordas':'⬜ Ajustar bordas'}
-                </button>
-                <ControlesMarcacoes modo={modo} aoMudarModo={mudarModo} marcacoes={marcacoes}
-                      selecionada={marcacaoSelecionada} aoSelecionar={id=>{cancelarGesto();setMarcacaoSelecionada(id||null)}}
-                      aoExcluir={removeMarcacao} semSobreposicoes={semSobreposicoes} aoComparar={compararPlanta} bordas={bounds} />
-                    <button type="button" onClick={recalcular} disabled={!bordaModificada&&!recalculoPendente}
+                    <button type="button" onClick={recalcular} disabled={editandoPlanta||(!bordaModificada&&!recalculoPendente)}
                   style={{background:recalculoPendente?'#A9613C':bordaModificada?'#2E7D6B':'#93C5FD',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'6px',fontSize:'12px',fontWeight:'bold',cursor:(bordaModificada||recalculoPendente)?'pointer':'not-allowed',opacity:(bordaModificada||recalculoPendente)?1:0.6,
                     animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                   🔄 Recalcular{recalculoPendente?' (pendente)':''}
                 </button>
-                <button type="button" onClick={()=>{cancelarGesto();setModo('nenhum');setFullscreen(false)}}
+                <button type="button" disabled={editandoPlanta} onClick={()=>{setFullscreen(false)}}
                   style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'8px 20px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                   ✓ OK — Voltar
                 </button>
               </div>
             </div>
 
-            {/* Instructions */}
-            {modo==='bordas'&&(
-              <div style={{flexShrink:0,
-                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#8A6E2F',fontSize:'12px',zIndex:1}}>
-                Arraste as alças laranja para ajustar os limites da construcao (fronteira Feng Shui)
-              </div>
-            )}
-            {modo==='marcarFalta'&&(
-              <div style={{flexShrink:0,
-                padding:'6px 16px',background:'#FAEEE9',borderRadius:'6px',color:'#B4533A',fontSize:'12px',zIndex:1}}>
-                Clique e arraste para marcar uma area de FALTA
-              </div>
-            )}
-            {modo==='marcarExcesso'&&(
-              <div style={{flexShrink:0,
-                padding:'6px 16px',background:'#FAF3E0',borderRadius:'6px',color:'#A9613C',fontSize:'12px',zIndex:1}}>
-                Clique e arraste para marcar uma area de EXCESSO
-              </div>
-            )}
             {/* Fullscreen canvas */}
-            <canvas ref={fsCvRef}
+            <div style={{position:'relative'}}><canvas ref={fsCvRef}
               aria-label="Planta em tela cheia para marcar falta e excesso"
-              onPointerDown={iniciarGesto}
-              onPointerMove={moverGesto}
-              onPointerUp={concluirGesto}
-              onPointerCancel={cancelarPonteiro}
-              onLostPointerCapture={cancelarPonteiro}
               style={{
                 display:'block', borderRadius:'8px',
                 border:'2px solid rgba(255,255,255,0.2)',
-                cursor:(modo==='marcarFalta'||modo==='marcarExcesso')?'crosshair':modo!=='nenhum'?'move':'default',
-                userSelect:'none', touchAction:modo!=='nenhum'?'none':'auto', maxWidth:'100%', flexShrink:0
+                cursor:'default',
+                userSelect:'none', touchAction:'auto', maxWidth:'100%', flexShrink:0
               }}
             />
+              {bounds&&rotRef.current&&<EditorMarcacoesPlanta bordas={bounds} marcacoes={marcacoes}
+                largura={rotRef.current.width} altura={rotRef.current.height} tamanho={tamanhoCanvasFS}
+                lh={lh} lv={lv} confirmadoEm={bordasConfirmadasEm} legado={regraGeometria==='descontos-v1'} aoConfirmar={confirmarGeometria}
+                aoEditar={v=>{setEditandoPlanta(v);setSemSobreposicoes(v)}} />}
+            </div>
 
             {/* Bottom info */}
             <div style={{

@@ -101,6 +101,7 @@ export interface BaguaMarcacaoJSON {
   y?: number
   w?: number
   h?: number
+  pontos?: { x: number; y: number }[]
 }
 
 /** Per-sector draft data persisted inside bagua_entrada.setores_rascunho */
@@ -114,6 +115,8 @@ export interface BaguaSetorRascunho {
 
 /** Content of the consultas.bagua_entrada JSONB column (Ba Guá analysis state) */
 export interface BaguaEntrada {
+  geometria_regra?: 'descontos-v1' | 'saldo-v2'
+  bordas_confirmadas_em?: string
   x?: number
   y?: number
   lado?: string
@@ -165,6 +168,7 @@ export type RodaDaVida = Record<string, number | number[]>
 
 /** Consultation from the 'consultas' table */
 export interface Consulta {
+  mobiliario?: import('./mobiliario').CadastroMobiliario | null
   id: string
   consultor_id: string
   cliente_id: string

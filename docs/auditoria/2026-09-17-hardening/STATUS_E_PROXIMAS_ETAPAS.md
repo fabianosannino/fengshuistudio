@@ -90,7 +90,7 @@ concluído depende de sua validação de domínio e da jornada correspondente.
 |---|---|---|
 | D0 | Primeira base de resultados versionados — publicada no PR #214 | Mesmos adaptadores na bancada/relatório; estados e limitações explícitos; snapshot em novas emissões; experimento não determina recomendação. Cenários D0-01–05 e ADR 0056; CI 35339415046/35339673192 verde, deployment `dpl_DPf2jjNW6dkrkTKtcTFaq3ovxqyN` READY para `4cbd344` |
 | D1 | Execuções independentes — pendente, próxima implementação | Método/variante/versão por execução, idempotência, concorrência, fonte imutável, relatório vinculado, comparação e obsolescência; ownership/RLS/exportação/exclusão desde o início |
-| D2 | Clássico Essencial — pendente | Fechar orientação e sua incerteza/referência; Ba Zhai por morador, ambientes e mobiliário persistidos; Formas e planta semântica no escopo declarado; vetores independentes e piloto |
+| D2 | Clássico Essencial — em desenvolvimento; cadastro de mobiliário nesta entrega | Tela própria com múltiplos móveis/ambientes, dados pessoais opcionais, direção numérica/na planta, referências e persistência com RLS/CAS. Restam orientação/incerteza completa, cadastro independente de moradores, Formas, variantes, vetores de domínio e piloto; D-MOB-01–06 não encerram D2 |
 | D3 | Fei Xing completo — pendente | Variante e fontes definidas, 24 Montanhas/polaridade/voos e regras aplicáveis, período exato e casos limítrofes; validar cartas externas antes de remover o status experimental |
 | D4 | Outros módulos — pendente | Liu Fa, San He e Da Gua separados; BaZi/seleção de datas como complementos com escopo próprio; requisitos, resultados, proveniência e testes por módulo |
 
@@ -105,6 +105,19 @@ React conferiu lógica fora dos componentes, ausência de novos efeitos/I/O,
 estado derivado e indicação textual de experimental (não apenas por cor).
 
 ## E–F e dependências complementares
+
+- **E-POL / D-MOB — implementação da solicitação de 18/09:** editor único com
+  confirmações de bordas e polígonos, conexão obrigatória, revisão com alças e
+  cálculo por saldo versionado; instruções reescritas. Contorno auxiliar antigo
+  preservado, sem dupla contagem automática. Mobiliário em tela separada, vários
+  itens por setor, gravação independente da geometria, revisão otimista e dados
+  pessoais incluídos na portabilidade/exclusão. Pré-requisitos têm caminhos de
+  configuração e termos explicados. ADR 0058 e cenários E-POL-01–06/D-MOB-01–06.
+  Validação local: 1.859 testes em 138 arquivos; após a revisão de saldo pequeno
+  e seta persistida, os 68 testes afetados passaram novamente. TypeScript
+  aprovado; lint sem erros (94 avisos anteriores, removido o aviso novo de teste).
+  Build, integração em banco descartável e CI/publicação vinculados ao PR. Mouse/toque
+  físico, rasterização e domínio independente continuam pendentes em A–C/D2.
 
 - **E — contorno real e grade fixa:** reprodução adicional pelos pontos
   brancos/verdes confirmada: a sobreposição do polígono recalculava suas

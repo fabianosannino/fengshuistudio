@@ -11,7 +11,7 @@ export function sha256(valor: string | Uint8Array): string {
 /** Allowlist: nunca arquivar tokens, credenciais Stripe ou colunas futuras. */
 const COLUNAS_CONSULTA = `id,consultor_id,cliente_id,nome_imovel,tipo_imovel,area_total_m2,
   endereco_imovel,porta_posicao,bagua_imagem,foto_geral_url,fotos_comodos,fotos_antes,fotos_depois,
-  bagua_entrada,num_moradores,ano_construcao,ano_reforma_estrutural,historico_imovel,
+  bagua_entrada,mobiliario,num_moradores,ano_construcao,ano_reforma_estrutural,historico_imovel,
   observacoes_topograficas,dados_adicionais,status,roda_da_vida,checklist_chi,posicao_comando,
   modelo_pontuacao,peso_geo,criado_em,
   clientes(nome_completo,email,telefone,cidade,estado,data_nascimento,genero)`
