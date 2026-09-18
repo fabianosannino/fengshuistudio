@@ -49,6 +49,10 @@ try {
   sql(source('supabase/tests/fixtures/authorization-baseline.sql'))
   sql(source('supabase/tests/fixtures/legacy-owner-policies.sql'))
   sql(source('supabase/migrations/20260724_restore_handle_new_user.sql'))
+  sql(source('supabase/migrations/20260720_perfis_publicos_view.sql'))
+  // Match the view grants observed in production, including writes granted
+  // to API roles despite the old migration revoking writes only from PUBLIC.
+  sql('grant all on public.perfis_publicos to anon, authenticated, service_role;')
   sql(`insert into auth.users(id,email) select ('00000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'fixture-'||n||'@example.invalid' from generate_series(1,6) n;
     update profiles set role='admin',capacidades_admin=array['chaves:ler','auditoria:ler','relatorios:ler'] where id='${actor(3)}';
     update profiles set role='admin' where id='${actor(4)}';
@@ -84,6 +88,25 @@ try {
   sql(`update profiles set role='cliente',plano='freemium' where id='${actor(6)}'; update profiles set loja_ativa=false where id='${actor(1)}';`)
   sql(source('supabase/migrations/20260918002358_harden_profile_and_admin_authorization.sql'))
   sql(source('supabase/migrations/20260918004708_remove_legacy_admin_rls_bypasses.sql'))
+  // Reproduce the view bypass AFTER the profile table has been hardened.
+  sql(`insert into auth.users(id,email) values('${actor(8)}','view-fixture@example.invalid');
+    update profiles set parceiro_visivel=true where id in ('${actor(1)}','${actor(8)}');`)
+  ok((await request(`perfis_publicos?id=eq.${actor(8)}`,1,{role:'anon',method:'PATCH',body:{nome_completo:'forged through view'}})).status,200,'baseline public-view cross-owner update')
+  ok(sql(`select nome_completo from profiles where id='${actor(8)}'`),'forged through view','baseline view update changed the underlying profile')
+  ok((await request(`perfis_publicos?id=eq.${actor(8)}`,1,{role:'anon',method:'DELETE'})).data.length,1,'baseline public-view profile deletion')
+  sql(`delete from auth.users where id='${actor(8)}';
+    grant update(nome_completo) on public.perfis_publicos to public, anon, authenticated;`)
+  const profileBeforeViewRestriction = sql(`select to_jsonb(p) from profiles p where id='${actor(1)}'`)
+  sql(source('supabase/migrations/20260918012132_restrict_public_profile_view_to_read_only.sql'))
+  for(const role of ['anon','authenticated']) {
+    ok((await request('perfis_publicos',2,{role})).data.map(p=>p.id),[actor(1)],`${role}: public opt-in profile remains readable`)
+    for(const method of ['POST','PATCH','DELETE']) {
+      denied(await request(`perfis_publicos?id=eq.${actor(1)}`,2,{role,method,body:method==='DELETE'?undefined:{nome_completo:'forbidden'}}),`${role}: public view rejects ${method}`)
+    }
+    ok(sql(`select has_any_column_privilege('${role}','public.perfis_publicos','UPDATE') or has_any_column_privilege('${role}','public.perfis_publicos','INSERT') or has_any_column_privilege('${role}','public.perfis_publicos','REFERENCES');`),'f',`${role}: no column-level write bypass`)
+    ok(sql(`select has_table_privilege('${role}','public.perfis_publicos','TRUNCATE') or has_table_privilege('${role}','public.perfis_publicos','TRIGGER') or has_table_privilege('${role}','public.perfis_publicos','MAINTAIN');`),'f',`${role}: no ancillary view privileges`)
+  }
+  ok(sql(`select to_jsonb(p) from profiles p where id='${actor(1)}'`),profileBeforeViewRestriction,'denied view writes preserved profile')
   sql("notify pgrst, 'reload schema';")
   await eventually(async()=>(await request('activation_keys',4)).data?.length===0)
   denied(await request('profiles',1,{role:'anon'}),'anonymous profile read')
@@ -143,10 +166,11 @@ try {
   ok(docker('exec',db,'psql','-U','postgres','-d','restore_check','-Atc','select count(*) from profiles'),'7','restored rows')
   const restoredSql = statement => docker('exec',db,'psql','-U','postgres','-d','restore_check','-v','ON_ERROR_STOP=1','-qAtc',statement)
   ok(restoredSql("select has_table_privilege('authenticated','profiles','DELETE')"),'f','restored delete restriction')
+  ok(restoredSql("select has_table_privilege('anon','perfis_publicos','DELETE') or has_any_column_privilege('authenticated','perfis_publicos','UPDATE')"),'f','restored public view remains read-only')
   ok(restoredSql(`set role authenticated; set request.jwt.claims = '{"sub":"${actor(1)}","role":"authenticated","aal":"aal1"}'; select count(*) from profiles;`),'1','restored owner isolation')
   assert.throws(()=>restoredSql(`set role authenticated; set request.jwt.claims = '{"sub":"${actor(1)}","role":"authenticated"}'; update profiles set role='admin' where id='${actor(1)}';`))
   checks++
-  console.log(JSON.stringify({passed:checks,baselineVulnerabilitiesReproduced:5,database:'PostgreSQL 17',api:'PostgREST 16.1',restoredDisposableDatabase:true}))
+  console.log(JSON.stringify({passed:checks,baselineVulnerabilitiesReproduced:7,database:'PostgreSQL 17',api:'PostgREST 16.1',restoredDisposableDatabase:true}))
 } finally {
   for(const name of [rest,db]) { try { docker('rm','-f','-v',name) } catch { /* Only task-owned names. */ } }
   try { docker('network','rm',prefix) } catch { /* Network may not have been created. */ }

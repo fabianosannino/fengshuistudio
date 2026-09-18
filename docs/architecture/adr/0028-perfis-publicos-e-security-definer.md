@@ -15,7 +15,7 @@ mecanismo pretendido.
 
 ## O que a view expõe
 
-Vinte colunas de `profiles`, e só as linhas de quem **optou** por aparecer:
+Vinte e uma colunas de `profiles`, e só as linhas de quem **optou** por aparecer:
 
 ```sql
 where parceiro_visivel = true or store_slug is not null
@@ -54,7 +54,10 @@ com filtro de linha explícito, servida com as permissões do criador.
    por qualquer pessoa da internet?».
 2. **O filtro é opt-in.** Ninguém aparece sem ter marcado `parceiro_visivel` ou
    criado uma loja.
-3. **A view é somente leitura.** Não há `insert`/`update` através dela.
+3. **Os grants da view são somente leitura para `anon` e `authenticated`.**
+   Isso exige revogar explicitamente escritas desses papéis e de `PUBLIC`,
+   inclusive permissões por coluna. Uma view simples é atualizável: declarar
+   `grant select` não retira os demais grants existentes.
 4. **`profiles` continua com RLS estrito.** A view é a única porta pública, e
    estreita.
 
@@ -66,3 +69,22 @@ mudando a view — deve ser respondido apontando para este documento.
 Se um dia a lista de colunas crescer a ponto de a projeção deixar de ser
 obviamente pública, a resposta não é trocar o modo da view: é encolher a
 projeção.
+
+## Correção de permissões em 17/09/2026
+
+A verificação após o PR #189 encontrou `INSERT`, `UPDATE` e `DELETE` concedidos
+a `anon` e `authenticated` na view. A migration original revogava apenas de
+`PUBLIC`; isso não removia os grants dos papéis da API. Portanto a condição 3
+acima era uma intenção arquitetural, mas não correspondia ao banco examinado.
+
+O teste de integração reproduziu alteração e exclusão anônimas em perfis
+sintéticos por essa view, mesmo depois do hardening da tabela `profiles`.
+`20260918012132_restrict_public_profile_view_to_read_only.sql` revoga as escritas
+e mantém apenas `SELECT` para esses papéis, preservando a projeção e o opt-in.
+O runner verifica a leitura pública, a recusa de POST/PATCH/DELETE, permissões
+por coluna e a persistência da restrição após restauração do banco sintético.
+
+Não trocar para `SECURITY INVOKER` continua sendo a decisão correta; o alerta
+do advisor é aceito **com os grants restritos e verificados**, não por confiar
+apenas neste documento. Novas migrations que recriem a view devem restabelecer
+e testar essa restrição explicitamente.
