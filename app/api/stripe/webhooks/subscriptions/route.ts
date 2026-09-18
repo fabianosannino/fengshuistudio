@@ -123,16 +123,12 @@ export async function POST(request: Request) {
 
     switch (event.type) {
       case 'customer.subscription.created': {
-        const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id) as Stripe.Subscription & {
-          start_date?: number
-          current_period_start?: number
-          current_period_end?: number
-        }
+        const subscription = event.data.object as Stripe.Subscription
 
         // A criação da linha vive em `sincronizar-assinatura`, compartilhada
         // com a reconciliação: duas respostas para «como nasce uma assinatura»
         // divergiriam, e a segunda envelheceria calada.
-        const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
+        const resultado = await sincronizarAssinatura(supabase, subscription.id, ROUTE)
         if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar assinatura')
         logger.info('Subscription created', {
           route: ROUTE,
@@ -144,10 +140,7 @@ export async function POST(request: Request) {
       }
 
       case 'customer.subscription.updated': {
-        const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id) as Stripe.Subscription & {
-          current_period_start?: number
-          current_period_end?: number
-        }
+        const subscription = event.data.object as Stripe.Subscription
 
         // Mesmo caminho da criação. O que este trecho fazia à mão —  atualizar
         // a linha, aplicar o plano, rebaixar quando cancelada — agora vive em
@@ -158,13 +151,11 @@ export async function POST(request: Request) {
         // *qualquer* assinatura ativa do usuário, no escuro. Agora cria a
         // linha certa. Assinatura que o app não conhece é falha de entrega, e
         // a resposta é registrá-la, não sobrescrever a vizinha.
-        const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
+        const resultado = await sincronizarAssinatura(supabase, subscription.id, ROUTE)
         if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar assinatura')
         logger.info('Subscription updated', {
           route: ROUTE,
           subscriptionId: subscription.id,
-          status: subscription.status,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
           situacao: resultado.situacao,
         })
 
@@ -172,8 +163,8 @@ export async function POST(request: Request) {
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id)
-        const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
+        const subscription = event.data.object as Stripe.Subscription
+        const resultado = await sincronizarAssinatura(supabase, subscription.id, ROUTE)
         if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar cancelamento')
         break
       }
@@ -533,17 +524,12 @@ async function reconciliarAssinaturaDaFatura(supabase: SupabaseClient, invoice: 
   const ref = invoice.parent?.subscription_details?.subscription ?? invoice.subscription
   const id = typeof ref === 'string' ? ref : ref?.id
   if (!id) return // Fatura avulsa não altera direitos de assinatura.
-  const atual = await stripeClient.subscriptions.retrieve(id)
   const customerDaFatura = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
-  if (resolveCustomerId(atual.customer) !== customerDaFatura) throw new Error('Assinatura incompatível com a fatura')
-  const resultado = await sincronizarAssinatura(supabase, atual, ROUTE)
+  if (!customerDaFatura) throw new Error('Fatura sem titular')
+  const resultado = await sincronizarAssinatura(supabase, id, ROUTE, customerDaFatura)
   if (resultado.situacao === 'falhou') throw new Error('Falha ao reconciliar fatura')
 }
 
-
-function resolveCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer): string {
-  return typeof customer === 'string' ? customer : customer.id
-}
 
 async function findProfileByCustomerId(
   supabase: SupabaseClient,

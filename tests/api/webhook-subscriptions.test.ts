@@ -79,7 +79,9 @@ function makeSupabaseMock(handler: Handler) {
     const q: Q = { table: `rpc:${name}`, op: 'rpc', values, filters: [] }
     queries.push(q)
     const data = name === 'reivindicar_evento_stripe' ? { situacao: 'reivindicado', token: 'attempt-1' }
-      : name === 'finalizar_evento_stripe' ? true : 'profissional'
+      : name === 'reservar_sincronizacao_assinatura' ? 'sync-token'
+      : name === 'aplicar_sincronizacao_assinatura' ? { situacao: 'criada', linhaId: 'linha-sintetica', cancelamentoAgendado: false }
+      : true
     return { data, error: null, ...handler(q) }
   }
   return { client: { from, rpc }, queries }
@@ -111,6 +113,7 @@ function subscriptionEvent(type: string, overrides: Record<string, unknown> = {}
     data: {
       object: {
         id: 'sub_123',
+        livemode: false,
         customer: 'cus_123',
         status: type === 'customer.subscription.deleted' ? 'canceled' : 'active',
         cancel_at_period_end: false,
@@ -176,24 +179,25 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
       metadata: { plan_slug: 'profissional' },
       items: { data: [{ quantity: 1, price: { id: 'price_desconhecido' } }] },
     }))
-    expect((await POST(req())).status).toBe(200)
+    expect((await POST(req())).status).toBe(500)
     expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')).toBe(false)
   })
-  it.each(['incomplete', 'past_due', 'paused', 'status_novo'])('estado %s não cria uma concessão', async status => {
+  it.each(['incomplete', 'past_due', 'paused'])('estado %s é enviado à transação sem escrita separada de concessão', async status => {
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created', { status }))
     expect((await POST(req())).status).toBe(200)
     expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')).toBe(false)
     expect(supabaseMock.queries.some(q => q.table === 'subscriptions' && q.op === 'update')).toBe(false)
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')?.values?.p_dados).toMatchObject({ status })
   })
   it('snapshot ativo atrasado não reativa assinatura atualmente cancelada', async () => {
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.updated'))
     subscriptionsRetrieve.mockResolvedValue(subscriptionEvent('customer.subscription.deleted').data.object)
     expect((await POST(req())).status).toBe(200)
-    expect(supabaseMock.queries.find(q => q.table === 'subscriptions' && q.op === 'insert')?.values?.status).toBe('cancelled')
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')?.values?.p_dados).toMatchObject({ status: 'canceled' })
     expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')).toBe(false)
   })
   it('falha de escrita responde erro para o Stripe repetir, sem concluir evento', async () => {
-    supabaseMock = makeSupabaseMock(q => q.table === 'subscriptions' && q.op === 'insert'
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:aplicar_sincronizacao_assinatura'
       ? { error: { message: 'falha sintética' } } : defaultHandler(q))
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
     expect((await POST(req())).status).toBe(500)
@@ -217,128 +221,67 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     expect(supabaseMock.queries).toHaveLength(0) // nada foi processado
   })
 
-  it('subscription.created: cria assinatura e atualiza o plano do perfil', async () => {
-    constructEvent.mockReturnValue(
-      subscriptionEvent('customer.subscription.created', { metadata: { plan_slug: 'pro' } })
-    )
-    const res = await POST(req())
-    expect(res.status).toBe(200)
+  it('subscription.created envia o estado atual inteiro em uma única transação', async () => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
+    expect((await POST(req())).status).toBe(200)
+    const aplicacao = supabaseMock.queries.find(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')
+    expect(aplicacao?.values).toMatchObject({ p_subscription: 'sub_123', p_token: 'sync-token', p_dados: {
+      customer: 'cus_123', plano: 'profissional', status: 'active', ciclo: 'monthly', valor_centavos: 4990,
+      period_end: new Date(1752600000 * 1000).toISOString(),
+    } })
+    expect(supabaseMock.queries.filter(q => q.op === 'insert' || q.op === 'update')).toEqual([])
+  })
 
-    const insert = supabaseMock.queries.find(q => q.table === 'subscriptions' && q.op === 'insert')
-    expect(insert?.values).toMatchObject({
-      user_id: 'user-1',
-      plan_id: 'plan-1',
-      status: 'active',
-      billing_cycle: 'monthly',
-      price_paid: 49.9,
-      gateway_subscription_id: 'sub_123',
-    })
-
-    // A assinatura administra a própria concessão, identificada pelo `sub_...`.
-    // É o que impede o cancelamento de apagar um plano vindo de outra fonte.
-    const concessao = supabaseMock.queries.find(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')
-    expect(concessao?.values).toMatchObject({
-      p_usuario: 'user-1',
-      p_plano: 'profissional',
-      p_origem: 'assinatura',
-      p_referencia: 'sub_123',
-    })
-
-    // Grant and projection are atomic in the RPC, verified on real PostgreSQL.
+  it('subscription.deleted envia cancelamento da própria assinatura à transação', async () => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.deleted'))
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')?.values)
+      .toMatchObject({ p_subscription: 'sub_123', p_dados: { status: 'canceled' } })
     expect(supabaseMock.queries.some(q => q.table === 'profiles' && q.op === 'update')).toBe(false)
   })
 
-  it('subscription.deleted encerra a concessão daquela assinatura, não o plano inteiro', async () => {
-    // O defeito de 13/08: cancelar o Simples rebaixou um perfil que tinha
-    // Profissional por chave. Agora só a concessão da assinatura é encerrada,
-    // e a projeção recalcula a partir do que sobrou.
-    supabaseMock = makeSupabaseMock(q => {
-      if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
-      if (q.table === 'subscriptions' && q.op === 'select') return { data: { id: 'sub-row-1' } }
-      if (q.table === 'concessoes_de_plano' && q.op === 'select') {
-        if (q.cols === 'id') return { data: null }
-        // Sobrou a da chave.
-        return { data: [{ plano: 'profissional', valido_de: null, valido_ate: null, encerrada_em: null }] }
-      }
-      return {}
-    })
-    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.deleted'))
-    const res = await POST(req())
-    expect(res.status).toBe(200)
-
-    const encerramento = supabaseMock.queries
-      .find(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'encerrar')
-    expect(encerramento?.values).toMatchObject({ p_usuario: 'user-1', p_origem: 'assinatura', p_referencia: 'sub_123', p_operacao: 'encerrar' })
-    expect(supabaseMock.queries.some(q => q.table === 'profiles' && q.op === 'update')).toBe(false)
+  it('assinatura ocupada impede outro evento de ler e gravar estado fora de ordem', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:reservar_sincronizacao_assinatura' ? { data: null } : defaultHandler(q))
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.updated'))
+    expect((await POST(req())).status).toBe(500)
+    expect(subscriptionsRetrieve).not.toHaveBeenCalled()
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true)).toBe(false)
   })
 
-  it('subscription.created é idempotente: assinatura já registrada não duplica', async () => {
-    supabaseMock = makeSupabaseMock(q => {
-      if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
-      if (q.table === 'subscriptions' && q.op === 'select') return { data: { id: 'sub-row-existente' } }
-      return defaultHandler(q)
+  it('reserva antecede a leitura atual no provedor e seu token acompanha a escrita', async () => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.updated'))
+    subscriptionsRetrieve.mockImplementation(async () => {
+      expect(supabaseMock.queries.some(q => q.table === 'rpc:reservar_sincronizacao_assinatura')).toBe(true)
+      return subscriptionEvent('customer.subscription.created').data.object
     })
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')?.values?.p_token).toBe('sync-token')
+  })
+
+  it('falha no provedor libera só a reserva atual, sem gravação do estado', async () => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.updated'))
+    subscriptionsRetrieve.mockRejectedValue(new Error('timeout'))
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.find(q => q.table === 'rpc:liberar_sincronizacao_assinatura')?.values)
+      .toEqual({ p_subscription: 'sub_123', p_token: 'sync-token' })
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')).toBe(false)
+  })
+
+  it('perfil ausente na transação permanece retryable, sem confirmação de evento', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:aplicar_sincronizacao_assinatura'
+      ? { data: null, error: { message: 'perfil_de_cobranca_indisponivel' } } : defaultHandler(q))
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
-    const res = await POST(req())
-    expect(res.status).toBe(200)
-    expect(supabaseMock.queries.find(q => q.table === 'subscriptions' && q.op === 'insert')).toBeUndefined()
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true)).toBe(false)
   })
 
-  it('preço desconhecido NUNCA concede plano (fail-closed)', async () => {
-    supabaseMock = makeSupabaseMock(q => {
-      if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
-      if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: null }
-      if (q.table === 'plans' && q.op === 'select') return { data: [] } // nenhum plano bate com o preço
-      return {}
-    })
-    constructEvent.mockReturnValue(
-      subscriptionEvent('customer.subscription.created', {
-        metadata: {}, // sem plan_slug
-        items: { data: [{ price: { unit_amount: 123456, recurring: { interval: 'month' } } }] },
-      })
-    )
-    const res = await POST(req())
-    expect(res.status).toBe(200)
-    const planoUpdate = supabaseMock.queries.find(
-      q => q.table === 'profiles' && q.op === 'update' && q.values && 'plano' in q.values
-    )
-    expect(planoUpdate).toBeUndefined()
+  it.each([{ status: 'estado_novo' }, { livemode: true }, { id: 'sub_outro' }])('estado do provedor incompatível recusa antes da escrita %j', async delta => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.updated'))
+    subscriptionsRetrieve.mockResolvedValue(subscriptionEvent('customer.subscription.updated', delta).data.object)
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:aplicar_sincronizacao_assinatura')).toBe(false)
   })
-
-  it('subscription.deleted: cancela a assinatura e rebaixa o perfil para free', async () => {
-    supabaseMock = makeSupabaseMock(q => {
-      if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
-      if (q.table === 'subscriptions' && q.op === 'select') return { data: { id: 'sub-row-1' } }
-      return {}
-    })
-    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.deleted'))
-    const res = await POST(req())
-    expect(res.status).toBe(200)
-
-    const cancel = supabaseMock.queries.find(q => q.table === 'subscriptions' && q.op === 'update')
-    expect(cancel?.values).toMatchObject({ status: 'cancelled' })
-    expect(cancel?.filters).toContainEqual(['id', 'sub-row-1'])
-
-    const encerramento = supabaseMock.queries.find(q => q.table === 'rpc:alterar_concessao_de_plano')
-    expect(encerramento?.values).toMatchObject({ p_usuario: 'user-1', p_operacao: 'encerrar', p_referencia: 'sub_123' })
-  })
-
-  it('evento sem perfil correspondente não escreve nada', async () => {
-    supabaseMock = makeSupabaseMock(q => {
-      if (q.table === 'profiles' && q.op === 'select') return { data: null, error: null }
-      return {}
-    })
-    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
-    const res = await POST(req())
-    expect(res.status).toBe(200)
-    // `eventos_stripe` fica de fora: a reivindicação e a marca de processado
-    // são escritas de controle, não de negócio. O que este teste afirma é que
-    // nenhuma tabela de assinatura, fatura ou perfil foi tocada.
-    const escritasDeNegocio = supabaseMock.queries
-      .filter(q => q.op !== 'select' && !['eventos_stripe', 'rpc:reivindicar_evento_stripe', 'rpc:finalizar_evento_stripe'].includes(q.table))
-    expect(escritasDeNegocio).toHaveLength(0)
-  })
-
   it('evento não tratado responde 200 received (não quebra o Stripe retry)', async () => {
     constructEvent.mockReturnValue({ type: 'payment_method.attached', data: { object: {} } })
     const res = await POST(req())

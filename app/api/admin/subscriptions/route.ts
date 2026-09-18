@@ -323,7 +323,7 @@ async function cancelarAssinaturasDoUsuario(
       : await stripeClient.subscriptions.update(sub.id, { cancel_at_period_end: true })
     const dono = typeof atual.customer === 'string' ? atual.customer : atual.customer.id
     if (dono !== customerId) throw new Error('Assinatura incompatível')
-    const resultado = await sincronizarAssinatura(supabase, atual, ROUTE)
-    if (resultado.situacao === 'falhou' || resultado.situacao === 'sem_perfil') throw new Error('Falha ao sincronizar cancelamento')
+    const resultado = await sincronizarAssinatura(supabase, atual.id, ROUTE, customerId)
+    if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar cancelamento')
   }
 }

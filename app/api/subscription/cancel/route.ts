@@ -1,115 +1,54 @@
-/**
- * User Subscription Cancellation API
- *
- * POST /api/subscription/cancel — Cancel the user's own subscription
- *
- * Cancels at the end of the current billing period (not immediately).
- * The user keeps access until current_period_end.
- * Syncs with Stripe if there's a gateway subscription.
- */
-
+/** Cancel only the authenticated owner's verified subscription at period end. */
 import { NextResponse } from 'next/server'
 import stripeClient from '../../../../src/lib/stripe'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { logger } from '../../../../src/lib/logger'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
+import { sincronizarAssinatura } from '../../../../src/lib/sincronizar-assinatura'
 
+const ROUTE = '/api/subscription/cancel'
+export const maxDuration = 60
+const indisponivel = () => NextResponse.json({ error: 'Não foi possível confirmar o cancelamento. Consulte o portal de cobrança ou tente novamente.' }, { status: 503 })
 export async function POST(request: Request) {
-  const ip = ipDaRequisicao(request)
-  const { success: rateLimitOk, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 5, windowMs: 60_000, escopo: 'POST:/api/subscription/cancel', exigirCompartilhado: true })
-  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
-  if (!rateLimitOk) {
-    return NextResponse.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    )
-  }
-
-  const supabase = await createRouteHandlerClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const limite = await rateLimit(ipDaRequisicao(request), { limit: 5, windowMs: 60_000, escopo: 'POST:/api/subscription/cancel', exigirCompartilhado: true })
+  if (limite.indisponivel) return indisponivel()
+  if (!limite.success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
+  const sessao = await createRouteHandlerClient()
+  const { data: { user } } = await sessao.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-
-  // Find active subscription
-  const { data: subscription } = await supabase
-    .from('subscriptions')
-    .select('id, gateway_subscription_id, status, cancel_at_period_end')
-    .eq('user_id', user.id)
-    .in('status', ['active', 'past_due', 'trial'])
-    .single()
-
-  if (!subscription) {
-    return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada' }, { status: 404 })
-  }
-
-  if (subscription.cancel_at_period_end) {
-    return NextResponse.json({ error: 'Cancelamento já agendado' }, { status: 400 })
-  }
-
-  const now = new Date().toISOString()
-
-  // Cancel at period end in Stripe if connected
-  if (subscription.gateway_subscription_id) {
-    try {
-      await stripeClient.subscriptions.update(subscription.gateway_subscription_id, {
-        cancel_at_period_end: true,
-      })
-    } catch (err) {
-      logger.error('Failed to cancel Stripe subscription at period end', {
-        route: '/api/subscription/cancel',
-        subscriptionId: subscription.gateway_subscription_id,
-        error: String(err),
-      })
-      return NextResponse.json({ error: 'Erro ao cancelar assinatura no provedor de pagamento' }, { status: 500 })
+  const { data: perfil, error } = await sessao.from('profiles').select('stripe_customer_id').eq('id', user.id).single()
+  if (error || !perfil) return indisponivel()
+  if (!perfil.stripe_customer_id) return NextResponse.json({ error: 'Nenhuma assinatura vinculada.' }, { status: 404 })
+  try {
+    const customer = perfil.stripe_customer_id as string
+    const pagina = await stripeClient.subscriptions.list({ customer, status: 'all', limit: 100 }, { timeout: 20_000, maxNetworkRetries: 1 })
+    const vigentes = pagina.data.filter(s => !['canceled','incomplete_expired'].includes(s.status))
+    if (pagina.has_more || vigentes.length > 1) return NextResponse.json({ error: 'Gerencie suas assinaturas pelo portal de cobrança.', portal: true }, { status: 409 })
+    const subscription = vigentes[0]
+    if (!subscription) return NextResponse.json({ error: 'Nenhuma assinatura em andamento.' }, { status: 404 })
+    const dono = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id
+    if (dono !== customer) return indisponivel()
+    if (!subscription.cancel_at_period_end) {
+      const atual = await stripeClient.subscriptions.update(subscription.id, { cancel_at_period_end: true }, { timeout: 20_000, maxNetworkRetries: 1 })
+      if (!atual.cancel_at_period_end || (typeof atual.customer === 'string' ? atual.customer : atual.customer?.id) !== customer) return indisponivel()
     }
+    const admin = createSupabaseAdminClient()
+    const resultado = await sincronizarAssinatura(admin, subscription.id, ROUTE, customer)
+    if (resultado.situacao === 'falhou' || !resultado.cancelamentoAgendado) return indisponivel()
+    // These secondary records do not undo confirmed provider/local state.
+    const registros = await Promise.allSettled([
+      admin.from('payment_notifications').upsert({ user_id: user.id, type: 'subscription_cancel_by_user', channel: 'in_app',
+        referencia_evento: `cancelamento:${subscription.id}:${subscription.items?.data?.[0]?.current_period_end ?? 'periodo'}`,
+        sent_at: new Date().toISOString(), content: 'Renovação cancelada. Seu acesso continua até o fim do período vigente.',
+      }, { onConflict: 'user_id,type,referencia_evento', ignoreDuplicates: true }),
+      admin.from('admin_audit_log').insert({ action: 'cancel_subscription_by_user', target_type: 'subscription', target_id: resultado.linhaId, performed_by: user.id }),
+    ])
+    const aviso = registros.some(r => r.status === 'rejected' || r.value.error)
+    if (aviso) logger.warn('Registro secundário do cancelamento pendente', { route: ROUTE })
+    return NextResponse.json({ success: true, message: 'Assinatura será cancelada ao final do período atual', registro_secundario_pendente: aviso })
+  } catch {
+    logger.error('Cancelamento não confirmado', { route: ROUTE })
+    return indisponivel()
   }
-
-  // Escritas de billing usam service_role (RLS de escrita é admin-only).
-  // O ownership da assinatura já foi verificado acima com o client do usuário.
-  const admin = createSupabaseAdminClient()
-
-  // Update local subscription
-  const { error: updateError } = await admin
-    .from('subscriptions')
-    .update({
-      cancel_at_period_end: true,
-      updated_at: now,
-    })
-    .eq('id', subscription.id)
-
-  if (updateError) {
-    logger.error('Failed to flag local subscription cancellation', {
-      route: '/api/subscription/cancel',
-      subscriptionId: subscription.id,
-      error: updateError.message,
-    })
-    return NextResponse.json({ error: 'Erro ao registrar cancelamento. Contate o suporte.' }, { status: 500 })
-  }
-
-  // Notification
-  await admin.from('payment_notifications').insert({
-    user_id: user.id,
-    type: 'subscription_cancel_by_user',
-    channel: 'in_app',
-    sent_at: now,
-    content: 'Sua assinatura foi agendada para cancelamento ao final do período atual. Você continua com acesso até lá.',
-  })
-
-  // Audit log
-  await admin.from('admin_audit_log').insert({
-    action: 'cancel_subscription_by_user',
-    target_type: 'subscription',
-    target_id: subscription.id,
-    details: { user_id: user.id },
-    performed_by: user.id,
-  })
-
-  logger.info('User cancelled subscription at period end', {
-    route: '/api/subscription/cancel',
-    userId: user.id,
-    subscriptionId: subscription.id,
-  })
-
-  return NextResponse.json({ success: true, message: 'Assinatura será cancelada ao final do período atual' })
 }

@@ -121,8 +121,7 @@ async function corrigir(
     if (!brutas.has(id)) continue
     try {
       // A fresh provider read feeds the same grant path as a webhook.
-      const atual = await stripeClient.subscriptions.retrieve(id)
-      const r = await sincronizarAssinatura(admin, atual, ROUTE)
+      const r = await sincronizarAssinatura(admin, id, ROUTE)
       if (r.situacao === 'criada') recriadas++
       else if (r.situacao === 'atualizada') corrigidas++
       else falhas++
