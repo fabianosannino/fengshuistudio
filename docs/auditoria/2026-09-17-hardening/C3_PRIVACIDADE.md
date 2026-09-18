@@ -73,3 +73,23 @@ compartilhado; verifica conectividade/EVAL sem executar portabilidade.
 Coordenação de checkout (ADR 0049) amplia a recusa de exclusão a tentativas
 de cobrança ainda não reconciliadas e inclui suas referências na exportação
 do titular. Encerramento comercial/retencão continuam pendentes.
+
+## Entrega digital exige pagamento comprovado
+
+A autorização compartilhada usava a posição do estado do pedido. Isso incluía
+`cancelado` e eventos operacionais sem `pago`, permitindo assinar um arquivo
+nesses casos. A regra agora exige o fato de pagamento e uma lista explícita de
+estados elegíveis. Cancelamento, estorno, contestação e disputa resolvida não
+liberam download. Pedido pago com solicitação de devolução conserva o direito
+até o desfecho; token, posse do item e prazo continuam sendo verificados na API.
+
+Reprodução: 16 casos novos falharam no código anterior em três camadas (regra,
+projeção para o comprador e API real com Storage simulado). Após a correção,
+os 70 testes desses três arquivos passaram; recusas não chamam Storage nem
+registram entrega. Preflight agregado: 16 pedidos existentes, zero cancelados
+e zero pedidos sem pagamento com evento operacional. Não alterou dados,
+arquivos, políticas ou registros de compra. Links já emitidos conservam o TTL
+existente; esta correção impede novas emissões indevidas.
+
+Validação final do pacote: 1.693 testes em 124 arquivos; TypeScript e build
+aprovados; lint sem erros (103 avisos existentes). Nenhuma migration necessária.

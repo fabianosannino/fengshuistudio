@@ -145,6 +145,19 @@ describe('GET /api/pedidos/arquivo', () => {
     expect(assinar).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['cancelado'], ['pago', 'cancelado'], ['cancelado', 'pago'],
+    ['preparando'], ['enviado'], ['entregue'], ['devolucao_solicitada'],
+  ])('não assina nem registra entrega sem pagamento elegível: %j', async (...eventos) => {
+    respostas.pedido_itens = { data: itemPago({ pedidos: {
+      token_publico: 'tok-valido', token_expira_em: DAQUI_A_UM_MES,
+      pedido_eventos: eventos.map(evento => ({ evento, ocorrido_em: '2026-08-14T09:00:00Z' })),
+    } }) }
+    expect((await GET(req())).status).toBe(403)
+    expect(assinar).not.toHaveBeenCalled()
+    expect(eventosGravados).toHaveLength(0)
+  })
+
   it('reembolsado perde o acesso — sem ninguém precisar lembrar de revogar', async () => {
     respostas.pedido_itens = {
       data: itemPago({
