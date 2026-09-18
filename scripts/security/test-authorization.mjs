@@ -112,7 +112,13 @@ try {
     ok((await request(table,4,{aal:'aal2'})).data,[],`${table}: admin has no cross-owner access`)
     if(!table.startsWith('pedido')) {
       denied(await request(`${table}?id=eq.${actor(1)}`,1,{method:'PATCH',body:{[column]:actor(2)}}),`${table}: cannot transfer to another owner`)
+    } else {
+      denied(await request(table,1,{method:'POST',body:{id:actor(8),[column]:actor(1)}}),`${table}: financial records are server-owned`)
     }
+  }
+  const restrictedTables = [...Object.keys(ownerRelations),'plans','produtos_afiliados']
+  for(const role of ['anon','authenticated']) {
+    ok(sql(`select bool_or(has_table_privilege('${role}',tab,'TRUNCATE') or has_table_privilege('${role}',tab,'MAINTAIN')) from unnest(array[${restrictedTables.map(table=>`'public.${table}'`).join(',')}]) tab;`),'f',`${role}: cannot truncate or maintain protected tables`)
   }
   for(const table of ['plans','produtos_afiliados']) {
     ok((await request(table,1,{role:'anon'})).data.length,1,`${table}: public catalog remains visible`)

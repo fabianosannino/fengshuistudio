@@ -27,7 +27,7 @@ begin
     execute format('create policy %I on public.%I for all to authenticated using (%s) with check (%s)',
       rule.policy_name, rule.tab, rule.owner_expression, rule.owner_expression);
     -- RLS does not apply to TRUNCATE. Keep only ordinary owner CRUD grants.
-    execute format('revoke truncate, references, trigger on public.%I from anon, authenticated', rule.tab);
+    execute format('revoke truncate, references, trigger, maintain on public.%I from anon, authenticated', rule.tab);
   end loop;
 end $$;
 
@@ -49,9 +49,14 @@ begin
   end loop;
 end $$;
 
+revoke all on public.pedidos, public.pedido_eventos, public.pedido_itens,
+  public.pedido_lancamentos from anon, authenticated;
+grant select on public.pedidos, public.pedido_eventos, public.pedido_itens,
+  public.pedido_lancamentos to authenticated;
+
 drop policy if exists "Admin gerencia planos" on public.plans;
 drop policy if exists produtos_afiliados_escrita on public.produtos_afiliados;
-revoke insert, update, delete, truncate, references, trigger
+revoke insert, update, delete, truncate, references, trigger, maintain
   on public.plans, public.produtos_afiliados from anon, authenticated;
 
 drop policy if exists "Admin cria payment_notifications" on public.payment_notifications;

@@ -25,7 +25,7 @@ Branch: `codex/auditoria-correcoes-20260917`, em worktree isolada.
 |---|---|
 | Base anterior | 94 arquivos / 1.208 testes aprovados |
 | Suíte após alterações | 96 arquivos / 1.244 testes aprovados |
-| Integração de autorização | 110 verificações; cinco falhas anteriores reproduzidas |
+| Integração de autorização | 116 verificações; cinco falhas anteriores reproduzidas |
 | TypeScript | aprovado |
 | ESLint, erros | aprovado |
 | Build de produção | aprovado, sem credenciais reais |
