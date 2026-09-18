@@ -6,6 +6,7 @@ import { secoesDoFormato } from '../../src/lib/formato-do-relatorio'
 import { referenciaDaAnalise } from '../../src/lib/analise-bagua'
 import type { BaguaEntrada } from '../../src/lib/types'
 import { MARGEM_MULTIPART } from '../../src/lib/multipart-limitado'
+import { executarMetodos } from '../../src/lib/execucao-metodos'
 
 vi.mock('server-only', () => ({}))
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -131,6 +132,17 @@ describe('preparação versionada', () => {
     expect(insercoes[0]).toMatchObject({ consultor_id: id(1), revisao_de: id(8), estado: 'preparada', entrada: { fonte } })
     expect(JSON.stringify(registros[0])).toBe(antes)
     expect(insercoes[0].pdf_path).toBe(`${id(1)}/emissoes/${id(20)}.pdf`)
+  })
+  it('D0-03 — calcula o snapshot no servidor e ignora resultados forjados pelo navegador', async () => {
+    const be = { escola: 'bussola', orientacao_graus: 0, orientacao_estado: 'confirmada', orientacao_referencia: 'magnetico', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T12:00:00.000Z' } as BaguaEntrada
+    const atual = { ...fonte, consulta: { ...fonte.consulta, ano_construcao: 2011, bagua_entrada: { ...be, analise_referencia: referenciaDaAnalise(be) }, clientes: { nome_completo: 'Sintético', data_nascimento: '1990-06-15', genero: 'masculino' } } }
+    source.mockResolvedValue(atual)
+    const res = await PREPARAR(preparo({ fonte_sha256: hash(jsonCanonico(atual)), execucoes_metodos: { baZhai: { resultado: { kua: 1 } } } }))
+    expect(res.status).toBe(201)
+    const entrada = insercoes[0].entrada as { execucoes_metodos: unknown }
+    expect(entrada.execucoes_metodos).toEqual(executarMetodos(atual.consulta))
+    expect(entrada.execucoes_metodos).toMatchObject({ baZhai: { resultado: { kua: 9 } }, feiXing: { estado: 'experimental' } })
+    expect(insercoes[0].entrada_sha256).toBe(hash(jsonCanonico(entrada)))
   })
 })
 

@@ -22,6 +22,25 @@ Antes de commitar mudança não-trivial: `npx tsc --noEmit && npm test && npm ru
 O lint **bloqueia o CI** — não há erro tolerado. As poucas supressões existentes
 são por sítio e trazem a razão ao lado; se precisar de uma nova, escreva o porquê.
 
+## Cenário de validação em toda entrega
+
+Por decisão do usuário em 18/09/2026, toda funcionalidade, correção ou melhoria
+deve ter cenário com **contexto/dados → ação → resultado esperado**, execução e
+evidência. O PR vincula cada mudança ao cenário e ao teste correspondente.
+Regressões cobrem a reprodução do defeito; não basta repetir a implementação no
+teste. Inclua falha/limite/isolamento quando o comportamento os envolver.
+
+Documentação pode ter revisão manual; interfaces e integrações precisam declarar
+o que mocks/jsdom não verificam. Não criar testes artificiais só para preencher
+uma caixa. Cenário escrito, teste automatizado aprovado e homologação real são
+estados diferentes. A entrega só fecha o critério cuja evidência foi obtida.
+
+Leia e atualize a lista canônica
+`docs/auditoria/2026-09-17-hardening/STATUS_E_PROXIMAS_ETAPAS.md` em cada etapa.
+Use `CENARIOS_DE_TESTE.md` no mesmo diretório para rastrear este ciclo. A–C
+continuam obrigatórios; avanços independentes de D–F não os encerram nem os
+dispensam. Respeite seus bloqueios de ambiente e de publicação dependente.
+
 ## Pull Requests
 
 A branch padrão deste repositório é **`master`**, não `main` — é o único do
