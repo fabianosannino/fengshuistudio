@@ -61,6 +61,10 @@ describe('mfaExigido', () => {
     expect(mfaExigido(MFA_DESLIGADO_POR_CONFIG)).toBe(false)
   })
 
+  it('exige em produção mesmo com o interruptor desligado', () => {
+    expect(mfaExigido(MFA_DESLIGADO_POR_CONFIG, 'production')).toBe(true)
+  })
+
   it('não desliga com valores parecidos', () => {
     // `'False'`, `'0'` e `'no'` são as formas que alguém escreve achando que
     // desligou. Nenhuma desliga — e o painel continua exigindo, que é o lado

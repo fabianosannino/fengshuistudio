@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "codex/auditoria-correcoes-20260917": false
+    }
+  },
   "crons": [
     {
       "path": "/api/admin/reconciliacao",

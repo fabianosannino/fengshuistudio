@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [master]
@@ -7,7 +10,7 @@ on:
 
 jobs:
   verify:
-    name: Typecheck & Tests
+    name: Typecheck, Tests & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +35,27 @@ jobs:
       - name: Lint (erros)
         run: npm run lint
 
+      # Build sem dados ou credenciais reais. Nenhum job de PR acessa produção.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-public-placeholder
+          NEXT_PUBLIC_APP_URL: https://example.invalid
+
+  security:
+    name: Authorization (PostgreSQL + PostgREST)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Reproduzir falhas e verificar a migração em banco descartável
+        run: npm run test:security
+
   quality:
-    name: Audit (informativo)
+    name: Dependency Security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +67,5 @@ jobs:
 
       - run: npm ci
 
-      # Informativo: reporta débito conhecido sem bloquear o merge.
       - name: Audit de dependências
         run: npm audit --audit-level=high
-        continue-on-error: true

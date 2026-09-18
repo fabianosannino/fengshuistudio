@@ -29,7 +29,14 @@ export const SENHA_MIN_CARACTERES = 8
  * recusados.
  */
 export function ehCaminhoRelativoSeguro(caminho: string): boolean {
-  return caminho.startsWith('/') && !caminho.startsWith('//') && !caminho.includes('://')
+  try {
+    const path = decodeURIComponent(caminho.split(/[?#]/, 1)[0])
+    if (!path.startsWith('/') || path.startsWith('//') || /[\\\u0000-\u0020\u007f]/.test(path)) return false
+    const base = 'https://redirect.invalid'
+    return new URL(caminho, base).origin === base
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -165,78 +172,34 @@ export function ehRotaDeMarketing(pathname: string): boolean {
     || pathname.startsWith(PREFIXO_RECURSOS)
 }
 
-/**
- * A origem configurada dá para usar como base de link?
- *
- * Não valida se o domínio existe — isso é resolução de DNS, e não cabe numa
- * função síncrona. Valida a forma, que é onde o engano de digitação aparece:
- *
- * - precisa parsear como URL absoluta `http`/`https`;
- * - o host precisa ter ponto (`localhost` só passa fora de produção, e ali a
- *   função nem chega aqui);
- * - o host **não** pode terminar em ponto. `fengshuistudio.vercel.` parseia,
- *   porque ponto final é raiz de DNS válida na especificação — e é exatamente
- *   a forma que um `app` faltando produz.
- */
-function ehOrigemUsavel(valor: string): boolean {
-  let url: URL
-  try { url = new URL(valor) } catch { return false }
-
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
-  if (url.hostname.endsWith('.')) return false
-  return url.hostname.includes('.') || url.hostname === 'localhost'
+/** Accept only a configured origin, without credentials, path or query. */
+function origemConfigurada(valor: string): string | null {
+  try {
+    const url = new URL(valor)
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    if (url.protocol !== 'https:' && !(process.env.NODE_ENV !== 'production' && local && url.protocol === 'http:')) return null
+    if (url.username || url.password || url.search || url.hash || url.pathname !== '/') return null
+    if (url.hostname.endsWith('.') || (!url.hostname.includes('.') && !local)) return null
+    return url.origin
+  } catch { return null }
 }
 
-/**
- * A URL pública desta instalação, para montar links de volta do Stripe.
- *
- * ## O defeito
- *
- * As rotas faziam `process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'`.
- * A variável não está definida em produção, então o `success_url` de uma compra
- * real apontou para `localhost:3000` — o cliente pagou com cartão e caiu em
- * «ERR_CONNECTION_REFUSED». O pagamento acontece do lado do Stripe, então o
- * dinheiro entra e só a volta quebra: o pior formato possível, porque parece
- * falha de compra e convida a tentar de novo.
- *
- * Um fallback certo em desenvolvimento e catastrófico em produção, escolhido em
- * silêncio pela ausência de uma variável.
- *
- * ## A ordem
- *
- * O cabeçalho `origin` da própria requisição vem primeiro: ele é o endereço em
- * que o usuário realmente está, e não depende de configuração. A variável fica
- * como segunda opção, para o caso de a chamada não trazer `origin`.
- * `localhost` só entra em desenvolvimento — em produção, sem nenhum dos dois, é
- * melhor falhar do que mandar um cliente pagante para lugar nenhum.
- */
+/** Payment return URLs come from server configuration, never arbitrary headers. */
 export function origemDaAplicacao(request: Request): string {
-  const doPedido = request.headers.get('origin')
-  if (doPedido && /^https?:\/\//.test(doPedido)) return doPedido
+  const configuradas = [
+    ...(process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_URL
+      ? ['https://' + process.env.VERCEL_URL] : []),
+    process.env.NEXT_PUBLIC_APP_URL,
+    ...(process.env.APP_ALLOWED_ORIGINS ?? '').split(','),
+  ].filter((valor): valor is string => Boolean(valor?.trim()))
+    .map(valor => origemConfigurada(valor.trim()))
+    .filter((valor): valor is string => valor !== null)
 
-  const daConfiguracao = process.env.NEXT_PUBLIC_APP_URL
-  if (daConfiguracao) {
-    const limpa = daConfiguracao.replace(/\/+$/, '')
-    if (ehOrigemUsavel(limpa)) return limpa
-
-    /*
-     * Variável mal digitada não vira link quebrado em silêncio.
-     *
-     * Aconteceu: `NEXT_PUBLIC_APP_URL` estava como
-     * `https://fengshuistudio.vercel.` — faltando o `app`. O checkout não
-     * sofreu, porque ali a requisição vem do browser e traz `origin`; o
-     * webhook, que não traz, caiu nesta variável e mandou ao comprador um
-     * e-mail de confirmação cujo **único** link não abria.
-     *
-     * O pior formato de erro: nada quebra, o e-mail é entregue, e só o
-     * destinatário descobre — se reclamar.
-     */
-    logger.error('NEXT_PUBLIC_APP_URL não parece uma origem válida — ignorada', {
-      route: 'auth-rotas', valor: limpa,
-    })
+  if (configuradas.length === 0) {
+    if (process.env.NODE_ENV !== 'production') return 'http://localhost:3000'
+    logger.error('Origem confiável ausente para retorno de pagamento', { route: 'auth-rotas' })
+    throw new Error('Defina NEXT_PUBLIC_APP_URL ou APP_ALLOWED_ORIGINS com uma origem válida')
   }
-
-  if (process.env.NODE_ENV !== 'production') return 'http://localhost:3000'
-
-  throw new Error('Sem origem: defina NEXT_PUBLIC_APP_URL ou envie o cabeçalho origin')
+  const pedida = request.headers.get('origin')
+  return pedida && configuradas.includes(pedida) ? pedida : configuradas[0]
 }

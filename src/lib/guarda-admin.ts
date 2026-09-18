@@ -97,10 +97,11 @@ export async function exigirAdmin(
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== PAPEL_ADMIN) {
+  if (!profile || profile.role !== PAPEL_ADMIN || profile.status !== 'ativo') {
     return { ok: false, motivo: 'nao_admin', status: 403 }
   }
 
+  // Production never downgrades administrative writes to a password-only session.
   const exigido = mfaExigido(process.env[VARIAVEL_DO_INTERRUPTOR])
   if (!exigido) {
     // Registrado toda vez, de propósito: um painel rodando sem segundo fator é
