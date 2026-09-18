@@ -6,7 +6,7 @@ import { executarMetodos, type ExecucoesMetodos } from './execucao-metodos'
 
 /** D0: resultados e limites por método preservados nas novas emissões. */
 export const VERSOES_RELATORIO = {
-  entrada: '3', motor: 'fengshui-2026.09-d0', template: 'relatorio-2.4.0',
+  entrada: '4', motor: 'fengshui-2026.09-saldo-v2', template: 'relatorio-2.5.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.

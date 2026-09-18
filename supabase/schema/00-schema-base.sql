@@ -162,6 +162,7 @@ create table if not exists public.consultas (
   checklist_chi jsonb,
   posicao_comando jsonb,
   bagua_entrada jsonb,
+  mobiliario jsonb,
   bagua_imagem text,
   foto_geral_url text,
   fotos_comodos jsonb,

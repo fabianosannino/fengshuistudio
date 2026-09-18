@@ -15,11 +15,12 @@ import { CircleCheck, CircleAlert } from 'lucide-react'
  */
 
 export default function SustentacaoDoDiagnostico({
-  dados, mostrarRessalva = true,
+  dados, mostrarRessalva = true, acoes,
 }: {
   dados: DadosDoDiagnostico
   /** A ressalva só faz sentido onde a carta de Estrelas Voadoras é exibida. */
   mostrarRessalva?: boolean
+  acoes?: Record<string, { texto: string; executar: () => void }>
 }) {
   const metodos = sustentacaoDoDiagnostico(dados)
   const temEstrelas = metodos.some(m => m.nome === 'Estrelas Voadoras' && m.estado === 'experimental')
@@ -50,6 +51,7 @@ export default function SustentacaoDoDiagnostico({
               {metodo.limitacoes.filter(texto => texto !== RESSALVA_XUAN_KONG).map(texto => (
                 <p key={texto} style={{ margin: '2px 0 0', fontSize: '12px', color: '#6B5220', lineHeight: 1.45 }}>{texto}</p>
               ))}
+              {metodo.estado !== 'calculado' && acoes?.[metodo.nome] && <button type="button" style={{ minHeight: 44, marginTop: 6, padding: '8px 12px', border: '1px solid #245F52', borderRadius: 6, background: '#fff', color: '#245F52' }} onClick={acoes[metodo.nome].executar}>{acoes[metodo.nome].texto}</button>}
             </div>
           </div>
         ))}

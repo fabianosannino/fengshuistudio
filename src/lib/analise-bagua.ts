@@ -9,6 +9,7 @@ export const VERSAO_ANALISE_BAGUA = 'bagua-3.0.0'
 export function referenciaDaAnalise(be: BaguaEntrada): { versao: string; entrada: string } {
   const campos = ['escola', 'planta_url', 'rotacao', 'bordas', 'lh', 'lv', 'tai_ji_poligono', 'marcacoes', 'metragem_real'] as const
   const dados = Object.fromEntries(campos.map(campo => [campo, be[campo] ?? null]))
+  if (be.geometria_regra === 'saldo-v2') dados.geometria_regra = be.geometria_regra
   if (be.escola === 'bussola') {
     dados.fachada = grausConfirmados(be)
     dados.referencia = be.orientacao_referencia ?? null

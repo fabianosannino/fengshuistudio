@@ -1149,6 +1149,7 @@ export default function Relatorio() {
         )}
 
         {/* ══════ Ba Gua PLANT IMAGE ══════ */}
+        {!showSelector && consulta.bagua_entrada?.geometria_regra==='saldo-v2' && <p style={{margin:'1rem 1.5rem',fontSize:13}}>Geometria por saldo: em cada setor, a diferença entre excesso e falta define o resultado. Áreas sobrepostas do mesmo tipo contam uma vez; as bordas de referência permanecem fixas. Esta é uma convenção de área do aplicativo.</p>}
         {!showSelector && consulta.bagua_imagem && (
           <div style={{ padding: '0 1.5rem 1rem', textAlign: 'center' }}>
             <img

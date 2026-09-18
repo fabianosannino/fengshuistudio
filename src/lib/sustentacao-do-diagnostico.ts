@@ -38,8 +38,8 @@ export function sustentacaoDoDiagnostico(dados: DadosDoDiagnostico): MetodoSuste
     {
       nome: 'Tai Ji e setores ausentes', disponivel: !!dados.temPoligonoTaiJi,
       estado: dados.temPoligonoTaiJi ? 'calculado' : 'incompleto',
-      oQueFalta: dados.temPoligonoTaiJi ? undefined : 'o contorno do imóvel está no retângulo padrão — sem ele, falta e excesso de área não são calculáveis',
-      limitacoes: [],
+      oQueFalta: dados.temPoligonoTaiJi ? undefined : 'sem contorno auxiliar para o centro geométrico real; as marcações de falta e excesso são calculadas separadamente na grade fixa',
+      limitacoes: ['O contorno auxiliar não altera as bordas nem substitui as marcações confirmadas.'],
     },
     doResultado('Kua da Casa · Oito Mansões', dados.execucoes.baZhai),
     doResultado('Estrelas Voadoras', dados.execucoes.feiXing),
