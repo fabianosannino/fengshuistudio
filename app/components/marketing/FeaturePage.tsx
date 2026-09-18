@@ -53,7 +53,7 @@ export default function FeaturePage({
                 >
                   Começar grátis
                 </Link>
-                <p className="text-sm text-ink/55">Sem cartão · Plano Free para sempre</p>
+                <p className="text-sm text-ink/55">Sem cartão · Plano gratuito</p>
               </div>
             </FadeUp>
           </div>

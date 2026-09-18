@@ -37,7 +37,7 @@ export default function ParaConsultores() {
                 <Link href={REGISTER_URL} className="inline-flex justify-center items-center rounded-xl bg-jade text-paper font-semibold px-8 py-4 shadow-lg hover:brightness-110 active:scale-[0.97] transition-all duration-200">
                   Começar grátis
                 </Link>
-                <p className="text-sm text-paper/55">Sem cartão · Plano Free para sempre</p>
+                <p className="text-sm text-paper/55">Sem cartão · Plano gratuito</p>
               </div>
             </FadeUp>
             <FadeUp delay={130}>

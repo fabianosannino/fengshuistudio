@@ -12,7 +12,7 @@ import Navbar from './components/marketing/Navbar'
 import Footer from './components/marketing/Footer'
 import FadeUp from './components/marketing/FadeUp'
 import CtaBand from './components/marketing/CtaBand'
-import ChiDivider from './components/marketing/ChiDivider'
+import SimuladorDeCustos from './components/marketing/SimuladorDeCustos'
 import FaqAccordion from './components/marketing/FaqAccordion'
 import { ASSETS, REGISTER_URL } from './components/marketing/assets'
 import { PRECOS_DOS_PLANOS, formatarCentavos } from '../src/lib/plano-utils'
@@ -48,7 +48,7 @@ const bento = [
   {
     href: '/recursos/roda-da-vida',
     title: 'Fluxo do Chi',
-    desc: 'Mapeie o caminho da energia e encontre pontos de estagnação.',
+    desc: 'Desenhe caminhos de circulação e registre suas observações.',
     img: ASSETS.fluxoChi,
     icon: Waves,
     big: false,
@@ -74,11 +74,11 @@ const bento = [
 const faq = [
   {
     q: 'Preciso de cartão de crédito para começar?',
-    a: 'Não. O plano Free é gratuito para sempre e não pede cartão. Você cria a conta, cadastra um imóvel e já gera seu primeiro diagnóstico.',
+    a: 'Não. O plano Free é gratuito e não pede cartão. Você cria a conta, cadastra um imóvel e já gera seu primeiro diagnóstico.',
   },
   {
     q: 'O investimento compensa para quem atende poucos clientes?',
-    a: 'Uma consultoria de Feng Shui no Brasil custa em média de R$ 350 a R$ 2.000. O plano Profissional custa ${PRECO_PROFISSIONAL}/mês — ou seja, uma única consulta cobre mais de um ano de plataforma, além das horas economizadas em cada relatório.',
+    a: `O Profissional custa ${PRECO_PROFISSIONAL}/mês. Use o simulador desta página com seus próprios recebimentos e custos para avaliar o peso da assinatura no seu trabalho.`,
   },
   {
     q: 'Funciona no celular?',
@@ -90,11 +90,11 @@ const faq = [
   },
   {
     q: 'Meus dados e os dos meus clientes estão protegidos?',
-    a: 'Sim. Seguimos a LGPD, usamos criptografia em trânsito (SSL) e isolamento de dados por conta. Pagamentos são processados pela Stripe, líder global em segurança de pagamentos.',
+    a: 'Usamos conexão HTTPS e controle de acesso por conta. Os pagamentos são processados pela Stripe. Consulte a política de privacidade para conhecer o tratamento de dados e os canais de atendimento.',
   },
   {
     q: 'Posso cancelar quando quiser?',
-    a: 'Sim, o cancelamento é feito em um clique dentro da plataforma, sem fidelidade e sem burocracia. Você mantém acesso até o fim do período pago.',
+    a: 'Você pode solicitar o cancelamento da renovação na área de planos. O acesso do período já pago é preservado. Confira as condições nos termos de uso.',
   },
 ]
 
@@ -137,7 +137,7 @@ export default function Home() {
                     Conhecer os recursos
                   </Link>
                 </div>
-                <p className="mt-3 text-sm text-paper/55">Sem cartão · Plano Free para sempre</p>
+                <p className="mt-3 text-sm text-paper/55">Sem cartão · Plano gratuito</p>
 
                 <div className="mt-9 flex flex-wrap gap-3">
                   <Link
@@ -173,8 +173,8 @@ export default function Home() {
         <section className="bg-sand border-b border-border/50">
           <div className="container py-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-3 text-center">
             {[
-              ['500+', 'consultores na plataforma'],
-              ['2.000+', 'consultas realizadas'],
+              ['12', 'áreas na Roda da Vida'],
+              ['PDF', 'relatórios com histórico de emissão'],
               ['9', 'setores analisados por imóvel'],
             ].map(([n, l]) => (
               <p key={l} className="text-ink">
@@ -194,7 +194,7 @@ export default function Home() {
                 Você ainda entrega sua consultoria em planilhas e documentos soltos?
               </h2>
               <p className="mt-5 text-ink/70 leading-relaxed">
-                Horas montando relatórios no Word, mapas desenhados à mão, anotações espalhadas. O FengShui Studio transforma esse processo: você faz o diagnóstico guiado na plataforma e entrega um relatório impecável, com a sua marca, no mesmo dia.
+                Horas montando relatórios no Word, mapas desenhados à mão, anotações espalhadas. O FengShui Studio transforma esse processo: você faz o diagnóstico guiado na plataforma e organiza as informações para revisar e emitir o relatório.
               </p>
               <ul className="mt-7 space-y-3">
                 {[
@@ -315,27 +315,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 6. ROI */}
-        <ChiDivider color="var(--ink-900)" />
-        <section className="bg-ink bagua-grid-bg text-paper py-16 md:py-20 -mt-px">
-          <div className="container grid md:grid-cols-[1fr_auto] gap-10 items-center">
-            <FadeUp>
-              <p className="eyebrow mb-4">O investimento que se paga</p>
-              <h2 className="font-display text-2xl md:text-4xl leading-tight text-paper max-w-2xl text-balance">
-                Uma consultoria média custa R$ 700. O plano Profissional custa {PRECO_PROFISSIONAL}/mês.
-              </h2>
-              <p className="mt-4 text-paper/70 max-w-xl">
-                Uma única consulta paga mais de um ano de plataforma — sem contar as horas que você economiza em cada relatório.
-              </p>
-            </FadeUp>
-            <FadeUp delay={120}>
-              <div className="text-center bg-paper/5 border border-gold/30 rounded-2xl px-10 py-8">
-                <p className="font-display text-6xl text-gold">14×</p>
-                <p className="text-sm text-paper/70 mt-2 max-w-[180px]">o valor da mensalidade,<br />em uma única consulta</p>
-              </div>
-            </FadeUp>
-          </div>
-        </section>
+        <SimuladorDeCustos />
 
         {/* 7. SEGUNDA JORNADA — MINHA CASA */}
         <section className="py-20 md:py-28 overflow-hidden">
@@ -350,7 +330,7 @@ export default function Home() {
                 />
                 <div className="absolute -bottom-5 -right-4 md:-right-8 bg-paper rounded-xl shadow-lg border border-border px-5 py-4">
                   <p className="text-xs text-ink/60">Sua casa</p>
-                  <p className="font-display text-2xl text-jade">7 dos 9 setores em harmonia</p>
+                  <p className="font-display text-2xl text-jade">Mapa dos 9 setores</p>
                 </div>
               </div>
             </FadeUp>

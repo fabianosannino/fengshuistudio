@@ -1,7 +1,7 @@
 'use client'
 
 /* Design "Chi": página de preços — toggle mensal/anual, 3 planos (Profissional em destaque),
- * tabela comparativa, banner ROI, selos de confiança, FAQ de compra. */
+ * tabela comparativa, simulação de custos e FAQ de compra. */
 import {
   resumoDoPlano, limiteImoveis, limiteClientes, podePDF, podeCalendario, podeParceiros,
   PRECOS_DOS_PLANOS, mensalEquivalenteCentavos, formatarCentavos, descontoAnualPercentual,
@@ -14,6 +14,7 @@ import Navbar from '../components/marketing/Navbar'
 import Footer from '../components/marketing/Footer'
 import FadeUp from '../components/marketing/FadeUp'
 import CtaBand from '../components/marketing/CtaBand'
+import SimuladorDeCustos from '../components/marketing/SimuladorDeCustos'
 import FaqAccordion from '../components/marketing/FaqAccordion'
 import { ASSETS, REGISTER_URL } from '../components/marketing/assets'
 
@@ -114,11 +115,11 @@ const comparativo: { label: string; free: string | boolean; pro: string | boolea
 ]
 
 const faqCompra = [
-  { q: 'Posso cancelar quando quiser?', a: 'Sim. O cancelamento é feito em um clique, sem fidelidade. Você mantém o acesso até o fim do período já pago.' },
+  { q: 'Posso cancelar quando quiser?', a: 'Você pode solicitar o cancelamento na área de planos. O acesso da assinatura continua até o fim do período já pago. Consulte as condições nos termos de uso.' },
   { q: 'Como funciona o plano anual?', a: `No plano anual você paga uma vez e usa doze meses, com ${DESCONTO_ANUAL_MINIMO}% de desconto em relação a pagar mês a mês.` },
   { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de crédito, processado com segurança pela Stripe. Não armazenamos os dados do seu cartão.' },
   { q: 'Posso mudar de plano depois?', a: 'Use o portal de cobrança para consultar as opções disponíveis. Confira o valor e a data de vigência antes de confirmar a mudança.' },
-  { q: 'Meus dados estão protegidos?', a: 'Sim. Seguimos a LGPD, com criptografia em trânsito e isolamento de dados por conta.' },
+  { q: 'Como meus dados são tratados?', a: 'Usamos HTTPS e controles de acesso por conta. A política de privacidade explica os dados tratados e como solicitar acesso ou exclusão.' },
 ]
 
 function Cell({ v }: { v: string | boolean }) {
@@ -175,7 +176,7 @@ export default function Precos() {
                 >
                   {p.destaque && (
                     <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gold text-ink text-xs font-bold px-4 py-1.5 shadow-sm">
-                      Mais escolhido
+                      Para consultores
                     </span>
                   )}
                   <h2 className="font-display text-2xl text-ink">{p.nome}</h2>
@@ -210,25 +211,7 @@ export default function Precos() {
           </div>
         </section>
 
-        {/* ROI banner */}
-        <section className="bg-ink bagua-grid-bg text-paper py-14">
-          <div className="container max-w-4xl grid md:grid-cols-[1fr_auto] gap-8 items-center">
-            <FadeUp>
-              <h2 className="font-display text-2xl md:text-3xl leading-tight text-balance">
-                Uma única consultoria paga mais de um ano de plataforma
-              </h2>
-              <p className="mt-3 text-paper/70">
-                Consultorias de Feng Shui no Brasil custam de R$ 350 a R$ 2.000 ou mais. Com o Profissional a {formatarCentavos(PRECOS_DOS_PLANOS.profissional.mensalCentavos)}/mês, o retorno chega já no primeiro cliente.
-              </p>
-            </FadeUp>
-            <FadeUp delay={100}>
-              <div className="text-center border border-gold/40 bg-gold/10 rounded-2xl px-8 py-6">
-                <p className="font-display text-5xl text-gold">14×</p>
-                <p className="text-xs text-paper/70 mt-1">retorno por consulta média</p>
-              </div>
-            </FadeUp>
-          </div>
-        </section>
+        <SimuladorDeCustos mensalidadeCentavos={anual ? mensalEquivalenteCentavos('profissional') : PRECOS_DOS_PLANOS.profissional.mensalCentavos} ciclo={anual ? 'anual' : 'mensal'} />
 
         {/* Tabela comparativa */}
         <section className="py-16 md:py-24">
@@ -270,9 +253,9 @@ export default function Precos() {
             <FadeUp delay={120}>
               <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-ink/60">
                 <span className="inline-flex items-center gap-2"><CreditCard className="h-4 w-4 text-jade" /> Pagamento seguro via Stripe</span>
-                <span className="inline-flex items-center gap-2"><Lock className="h-4 w-4 text-jade" /> Criptografia SSL</span>
-                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-jade" /> Conformidade LGPD</span>
-                <span className="inline-flex items-center gap-2"><RotateCcw className="h-4 w-4 text-jade" /> Cancele em 1 clique</span>
+                <span className="inline-flex items-center gap-2"><Lock className="h-4 w-4 text-jade" /> Conexão HTTPS</span>
+                <Link href="/privacidade" className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-jade" /> Política de privacidade</Link>
+                <span className="inline-flex items-center gap-2"><RotateCcw className="h-4 w-4 text-jade" /> Cancelamento na área de planos</span>
               </div>
             </FadeUp>
           </div>
@@ -297,7 +280,7 @@ export default function Precos() {
             <FadeUp>
               <p className="eyebrow mb-4">O que você recebe</p>
               <h2 className="font-display text-2xl md:text-4xl text-ink leading-tight text-balance">
-                Cada plano entrega o diagnóstico <span className="brush-underline">completo</span>
+                Ferramentas para organizar sua <span className="brush-underline">análise</span>
               </h2>
               <p className="mt-4 text-ink/70 leading-relaxed max-w-md text-pretty">
                 Do Free ao Profissional, a análise Ba Guá sobre a planta, a Roda da Vida e as curas por setor estão sempre incluídas. O que muda é a escala — e a marca no relatório.
@@ -322,7 +305,7 @@ export default function Precos() {
           </div>
         </section>
 
-        <CtaBand title="Comece hoje, sem risco" subtitle="Plano Free para sempre, sem cartão. Faça o upgrade só quando a sua agenda pedir." cta="Criar conta gratuita" />
+        <CtaBand title="Comece com o plano gratuito" subtitle="Sem cartão. Compare os recursos e escolha um plano pago quando fizer sentido para seu trabalho." cta="Criar conta gratuita" />
       </main>
       <Footer />
     </div>

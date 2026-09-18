@@ -25,7 +25,7 @@ export default function CtaBand({
             >
               {cta}
             </Link>
-            <p className="text-sm text-paper/60">Sem cartão · Plano Free para sempre</p>
+            <p className="text-sm text-paper/60">Sem cartão · Plano gratuito</p>
           </div>
         </FadeUp>
       </div>
