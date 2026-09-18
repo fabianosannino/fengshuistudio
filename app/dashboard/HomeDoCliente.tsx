@@ -1,5 +1,6 @@
 'use client'
 
+import { grausConfirmados } from '../../src/lib/orientacao'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -127,8 +128,7 @@ export default function HomeDoCliente({ nome }: { nome: string | null }) {
       setCasa({
         consultaId: consulta.id,
         nome: consulta.nome_imovel?.trim() || 'Minha casa',
-        orientacaoGraus: typeof consulta.bagua_entrada?.orientacao_graus === 'number'
-          ? consulta.bagua_entrada.orientacao_graus : null,
+        orientacaoGraus: grausConfirmados(consulta.bagua_entrada),
         scorePorSetor: scores,
       })
 

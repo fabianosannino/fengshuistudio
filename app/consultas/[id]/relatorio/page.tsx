@@ -1,5 +1,8 @@
 'use client'
+import Link from 'next/link'
 
+import { grausConfirmados } from '../../../../src/lib/orientacao'
+import { introducaoDoMetodo, impedimentoDaAnalise } from '../../../../src/lib/analise-bagua'
 import { redirecionarParaLogin } from '../../../../src/lib/auth-rotas'
 import { Fragment, useEffect, useState, useRef } from 'react'
 import { flushSync } from 'react-dom'
@@ -157,7 +160,7 @@ export default function Relatorio() {
   })
 
   // Editable fields for the consultant
-  const [textoIntroducao, setTextoIntroducao] = useState('Este relatório apresenta o diagnóstico completo de Feng Shui do imóvel, baseado na Escola Budista da Seita Negra (Black Hat Sect). A análise integra o mapa Ba Guá, a Roda da Vida, o fluxo de Chi e recomendações de curas e ativações para harmonização dos ambientes.')
+  const [textoIntroducao, setTextoIntroducao] = useState(introducaoDoMetodo())
   const [textoCuras, setTextoCuras] = useState('As curas e ativações abaixo são recomendadas com base no diagnóstico energético de cada setor do Ba Guá. Cada elemento — cristais, plantas, objetos, mudras, meditações e mantras — atua em uma frequência específica para reequilibrar a energia do ambiente.')
   const [textoChi, setTextoChi] = useState('O Fluxo de Chi (energia vital) foi avaliado ponto a ponto no imóvel. «✓» indica onde a circulação energética está adequada e «✕» onde há um ponto a tratar. «–» marca o que não foi verificado nesta visita — é uma lacuna do levantamento, não um problema encontrado.')
   const [textoConclusao, setTextoConclusao] = useState('As recomendações apresentadas neste relatório visam promover o equilíbrio energético do imóvel e o bem-estar de seus ocupantes. Recomenda-se a implementação gradual das sugestões, começando pelas áreas de maior urgência.')
@@ -170,6 +173,7 @@ export default function Relatorio() {
    * um dossiê achando que mandou o resumo.
    */
   const formatoAtual = formatoCorrespondente(selectedSections)
+  const impedimento = impedimentoDaAnalise(consulta?.bagua_entrada, selectedSections)
 
   // Plan-based PDF access
   const _planoEfetivo = (() => {
@@ -198,6 +202,7 @@ export default function Relatorio() {
         if (cancelado) return
         setProfile(data.fonte.perfil)
         setConsulta(data.fonte.consulta)
+        setTextoIntroducao(introducaoDoMetodo(data.fonte.consulta.bagua_entrada?.escola))
         setSetores(data.fonte.setores)
         setSnapshots(data.fonte.evolucao)
         setChiCustom(data.fonte.chi_custom)
@@ -268,7 +273,7 @@ export default function Relatorio() {
     return fases
   }
 
-  function handlePrint() { window.print() }
+  function handlePrint() { if (!impedimento) window.print() }
 
   async function salvarEmissaoPendente() {
     const arquivo = pendente.current
@@ -903,7 +908,10 @@ export default function Relatorio() {
       )}
 
       {/* ── Report Body ─────────────────────────────────────────────────── */}
-      {!showSelector && <div ref={printRef} className="print-area" style={{
+      {impedimento && <div role="alert" style={{padding:16,background:'#FFF4DB',color:'#714B0E'}}>
+        {impedimento} <Link href={`/bagua-planta?consultaId=${id}`}>Revisar planta</Link>
+      </div>}
+      {!showSelector && !impedimento && <div ref={printRef} className="print-area" style={{
         background: '#ffffff', maxWidth: '980px', margin: '24px auto',
         padding: '0', fontFamily: "Georgia, 'Times New Roman', serif",
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderRadius: '4px',
@@ -943,7 +951,7 @@ export default function Relatorio() {
                 Relatório de Harmonização Feng Shui
               </div>
               <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', color: inkLt, marginTop: '2px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                Escola Budista da Seita Negra · Diagnóstico Integrado · Roda da Vida &amp; Baguá
+                {consulta.bagua_entrada?.escola === 'bussola' ? 'Escola da Bússola' : consulta.bagua_entrada?.escola === 'btb' ? 'Escola BTB' : 'Método não informado'} · Diagnóstico Integrado
               </div>
             </div>
           </div>
@@ -1010,8 +1018,9 @@ export default function Relatorio() {
         {/* ══════ KUA DA CASA (Oito Mansões) — só quando a Bússola foi usada ══════ */}
         {(() => {
           const be = consulta.bagua_entrada
-          if (be?.escola !== 'bussola' || typeof be.orientacao_graus !== 'number') return null
-          const casa = calcularKuaDaCasa(be.orientacao_graus)
+          const graus = grausConfirmados(be)
+          if (be?.escola !== 'bussola' || graus === null) return null
+          const casa = calcularKuaDaCasa(graus)
           const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
           const mgCliente = calcularMingGua(cli?.data_nascimento, cli?.genero)
           const compat = mgCliente ? compatibilidadeMoradorCasa(mgCliente.kua, casa.kua) : null
@@ -1052,7 +1061,7 @@ export default function Relatorio() {
           // antigas — ver src/lib/periodo-do-imovel.ts.
           const doImovel = periodoDaConsulta(consulta)
           if (!doImovel) return null
-          const mapa = calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus ?? 0, periodo: doImovel.periodo })
+          const mapa = calcularEstrelasVoadoras({ facingGraus: grausConfirmados(be), periodo: doImovel.periodo })
           if (!mapa) return null
           const porPalacio = Object.fromEntries(mapa.palacios.map(p => [p.palacio, p]))
           const linhas: Palacio[][] = [['SE', 'S', 'SW'], ['E', 'C', 'W'], ['NE', 'N', 'NW']]
@@ -1060,7 +1069,7 @@ export default function Relatorio() {
             <div style={{ padding: '0.9rem 1.5rem', background: paperWarm, border: `1px solid ${border}`, borderTop: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: 700, color: ink, marginBottom: '0.6rem', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                 <span style={{ fontSize: '18px', color: gold, fontFamily: "'Noto Serif SC', serif" }}>飛星</span>
-                Estrelas Voadoras — Período {mapa.periodo}
+                Estrelas Voadoras — mapa experimental simplificado · Período {mapa.periodo}
               </div>
               {/* De onde saiu o período. Sem isto o cliente vê um número de 1 a 9
                   sem meio de conferir de que ano ele veio. */}
@@ -1220,7 +1229,7 @@ export default function Relatorio() {
               })}
             </div>
             <div style={{ fontSize: '9px', color: inkLt, textAlign: 'center', marginTop: '6px', fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-              Escola Black Hat — Porta principal na base do mapa
+              {consulta.bagua_entrada?.escola === 'bussola' ? 'Escola da Bússola — setores pela orientação confirmada' : 'Escola BTB — alinhamento pela parede de entrada'}
             </div>
           </div>
           )}
@@ -2053,10 +2062,11 @@ export default function Relatorio() {
           // Só a Escola da Bússola produz os métodos que podem conflitar (Fei Xing e Ba Zhai
           // dependem de orientação). Em BTB não há segunda fonte — e o BTB é isolado por decisão
           // de domínio (ADR 0013), então não há síntese a fazer.
-          if (be?.escola !== 'bussola' || typeof be.orientacao_graus !== 'number') return null
+          const graus = grausConfirmados(be)
+          if (be?.escola !== 'bussola' || graus === null) return null
 
           const doImovel = periodoDaConsulta(consulta)
-          const mapa = doImovel ? calcularEstrelasVoadoras({ facingGraus: be.orientacao_graus, periodo: doImovel.periodo }) : null
+          const mapa = doImovel ? calcularEstrelasVoadoras({ facingGraus: graus, periodo: doImovel.periodo }) : null
           const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
           const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
           const favoraveis = mg ? setoresFavoraveis(mg.direcoes) : null
@@ -2130,12 +2140,11 @@ export default function Relatorio() {
               <p style={{ margin: '0.8rem 0 0', fontSize: '10px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                 Escopo desta síntese: participam as Estrelas Voadoras{mapa ? '' : ' (ausentes — falta data de construção)'} e
                 as Oito Mansões{favoraveis ? '' : ' (ausentes — falta data de nascimento/gênero do cliente)'}.
-                Das Estrelas Voadoras considera-se apenas a Estrela 5 (Wu Huang), cuja gravidade não tem divergência
-                entre escolas; as demais combinações não são classificadas automaticamente
+                Do mapa experimental considera-se apenas a presença da Estrela 5 (Wu Huang). Essa simplificação não valida uma carta clássica nem deve orientar prescrições isoladamente; as demais combinações não são classificadas automaticamente
                 {mapa && gradeAnual && anoSolarAtual != null && `, e a sobreposição anual usada é a do ano solar ${anoSolarAtual}`}.
                 Escola das Formas, BaZi e
                 Da Gua/San He não participam — dependem de dados que o sistema ainda não captura de forma estruturada.
-                Orientação usada: {be.orientacao_graus.toFixed(1)}° em Norte {rotuloReferencia(be.orientacao_referencia === 'verdadeiro' ? 'verdadeiro' : 'magnetico')}.
+                Orientação usada: {graus.toFixed(1)}° em Norte {rotuloReferencia(be.orientacao_referencia === 'verdadeiro' ? 'verdadeiro' : 'magnetico')}.
               </p>
             </div>
           )
@@ -2160,7 +2169,7 @@ export default function Relatorio() {
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>☯</div>
             <div style={{ fontSize: '11px', lineHeight: 1.6, color: 'rgba(255,255,255,0.7)', maxWidth: '500px', margin: '0 auto' }}>
-              Este relatório foi elaborado com base na Escola Budista da Seita Negra (Black Hat Sect), fundada pelo Mestre Lin Yun Rinpoche. As recomendações são orientações energéticas e não substituem avaliações profissionais de outras áreas.
+              {introducaoDoMetodo(consulta.bagua_entrada?.escola)} As recomendações são interpretações da tradição indicada e não substituem avaliações profissionais de outras áreas.
             </div>
           </div>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -2185,7 +2194,7 @@ export default function Relatorio() {
           borderTop: `1px solid ${border}`, marginTop: '0.5rem',
           fontFamily: 'Helvetica Neue, Arial, sans-serif', fontSize: '10px', color: '#aaa', letterSpacing: '0.06em'
         }}>
-          Relatório Feng Shui · Escola Budista da Seita Negra ·
+          Relatório Feng Shui · {consulta.bagua_entrada?.escola === 'bussola' ? 'Escola da Bússola' : consulta.bagua_entrada?.escola === 'btb' ? 'Escola BTB' : 'Método não informado'} ·
           {profile?.nome_completo && ` Consultor(a): ${profile.nome_completo}`}
           {profile?.registro_profissional && ` · ${profile.registro_profissional}`}
           {' '} · Referência: {new Date(referenciaTemporal).toLocaleDateString('pt-BR')}

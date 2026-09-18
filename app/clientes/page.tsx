@@ -1,5 +1,6 @@
 'use client'
 
+import { grausConfirmados } from '../../src/lib/orientacao'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -243,7 +244,8 @@ export default function Clientes() {
         consulta: emCurso,
         progresso: emCurso
           ? progressoDoDiagnostico({
-              orientacaoGraus: emCurso.bagua_entrada?.orientacao_graus,
+              orientacaoGraus: grausConfirmados(emCurso.bagua_entrada),
+              escola: emCurso.bagua_entrada?.escola,
               baguaFinalizadaEm: emCurso.bagua_entrada?.finalizada_em,
               setoresComScore: setoresPorConsulta.get(emCurso.id) ?? 0,
               prescricoes: prescricoesPorConsulta.get(emCurso.id) ?? 0,
@@ -702,7 +704,7 @@ export default function Clientes() {
             const consulta = resumo?.consulta ?? null
             const ativo = (cliente as Cliente & { ativo?: boolean }).ativo !== false
             const mingGua = calcularMingGua(cliente.data_nascimento, (cliente as Cliente & { genero?: string | null }).genero)
-            const graus = consulta?.bagua_entrada?.orientacao_graus
+            const graus = grausConfirmados(consulta?.bagua_entrada)
             const acao = acaoDaLinha(resumo, cliente.id)
             const foto = resolverFoto(cliente.foto_url)
 

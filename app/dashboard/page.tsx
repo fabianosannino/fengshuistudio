@@ -1,5 +1,6 @@
 'use client'
 
+import { grausConfirmados } from '../../src/lib/orientacao'
 import Link from 'next/link'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
@@ -225,14 +226,15 @@ export default function Dashboard() {
         cliente: c.clientes?.nome_completo ?? null,
         iniciais: iniciais(c.clientes?.nome_completo ?? null),
         progresso: progressoDoDiagnostico({
-          orientacaoGraus: c.bagua_entrada?.orientacao_graus,
+          orientacaoGraus: grausConfirmados(c.bagua_entrada),
+      escola: c.bagua_entrada?.escola,
           baguaFinalizadaEm: c.bagua_entrada?.finalizada_em,
           setoresComScore: setoresPorConsulta.get(c.id) ?? 0,
           prescricoes: prescricoesPorConsulta.get(c.id) ?? 0,
           relatorioGeradoEm: c.relatorio_gerado_em,
         }),
         diasParada: diasDesde(c.atualizado_em ?? c.criado_em),
-        orientacaoGraus: typeof c.bagua_entrada?.orientacao_graus === 'number' ? c.bagua_entrada.orientacao_graus : null,
+        orientacaoGraus: grausConfirmados(c.bagua_entrada),
       })))
 
       // ── Números do mês ──────────────────────────────────────────────────

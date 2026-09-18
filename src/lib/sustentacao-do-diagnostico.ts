@@ -65,7 +65,7 @@ export function sustentacaoDoDiagnostico(dados: DadosDoDiagnostico): MetodoSuste
     nascimentoDoCliente, generoDoCliente, temPoligonoTaiJi, escola,
   } = dados
 
-  const temFachada = typeof orientacaoGraus === 'number'
+  const temFachada = typeof orientacaoGraus === 'number' && Number.isFinite(orientacaoGraus)
   const bussola = (escola ?? '').toLowerCase() === 'bussola'
 
   const metodos: MetodoSustentado[] = []
@@ -147,4 +147,4 @@ export function resumoDaSustentacao(metodos: MetodoSustentado[]): string {
  * bancada e no relatório. Era rodapé de 10px; o handoff pede caixa dourada.
  */
 export const RESSALVA_XUAN_KONG =
-  'Base San Yuan Xuan Kong. Não inclui estrela de substituição (替卦), fachadas de borda entre montanhas nem casas em período de transição — valide com um consultor formado antes de decisões importantes.'
+  'Mapa experimental simplificado por oito octantes. Não é uma carta clássica completa: não implementa as regras de voo das 24 Montanhas, estrelas de substituição nem todas as combinações. Não use sozinho para prescrições; valide com um profissional da escola adotada.'

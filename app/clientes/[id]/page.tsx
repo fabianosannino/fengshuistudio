@@ -1,5 +1,6 @@
 'use client'
 
+import { grausConfirmados } from '../../../src/lib/orientacao'
 import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../src/lib/supabase'
@@ -304,8 +305,8 @@ export default function ClienteDetalhe() {
    * cada imóvel tem a sua fachada, e misturar os dois daria uma leitura que não
    * corresponde a nenhum deles.
    */
-  const consultaComFachada = consultasVisiveis.find(c => typeof c.bagua_entrada?.orientacao_graus === 'number')
-  const grausDaCasa = consultaComFachada?.bagua_entrada?.orientacao_graus
+  const consultaComFachada = consultasVisiveis.find(c => c.bagua_entrada?.escola === 'bussola' && grausConfirmados(c.bagua_entrada) !== null)
+  const grausDaCasa = grausConfirmados(consultaComFachada?.bagua_entrada)
   const divergencia = mingGua && typeof grausDaCasa === 'number'
     ? compatibilidadeMoradorCasa(mingGua.kua, calcularKuaDaCasa(grausDaCasa).kua)
     : null
@@ -313,7 +314,8 @@ export default function ClienteDetalhe() {
   const progressoPorConsulta: Record<string, ProgressoDoDiagnostico> = {}
   for (const c of consultasVisiveis) {
     progressoPorConsulta[c.id] = progressoDoDiagnostico({
-      orientacaoGraus: c.bagua_entrada?.orientacao_graus,
+      orientacaoGraus: grausConfirmados(c.bagua_entrada),
+      escola: c.bagua_entrada?.escola,
       baguaFinalizadaEm: c.bagua_entrada?.finalizada_em,
       setoresComScore: setoresPorConsulta[c.id] ?? 0,
       prescricoes: prescricoesPorConsulta[c.id] ?? 0,
@@ -458,7 +460,7 @@ export default function ClienteDetalhe() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {consultasVisiveis.map(c => {
                         const progresso = progressoPorConsulta[c.id]
-                        const graus = c.bagua_entrada?.orientacao_graus
+                        const graus = c.bagua_entrada?.escola === 'bussola' ? grausConfirmados(c.bagua_entrada) : null
                         const kuaDaCasa = typeof graus === 'number' ? calcularKuaDaCasa(graus) : null
                         const temAno = typeof c.ano_construcao === 'number'
                           || typeof c.ano_reforma_estrutural === 'number'

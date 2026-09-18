@@ -194,7 +194,7 @@ export default function Demonstracao() {
           {mapa && porPalacio && (
             <div style={ESTILO_PAINEL}>
               <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px', color: '#0E1B2C' }}>
-                Estrelas Voadoras — Período {mapa.periodo}
+                Estrelas Voadoras — mapa experimental simplificado · Período {mapa.periodo}
               </h2>
               <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '0 0 12px' }}>
                 Carta natal do Período {mapa.periodo} ({faixa.inicio}–{faixa.fim}), pela construção

@@ -3,7 +3,7 @@
  * já captura a orientação magnética real da fachada (`orientacao_graus`).
  *
  * Diferente do Ming Gua pessoal (que depende de nascimento/gênero), o Kua da
- * casa depende só da direção que a fachada encara — determinado pelo mesmo
+ * casa é classificado pelo ASSENTO, oposto à fachada — determinado pelo mesmo
  * quadrado mágico Lo Shu (洛書) usado em toda a numerologia clássica chinesa
  * (Oito Mansões, Estrelas Voadoras, etc.), aqui aplicado à direção do imóvel:
  *
@@ -14,21 +14,25 @@
  *
  * Uma vez com o Kua da casa, reaproveita-se a MESMA tabela de direções
  * favoráveis do Ming Gua pessoal (src/lib/ming-gua.ts) — a tabela não muda,
- * só a fonte do número Kua (pessoa vs. fachada do imóvel).
+ * só a fonte do número Kua (pessoa vs. assento do imóvel).
  */
 
 import { DIRECOES_POR_KUA, GRUPO_LESTE, type GrupoKua, type MingGua } from './ming-gua'
+import { normalizarGraus } from './graus'
 
 /** Lo Shu por octante (0=N,1=NE,2=E,3=SE,4=S,5=SW,6=W,7=NW) — mesma convenção de octantes de bagua-grid.ts. */
 const LO_SHU_POR_OCTANTE = [1, 8, 3, 4, 9, 2, 7, 6] as const
 
 /**
  * Kua da casa a partir da orientação magnética da fachada (0–359°, 0=Norte).
- * Arredonda para o octante mais próximo — mesma granularidade da Bússola.
+ * Deriva assento = fachada + 180°, depois classifica o octante do assento.
+ * Intervalos de 45° com borda inicial inclusiva (22,5° já é NE).
+ * Fonte: Joey Yap, Location and Direction in Eight Mansions, tutorial 333.
  */
 export function calcularKuaDaCasa(facingGraus: number): MingGua {
-  const normalizado = ((facingGraus % 360) + 360) % 360
-  const octante = Math.round(normalizado / 45) % 8
+  if (!Number.isFinite(facingGraus)) throw new RangeError('Fachada deve ser um ângulo finito')
+  const assento = normalizarGraus(normalizarGraus(facingGraus) + 180)
+  const octante = Math.round(assento / 45) % 8
   const kua = LO_SHU_POR_OCTANTE[octante]
   return {
     kua,
@@ -46,7 +50,7 @@ export interface Compatibilidade {
 
 /**
  * Compara o grupo do morador (Kua pessoal) com o grupo da casa (Kua da
- * fachada). Grupos iguais = energia da casa reforça as direções favoráveis
+ * assento). Grupos iguais = energia da casa reforça as direções favoráveis
  * do morador; grupos diferentes = conflito clássico, não impede morar bem,
  * mas indica atenção redobrada na escolha de quarto/porta/mesa de trabalho.
  */

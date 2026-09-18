@@ -5,6 +5,7 @@ import { carregarFonteRelatorio, sha256 } from '../../../../../src/lib/relatorio
 import { criarEntradaRelatorio, hashValido, idValido, jsonCanonico, objeto, referenciaValida, TABELA_EMISSOES, validarEdicao, VERSOES_RELATORIO } from '../../../../../src/lib/relatorio-emissao'
 import { rateLimit, ipDaRequisicao } from '../../../../../src/lib/rate-limit'
 import { logger } from '../../../../../src/lib/logger'
+import { impedimentoDaAnalise } from '../../../../../src/lib/analise-bagua'
 
 export async function POST(request: Request) {
   const { success } = await rateLimit(ipDaRequisicao(request), { limit: 20, windowMs: 60_000 })
@@ -34,6 +35,8 @@ export async function POST(request: Request) {
     }
     const edicao = validarEdicao(body.edicao, fonte.setores.map(s => s.id))
     if (!edicao) return NextResponse.json({ error: 'Seções ou textos inválidos' }, { status: 400 })
+    const impedimento = impedimentoDaAnalise(fonte.consulta.bagua_entrada, edicao.secoes)
+    if (impedimento) return NextResponse.json({ error: impedimento }, { status: 409 })
     const entrada = criarEntradaRelatorio(fonte, edicao, body.referencia_temporal as string, body.fuso as string)
     const entradaHash = sha256(jsonCanonico(entrada))
     // Só criar o cliente privilegiado depois da consulta sob RLS e ownership.

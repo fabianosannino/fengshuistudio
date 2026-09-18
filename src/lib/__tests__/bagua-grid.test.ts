@@ -127,11 +127,11 @@ describe('calcularGridOrder — dispatcher usado pela tela', () => {
     expect(calcularGridOrder('bussola', { lado: 'direita', orientacaoGraus: 180 })).toEqual(gridOrderBussola(180))
   })
 
-  it('metodologia "bussola" sem orientação informada cai para BTB (fail-safe)', () => {
-    expect(calcularGridOrder('bussola', { lado: 'centro' })).toEqual(gridOrderBTB('centro'))
+  it('metodologia "bussola" sem orientação bloqueia o cálculo', () => {
+    expect(calcularGridOrder('bussola', { lado: 'centro' })).toBeNull()
   })
 
-  it('metodologia desconhecida cai para BTB padrão', () => {
-    expect(calcularGridOrder('outra', {})).toEqual(gridOrderBTB('centro'))
+  it('metodologia desconhecida bloqueia o cálculo', () => {
+    expect(calcularGridOrder('outra', {})).toBeNull()
   })
 })

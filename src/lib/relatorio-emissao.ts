@@ -1,10 +1,11 @@
 import { SECOES, type Secao } from './formato-do-relatorio'
 import type { Consulta, Profile, SetorBagua } from './types'
 import type { SnapshotScore } from './reavaliacao'
+import { lerOrientacao, type Orientacao } from './orientacao'
 
-/** Identifica o comportamento existente; B0 não corrige fórmulas de B1/C1. */
+/** B1 corrige Ba Zhai por assento e exige orientação com procedência. */
 export const VERSOES_RELATORIO = {
-  entrada: '1', motor: 'fengshui-legado-2026.09', template: 'relatorio-2.0.0',
+  entrada: '2', motor: 'fengshui-2026.09-b1', template: 'relatorio-2.1.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.
@@ -36,13 +37,8 @@ export interface EntradaRelatorio {
   referencia_temporal: string
   fuso: string
   metodo: string
-  variante: 'implementacao-legada'
-  orientacao: {
-    estado: 'ausente' | 'nao_confirmada'
-    graus: number | null
-    referencia: string | null
-    origem: 'nao_registrada'
-  }
+  variante: 'btb-porta' | 'ba-zhai-assento-octantes' | 'nao_informada'
+  orientacao: Orientacao
 }
 export interface EmissaoRelatorio {
   id: string
@@ -100,16 +96,11 @@ export function referenciaValida(iso: unknown, fuso: unknown, agora: Date): bool
 
 export function criarEntradaRelatorio(fonte: FonteRelatorio, edicao: EdicaoRelatorio, referencia: string, fuso: string): EntradaRelatorio {
   const bagua = fonte.consulta.bagua_entrada
-  const graus = bagua?.orientacao_graus
-  const informado = typeof graus === 'number' && Number.isFinite(graus)
   return {
     versoes: { ...VERSOES_RELATORIO }, fonte, edicao, referencia_temporal: referencia, fuso,
-    metodo: bagua?.escola || 'nao_informado', variante: 'implementacao-legada',
-    // Um zero armazenado não comprova uma medição. B1 introduzirá confirmação.
-    orientacao: {
-      estado: informado ? 'nao_confirmada' : 'ausente', graus: informado ? graus : null,
-      referencia: bagua?.orientacao_referencia ?? null, origem: 'nao_registrada',
-    },
+    metodo: bagua?.escola || 'nao_informado',
+    variante: bagua?.escola === 'bussola' ? 'ba-zhai-assento-octantes' : bagua?.escola === 'btb' ? 'btb-porta' : 'nao_informada',
+    orientacao: lerOrientacao(bagua),
   }
 }
 

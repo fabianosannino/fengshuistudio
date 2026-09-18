@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Relatorio from '../app/consultas/[id]/relatorio/page'
 import { MAX_PDF_RELATORIO, VERSOES_RELATORIO } from '../src/lib/relatorio-emissao'
+import type { BaguaEntrada } from '../src/lib/types'
 
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn() }, capture: vi.fn(), output: vi.fn(), fetch: vi.fn(), download: vi.fn(),
@@ -24,10 +25,11 @@ let statusFalha = 503
 let falharHistoricoDepois = false
 let foto: string | null = null
 let leiturasHistorico = 0
+let bagua: Partial<BaguaEntrada> = {}
 const json = (data: unknown, ok = true) => ({ ok, status: ok ? 200 : 503, json: async () => data })
 beforeEach(() => {
   vi.clearAllMocks(); respostas.preparo.length = 0; respostas.uploads.length = 0
-  falharUpload = false; statusFalha = 503; falharHistoricoDepois = false; leiturasHistorico = 0; foto = null
+  falharUpload = false; statusFalha = 503; falharHistoricoDepois = false; leiturasHistorico = 0; foto = null; bagua = {}
   mocks.capture.mockResolvedValue({ width: 1000, height: 1000, toDataURL: () => 'data:image/png;base64,fixture' })
   mocks.output.mockReturnValue(new Blob(['%PDF-1.4\nfixture\n%%EOF'], { type: 'application/pdf' }))
   vi.stubGlobal('fetch', mocks.fetch)
@@ -37,7 +39,7 @@ beforeEach(() => {
   Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() })
   mocks.fetch.mockImplementation(async (url: string, options?: RequestInit) => {
     if (url.includes('/entrada?')) return json({
-      fonte: { consulta: { id: '00000000-0000-4000-8000-000000000001', nome_imovel: 'Imóvel sintético', criado_em: '2026-09-01T00:00:00Z', status: 'em_andamento', bagua_entrada: {}, foto_geral_url: foto }, perfil: { plano: 'profissional', nome_completo: 'Consultor sintético' }, setores: [], evolucao: [], chi_custom: [] },
+      fonte: { consulta: { id: '00000000-0000-4000-8000-000000000001', nome_imovel: 'Imóvel sintético', criado_em: '2026-09-01T00:00:00Z', status: 'em_andamento', bagua_entrada: bagua, foto_geral_url: foto }, perfil: { plano: 'profissional', nome_completo: 'Consultor sintético' }, setores: [], evolucao: [], chi_custom: [] },
       fonte_sha256: 'a'.repeat(64), referencia_temporal: '2026-09-17T12:00:00.000Z',
     })
     if (url.includes('historico=1')) {
@@ -64,6 +66,14 @@ async function emitir() {
 }
 
 describe('emissão pela página', () => {
+  it('não captura prévia nem emite bússola legada com zero presumido', async () => {
+    bagua = { escola: 'bussola', orientacao_graus: 0 }
+    await emitir()
+    expect(screen.getByRole('alert')).toHaveTextContent('Confirme a fachada')
+    expect(mocks.capture).not.toHaveBeenCalled()
+    expect(respostas.preparo).toHaveLength(0)
+    expect(screen.queryByText(/Kua da Casa/)).not.toBeInTheDocument()
+  })
   it('só baixa e permite concluir a entrega depois de confirmar a persistência', async () => {
     await emitir()
     await waitFor(() => expect(mocks.download).toHaveBeenCalledOnce())

@@ -1,57 +1,34 @@
 import { describe, it, expect } from 'vitest'
 import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../oito-mansoes'
-import { GRUPO_LESTE } from '../ming-gua'
 
-describe('Lo Shu por octante — verificação do quadrado mágico', () => {
-  // Layout row-major (S no topo, convenção clássica — mesma de bagua-grid.ts):
-  //   SE  S  SW      octante: SE=3 S=4 SW=5
-  //   E   C  W        octante: E=2 C=- W=6
-  //   NE  N  NW      octante: NE=1 N=0 NW=7
-  const grid = {
-    SE: calcularKuaDaCasa(135).kua, S: calcularKuaDaCasa(180).kua, SW: calcularKuaDaCasa(225).kua,
-    E: calcularKuaDaCasa(90).kua, C: 5, W: calcularKuaDaCasa(270).kua,
-    NE: calcularKuaDaCasa(45).kua, N: calcularKuaDaCasa(0).kua, NW: calcularKuaDaCasa(315).kua,
-  }
+// Vetores por ASSENTO, não derivados do algoritmo.
+// Fontes: Joey Yap, Location and Direction in Eight Mansions (tid=333):
+// fachada Sul → Kan, Oeste → Zhen. Mastery Academy nid=140: tipo pelo assento.
+const CASAS = [
+  [0, 180, 9, 'leste'], [45, 225, 2, 'oeste'], [90, 270, 7, 'oeste'],
+  [135, 315, 6, 'oeste'], [180, 0, 1, 'leste'], [225, 45, 8, 'oeste'],
+  [270, 90, 3, 'leste'], [315, 135, 4, 'leste'],
+] as const
 
-  it('reproduz o quadrado Lo Shu clássico (4-9-2 / 3-5-7 / 8-1-6)', () => {
-    expect(grid).toEqual({ SE: 4, S: 9, SW: 2, E: 3, C: 5, W: 7, NE: 8, N: 1, NW: 6 })
+describe('Ba Zhai: a casa é classificada pelo assento', () => {
+  it.each(CASAS)('fachada %s°, assento %s° → Kua %s / %s', (fachada, _assento, kua, grupo) => {
+    expect(calcularKuaDaCasa(fachada)).toMatchObject({ kua, grupo })
+    expect(calcularKuaDaCasa(fachada + 720)).toEqual(calcularKuaDaCasa(fachada))
+    expect(calcularKuaDaCasa(fachada - 720)).toEqual(calcularKuaDaCasa(fachada))
   })
-
-  it('toda linha, coluna e diagonal soma 15 (propriedade do quadrado mágico)', () => {
-    const linhas = [
-      [grid.SE, grid.S, grid.SW], [grid.E, grid.C, grid.W], [grid.NE, grid.N, grid.NW],
-    ]
-    const colunas = [
-      [grid.SE, grid.E, grid.NE], [grid.S, grid.C, grid.N], [grid.SW, grid.W, grid.NW],
-    ]
-    const diagonais = [[grid.SE, grid.C, grid.NW], [grid.SW, grid.C, grid.NE]]
-    for (const linha of [...linhas, ...colunas, ...diagonais]) {
-      expect(linha.reduce((a, b) => a + b, 0)).toBe(15)
-    }
+  it.each(CASAS)('fronteira após fachada %s° pertence ao próximo octante', (fachada, _assento, kua) => {
+    const proxima = CASAS[(fachada / 45 + 1) % 8][2]
+    expect(calcularKuaDaCasa(fachada + 22.5 - 0.0001).kua).toBe(kua)
+    expect(calcularKuaDaCasa(fachada + 22.5).kua).toBe(proxima)
+    expect(calcularKuaDaCasa(fachada + 22.5 + 0.0001).kua).toBe(proxima)
   })
-})
-
-describe('calcularKuaDaCasa', () => {
-  it('360° é equivalente a 0° (Norte)', () => {
-    expect(calcularKuaDaCasa(360)).toEqual(calcularKuaDaCasa(0))
+  it.each([NaN, Infinity, -Infinity])('recusa ângulo não finito %s', graus => {
+    expect(() => calcularKuaDaCasa(graus)).toThrow(RangeError)
   })
-
-  it('nunca devolve Kua 5 (é o centro, não uma fachada)', () => {
-    for (let graus = 0; graus < 360; graus += 15) {
-      expect(calcularKuaDaCasa(graus).kua).not.toBe(5)
-    }
-  })
-
-  it('grupo é consistente com GRUPO_LESTE (mesma fonte do Ming Gua pessoal)', () => {
-    for (let graus = 0; graus < 360; graus += 45) {
-      const { kua, grupo } = calcularKuaDaCasa(graus)
-      expect(grupo).toBe(GRUPO_LESTE.has(kua) ? 'leste' : 'oeste')
-    }
-  })
-
-  it('casa voltada para o Sul (fachada clássica mais auspiciosa) tem Kua 9', () => {
-    expect(calcularKuaDaCasa(180).kua).toBe(9)
-    expect(calcularKuaDaCasa(180).grupo).toBe('leste')
+  it('a casa com fachada Leste pertence ao grupo Oeste', () => {
+    const casa = calcularKuaDaCasa(90)
+    expect(compatibilidadeMoradorCasa(1, casa.kua).compativel).toBe(false)
+    expect(compatibilidadeMoradorCasa(7, casa.kua).compativel).toBe(true)
   })
 })
 
