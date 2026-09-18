@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:security": "node scripts/security/test-authorization.mjs"
+    "test:security": "node scripts/security/test-authorization.mjs",
+    "test:catalog-migration": "node scripts/security/test-catalog-migration.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

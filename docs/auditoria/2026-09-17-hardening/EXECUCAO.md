@@ -3,6 +3,9 @@
 Data local: 17/09/2026. Base: `8e07a12f3e5fcd2f15f12d43f6cfa5d4d1d8ba4d`.
 Branch: `codex/auditoria-correcoes-20260917`, em worktree isolada.
 
+Este documento preserva o estado anterior ao merge. Para o deploy, as migrations
+aplicadas e a correção complementar de permissões, ver [validação após o PR #189](POS_MERGE_189.md).
+
 ## Escopo entregue no código
 
 - Proteção contra excluir/recriar o perfil com privilégios; allowlist de campos

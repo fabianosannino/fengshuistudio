@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "codex/auditoria-correcoes-20260917": false
+      "codex/auditoria-correcoes-20260917": false,
+      "codex/validacao-pr189": false
     }
   },
   "crons": [

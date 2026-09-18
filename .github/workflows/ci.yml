@@ -44,7 +44,7 @@ jobs:
           NEXT_PUBLIC_APP_URL: https://example.invalid
 
   security:
-    name: Authorization (PostgreSQL + PostgREST)
+    name: Authorization & catalog (PostgreSQL + PostgREST)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +53,8 @@ jobs:
           node-version-file: .nvmrc
       - name: Reproduzir falhas e verificar a migração em banco descartável
         run: npm run test:security
+      - name: Verificar migração do catálogo e isolamento dos buckets
+        run: npm run test:catalog-migration
 
   quality:
     name: Dependency Security

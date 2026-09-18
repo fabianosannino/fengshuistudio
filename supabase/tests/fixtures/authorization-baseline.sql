@@ -24,7 +24,10 @@ create table public.profiles (
   consultor_id uuid, trial_inicio timestamptz, trial_fim timestamptz,
   plano_inicio timestamptz, plano_fim timestamptz, criado_em timestamptz default now(),
   atualizado_em timestamptz default now(), tipo_usuario text, profissao text,
-  area_atuacao text, registro_profissional text, linkedin text, instagram text
+  area_atuacao text, registro_profissional text, linkedin text, instagram text,
+  nome_empresa text, bio text, especialidade text, cidade text, estado text,
+  site text, avatar_url text, logo_url text, cor_primaria text, cor_secundaria text,
+  store_slug text, parceiro_visivel boolean not null default false
 );
 create function public.is_admin() returns boolean language sql stable security definer
   set search_path=pg_catalog,public as $$
