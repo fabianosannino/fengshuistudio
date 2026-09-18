@@ -57,8 +57,8 @@ export async function POST(request: Request) {
       const chave = createHash('sha256').update(`${user.id}:${live}:${anterior ?? 'inicial'}`).digest('hex')
       const customer = await stripeClient.customers.create({ email: user.email, metadata: { supabase_user_id: user.id } }, { idempotencyKey: `customer-v2-${chave}` })
       customerId = customer.id
-      const { error } = await createSupabaseAdminClient().from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
-      if (error) return indisponivel()
+      const { data: vinculado, error } = await createSupabaseAdminClient().from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id).select('id').single()
+      if (error || !vinculado) return indisponivel()
     }
     const existentes = await stripeClient.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })
     if (existentes.has_more || existentes.data.some(s => !['canceled', 'incomplete_expired'].includes(s.status))) {

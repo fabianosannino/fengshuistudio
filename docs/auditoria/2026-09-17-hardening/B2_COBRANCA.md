@@ -134,3 +134,8 @@ houve merge com check vermelho. Leitura agregada de produção encontrou um
 perfil Pro sem concessão vigente e outro Pro coerente; não foi feito recálculo
 em massa nem retirada de direito legado. A origem do perfil divergente precisa
 ser reconciliada antes de abandonar a projeção nas leituras de autorização.
+
+PR #197 integrado em `c3463631097a15ad85856c89f34e802e755363be`, após CI
+35310713236 verde. Migrations remotas `20260918053120` e `20260918053127`;
+inventário e ACL verificados após aplicação. Produção READY em
+`dpl_DSgbJWBqvqFX1uuQpLkDRe7u39hZ`, mesmo SHA.

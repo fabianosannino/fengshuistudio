@@ -4,7 +4,7 @@ import { CAMPOS_HISTORICO_RELATORIO, ESPERA_EXCLUSAO_PREPARADA_MS, TABELA_EMISSO
 import { ORIGEM_DOS_PDFS_VERSIONADOS } from './dados-do-titular'
 
 type Linha = EmissaoRelatorio & { pdf_path: string; consultor_id: string; entrada: unknown }
-type Arquivo = Pick<Linha, 'id' | 'pdf_path' | 'estado' | 'criado_em'>
+type Arquivo = Pick<Linha, 'id' | 'pdf_path' | 'estado' | 'criado_em' | 'consulta_id'>
 const LOTE = 500
 
 /** Pagina: o limite padrão da Data API não pode deixar PDFs fora da exclusão. */
@@ -14,9 +14,9 @@ async function listarLinhas<T>(client: SupabaseClient, userId: string, colunas: 
     let query = client.from(TABELA_EMISSOES).select(colunas).eq('consultor_id', userId).order('id').range(inicio, inicio + LOTE - 1)
     if (consultaId) query = query.eq('consulta_id', consultaId)
     const { data, error } = await query
-    if (error) throw new Error('Falha ao inventariar emissões')
-    todas.push(...(data ?? []) as T[])
-    if (!data || data.length < LOTE) return todas
+    if (error || !Array.isArray(data)) throw new Error('Falha ao inventariar emissões')
+    todas.push(...data as T[])
+    if (data.length < LOTE) return todas
   }
 }
 
@@ -32,7 +32,10 @@ export async function listarHistoricoRelatorio(client: SupabaseClient, userId: s
 
 /** Retenção termina por exclusão explícita. Nunca apagar linhas antes dos objetos. */
 export async function excluirEmissoesDoTitular(client: SupabaseClient, userId: string, consultaId?: string): Promise<number> {
-  const linhas = await listarLinhas<Arquivo>(client, userId, 'id,pdf_path,estado,criado_em', consultaId)
+  const linhas = await listarLinhas<Arquivo>(client, userId, 'id,consulta_id,pdf_path,estado,criado_em', consultaId)
+  if (linhas.some(e => e.pdf_path !== (e.estado === 'legado' ? `${e.consulta_id}/relatorio.pdf` : `${e.consulta_id}/emissoes/${e.id}.pdf`))) {
+    throw new Error('Posse do PDF não comprovada')
+  }
   if (linhas.some(e => e.estado === 'preparada' && Date.now() - new Date(e.criado_em).getTime() < ESPERA_EXCLUSAO_PREPARADA_MS)) {
     throw new Error('Há uma emissão em preparação. Aguarde até 30 minutos antes de excluir os dados.')
   }

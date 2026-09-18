@@ -12,7 +12,8 @@
     "test:catalog-migration": "node scripts/security/test-catalog-migration.mjs",
     "test:plan-quotas": "node scripts/security/test-plan-quotas.mjs",
     "test:plan-grants": "node scripts/security/test-plan-grants.mjs",
-    "test:webhook-claims": "node scripts/security/test-webhook-claims.mjs"
+    "test:webhook-claims": "node scripts/security/test-webhook-claims.mjs",
+    "test:privacy-deletion": "node scripts/security/test-privacy-deletion.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

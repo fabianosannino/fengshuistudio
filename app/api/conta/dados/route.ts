@@ -1,254 +1,131 @@
-/**
- * GET  /api/conta/dados — o pacote de portabilidade do titular.
- * POST /api/conta/dados — a exclusão da própria conta.
- *
- * ## Por que as duas na mesma rota
- *
- * Porque o sujeito é o mesmo e a prova é a mesma: a sessão. Separar em duas
- * rotas duplicaria a única linha que importa aqui — a que diz de quem são os
- * dados — e daria dois lugares para alguém, um dia, aceitar um id do corpo.
- *
- * ## A regra que não tem exceção
- *
- * `user.id` vem de `supabase.auth.getUser()`, **nunca** do corpo. Aceitar um id
- * de fora transformaria o `POST` numa forma de apagar a conta de terceiros e o
- * `GET` num vazamento com formulário. É o mesmo princípio já escrito no
- * `CLAUDE.md` para `account_id`.
- *
- * ## Por que a escrita usa `service_role`
- *
- * Porque a exclusão precisa alcançar o que o RLS do próprio usuário não
- * alcança: anonimizar `pedidos` em que ele foi **vendedor** (a policy deixa ler,
- * não reescrever) e remover objetos do storage. Fazer isso com a sessão dele
- * exigiria afrouxar policies para todo mundo, o tempo todo, por causa de uma
- * operação rara.
- *
- * O id continua vindo da sessão — o `service_role` amplia o que a rota pode
- * fazer, não de quem ela fala.
- */
-
+/** Self-service data rights. Ownership always comes from the verified session. */
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
-import { escreverBestEffort } from '../../../../src/lib/supabase-escrita'
-import { excluirEmissoesDoTitular, listarEmissoesDoTitular } from '../../../../src/lib/relatorio-retencao'
+import { excluirEmissoesDoTitular } from '../../../../src/lib/relatorio-retencao'
+import { removerArquivosDoTitular } from '../../../../src/lib/arquivos-do-titular'
+import { exportarDadosDoTitular, listarDadosPaginados, listarDadosDasConsultas, LOTE_PORTABILIDADE } from '../../../../src/lib/portabilidade-titular'
 import {
-  MARCA_DE_ANONIMIZACAO, PALAVRA_DE_CONFIRMACAO, emailAnonimo,
-  arquivosParaApagar, fotosDaConsulta, inventariar, BUCKETS_DO_TITULAR,
-  COLUNAS_DE_IMAGEM_DA_CONSULTA, COLUNAS_DE_RELATORIO_DA_CONSULTA,
+  MARCA_DE_ANONIMIZACAO, PALAVRA_DE_CONFIRMACAO, emailAnonimo, arquivosParaApagar, fotosDaConsulta, inventariar,
+  BUCKETS_DO_TITULAR, COLUNAS_DE_IMAGEM_DA_CONSULTA, COLUNAS_DE_RELATORIO_DA_CONSULTA,
   TABELA_DE_FOTOS_DA_CONSULTA, type ResumoDaExclusao,
 } from '../../../../src/lib/dados-do-titular'
 
 const ROTA = '/api/conta/dados'
+const SEM_CACHE = { 'Cache-Control': 'private, no-store' }
 
-/** GET — o pacote de portabilidade. */
 export async function GET(request: Request) {
   const { success } = await rateLimit(ipDaRequisicao(request), { limit: 5, windowMs: 60_000 })
-  if (!success) {
-    return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
-  }
-
-  const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  if (!success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
+  const sessao = await createRouteHandlerClient()
+  const { data: { user } } = await sessao.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-
-  let emissoes
-  try { emissoes = await listarEmissoesDoTitular(supabase, user.id) } catch {
-    return NextResponse.json({ error: 'Não foi possível incluir o histórico de relatórios. Tente novamente.' }, { status: 503 })
+  try {
+    const admin = createSupabaseAdminClient()
+    const emailVerificado = user.email_confirmed_at ? user.email ?? null : null
+    if (new URL(request.url).searchParams.get('resumo') === '1') {
+      return NextResponse.json(await inventariar(admin, user.id, emailVerificado), { headers: SEM_CACHE })
+    }
+    // Server access is needed for the owner's billing records. Every query is
+    // scoped explicitly, including children through already-owned consultations.
+    const dados = await exportarDadosDoTitular(admin, user.id, emailVerificado)
+    logger.info('Portabilidade gerada pelo titular', { rota: ROTA })
+    return NextResponse.json({
+      gerado_em: new Date().toISOString(), conta: { id: user.id, email: user.email, criada_em: user.created_at }, ...dados,
+    }, { headers: SEM_CACHE })
+  } catch {
+    logger.error('Portabilidade não concluída', { rota: ROTA })
+    return NextResponse.json({ error: 'Não foi possível gerar a exportação completa. Tente novamente.' }, { status: 503, headers: SEM_CACHE })
   }
-
-  // Cada consulta usa a sessão do titular: o RLS é a garantia de que ele só
-  // leva o que é dele, e não uma condição `eq()` que alguém pode esquecer.
-  const [perfil, clientes, consultas, assinaturas, faturas, concessoes, comprasDele] =
-    await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-      supabase.from('clientes').select('*').eq('consultor_id', user.id),
-      supabase.from('consultas').select('*').eq('consultor_id', user.id),
-      supabase.from('subscriptions').select('*').eq('user_id', user.id),
-      supabase.from('invoices').select('*').eq('user_id', user.id),
-      supabase.from('concessoes_de_plano').select('*').eq('user_id', user.id),
-      user.email
-        ? supabase.from('pedidos').select('*').eq('comprador_email', user.email)
-        : Promise.resolve({ data: [] }),
-    ])
-
-  logger.info('Portabilidade solicitada pelo titular', { rota: ROTA })
-
-  return NextResponse.json({
-    gerado_em: new Date().toISOString(),
-    conta: { id: user.id, email: user.email, criada_em: user.created_at },
-    perfil: perfil.data ?? null,
-    // Os clientes do consultor vão junto: são a base de trabalho dele, e
-    // portabilidade sem eles entregaria metade do que ele construiu aqui.
-    clientes: clientes.data ?? [],
-    consultas: consultas.data ?? [],
-    relatorio_emissoes: emissoes,
-    assinaturas: assinaturas.data ?? [],
-    faturas: faturas.data ?? [],
-    concessoes_de_plano: concessoes.data ?? [],
-    compras: comprasDele.data ?? [],
-  })
 }
 
-/** POST — a exclusão. Exige a palavra de confirmação no corpo. */
+/** Failure stops the sequence. Keep metadata and authentication for retry. */
 export async function POST(request: Request) {
   const { success } = await rateLimit(ipDaRequisicao(request), { limit: 3, windowMs: 60_000 })
-  if (!success) {
-    return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
-  }
-
-  const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  if (!success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
+  const sessao = await createRouteHandlerClient()
+  const { data: { user } } = await sessao.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-
-  let corpo: { confirmacao?: string }
-  try { corpo = await request.json() } catch {
-    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
-  }
-  if ((corpo.confirmacao ?? '').trim().toUpperCase() !== PALAVRA_DE_CONFIRMACAO) {
+  let corpo: unknown
+  try { corpo = await request.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
+  const confirmacao = corpo && typeof corpo === 'object' && 'confirmacao' in corpo ? corpo.confirmacao : null
+  if (typeof confirmacao !== 'string' || confirmacao.trim().toUpperCase() !== PALAVRA_DE_CONFIRMACAO) {
     return NextResponse.json({ error: 'Confirmação inválida' }, { status: 400 })
   }
-
   const admin = createSupabaseAdminClient()
-  const resumo: ResumoDaExclusao = {
-    clientesApagados: 0, consultasApagadas: 0, arquivosApagados: 0, pedidosAnonimizados: 0,
-  }
-
+  const resumo: ResumoDaExclusao = { clientesApagados: 0, consultasApagadas: 0, arquivosApagados: 0, pedidosAnonimizados: 0 }
   try {
-    resumo.arquivosApagados += await excluirEmissoesDoTitular(admin, user.id)
-  } catch {
-    logger.error('Exclusão interrompida para preservar o inventário de PDFs', { rota: ROTA })
-    return NextResponse.json({ error: 'Não foi possível remover os relatórios. Se há uma emissão em preparação, aguarde até 30 minutos e tente novamente.' }, { status: 503 })
-  }
-
-  // ── 1. Os arquivos, antes das linhas ──────────────────────────────────
-  // Nesta ordem de propósito: apagar as linhas primeiro perderia os caminhos,
-  // e os objetos ficariam órfãos no bucket — visíveis para quem tivesse o link,
-  // sem nada no banco que dissesse que existem.
-  //
-  // São três buckets e quatro origens, e a primeira versão disto alcançava
-  // uma: `clientes-fotos` e cinco colunas de `consultas`. Ficavam de fora a
-  // tabela `fotos_consulta` inteira, o `planta_url` dentro do jsonb
-  // `bagua_entrada` e o PDF do relatório, que vive noutro bucket.
-  const idsDasConsultas = (
-    await admin.from('consultas').select('id').eq('consultor_id', user.id)
-  ).data?.map((l) => (l as { id: string }).id) ?? []
-
-  const colunasDaConsulta = [
-    ...COLUNAS_DE_IMAGEM_DA_CONSULTA,
-    ...COLUNAS_DE_RELATORIO_DA_CONSULTA,
-  ].join(',')
-
-  const [fotosDeClientes, linhasDeConsulta, fotosAnexadas] = await Promise.all([
-    admin.from('clientes').select('foto_url').eq('consultor_id', user.id),
-    admin.from('consultas').select(colunasDaConsulta).eq('consultor_id', user.id),
-    // `fotos_consulta` não tem `consultor_id` — chega pelas consultas dele.
-    // A lista vazia curto-circuita: um `in()` sem valores devolveria tudo.
-    idsDasConsultas.length > 0
-      ? admin.from(TABELA_DE_FOTOS_DA_CONSULTA).select('url').in('consulta_id', idsDasConsultas)
-      : Promise.resolve({ data: [] }),
-  ])
-
-  const linhas = (linhasDeConsulta.data ?? []) as unknown as Record<string, unknown>[]
-
-  const grupos = arquivosParaApagar({
-    [BUCKETS_DO_TITULAR.clientes]: (fotosDeClientes.data ?? [])
-      .map((l) => (l as { foto_url?: string }).foto_url),
-    [BUCKETS_DO_TITULAR.imoveis]: [
-      ...linhas.flatMap((l) => fotosDaConsulta(l, COLUNAS_DE_IMAGEM_DA_CONSULTA)),
-      ...(fotosAnexadas.data ?? []).map((l) => (l as { url?: string }).url),
-    ],
-    [BUCKETS_DO_TITULAR.relatorios]: linhas.flatMap(
-      (l) => fotosDaConsulta(l, COLUNAS_DE_RELATORIO_DA_CONSULTA)
-    ),
-  })
-
-  for (const grupo of grupos) {
-    const { error } = await admin.storage.from(grupo.bucket).remove(grupo.paths)
-    if (error) {
-      // Best-effort declarado (ADR 0020): a exclusão do banco segue, e a lacuna
-      // fica no log em vez de virar um 500 que deixa a conta intacta. Objeto
-      // que sobrou é achável pelo log; conta não excluída não é achável.
-      logger.error('Falha ao remover arquivos do titular', { rota: ROTA, bucket: grupo.bucket, erro: error.message })
-    } else {
-      resumo.arquivosApagados += grupo.paths.length
+    const inicio = await admin.rpc('iniciar_exclusao_do_titular', { p_user_id: user.id })
+    if (inicio.error) throw new Error('Início da exclusão indisponível')
+    if (['cobranca', 'produtos', 'vinculos'].includes(inicio.data)) {
+      return NextResponse.json({ error: 'Sua conta tem vínculos de cobrança, venda ou cadastro compartilhado que precisam ser encerrados com o suporte antes da exclusão. Nenhum dado foi removido. Você pode exportar seus dados normalmente.' }, { status: 409, headers: SEM_CACHE })
     }
+    if (inicio.data !== 'pronto') throw new Error('Início da exclusão não confirmado')
+    // Inventory every page before any removal. Missing data is an error, not []
+    // and mutable URLs in owned records are never sufficient proof of file ownership.
+    const [clientes, consultas] = await Promise.all([
+      listarDadosPaginados(admin, 'clientes', 'consultor_id', user.id, 'id,foto_url'),
+      listarDadosPaginados(admin, 'consultas', 'consultor_id', user.id,
+        ['id', ...COLUNAS_DE_IMAGEM_DA_CONSULTA, ...COLUNAS_DE_RELATORIO_DA_CONSULTA].join(',')),
+    ])
+    const ids = consultas.map(l => String(l.id))
+    const fotos = await listarDadosDasConsultas(admin, TABELA_DE_FOTOS_DA_CONSULTA, ids, 'id,url')
+    const grupos = arquivosParaApagar({
+      [BUCKETS_DO_TITULAR.clientes]: clientes.map(l => l.foto_url as string | null),
+      [BUCKETS_DO_TITULAR.imoveis]: [...consultas.flatMap(l => fotosDaConsulta(l, COLUNAS_DE_IMAGEM_DA_CONSULTA)), ...fotos.map(l => l.url as string | null)],
+      [BUCKETS_DO_TITULAR.relatorios]: consultas.flatMap(l => fotosDaConsulta(l, COLUNAS_DE_RELATORIO_DA_CONSULTA)),
+    }, { userId: user.id, consultas: new Set(ids) })
+    resumo.arquivosApagados += await excluirEmissoesDoTitular(admin, user.id)
+    for (const grupo of grupos) {
+      for (let inicio = 0; inicio < grupo.paths.length; inicio += LOTE_PORTABILIDADE) {
+        const paths = grupo.paths.slice(inicio, inicio + LOTE_PORTABILIDADE)
+        const { error } = await admin.storage.from(grupo.bucket).remove(paths)
+        if (error) throw new Error('Remoção de arquivos não confirmada')
+        resumo.arquivosApagados += paths.length
+      }
+    }
+    // Include orphaned objects that older failed uploads never linked to a row.
+    resumo.arquivosApagados += await removerArquivosDoTitular(admin, user.id, ids)
+    // Delete only inventoried rows. New records must remain available for retry.
+    for (const [tabela, linhas] of [['consultas', consultas], ['clientes', clientes]] as const) {
+      for (let inicio = 0; inicio < linhas.length; inicio += LOTE_PORTABILIDADE) {
+        const { error } = await admin.from(tabela).delete().eq('consultor_id', user.id)
+          .in('id', linhas.slice(inicio, inicio + LOTE_PORTABILIDADE).map(l => String(l.id)))
+        if (error) throw new Error('Remoção de registros não confirmada')
+      }
+    }
+    resumo.clientesApagados = clientes.length
+    resumo.consultasApagadas = consultas.length
+    for (const tabela of ['clientes', 'consultas']) {
+      const { count, error } = await admin.from(tabela).select('id', { count: 'exact', head: true }).eq('consultor_id', user.id)
+      if (error || count !== 0) throw new Error('Inventário mudou durante a exclusão')
+    }
+    if (user.email && user.email_confirmed_at) {
+      const { count, error } = await admin.from('pedidos')
+        .update({ comprador_email: emailAnonimo(user.id), comprador_nome: MARCA_DE_ANONIMIZACAO }, { count: 'exact' })
+        .eq('comprador_email', user.email)
+      if (error || count === null) throw new Error('Anonimização não confirmada')
+      resumo.pedidosAnonimizados = count
+    }
+    const servicos = await admin.from('servicos_do_parceiro').delete().eq('perfil_id', user.id)
+    if (servicos.error) throw new Error('Remoção de serviços não confirmada')
+    // perfis_publicos is a view. Hide its source; do not try to DELETE a read-only view.
+    const perfil = await admin.from('profiles').update({
+      nome_completo: MARCA_DE_ANONIMIZACAO, telefone: null, cidade: null, estado: null, bio: null, site: null,
+      profissao: null, area_atuacao: null, registro_profissional: null, linkedin: null, instagram: null,
+      nome_empresa: null, parceiro_visivel: false,
+    }).eq('id', user.id)
+    if (perfil.error) throw new Error('Anonimização do perfil não confirmada')
+    const encerramento = await sessao.auth.signOut({ scope: 'global' })
+    if (encerramento.error) throw new Error('Encerramento das sessões não confirmado')
+    const auth = await admin.auth.admin.deleteUser(user.id)
+    if (auth.error) throw new Error('Remoção da conta não confirmada')
+    logger.info('Exclusão concluída pelo titular', { rota: ROTA, ...resumo })
+    return NextResponse.json({ ok: true, resumo }, { headers: SEM_CACHE })
+  } catch {
+    logger.error('Exclusão não concluída; inventário restante preservado', { rota: ROTA })
+    return NextResponse.json({ error: 'A exclusão não pôde ser concluída. Os dados restantes foram preservados para nova tentativa. Se há um relatório em preparação, aguarde até 30 minutos; se persistir, contate o suporte.' }, { status: 503, headers: SEM_CACHE })
   }
-
-  // ── 2. O que é de terceiro sai por completo ───────────────────────────
-  // `clientes` e `consultas` guardam dados de gente que nunca abriu conta aqui.
-  // O único fundamento para mantê-los era o contrato com quem está saindo.
-  const inventario = await inventariar(admin, user.id, user.email ?? null)
-  resumo.clientesApagados = inventario.clientes
-  resumo.consultasApagadas = inventario.consultas
-
-  await escreverBestEffort(
-    admin.from('consultas').delete().eq('consultor_id', user.id),
-    { operacao: 'excluir consultas do titular', rota: ROTA }
-  )
-  await escreverBestEffort(
-    admin.from('clientes').delete().eq('consultor_id', user.id),
-    { operacao: 'excluir clientes do titular', rota: ROTA }
-  )
-
-  // ── 3. O pedido fica; a identidade sai ────────────────────────────────
-  // Registro fiscal, e a plataforma reteve comissão: os valores e a referência
-  // do Stripe seguram o razão de pé. Some quem a pessoa era.
-  if (user.email) {
-    await escreverBestEffort(
-      admin.from('pedidos')
-        .update({ comprador_email: emailAnonimo(user.id), comprador_nome: MARCA_DE_ANONIMIZACAO })
-        .eq('comprador_email', user.email),
-      { operacao: 'anonimizar compras do titular', rota: ROTA }
-    )
-    resumo.pedidosAnonimizados = inventario.pedidosComoComprador
-  }
-
-  // ── 4. A vitrine pública some ─────────────────────────────────────────
-  // `perfis_publicos` é projeção deliberada (ADR 0028). Deixá-la manteria nome,
-  // cidade e foto de alguém que pediu para sair, na parte mais visível do site.
-  await escreverBestEffort(
-    admin.from('perfis_publicos').delete().eq('id', user.id),
-    { operacao: 'remover projeção pública do titular', rota: ROTA }
-  )
-  await escreverBestEffort(
-    admin.from('servicos_do_parceiro').delete().eq('perfil_id', user.id),
-    { operacao: 'remover serviços do parceiro', rota: ROTA }
-  )
-
-  // ── 5. A conta ────────────────────────────────────────────────────────
-  // Esta anonimização **não** é o que preserva o registro fiscal — quem faz
-  // isso é a FK: `pedidos.vendedor_perfil_id → profiles.id` é `ON DELETE SET
-  // NULL` (20260813050000), então o pedido sobrevive ao perfil sozinho.
-  //
-  // Ela existe para o caminho de falha. O `deleteUser` abaixo cascateia para
-  // `profiles` e leva a linha junto; se ele falhar, o que fica é um perfil já
-  // anonimizado em vez de um perfil intacto de alguém que pediu para sair.
-  // Custa uma escrita e cobre o pior desfecho.
-  await escreverBestEffort(
-    admin.from('profiles').update({
-      nome_completo: MARCA_DE_ANONIMIZACAO,
-      telefone: null, cidade: null, estado: null, bio: null, site: null,
-      profissao: null, area_atuacao: null, registro_profissional: null,
-      linkedin: null, instagram: null, nome_empresa: null,
-      parceiro_visivel: false,
-    }).eq('id', user.id),
-    { operacao: 'anonimizar perfil do titular', rota: ROTA }
-  )
-
-  // O usuário do Auth some por último: enquanto ele existir, a sessão ainda
-  // vale, e uma falha antes daqui deixa a conta alcançável para tentar de novo.
-  const { error: erroDoAuth } = await admin.auth.admin.deleteUser(user.id)
-  if (erroDoAuth) {
-    logger.error('Falha ao remover usuário do Auth', { rota: ROTA, erro: erroDoAuth.message })
-    return NextResponse.json(
-      { error: 'A exclusão começou mas não pôde ser concluída. Fale com o suporte.' },
-      { status: 500 }
-    )
-  }
-
-  logger.info('Conta excluída a pedido do titular', { rota: ROTA, ...resumo })
-  return NextResponse.json({ ok: true, resumo })
 }

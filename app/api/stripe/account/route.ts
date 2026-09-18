@@ -58,16 +58,17 @@ export async function POST(request: Request) {
     // Usa service_role: stripe_account_id é coluna privilegiada protegida
     // por trigger contra escrita direta do usuário.
     const admin = createSupabaseAdminClient()
-    const { error: updateError } = await admin
+    const { data: vinculado, error: updateError } = await admin
       .from('profiles')
       .update({ stripe_account_id: account.id })
       .eq('id', user.id)
+      .select('id').single()
 
-    if (updateError) {
+    if (updateError || !vinculado) {
       logger.error('Failed to store Stripe account ID', {
         route: '/api/stripe/account',
         accountId: account.id,
-        error: updateError.message,
+        falha: 'vinculo_nao_confirmado',
       })
       return NextResponse.json(
         { error: 'Erro ao vincular a conta Stripe ao seu perfil. Tente novamente.' },
@@ -86,18 +87,16 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = await createRouteHandlerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
+  const { data: profile, error } = await supabase.from('profiles').select('stripe_account_id').eq('id', user.id).single()
+  if (error || !profile) return NextResponse.json({ error: 'Perfil indisponível.' }, { status: 503 })
   const stripeAccountId = profile?.stripe_account_id
-
-  const url = new URL(request.url)
-  const accountIdParam = url.searchParams.get('accountId')
-  const accountId = stripeAccountId || accountIdParam
+  const accountId = stripeAccountId
 
   if (!accountId) {
     return NextResponse.json({ has_account: false, message: 'Nenhuma conta Stripe vinculada' })

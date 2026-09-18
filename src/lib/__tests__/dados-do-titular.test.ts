@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  fotosDaConsulta, arquivosParaApagar, emailAnonimo,
+  fotosDaConsulta, arquivosParaApagar as agruparArquivos, emailAnonimo,
   COLUNAS_DE_IMAGEM_DA_CONSULTA, COLUNAS_DE_RELATORIO_DA_CONSULTA,
   BUCKETS_DO_TITULAR, MARCA_DE_ANONIMIZACAO, ORIGEM_DOS_PDFS_VERSIONADOS,
 } from '../dados-do-titular'
+
+const posse = { userId: 'consultor-1', consultas: new Set(['consultor-1']) }
+const arquivosParaApagar = (porBucket: Parameters<typeof agruparArquivos>[0]) => agruparArquivos(porBucket, posse)
 
 /**
  * Uma consulta com arquivo em toda origem conhecida, cada uma na sua forma.
@@ -104,6 +107,19 @@ describe('fotosDaConsulta', () => {
 })
 
 describe('arquivosParaApagar', () => {
+  it.each([
+    ['clientes-fotos', 'outro/foto.jpg'],
+    ['imoveis-fotos', 'consulta-de-outro/planta.png'],
+    ['relatorios', 'consulta-de-outro/relatorio.pdf'],
+    ['clientes-fotos', 'consultor-1\\outro/foto.jpg'],
+    ['clientes-fotos', 'consultor-1/%252e%252e/outro/foto.jpg'],
+    ['clientes-fotos', 'consultor-1/./foto.jpg'],
+  ])('não remove referência forjada em %s: %s', (bucket, path) => {
+    expect(() => arquivosParaApagar({ [bucket]: [path] })).toThrow('Posse')
+  })
+  it('recusa bucket que não pertence ao inventário', () => {
+    expect(() => arquivosParaApagar({ 'privado-alheio': ['consultor-1/foto.jpg'] })).toThrow('Bucket')
+  })
   it('inclui o histórico versionado no inventário de arquivos', () => {
     expect(ORIGEM_DOS_PDFS_VERSIONADOS).toEqual({ tabela: 'relatorio_emissoes', coluna: 'pdf_path', bucket: BUCKETS_DO_TITULAR.relatorios })
   })
