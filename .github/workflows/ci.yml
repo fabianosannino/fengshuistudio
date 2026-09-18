@@ -69,6 +69,8 @@ jobs:
         run: npm run test:rate-limit
       - name: Verificar admissao e retomada duravel do checkout
         run: npm run test:checkout-intents
+      - name: Verificar projecao atomica de assinatura e prazo do beneficio
+        run: npm run test:subscription-sync
 
   quality:
     name: Dependency Security

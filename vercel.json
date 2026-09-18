@@ -18,7 +18,8 @@
       "codex/uploads-validados": false,
       "codex/plano-vigente-b2": false,
       "codex/rate-limit-c3": false,
-      "codex/checkout-duravel-b2": false
+      "codex/checkout-duravel-b2": false,
+      "codex/assinatura-atomica-b2": false
     }
   },
   "crons": [

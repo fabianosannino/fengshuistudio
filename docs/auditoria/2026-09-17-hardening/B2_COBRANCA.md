@@ -189,3 +189,23 @@ Validação local: 1.640 testes em 123 arquivos, typecheck/build aprovados e
 lint sem erros (103 avisos). Preflight de produção: 13 clientes, 17 consultas,
 uma assinatura, duas concessões e nenhuma intenção de exclusão; tabela nova
 ainda inexistente. A migração só será aplicada após os gates remotos passarem.
+
+PR #205 integrado em `f4bad32ba63ec4dcc7dbdfdb7303106653f6f5a0`, CI
+35320387106 verde. Migration remota `20260918074206`: zero tentativas,
+contagens preservadas, RLS ativo, RPCs apenas service_role. Produção READY
+`dpl_8FNKcv8EmoPLaUDnWnBdRBWk84je`, mesmo SHA.
+
+## Assinatura e concessão na mesma transação (ADR 0050)
+
+Reserva por assinatura antes da leitura no provedor; aplicação valida token
+e prazo depois dos locks e grava espelho, benefício e projeção atomicamente.
+Direito de assinatura recebe o fim do período, trial usa seu prazo menor e
+inadimplência não estende o período anterior. Cancelamento preserva outras
+origens; endpoint do titular confirma o estado atual e as escritas secundárias.
+Não conclui reconciliação de faturas/estornos/disputas ou homologação test mode.
+
+Validação local: 1.651 testes em 124 arquivos, typecheck e build aprovados.
+Runner PostgreSQL com 48 verificações, incluindo reprodução do defeito
+anterior, rollback e recusa de prazo infinito. Preflight real: 13 clientes,
+17 consultas, uma assinatura, duas concessões, zero checkouts, zero vínculos
+Customer ambíguos e zero concessões de assinatura sem prazo.

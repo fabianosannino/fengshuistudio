@@ -12,10 +12,9 @@
  *
  * ## Idempotente por construção
  *
- * `sincronizarAssinatura` pode rodar quantas vezes for: ela procura a linha
- * pelo `gateway_subscription_id` e atualiza, ou cria se não existir. Isso é o
- * que permite chamá-la de um webhook reentregue e de uma reconciliação diária
- * sem que a segunda desfaça a primeira.
+ * Reserva a assinatura antes de consultar o Stripe. Uma transação grava o
+ * espelho, a concessão com prazo e a projeção do perfil, consumindo o token.
+ * Retry consulta novamente o estado atual; trabalhador vencido não escreve.
  *
  * A idempotência de `eventos-stripe` evita o trabalho repetido; esta evita que
  * o trabalho repetido faça estrago. As duas são necessárias — uma protege o
@@ -24,17 +23,16 @@
  * ## O que ela não faz
  *
  * Não cria perfil. Assinatura cujo `customer` não corresponde a nenhum perfil
- * é relatada e ignorada: inventar um usuário a partir de um pagamento seria
+ * mantém a entrega pendente: inventar um usuário a partir de um pagamento seria
  * criar dado sem origem, e o caso real — cliente que pagou antes de o perfil
  * existir — pede decisão humana, não palpite.
  */
 
 import type Stripe from 'stripe'
-import { escolhaPeloPreco } from './catalogo-assinaturas'
+import stripeClient from './stripe'
+import { escolhaPeloPreco, modoStripe } from './catalogo-assinaturas'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from './logger'
-import { planoEfetivo, type PlanoEfetivo } from './plano-utils'
-import { conceder, encerrarConcessao } from './concessoes-de-plano'
 
 /** Status do Stripe → vocabulário da coluna `subscriptions.status`. */
 export function statusDaAssinatura(statusDoStripe: string): string {
@@ -74,9 +72,7 @@ export async function planoDaAssinatura(
 }
 
 export type ResultadoDaSincronizacao =
-  | { situacao: 'criada'; linhaId?: string }
-  | { situacao: 'atualizada'; linhaId: string }
-  | { situacao: 'sem_perfil'; customerId: string | null }
+  | { situacao: 'criada' | 'atualizada'; linhaId: string; cancelamentoAgendado: boolean }
   | { situacao: 'falhou'; motivo: string }
 
 function instante(segundos: number | null | undefined): string | null {
@@ -93,151 +89,50 @@ function instante(segundos: number | null | undefined): string | null {
  * permite responder «por que isto mudou às 6 da manhã?».
  */
 export async function sincronizarAssinatura(
-  supabase: SupabaseClient,
-  assinatura: Stripe.Subscription & {
-    start_date?: number
-    current_period_start?: number
-    current_period_end?: number
-  },
-  origem: string
+  supabase: SupabaseClient, subscriptionId: string, origem: string, customerEsperado?: string,
 ): Promise<ResultadoDaSincronizacao> {
-  const customerId = typeof assinatura.customer === 'string'
-    ? assinatura.customer
-    : assinatura.customer?.id ?? null
-
-  if (!customerId) return { situacao: 'sem_perfil', customerId: null }
-
-  const { data: perfil, error: erroPerfil } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_customer_id', customerId)
-    .single()
-
-  if (erroPerfil && erroPerfil.code !== 'PGRST116') return { situacao: 'falhou', motivo: 'Falha ao ler perfil' }
-  if (!perfil) {
-    logger.warn('Assinatura sem perfil correspondente', { origem, customerId, subscriptionId: assinatura.id })
-    return { situacao: 'sem_perfil', customerId }
-  }
-
-  const slug = await planoDaAssinatura(assinatura)
-  const { data: plano, error: erroPlano } = slug
-    ? await supabase.from('plans').select('id, slug').eq('slug', slug).single()
-    : { data: null, error: null }
-
-  if (erroPlano || (slug && !plano && ['active', 'trialing'].includes(assinatura.status))) return { situacao: 'falhou', motivo: 'Falha ao consultar catálogo de planos' }
-
-  const fimDoPeriodo = instante(assinatura.items?.data?.[0]?.current_period_end ?? assinatura.current_period_end)
-  const campos = {
-    user_id: perfil.id,
-    plan_id: plano?.id ?? null,
-    billing_cycle: cicloDaAssinatura(assinatura),
-    status: statusDaAssinatura(assinatura.status),
-    price_paid: valorDaAssinatura(assinatura),
-    cancel_at_period_end: Boolean(assinatura.cancel_at_period_end),
-    current_period_start: instante(assinatura.items?.data?.[0]?.current_period_start ?? assinatura.current_period_start),
-    current_period_end: fimDoPeriodo,
-    next_billing_date: fimDoPeriodo,
-    gateway_subscription_id: assinatura.id,
-  }
-
-  // A linha existente manda: atualizar é o caminho da reentrega e da
-  // reconciliação; criar é o da primeira vez.
-  const { data: existente, error: erroExistente } = await supabase
-    .from('subscriptions')
-    .select('id')
-    .eq('gateway_subscription_id', assinatura.id)
-    .maybeSingle()
-
-  if (erroExistente) return { situacao: 'falhou', motivo: 'Falha ao ler assinatura' }
-  if (existente) {
-    const { error } = await supabase.from('subscriptions').update(campos).eq('id', existente.id)
-    if (error) {
-      logger.error('Não foi possível atualizar a assinatura', { origem, subscriptionId: assinatura.id, error: error.message })
-      return { situacao: 'falhou', motivo: error.message }
+  let token: string | null = null
+  let aplicada = false
+  try {
+    const reserva = await supabase.rpc('reservar_sincronizacao_assinatura', { p_subscription: subscriptionId })
+    if (reserva.error || typeof reserva.data !== 'string') return { situacao: 'falhou', motivo: 'Sincronização ocupada ou indisponível' }
+    token = reserva.data
+    // Read AFTER claiming this subscription, including for cron/admin callers.
+    const assinatura = await stripeClient.subscriptions.retrieve(subscriptionId, {}, { timeout: 20_000, maxNetworkRetries: 1 }) as Stripe.Subscription & {
+      start_date?: number; current_period_start?: number; current_period_end?: number
     }
-    await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, assinatura.id, origem)
-    return { situacao: 'atualizada', linhaId: existente.id }
-  }
-
-  // Assinaturas distintas e concessões gratuitas coexistem. Um evento novo
-  // não prova que a assinatura vizinha foi cancelada pelo Stripe.
-  const { data: criada, error } = await supabase
-    .from('subscriptions')
-    .insert({ ...campos, started_at: instante(assinatura.start_date) ?? new Date().toISOString() })
-    .select('id')
-    .single()
-
-  if (error) {
-    logger.error('Não foi possível criar a assinatura', { origem, subscriptionId: assinatura.id, error: error.message })
-    return { situacao: 'falhou', motivo: error.message }
-  }
-
-  await aplicarPlanoNoPerfil(supabase, perfil.id, slug, campos.status, assinatura.id, origem)
-  logger.info('Assinatura sincronizada', {
-    origem, subscriptionId: assinatura.id, linhaId: criada?.id, plano: slug,
-  })
-  return { situacao: 'criada', linhaId: criada?.id }
-}
-
-/**
- * Traduz o estado da assinatura em concessão de plano.
- *
- * ## Por que não escreve em `profiles.plano`
- *
- * Escrevia, e o resultado foi o defeito de 13/08: cancelar uma assinatura do
- * Simples rebaixou para o gratuito um perfil que tinha Profissional por chave
- * de ativação. A coluna guardava **o quê** sem guardar **de onde**, então o
- * cancelamento apagou um direito que não vinha dali.
- *
- * Agora a assinatura administra **a própria concessão**, identificada pelo
- * `sub_...`. O que vem de outra fonte não é tocado, e `profiles.plano` é
- * recalculado a partir de tudo que está vivo — ver `concessoes-de-plano`.
- *
- * ## Duas ausências diferentes
- *
- * **Assinatura cancelada encerra a concessão dela.** É o desfecho, e vale para
- * qualquer caminho que chegue aqui — webhook, fim de período, reconciliação
- * que descobre uma assinatura já encerrada no Stripe.
- *
- * **Plano não identificado não muda nada.** Encerrar por não ter sabido
- * reconhecer o preço tiraria recurso de quem pagou — é o oposto do caso acima,
- * e por isso os dois estão escritos lado a lado.
- */
-async function aplicarPlanoNoPerfil(
-  supabase: SupabaseClient,
-  perfilId: string,
-  slug: string | null,
-  statusNoBanco: string,
-  subscriptionId: string,
-  origem: string
-): Promise<void> {
-  if (statusNoBanco === 'cancelled') {
-    const encerrou = await encerrarConcessao(
-      supabase,
-      {
-        userId: perfilId,
-        origem: 'assinatura',
-        referencia: subscriptionId,
-        motivo: 'Assinatura cancelada no Stripe',
+    const customer = typeof assinatura.customer === 'string' ? assinatura.customer : assinatura.customer?.id
+    const live = modoStripe(process.env.STRIPE_SECRET_KEY)
+    if (!customer || assinatura.id !== subscriptionId || live === null || assinatura.livemode !== live
+      || (customerEsperado && customer !== customerEsperado)) throw new Error('Assinatura incompatível')
+    const slug = await planoDaAssinatura(assinatura)
+    if (!['active','trialing','past_due','unpaid','canceled','paused','incomplete','incomplete_expired'].includes(assinatura.status)
+      || (!slug && ['active','trialing'].includes(assinatura.status))) throw new Error('Catálogo ou estado não identificado')
+    const item = assinatura.items?.data?.[0]
+    const { data, error } = await supabase.rpc('aplicar_sincronizacao_assinatura', {
+      p_subscription: subscriptionId, p_token: token,
+      p_dados: {
+        customer, plano: slug, ciclo: cicloDaAssinatura(assinatura), status: assinatura.status,
+        valor_centavos: slug ? item?.price?.unit_amount ?? null : null,
+        started_at: instante(assinatura.start_date),
+        period_start: instante(item?.current_period_start ?? assinatura.current_period_start),
+        period_end: instante(item?.current_period_end ?? assinatura.current_period_end),
+        trial_end: instante(assinatura.trial_end), cancel_at_period_end: Boolean(assinatura.cancel_at_period_end),
       },
-      origem
-    )
-    if (!encerrou) throw new Error('Falha ao encerrar concessão')
-    return
+    })
+    if (error || !data || !['criada','atualizada'].includes(data.situacao) || typeof data.linhaId !== 'string'
+      || typeof data.cancelamentoAgendado !== 'boolean') throw new Error('Persistência indisponível')
+    aplicada = true
+    return data as ResultadoDaSincronizacao
+  } catch {
+    logger.error('Sincronização de assinatura não confirmada', { origem, subscriptionId })
+    return { situacao: 'falhou', motivo: 'Não foi possível confirmar a sincronização' }
+  } finally {
+    if (token && !aplicada) {
+      try {
+        const { error } = await supabase.rpc('liberar_sincronizacao_assinatura', { p_subscription: subscriptionId, p_token: token })
+        if (error) logger.warn('Liberação de sincronização não confirmada', { origem, subscriptionId })
+      } catch { logger.warn('Liberação de sincronização indisponível', { origem, subscriptionId }) }
+    }
   }
-
-  if (!slug || !['active', 'trial'].includes(statusNoBanco)) return
-
-  const concedeu = await conceder(
-    supabase,
-    {
-      userId: perfilId,
-      plano: planoEfetivo(slug) as PlanoEfetivo,
-      origem: 'assinatura',
-      referencia: subscriptionId,
-      motivo: `Assinatura ${statusNoBanco} no Stripe`,
-    },
-    origem
-  )
-  if (!concedeu) throw new Error('Falha ao conceder plano')
 }
