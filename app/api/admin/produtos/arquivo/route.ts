@@ -38,7 +38,8 @@ const ROUTE = '/api/admin/produtos/arquivo'
 const MAX_NOME_DO_ARQUIVO = 120
 
 export async function POST(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 10, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 10, windowMs: 60_000, escopo: 'POST:/api/admin/produtos/arquivo', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return NextResponse.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()

@@ -30,7 +30,8 @@ import { pedidoParaOComprador } from '../../../../src/lib/pedido-publico'
 const ROUTE = '/api/pedidos/minhas-compras'
 
 export async function GET(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000, escopo: 'GET:/api/pedidos/minhas-compras' })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429 })
   }

@@ -17,7 +17,8 @@ const ROTA = '/api/conta/dados'
 const SEM_CACHE = { 'Cache-Control': 'private, no-store' }
 
 export async function GET(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 5, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 5, windowMs: 60_000, escopo: 'GET:/api/conta/dados', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
   const sessao = await createRouteHandlerClient()
   const { data: { user } } = await sessao.auth.getUser()
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
 
 /** Failure stops the sequence. Keep metadata and authentication for retry. */
 export async function POST(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 3, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 3, windowMs: 60_000, escopo: 'POST:/api/conta/dados', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
   const sessao = await createRouteHandlerClient()
   const { data: { user } } = await sessao.auth.getUser()

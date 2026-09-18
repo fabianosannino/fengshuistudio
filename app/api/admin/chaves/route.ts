@@ -27,7 +27,8 @@ function generateKey(): string {
 // GET — list keys with optional filters
 export async function GET(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 30, windowMs: 60_000, escopo: 'GET:/api/admin/chaves', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()
@@ -99,7 +100,8 @@ export async function GET(request: Request) {
 // POST — generate new keys
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 10, windowMs: 60_000, escopo: 'POST:/api/admin/chaves', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()
@@ -165,7 +167,8 @@ export async function POST(request: Request) {
 // PATCH — cancel a key
 export async function PATCH(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 20, windowMs: 60_000, escopo: 'PATCH:/api/admin/chaves', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()

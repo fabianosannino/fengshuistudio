@@ -13,7 +13,8 @@ import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 
 export async function GET(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success: rateLimitOk } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const { success: rateLimitOk, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 30, windowMs: 60_000, escopo: 'GET:/api/subscription' })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!rateLimitOk) {
     return NextResponse.json({ error: 'Rate limit' }, { status: 429 })
   }

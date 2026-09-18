@@ -7,7 +7,8 @@ import { logger } from '../../../../src/lib/logger'
 
 export async function GET(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 30, windowMs: 60_000, escopo: 'GET:/api/admin/auditoria', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
   const sessao = await createRouteHandlerClient()

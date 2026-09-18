@@ -10,7 +10,8 @@ const ROUTE = '/api/consultas/bagua-planta'
 const BUCKET = 'imoveis-fotos'
 
 export async function POST(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000, escopo: 'POST:/api/consultas/bagua-planta', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return NextResponse.json({ error: 'Muitas requisições. Tente novamente.' }, { status: 429, headers: { 'Retry-After': '60' } })
   try {
     const supabase = await createRouteHandlerClient()

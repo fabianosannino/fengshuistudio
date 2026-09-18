@@ -136,7 +136,8 @@ async function corrigir(
 
 async function executar(request: Request, aplicar: boolean) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 5, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 5, windowMs: 60_000, escopo: 'EXEC:/api/admin/reconciliacao', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

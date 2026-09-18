@@ -44,7 +44,8 @@ const DESTINO = '/produtos'
 export async function GET(request: Request) {
   const resposta = NextResponse.redirect(new URL(DESTINO, request.url), 302)
 
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000, escopo: 'GET:/api/afiliado/clique' })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     // Mesmo estourando o limite o visitante chega à loja. Recusar a navegação
     // por causa da nossa contabilidade seria cobrar dele o nosso problema.

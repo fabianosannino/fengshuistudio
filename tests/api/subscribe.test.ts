@@ -5,12 +5,12 @@ import { COMBINACOES_ASSINATURA } from '../../src/lib/catalogo-assinaturas'
 import { PRECOS_DOS_PLANOS } from '../../src/lib/plano-utils'
 
 const mocks = vi.hoisted(() => ({ user: { id: 'owner', email: 'fixture@example.invalid' } as { id: string; email: string } | null, customerId: 'cus_antigo' as string | null,
-  preco: vi.fn(), retrieve: vi.fn(), create: vi.fn(), checkout: vi.fn(), subs: vi.fn(), update: vi.fn(), perfilErro: false }))
+  preco: vi.fn(), retrieve: vi.fn(), create: vi.fn(), checkout: vi.fn(), subs: vi.fn(), update: vi.fn(), perfilErro: false, rate: vi.fn() }))
 vi.mock('../../src/lib/stripe', () => ({ default: {
   prices: { retrieve: mocks.preco }, customers: { retrieve: mocks.retrieve, create: mocks.create },
   subscriptions: { list: mocks.subs }, checkout: { sessions: { create: mocks.checkout } },
 } }))
-vi.mock('../../src/lib/rate-limit', () => ({ rateLimit: async () => ({ success: true }), ipDaRequisicao: () => '127.0.0.1' }))
+vi.mock('../../src/lib/rate-limit', () => ({ rateLimit: mocks.rate, ipDaRequisicao: () => '127.0.0.1' }))
 vi.mock('../../src/lib/supabase-route', () => ({ createRouteHandlerClient: async () => ({
   auth: { getUser: async () => ({ data: { user: mocks.user } }) },
   from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { stripe_customer_id: mocks.customerId }, error: mocks.perfilErro ? {} : null }) }) }) }),
@@ -28,6 +28,7 @@ function precoValido(plano: 'simples' | 'profissional' = 'profissional', anual =
 }
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.rate.mockResolvedValue({ success: true })
   mocks.user = { id: 'owner', email: 'fixture@example.invalid' }; mocks.customerId = 'cus_antigo'; mocks.perfilErro = false
   process.env.STRIPE_SECRET_KEY = 'rk_test_fixture'
   process.env.NEXT_PUBLIC_APP_URL = 'https://example.invalid'
@@ -43,6 +44,17 @@ beforeEach(() => {
 })
 
 describe('checkout de assinatura estrito', () => {
+  it('indisponibilidade do limitador recusa antes de acessar Stripe ou gravar', async () => {
+    mocks.rate.mockResolvedValue({ success: false, indisponivel: true })
+    const response = await enviar(mensal)
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('30')
+    expect(mocks.preco).not.toHaveBeenCalled()
+    expect(mocks.create).not.toHaveBeenCalled()
+    expect(mocks.checkout).not.toHaveBeenCalled()
+    expect(mocks.update).not.toHaveBeenCalled()
+    expect(mocks.rate).toHaveBeenCalledWith('127.0.0.1', expect.objectContaining({ escopo: 'POST:/api/stripe/subscribe', exigirCompartilhado: true }))
+  })
   it.each([null, [], {}, { plan_slug: ['profissional'], billing_cycle: 'monthly' }, { plan_slug: 'free', billing_cycle: 'monthly' }, { plan_slug: 'profissional', billing_cycle: 'weekly' }, { ...mensal, price: 'forjado' }])('recusa entrada inválida %j', async body => {
     expect((await enviar(body)).status).toBe(400)
     expect(mocks.preco).not.toHaveBeenCalled()

@@ -54,3 +54,13 @@ com a API direta de Storage e a retenção de versões. Não fecha C3 integralme
 PR #202 integrado em `be665b0f6d44a8fc80a0f92cf6ba00360578c8fa`, CI
 35316239827 verde, 1.585 testes em 120 arquivos. Produção READY
 `dpl_79StutQhzf3taBHSam6NMXc9EwM1`, mesmo SHA.
+
+Quarto pacote: rate limit atômico no Redis, escopo por operação e HMAC em vez
+do IP em texto. Operações sensíveis protegidas retornam 503 quando o contador
+compartilhado está indisponível em produção; leituras de menor risco admitem
+fallback limitado a 10 mil chaves por instância. Runner Redis isolado incluído
+no CI. Decisão, impacto de disponibilidade e limites no ADR 0048.
+
+Verificação local do quarto pacote: 1.615 testes em 121 arquivos, typecheck e
+build aprovados, lint sem erros (103 avisos). Oito verificações Redis reais,
+incluindo 32 trabalhadores concorrentes; nenhuma credencial de produção.
