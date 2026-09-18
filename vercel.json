@@ -27,7 +27,8 @@
       "codex/logs-minimizados-c3": false,
       "codex/uploads-limitados-c3": false,
       "codex/verificacao-segredos-a2": false,
-      "codex/metodos-versionados-d0": false
+      "codex/metodos-versionados-d0": false,
+      "codex/marcacoes-planta-usabilidade": false
     }
   },
   "crons": [

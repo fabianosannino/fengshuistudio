@@ -88,7 +88,7 @@ concluído depende de sua validação de domínio e da jornada correspondente.
 
 | ID | Entrega / estado | Aceite e próximo passo |
 |---|---|---|
-| D0 | Primeira base de resultados versionados — implementada; cenários locais aprovados | Mesmos adaptadores na bancada/relatório; estados e limitações explícitos; snapshot em novas emissões; experimento não determina recomendação. Cenários D0-01–05 e ADR 0056; a execução final de CI/publicação é registrada no PR desta entrega |
+| D0 | Primeira base de resultados versionados — publicada no PR #214 | Mesmos adaptadores na bancada/relatório; estados e limitações explícitos; snapshot em novas emissões; experimento não determina recomendação. Cenários D0-01–05 e ADR 0056; CI 35339415046/35339673192 verde, deployment `dpl_DPf2jjNW6dkrkTKtcTFaq3ovxqyN` READY para `4cbd344` |
 | D1 | Execuções independentes — pendente, próxima implementação | Método/variante/versão por execução, idempotência, concorrência, fonte imutável, relatório vinculado, comparação e obsolescência; ownership/RLS/exportação/exclusão desde o início |
 | D2 | Clássico Essencial — pendente | Fechar orientação e sua incerteza/referência; Ba Zhai por morador, ambientes e mobiliário persistidos; Formas e planta semântica no escopo declarado; vetores independentes e piloto |
 | D3 | Fei Xing completo — pendente | Variante e fontes definidas, 24 Montanhas/polaridade/voos e regras aplicáveis, período exato e casos limítrofes; validar cartas externas antes de remover o status experimental |
@@ -106,6 +106,15 @@ estado derivado e indicação textual de experimental (não apenas por cor).
 
 ## E–F e dependências complementares
 
+- **E — edição de falta/excesso:** defeito reproduzido: começar um novo desenho
+  sobre uma marcação movia a anterior; o editor só tratava eventos de mouse.
+  A correção separa criar/editar, compartilha gestos de ponteiro entre bancada
+  e tela cheia, permite comparar a imagem sem sobreposições e preserva as
+  bordas. Cenários E-MARC-01–06 em `CENARIOS_DE_TESTE.md`; 1.827 testes em 133
+  arquivos aprovados (`--maxWorkers=2`), TypeScript/build aprovados e lint sem
+  erros (94 avisos). A homologação visual
+  com mouse e toque físico continua pendente; testes de eventos em jsdom não
+  comprovam captura nativa, rolagem, rasterização ou conforto em dispositivo.
 - **E:** conjunto de plantas e tolerâncias de referência, edição semântica
   manual, teclado, conflitos/autosave/desfazer, medição em dispositivo definido
   e piloto com consultor/usuário leigo. Não promover métodos avançados sem
