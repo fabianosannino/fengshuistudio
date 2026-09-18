@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { useParams } from 'next/navigation'
 import FlowLayout from '../../../components/FlowLayout'
+import ResumoMedicaoFachada from '../../../components/ResumoMedicaoFachada'
 import {
   LIMITE_ANALISES,
   comparacaoPermitida,
@@ -64,6 +65,7 @@ function Versao({ analise }: { analise: AnaliseSalva }) {
           : 'Sem leitura confirmada'}
         .
       </p>
+      <ResumoMedicaoFachada valor={analise.fonte.consulta.bagua_entrada?.orientacao_medicao} origem={o.origem}/>
       <p>
         As informações abaixo pertencem à versão salva. A consulta atual pode
         ter outros dados.

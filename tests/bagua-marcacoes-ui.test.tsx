@@ -231,3 +231,68 @@ describe('E-POL-03 — fluxo completo da página, confirmações e regressões',
     fireEvent.click(fs.getByRole('button',{name:'✓ OK — Voltar'}))
   })
 })
+
+
+describe('D2-ORI — três leituras na página real', () => {
+  async function configurar() {
+    mocks.restaurado = { ...fonte, escola: 'bussola', etapa: 'configurar', x: 300, y: 700 }
+    render(<BaguaPlanta />)
+    fireEvent.click(await screen.findByRole('button', {name: /Continuar análise/}))
+    fireEvent.click(await screen.findByRole('button', {name: /Assistente de 3 leituras/}))
+  }
+  function leituras(valores: string[]) {
+    valores.forEach((v,i)=>fireEvent.change(screen.getByLabelText(`Leitura ${i+1} da fachada`),{target:{value:v}}))
+  }
+  it('salva originais e conversão, exige confirmação e restaura os valores ao reabrir',async()=>{
+    vi.spyOn(HTMLCanvasElement.prototype,'toDataURL').mockReturnValue('data:image/png;base64,sintetica')
+    await configurar();leituras(['358','0','2'])
+    fireEvent.click(screen.getByRole('button',{name:'Usar esta média'}))
+    expect(screen.getByRole('button',{name:/Continuar → Marcar entrada/})).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/Declinação magnética do local/),{target:{value:'-20'}})
+    fireEvent.click(screen.getByRole('button',{name:'Converter para Norte verdadeiro'}))
+    expect(screen.getByLabelText('Registro das medições de fachada')).toHaveTextContent('358° · 0° · 2° em Norte magnético')
+    expect(screen.getByLabelText('Registro das medições de fachada')).toHaveTextContent('340.0° em Norte verdadeiro')
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar fachada e referência de Norte'}))
+    fireEvent.click(screen.getByRole('button',{name:/Continuar → Marcar entrada/}))
+    fireEvent.click(await screen.findByRole('button',{name:'Calcular Ba Gua →'}))
+    await waitFor(()=>expect(mocks.salvos.some(v=>v.bagua_entrada?.orientacao_medicao)).toBe(true))
+    fireEvent.click(screen.getByRole('button',{name:/Salvar e continuar análise/}))
+    await waitFor(()=>expect(mocks.salvos.at(-1)?.bagua_entrada?.finalizada_em).toBeTruthy())
+    const gravada=mocks.salvos.at(-1)!.bagua_entrada
+    expect(gravada.orientacao_medicao).toMatchObject({leituras:[358,0,2],referencia:'magnetico',conversao:{referencia:'verdadeiro',declinacao:-20}})
+    expect(gravada.orientacao_graus).toBe(340)
+    cleanup();mocks.restaurado=gravada
+    render(<BaguaPlanta/>);fireEvent.click(await screen.findByRole('button',{name:/Continuar análise/}))
+    fireEvent.click(await screen.findByRole('button',{name:'Revisar fachada e ano do imóvel'}))
+    fireEvent.click(await screen.findByRole('button',{name:/Assistente de 3 leituras/}))
+    expect(screen.getByLabelText('Leitura 1 da fachada')).toHaveValue(358)
+    expect(screen.getByLabelText('Referência das três leituras')).toHaveValue('magnetico')
+    expect(screen.getByLabelText('Registro das medições de fachada')).toHaveTextContent('340.0° em Norte verdadeiro')
+    fireEvent.click(screen.getByRole('button',{name:'Usar esta média'}))
+    expect(screen.getByLabelText('Registro das medições de fachada')).not.toHaveTextContent('Conversão aplicada')
+    expect(screen.getByRole('button',{name:/Continuar → Marcar entrada/})).toBeDisabled()
+    fireEvent.change(document.getElementById('input-orientacao')!,{target:{value:'90'}})
+    expect(screen.queryByLabelText('Registro das medições de fachada')).not.toBeInTheDocument()
+  })
+  it('não aceita fora da faixa/média indefinida e alerta sobre limites e arredondamento',async()=>{
+    await configurar();leituras(['360','0','1'])
+    expect(screen.getByRole('alert')).toHaveTextContent('menos de 360')
+    expect(screen.queryByRole('button',{name:'Usar esta média'})).not.toBeInTheDocument()
+    leituras(['0','120','240'])
+    expect(screen.queryByRole('button',{name:'Usar esta média'})).not.toBeInTheDocument()
+    leituras(['22.4','22.5','22.6']);fireEvent.click(screen.getByRole('button',{name:'Usar esta média'}))
+    expect(screen.getByText(/abrangem mais de um setor/)).toBeInTheDocument()
+    expect(screen.getByText(/não mede a precisão/)).toBeInTheDocument()
+    leituras(['22.49','22.49','22.49']);fireEvent.click(screen.getByRole('button',{name:'Usar esta média'}))
+    expect(screen.getByText(/arredondamento para uma casa decimal muda/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button',{name:'Verdadeiro (mapa)'}))
+    expect(screen.queryByLabelText('Registro das medições de fachada')).not.toBeInTheDocument()
+  })
+  it('preserva média legada sem fabricar três leituras',async()=>{
+    mocks.restaurado={...fonte,etapa:'configurar',escola:'bussola',orientacao_graus:180,orientacao_origem:'tres_leituras'}
+    render(<BaguaPlanta/>);fireEvent.click(await screen.findByRole('button',{name:/Continuar análise/}))
+    expect(await screen.findByText(/Leituras originais não disponíveis/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button',{name:/Assistente de 3 leituras/}))
+    expect(screen.getByLabelText('Leitura 1 da fachada')).toHaveValue(null)
+  })
+})

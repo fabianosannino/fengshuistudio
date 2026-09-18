@@ -70,13 +70,21 @@ async function emitir() {
 }
 
 describe('emissão pela página', () => {
+  it('D2-ORI — relatório exibe leituras, referência e limitações da medição preservada',async()=>{
+    bagua={escola:'bussola',orientacao_graus:22.5,orientacao_estado:'confirmada',orientacao_origem:'tres_leituras',orientacao_referencia:'magnetico',orientacao_confirmada_em:'2026-09-18T12:00:00Z',orientacao_medicao:{versao:1,leituras:[22.4,22.5,22.6],referencia:'magnetico',registrada_em:'2026-09-18T12:00:00Z'}}
+    bagua.analise_referencia=referenciaDaAnalise(bagua as BaguaEntrada)
+    render(<Relatorio/>);fireEvent.click(await screen.findByRole('button',{name:'Visualizar Relatório'}))
+    expect(screen.getByLabelText('Registro das medições de fachada')).toHaveTextContent('22.4° · 22.5° · 22.6° em Norte magnético')
+    expect(screen.getByText(/abrangem mais de um setor/)).toBeInTheDocument()
+  })
+
   it('D1 — emite a versão selecionada e inclui sua identificação na prévia',async()=>{
     mocks.busca='analise=00000000-0000-4000-8000-000000000040'
     await emitir()
     await waitFor(()=>expect(respostas.preparo).toHaveLength(1))
     expect(respostas.preparo[0].analise_id).toBe('00000000-0000-4000-8000-000000000040')
     expect(mocks.fetch).toHaveBeenCalledWith(expect.stringContaining('&analise=00000000-0000-4000-8000-000000000040'))
-    expect(screen.getByText(/Relatório da análise preservada/)).toBeInTheDocument()
+    expect(screen.getByText(/Relatório da análise preservada/)).toHaveTextContent('data de referência desta nova emissão')
   })
   it('D0-02/04 — relatório mostra os resultados por método e a limitação experimental', async () => {
     bagua = { escola: 'bussola', orientacao_graus: 0, orientacao_referencia: 'magnetico', orientacao_estado: 'confirmada', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T12:00:00Z' }

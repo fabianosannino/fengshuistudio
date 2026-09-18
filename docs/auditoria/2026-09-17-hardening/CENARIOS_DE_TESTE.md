@@ -146,6 +146,29 @@ visual pendente: duas versões sintéticas, desktop/celular, comparação, naveg
 de volta, falha de rede e PDF rasterizado da versão histórica. Não usar dados
 reais para exclusão/testes financeiros nem declarar jsdom como aceite de toque.
 
+Execução remota D1: PR #218, CI 35381626358/35381948122 aprovados; runner de
+autorização com **195 verificações PostgreSQL/PostgREST**. Migration aplicada
+sem backfill, deploy `dpl_4Tjqjg9UnCTV9bopoUiiRoYqFxoZ` READY. RLS/permissões e
+smokes anônimos conferidos; os aceites de dispositivo/visual continuam pendentes.
+
+## D2-ORI — originais e dispersão da fachada
+
+| ID | Contexto → ação → resultado esperado | Execução e evidência |
+|---|---|---|
+| D2-ORI-01 | 358°, 0°, 2° → aplicar → média 0°, dispersão 2°, originais/referência preservados; confirmar, salvar, finalizar e reabrir | `src/lib/__tests__/medicao-fachada.test.ts` e página real em `tests/bagua-marcacoes-ui.test.tsx`; I/O e imagem simulados |
+| D2-ORI-02 | Vazio, duas/quatro leituras, NaN/infinito, negativo, 360° ou 0/120/240 → avaliar → nenhuma direção inventada e nenhuma aplicação permitida | Testes puros e página, inclusive números que as propriedades HTML sozinhas não impediam |
+| D2-ORI-03 | 7,4/7,5/7,6 e 22,4/22,5/22,6 → aplicar → distinguir Montanha e setor; 22,49 repetido → advertir arredondamento; 0/10/20 → recomendar repetir | Vetores analíticos e textos da página; alertas geométricos, sem aprovar variante clássica ou inventar precisão instrumental |
+| D2-ORI-04 | Originais magnéticos, declinação −20° → converter para verdadeiro → 340°, originais intactos; reabrir/aplicar originais → referência magnética, confirmação invalidada | Testes puros/página; conversão volta à referência original sem acumular deslocamentos. Edição manual de grau/referência remove a associação anterior |
+| D2-ORI-05 | Origem três leituras legada sem amostras ou dados inválidos → reabrir → média preservada e lacuna declarada, campos vazios | Testes puros/página; sem backfill, sem fabricar amostras |
+| D2-ORI-06 | Histórico/relatório com medição salva → abrir/emitir fonte → originais e conversão corretos, limites no texto, versão antiga sem campo continua compatível | Testes puros, `tests/historico-analises-ui.test.tsx` e `tests/relatorio-emissao-ui.test.tsx`; também confere o aviso de data da nova emissão histórica |
+| D2-ORI-07 | Rever ADR, anexo de métodos, inventário e roadmap → documentação corresponde ao código e mantém pendências A–C/D2–D4 | Revisão textual manual; preview desativada, entrada/template versionados, fórmulas dos adaptadores preservadas |
+
+Execução final local: **1.905 testes em 142 arquivos aprovados**, incluindo 23
+novos casos. TypeScript aprovado e lint sem erros, com os mesmos 94 avisos
+preexistentes. CI do commit exato deve ser vinculado ao PR. Homologação física permanece aberta:
+conferir os controles com mouse/toque, bússola real, interferência, bordas de
+classificação e leitura do PDF. Dispersão observada não mede erro do instrumento.
+
 ## A–C — pendências de aceite que não podem ser esquecidas
 
 Todos os cenários abaixo permanecem **pendentes de execução completa**. Usar
