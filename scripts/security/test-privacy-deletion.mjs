@@ -117,5 +117,54 @@ try {
   await waitForLock('privacy_visit'); checks++
   imageUpload.commit(); await imageUpload.done
   equal((await deleteVisit.done).err.includes('arquivos_da_consulta_pendentes'),true,'consultation retained until files removed')
+  // The legacy own-root writes above reproduce the decoder bypass. Close it
+  // without relying on mutable metadata that an authenticated caller controls.
+  sql(readFileSync(new URL('../../supabase/migrations/20260918091732_validated_storage_writes.sql',import.meta.url),'utf8'))
+  sql(auth(5,object('imoveis-fotos',25,'during-rollout.png')))
+  equal(sql(`select count(*) from storage.objects where name='${id(25)}/during-rollout.png'`),'1','Preparation migration remains compatible with old endpoints')
+  sql(readFileSync(new URL('../../supabase/migrations/20260918092147_require_validated_image_endpoints.sql',import.meta.url),'utf8'))
+  sql(`insert into profiles(id) select ('00000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid from generate_series(101,110) n;
+    insert into consultas values('${id(201)}','${id(101)}'),('${id(202)}','${id(102)}'),('${id(203)}','${id(103)}');
+    grant usage on schema storage to anon; grant select,insert,update on storage.objects to anon;
+    create policy future_permissive_policy on storage.objects for all to anon using(true) with check(true);`)
+  for (const bucket of ['clientes-fotos','imoveis-fotos','produtos-imagens']) {
+    const root=bucket==='imoveis-fotos'?201:101
+    rejects(auth(101,object(bucket,root,'direct.png')),'row-level security')
+    rejects(`set role anon;${object(bucket,root,'direct.png')}`,'row-level security')
+    sql(`set role service_role;${object(bucket,root,'validated.png')}`)
+    equal(sql(auth(101,`update storage.objects set name='${id(root)}/replacement.png' where bucket_id='${bucket}' and name='${id(root)}/validated.png' returning id`)),'','Direct update cannot replace decoded object')
+    rejects(auth(101,`${object(bucket,root,'validated.png')} on conflict(bucket_id,name) do update set name=excluded.name`),'row-level security')
+    equal(sql(auth(101,`select count(*) from storage.objects where bucket_id='${bucket}' and name='${id(root)}/validated.png'`)),'1','Existing read remains available')
+    equal(sql(auth(101,`delete from storage.objects where bucket_id='${bucket}' and name='${id(root)}/validated.png' returning id`)),'','Direct delete cannot remove historical images')
+  }
+  sql(auth(101,object('unrelated',101,'draft.bin')))
+  rejects(auth(101,`update storage.objects set bucket_id='clientes-fotos' where bucket_id='unrelated'`),'row-level security')
+  equal(sql(auth(101,`update storage.objects set bucket_id='unrelated' where bucket_id='clientes-fotos' returning id`)),'','Moving out does not bypass update guard')
+  rejects(`set role service_role;${object('clientes-fotos',999,'missing.png')}`,'raiz_de_arquivo_indisponivel')
+  rejects(`set role service_role;${object('imoveis-fotos',999,'missing.png')}`,'raiz_de_arquivo_indisponivel')
+  rejects(`set role service_role;insert into storage.objects(bucket_id,name) values('relatorios','bad/root.pdf')`,'raiz_de_arquivo_invalida')
+  rejects(`set role service_role;${object('clientes-fotos',6,'deleted.png')}`,'conta_em_exclusao')
+  sql(`set role service_role;${object('relatorios',201,'emissao.pdf')}`)
+  equal(sql(`select count(*) from storage.objects where bucket_id='relatorios' and name='${id(201)}/emissao.pdf'`),'1','Report service upload keeps its valid owner')
+  const serviceUpload=session(`set role service_role;begin;${object('clientes-fotos',104,'race.png')}`,true)
+  await serviceUpload.ready
+  const admission=session(`set role service_role;set application_name='service_deletion'; select iniciar_exclusao_do_titular('${id(104)}')`)
+  await waitForLock('service_deletion');checks++
+  serviceUpload.commit();equal((await serviceUpload.done).code,0,'Service upload commits before deletion admission')
+  equal((await admission.done).out,'pronto','Deletion begins after committed upload is inventoryable')
+  rejects(`set role service_role;${object('clientes-fotos',104,'later.png')}`,'conta_em_exclusao')
+  const admitting=session(`set role service_role;begin;select iniciar_exclusao_do_titular('${id(105)}')`,true)
+  await admitting.ready
+  const serviceWriter=session(`set role service_role;set application_name='service_writer';${object('clientes-fotos',105,'late.png')}`)
+  await waitForLock('service_writer');checks++
+  admitting.commit();await admitting.done
+  equal((await serviceWriter.done).err.includes('conta_em_exclusao'),true,'In-flight writer sees committed deletion intent')
+  const removingParent=session(`begin;delete from consultas where id='${id(202)}'`,true)
+  await removingParent.ready
+  const lateReport=session(`set role service_role;set application_name='late_report';${object('relatorios',202,'late.pdf')}`)
+  await waitForLock('late_report');checks++
+  removingParent.commit();await removingParent.done
+  equal((await lateReport.done).err.includes('raiz_de_arquivo_indisponivel'),true,'Report upload cannot recreate an orphan after consultation deletion')
+  equal(sql(`select count(*) from storage.objects where name in('${id(105)}/late.png','${id(202)}/late.pdf')`),'0','No orphan metadata remains')
   process.stdout.write(JSON.stringify({passed:checks,database:'PostgreSQL 17',concurrentDeletion:true,storageApiTested:false})+'\n')
 } finally { try {docker('rm','-f','-v',container)} catch { /* Only the random task-owned container. */ } }

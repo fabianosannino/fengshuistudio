@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { validateUUID } from '../../../../src/lib/validation'
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     // Cada versão tem um objeto próprio. Rascunhos e emissões anteriores não
     // perdem sua imagem ao enviar outra planta ou ao falhar a gravação do JSON.
     const path = `${consultaId}/bagua-planta/${randomUUID()}.${imagem.extensao}`
-    const { error: uploadError } = await supabase.storage.from(BUCKET)
+    const { error: uploadError } = await createSupabaseAdminClient().storage.from(BUCKET)
       .upload(path, imagem.bytes, { contentType: imagem.mime, upsert: false })
     if (uploadError) return NextResponse.json({ error: 'Não foi possível enviar a planta.' }, { status: 503 })
     return NextResponse.json({ path })

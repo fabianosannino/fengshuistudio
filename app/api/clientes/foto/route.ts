@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { validateUUID } from '../../../../src/lib/validation'
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
     const imagem = await normalizarImagem(form.get('foto'))
     const path = `${user.id}/${clienteId}/${randomUUID()}.${imagem.extensao}`
-    const { error: uploadError } = await supabase.storage.from(BUCKET_CLIENTES)
+    const { error: uploadError } = await createSupabaseAdminClient().storage.from(BUCKET_CLIENTES)
       .upload(path, imagem.bytes, { contentType: imagem.mime, upsert: false })
     if (uploadError) return NextResponse.json({ error: 'Não foi possível enviar a foto.' }, { status: 503 })
     // Troca condicionada ao valor lido; uma segunda aba não sobrescreve em silêncio.
@@ -71,7 +72,7 @@ export async function DELETE(request: Request) {
     .eq('id', cliente.id).eq('consultor_id', user.id).eq('foto_url', cliente.foto_url).select('id').maybeSingle()
   if (updateError) return NextResponse.json({ error: 'Não foi possível remover a foto.' }, { status: 503 })
   if (!salvo) return NextResponse.json({ error: 'A foto foi alterada. Recarregue a página.' }, { status: 409 })
-  const { error: removeError } = await supabase.storage.from(BUCKET_CLIENTES).remove([path])
+  const { error: removeError } = await createSupabaseAdminClient().storage.from(BUCKET_CLIENTES).remove([path])
   if (removeError) {
     logger.error('Remoção física da foto pendente', { route: ROUTE })
     return NextResponse.json({ error: 'A foto saiu do perfil, mas sua remoção do armazenamento não foi confirmada.' }, { status: 503 })

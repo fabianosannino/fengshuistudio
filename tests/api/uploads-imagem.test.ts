@@ -5,14 +5,14 @@ import sharp from 'sharp'
 const m = vi.hoisted(() => ({
   user: '11111111-1111-4111-8111-111111111111' as string | null,
   id: '22222222-2222-4222-8222-222222222222',
-  query: vi.fn(), upload: vi.fn(), remove: vi.fn(), filters: [] as unknown[][],
+  query: vi.fn(), upload: vi.fn(), browserUpload: vi.fn(), remove: vi.fn(), browserRemove: vi.fn(), filters: [] as unknown[][],
   updates: [] as unknown[], capability: true, rate: vi.fn(),
 }))
 vi.mock('server-only', () => ({}))
 vi.mock('../../src/lib/logger', () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
 vi.mock('../../src/lib/rate-limit', () => ({ rateLimit: m.rate, ipDaRequisicao: () => 'fixture' }))
 vi.mock('../../src/lib/guarda-admin', () => ({ exigirCapacidade: async () => ({ ok: m.capability }), respostaDaGuarda: () => Response.json({}, { status: 403 }) }))
-function cliente() {
+function cliente(privilegiado = false) {
   return {
     auth: { getUser: async () => ({ data: { user: m.user ? { id: m.user } : null } }) },
     from: (table: string) => {
@@ -21,14 +21,14 @@ function cliente() {
         update: (data: unknown) => { m.updates.push(data); return q }, maybeSingle: () => m.query() }
       return q
     },
-    storage: { from: () => ({ upload: m.upload, remove: m.remove }) },
+    storage: { from: () => ({ upload: privilegiado ? m.upload : m.browserUpload, remove: privilegiado ? m.remove : m.browserRemove }) },
   }
 }
 vi.mock('../../src/lib/supabase-route', () => ({ createRouteHandlerClient: async () => cliente() }))
-vi.mock('../../src/lib/supabase-admin', () => ({ createSupabaseAdminClient: () => cliente() }))
+vi.mock('../../src/lib/supabase-admin', () => ({ createSupabaseAdminClient: () => cliente(true) }))
 import { POST as planta } from '../../app/api/consultas/bagua-planta/route'
 import { POST as fotos, DELETE as removerFoto } from '../../app/api/consultas/fotos/route'
-import { POST as fotoCliente } from '../../app/api/clientes/foto/route'
+import { POST as fotoCliente, DELETE as removerFotoCliente } from '../../app/api/clientes/foto/route'
 import { POST as fotoProduto } from '../../app/api/admin/produtos/imagem/route'
 
 async function request(campo: string, extras: Record<string, string> = {}, invalid = false, count = 1) {
@@ -47,6 +47,15 @@ beforeEach(() => {
 })
 
 describe('fronteiras de upload com decoder real', () => {
+  it.each(['consulta', 'cliente'])('DELETE de %s usa serviço somente após conferir a posse', async alvo => {
+    const rota = alvo === 'consulta' ? removerFoto : removerFotoCliente
+    const body = alvo === 'consulta' ? { consulta_id: m.id, url: `${m.id}/geral/foto.png` } : { cliente_id: m.id }
+    const response = await rota(new Request('https://example.invalid', { method: 'DELETE', body: JSON.stringify(body) }))
+    expect(response.status).toBe(200)
+    expect(m.remove).toHaveBeenCalledOnce()
+    expect(m.browserRemove).not.toHaveBeenCalled()
+    expect(m.filters).toContainEqual([alvo === 'consulta' ? 'consultas' : 'clientes', 'consultor_id', m.user])
+  })
   const rotas = [
     { nome: 'planta', rota: planta, campo: 'planta', parametros: () => ({ consulta_id: m.id }) },
     { nome: 'fotos', rota: fotos, campo: 'fotos', parametros: () => ({ consulta_id: m.id, tipo: 'geral' }) },
@@ -71,6 +80,7 @@ describe('fronteiras de upload com decoder real', () => {
   it.each(rotas)('$nome confirma objeto com bytes e upsert false', async ({ rota, campo, parametros }) => {
     expect((await rota(await request(campo, parametros()))).status).toBe(200)
     expect(m.upload).toHaveBeenCalledWith(expect.stringMatching(/\.png$/), expect.any(Buffer), { contentType: 'image/png', upsert: false })
+    expect(m.browserUpload).not.toHaveBeenCalled()
   })
   it.each(rotas)('$nome não confunde falha de consulta com ausência', async ({ rota, campo, parametros }) => {
     m.query.mockResolvedValue({ data: null, error: { code: 'XX000' } })

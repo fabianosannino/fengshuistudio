@@ -268,3 +268,13 @@ drenagem dos handlers antigos, DDL, readback e extensão dos eventos Stripe.
 Homologação com Stripe test mode isolado, ciclo completo de disputa Connect,
 checkout da loja, reconciliação histórica e indicadores contábeis continuam
 pendentes. Nenhuma cobrança, devolução real ou mensagem foi disparada nos testes.
+
+PR #209 integrado em `c9e63cbf43aa8956ceed5513c3b23a056d71d824`, CI
+35328496963 verde. Produção READY `dpl_B1fssmETS4jU4kheLKy4fsDiAMmr`,
+mesmo SHA. Após mais de 60s de drenagem, migration remota `20260918092036`
+aplicada; contagens anteriores preservadas, zero projeções/vínculos criados,
+RLS ativo e RPC somente service_role. Leitura de retorno da Stripe confirmou
+refund.created/updated/failed nos dois destinos; application_fee.refunded e
+application_fee.refund.updated no destino da plataforma. Total: 18 eventos
+na plataforma e seis no Connect, preservando URLs e versões. Nenhum replay
+financeiro em produção foi disparado.
