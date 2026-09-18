@@ -40,6 +40,11 @@ beforeEach(() => {
 })
 
 describe('GET /auth/callback', () => {
+  it.each(['/\\example.org', '/\t/example.org', '/%5Cexample.org', '/%2Fexample.org', '/%'])('bloqueia redirect ambíguo %s', async caminho => {
+    const res = await GET(req(`?code=abc123&next=${encodeURIComponent(caminho)}`))
+    expect(destino(res).origin).toBe(ORIGEM)
+    expect(destino(res).pathname).toBe('/login')
+  })
   it('troca o código por sessão e leva ao destino pedido', async () => {
     const res = await GET(req('?code=abc123&next=%2Fredefinir-senha'))
 

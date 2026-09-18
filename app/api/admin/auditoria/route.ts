@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -9,9 +10,10 @@ export async function GET(request: Request) {
   const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'auditoria:ler')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'auditoria:ler')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/auditoria')
+  const supabase = createSupabaseAdminClient()
 
   const url = new URL(request.url)
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
@@ -25,7 +27,7 @@ export async function GET(request: Request) {
 
   if (error) {
     logger.error('Audit log error', { route: '/api/admin/auditoria', error: error.message })
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: 'Não foi possível consultar a auditoria' }, { status: 500 })
   }
 
   return NextResponse.json({ logs: data, total: count, page, pageSize })

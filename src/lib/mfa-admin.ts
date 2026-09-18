@@ -96,10 +96,8 @@ export const NIVEL_EXIGIDO: NivelDeGarantia = 'aal2'
  *
  * ## Quando desligar é legítimo
  *
- * Quando o TOTP está desabilitado no projeto Supabase e o painel precisa ser
- * alcançado **agora** para religá-lo. É um caminho de recuperação, não um
- * modo de operação: religar é a mesma variável, e o `logger` registra que o
- * painel rodou sem segundo fator enquanto isso durou.
+ * Apenas em desenvolvimento/testes isolados. Em produção o segundo fator é
+ * obrigatório; recuperação de TOTP ocorre no provedor de autenticação.
  */
 export const VARIAVEL_DO_INTERRUPTOR = 'ADMIN_MFA_OBRIGATORIO'
 
@@ -113,8 +111,8 @@ export const MFA_DESLIGADO_POR_CONFIG = 'false'
  * exercer os casos sem mexer no ambiente do processo — inclusive o caso que mais
  * importa, que é a variável ausente.
  */
-export function mfaExigido(valorDaVariavel: string | undefined): boolean {
-  return valorDaVariavel !== MFA_DESLIGADO_POR_CONFIG
+export function mfaExigido(valorDaVariavel: string | undefined, ambiente = process.env.NODE_ENV): boolean {
+  return ambiente === 'production' || valorDaVariavel !== MFA_DESLIGADO_POR_CONFIG
 }
 
 /**

@@ -1,18 +1,22 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { origemDaAplicacao } from '../auth-rotas'
 
 function pedido(headers: Record<string, string> = {}): Request {
   return new Request('https://exemplo.test/api/stripe/subscribe', { method: 'POST', headers })
 }
 
+beforeEach(() => {
+  vi.stubEnv('APP_ALLOWED_ORIGINS', '')
+  vi.stubEnv('VERCEL_ENV', '')
+})
 afterEach(() => {
   vi.unstubAllEnvs()
 })
 
 describe('origemDaAplicacao', () => {
-  it('usa o origin da requisição — é onde o usuário realmente está', () => {
+  it('ignora um Origin arbitrário mesmo quando é uma URL válida', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://configurado.example')
-    expect(origemDaAplicacao(pedido({ origin: 'https://app.example' }))).toBe('https://app.example')
+    expect(origemDaAplicacao(pedido({ origin: 'https://app.example' }))).toBe('https://configurado.example')
   })
 
   it('cai para a variável quando não há origin', () => {
@@ -68,10 +72,9 @@ describe('variável mal digitada não vira link quebrado', () => {
     expect(() => origemDaAplicacao(pedido())).toThrow(/NEXT_PUBLIC_APP_URL/)
   })
 
-  it('mas o origin da requisição continua valendo, mesmo com a variável ruim', () => {
-    // A variável só é consultada quando não há `origin`. Recusá-la não pode
-    // derrubar o caminho que estava funcionando.
+  it('um alias explicitamente autorizado continua válido com a variável principal ruim', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fengshuistudio.vercel.')
+    vi.stubEnv('APP_ALLOWED_ORIGINS', 'https://app.example')
     expect(origemDaAplicacao(pedido({ origin: 'https://app.example' }))).toBe('https://app.example')
   })
 
@@ -97,5 +100,32 @@ describe('variável mal digitada não vira link quebrado', () => {
   it('o valor bom continua passando', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fengshuistudio.vercel.app')
     expect(origemDaAplicacao(pedido())).toBe('https://fengshuistudio.vercel.app')
+  })
+})
+
+describe('lista explícita de origens', () => {
+  it('aceita somente um alias exato', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://configurado.example')
+    vi.stubEnv('APP_ALLOWED_ORIGINS', 'https://app.example')
+    expect(origemDaAplicacao(pedido({origin:'https://app.example'}))).toBe('https://app.example')
+    expect(origemDaAplicacao(pedido({origin:'https://app.example.evil.test'}))).toBe('https://configurado.example')
+  })
+  it.each(['https://user:password@app.example','https://app.example/path','https://app.example?secret=1','https://app.example#x','http://app.example'])('recusa configuração ambígua %s', origem => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', origem)
+    expect(() => origemDaAplicacao(pedido())).toThrow()
+  })
+  it('usa apenas o host da preview informado pela plataforma', () => {
+    vi.stubEnv('NODE_ENV','production')
+    vi.stubEnv('NEXT_PUBLIC_APP_URL','')
+    vi.stubEnv('VERCEL_ENV','preview')
+    vi.stubEnv('VERCEL_URL','preview-project.vercel.app')
+    expect(origemDaAplicacao(pedido({origin:'https://evil.example'}))).toBe('https://preview-project.vercel.app')
+  })
+  it('retorna para a preview em chamadas de servidor mesmo com a URL principal configurada', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL','https://production.example')
+    vi.stubEnv('VERCEL_ENV','preview')
+    vi.stubEnv('VERCEL_URL','preview-project.vercel.app')
+    expect(origemDaAplicacao(pedido())).toBe('https://preview-project.vercel.app')
   })
 })

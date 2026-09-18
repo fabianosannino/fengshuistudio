@@ -10,7 +10,7 @@
  *    comissão;
  *  - sem pedido gravado, não há redirecionamento para pagamento.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const sessionsCreate = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
@@ -65,6 +65,9 @@ function insercaoEm(tabela: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://checkout.example')
+  vi.stubEnv('APP_ALLOWED_ORIGINS', '')
+  vi.stubEnv('VERCEL_ENV', '')
   escritas.length = 0
   rateLimitMock.mockResolvedValue({ success: true })
   sessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/s', id: 'cs_loja_1' })
@@ -81,6 +84,8 @@ beforeEach(() => {
   respostas.pedido_itens = { data: null, error: null }
   respostas.pedido_eventos = { data: null, error: null }
 })
+
+afterEach(() => vi.unstubAllEnvs())
 
 describe('POST /api/loja/checkout', () => {
   it('devolve 429 quando o rate limit estoura', async () => {
@@ -144,7 +149,7 @@ describe('POST /api/loja/checkout', () => {
 
   it('manda o comprador para a página do próprio pedido', async () => {
     await POST(req({ produto_id: PRODUTO_ID }))
-    expect(sessionsCreate.mock.calls[0][0].success_url).toBe('http://test.local/pedido/tok-1')
+    expect(sessionsCreate.mock.calls[0][0].success_url).toBe('https://checkout.example/pedido/tok-1')
   })
 
   it('produto inativo responde igual a produto inexistente', async () => {

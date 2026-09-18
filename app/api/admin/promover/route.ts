@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -11,9 +12,10 @@ export async function POST(request: Request) {
   const { success } = await rateLimit(ip, { limit: 10, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'usuarios:promover')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'usuarios:promover')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/promover')
+  const supabase = createSupabaseAdminClient()
   const { user } = admin
 
   let body: { user_id: string }
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
 
   if (error) {
     logger.error('Admin promote error', { route: '/api/admin/promover', action: 'promote', userId: body.user_id, error: error.message })
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: 'Não foi possível atualizar o plano' }, { status: 500 })
   }
 
   // Audit log
@@ -80,9 +82,10 @@ export async function GET(request: Request) {
   const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'usuarios:promover')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'usuarios:promover')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/promover')
+  const supabase = createSupabaseAdminClient()
   const { user } = admin
 
   const url = new URL(request.url)

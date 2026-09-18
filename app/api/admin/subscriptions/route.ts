@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -58,9 +59,10 @@ export async function GET(request: Request) {
   const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'assinaturas:escrever')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'assinaturas:escrever')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/subscriptions')
+  const supabase = createSupabaseAdminClient()
 
   const url = new URL(request.url)
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
@@ -182,9 +184,10 @@ export async function POST(request: Request) {
   const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'assinaturas:escrever')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'assinaturas:escrever')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/subscriptions')
+  const supabase = createSupabaseAdminClient()
 
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }

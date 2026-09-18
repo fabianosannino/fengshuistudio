@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
@@ -29,9 +30,10 @@ export async function GET(request: Request) {
   const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'chaves:ler')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'chaves:ler')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
+  const supabase = createSupabaseAdminClient()
 
   const url = new URL(request.url)
   const status = url.searchParams.get('status')
@@ -61,7 +63,7 @@ export async function GET(request: Request) {
   const { data, count, error } = await query
   if (error) {
     logger.error('Admin keys list error', { route: '/api/admin/chaves', action: 'list', error: error.message })
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: 'Não foi possível consultar as chaves' }, { status: 500 })
   }
 
   // Also get summary counts
@@ -100,9 +102,10 @@ export async function POST(request: Request) {
   const { success } = await rateLimit(ip, { limit: 10, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'chaves:gerar')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'chaves:gerar')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
+  const supabase = createSupabaseAdminClient()
 
   let body: { quantidade?: number; plan_type?: string; expires_at?: string | null; note?: string }
   try {
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from('activation_keys').insert(keys).select()
   if (error) {
     logger.error('Admin key generation error', { route: '/api/admin/chaves', action: 'generate', error: error.message })
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: 'Não foi possível gerar as chaves' }, { status: 500 })
   }
 
   // Audit log
@@ -165,9 +168,10 @@ export async function PATCH(request: Request) {
   const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) return Response.json({ error: 'Rate limit' }, { status: 429 })
 
-  const supabase = await createRouteHandlerClient()
-  const admin = await exigirCapacidade(supabase, 'chaves:cancelar')
+  const sessao = await createRouteHandlerClient()
+  const admin = await exigirCapacidade(sessao, 'chaves:cancelar')
   if (!admin.ok) return respostaDaGuarda(admin, '/api/admin/chaves')
+  const supabase = createSupabaseAdminClient()
 
   let body: { id: string; action: string }
   try {
@@ -184,7 +188,8 @@ export async function PATCH(request: Request) {
       .eq('status', 'available')
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      logger.error('Falha ao cancelar a chave', { route: '/api/admin/chaves', error: error.message })
+      return NextResponse.json({ error: 'Não foi possível cancelar a chave' }, { status: 500 })
     }
 
     const { error: erroAuditoria } = await supabase.from('admin_audit_log').insert({
