@@ -297,14 +297,18 @@ export default function Clientes() {
       if (!res.ok) {
         setMessage(data.error || 'Erro ao salvar cliente.')
       } else {
-        // Upload photo if selected
+        let avisoFoto = ''
+        // O cliente já existe: falha na foto não pode incentivar cadastro duplicado.
         if (fotoFile && data.id) {
           const fd = new FormData()
           fd.append('foto', fotoFile)
           fd.append('cliente_id', data.id)
-          await fetch('/api/clientes/foto', { method: 'POST', body: fd })
+          try {
+            const fotoRes = await fetch('/api/clientes/foto', { method: 'POST', body: fd })
+            if (!fotoRes.ok) avisoFoto = ' A foto não foi salva. Abra o cliente para enviá-la novamente.'
+          } catch { avisoFoto = ' O envio da foto não foi confirmado. Abra o cliente para verificar.' }
         }
-        setMessage('Cliente cadastrado com sucesso!')
+        setMessage(`Cliente cadastrado.${avisoFoto}`)
         setForm({ nome_completo: '', data_nascimento: '', genero: '', email: '', telefone: '', cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil', notas: '' })
         setFotoFile(null)
         setFotoPreview(null)
@@ -356,8 +360,8 @@ export default function Clientes() {
       setMessage('Formato inválido. Use JPG, PNG ou WEBP.')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage('Arquivo muito grande. Máximo 5MB.')
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Arquivo muito grande. Máximo 4 MB.')
       return
     }
     setFotoFile(file)
@@ -541,7 +545,7 @@ export default function Clientes() {
                     border: 'none', fontSize: '13px', cursor: 'pointer'
                   }}>Remover</button>
                 )}
-                <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 5MB.</p>
+                <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 4 MB.</p>
               </div>
             </div>
 

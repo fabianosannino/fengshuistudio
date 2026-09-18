@@ -1,150 +1,87 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
-import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
+import { validateUUID } from '../../../../src/lib/validation'
 import { caminhoDoObjeto } from '../../../../src/lib/storage-imagens'
+import { ErroDeImagem, lerFormularioDeImagem, normalizarImagem } from '../../../../src/lib/upload-imagem'
+import { MAX_IMAGENS_POR_ENVIO } from '../../../../src/lib/upload-imagem-limites'
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const BUCKET = 'imoveis-fotos'
+const ROUTE = '/api/consultas/fotos'
 
 export async function POST(request: Request) {
-  const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 60, windowMs: 60_000 })
-  if (!success) {
-    return Response.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    )
-  }
-
-  const supabase = await createRouteHandlerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-
-  const formData = await request.formData()
-  const consultaId = formData.get('consulta_id') as string | null
-  const tipo = formData.get('tipo') as string | null // 'geral' or 'comodo'
-  const comodo = formData.get('comodo') as string | null
-  const files = formData.getAll('fotos') as File[]
-
-  if (!consultaId || !tipo) {
-    return NextResponse.json({ error: 'consulta_id e tipo são obrigatórios' }, { status: 400 })
-  }
-
-  if (tipo === 'comodo' && !comodo) {
-    return NextResponse.json({ error: 'Nome do cômodo é obrigatório' }, { status: 400 })
-  }
-
-  if (files.length === 0) {
-    return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
-  }
-
-  // Verify consultation belongs to user
-  const { data: consulta } = await supabase
-    .from('consultas')
-    .select('id, consultor_id')
-    .eq('id', consultaId)
-    .eq('consultor_id', user.id)
-    .single()
-
-  if (!consulta) {
-    return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
-  }
-
-  // Validate files
-  for (const file of files) {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: `Formato inválido: ${file.name}. Use JPG, PNG ou WEBP.` }, { status: 400 })
+  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 60, windowMs: 60_000 })
+  if (!success) return NextResponse.json({ error: 'Muitas requisições. Tente novamente.' }, { status: 429, headers: { 'Retry-After': '60' } })
+  try {
+    const supabase = await createRouteHandlerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const form = await lerFormularioDeImagem(request)
+    const consultaId = form.get('consulta_id')
+    const tipo = form.get('tipo')
+    const comodo = form.get('comodo')
+    const files = form.getAll('fotos')
+    if (typeof consultaId !== 'string' || !validateUUID(consultaId) || (tipo !== 'geral' && tipo !== 'comodo')) {
+      return NextResponse.json({ error: 'Consulta ou tipo de foto inválido.' }, { status: 400 })
     }
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: `Arquivo muito grande: ${file.name}. Máximo 10MB.` }, { status: 400 })
+    if (tipo === 'comodo' && (typeof comodo !== 'string' || !comodo.trim() || comodo.length > 100)) {
+      return NextResponse.json({ error: 'Informe o cômodo com até 100 caracteres.' }, { status: 400 })
     }
-  }
-
-  const caminhos: string[] = []
-
-  for (const file of files) {
-    // Extensão derivada do MIME já validado acima, nunca de file.name.
-    const safeExt = imageExtensionForMime(file.type) ?? 'jpg'
-    const folder = tipo === 'geral' ? 'geral' : comodo!.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
-    const filePath = `${consultaId}/${folder}/${crypto.randomUUID()}.${safeExt}`
-
-    const buffer = await file.arrayBuffer()
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(filePath, buffer, { contentType: file.type, upsert: false })
-
-    if (uploadError) {
-      logger.error('Upload error', { route: '/api/consultas/fotos', error: uploadError.message })
-      return NextResponse.json({ error: `Erro ao enviar ${file.name}.` }, { status: 500 })
+    if (files.length === 0 || files.length > MAX_IMAGENS_POR_ENVIO) return NextResponse.json({ error: 'Envie de 1 a 10 imagens.' }, { status: 400 })
+    const { data: consulta, error } = await supabase.from('consultas').select('id')
+      .eq('id', consultaId).eq('consultor_id', user.id).maybeSingle()
+    if (error) return NextResponse.json({ error: 'Não foi possível verificar a consulta.' }, { status: 503 })
+    if (!consulta) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 })
+    // Validar o lote inteiro antes da primeira escrita; decodificar sequencialmente.
+    const imagens = []
+    for (const file of files) imagens.push(await normalizarImagem(file))
+    const folder = tipo === 'geral' ? 'geral' : (comodo as string).replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
+    const paths: string[] = []
+    for (const imagem of imagens) {
+      const path = `${consultaId}/${folder}/${randomUUID()}.${imagem.extensao}`
+      const { error: uploadError } = await supabase.storage.from(BUCKET)
+        .upload(path, imagem.bytes, { contentType: imagem.mime, upsert: false })
+      if (uploadError) {
+        // Somente objetos desta tentativa, que ainda não foram entregues ao cliente.
+        if (paths.length) {
+          const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths)
+          if (removeError) logger.error('Limpeza de envio incompleto pendente', { route: ROUTE })
+        }
+        return NextResponse.json({ error: 'Não foi possível enviar as fotos. Tente novamente.' }, { status: 503 })
+      }
+      paths.push(path)
     }
-
-    // Devolvemos o **path**, não a URL pública: é o path que a tela manda
-    // assinar. O bucket está de saída para privado (C8) e uma URL pública
-    // gravada hoje seria uma linha a mais para o backfill limpar depois.
-    caminhos.push(filePath)
+    return NextResponse.json({ paths })
+  } catch (erro) {
+    if (erro instanceof ErroDeImagem) return NextResponse.json({ error: erro.message }, { status: erro.status })
+    logger.error('Falha no envio das fotos', { route: ROUTE })
+    return NextResponse.json({ error: 'Não foi possível enviar as fotos.' }, { status: 503 })
   }
-
-  return NextResponse.json({ paths: caminhos })
 }
 
 export async function DELETE(request: Request) {
-  const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 30, windowMs: 60_000 })
-  if (!success) {
-    return Response.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    )
-  }
-
+  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 30, windowMs: 60_000 })
+  if (!success) return NextResponse.json({ error: 'Muitas requisições. Tente novamente.' }, { status: 429 })
   const supabase = await createRouteHandlerClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body.consulta_id !== 'string' || !validateUUID(body.consulta_id) || typeof body.url !== 'string') {
+    return NextResponse.json({ error: 'Consulta e foto são obrigatórias.' }, { status: 400 })
   }
-
-  let body: { consulta_id?: string; url?: string }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  const path = caminhoDoObjeto(body.url, BUCKET)
+  if (!path || !path.startsWith(`${body.consulta_id}/`) || path.split('/').some(p => !p || p === '.' || p === '..') || /[%\\\x00-\x1f]/.test(path)) {
+    return NextResponse.json({ error: 'Foto não pertence à consulta informada.' }, { status: 400 })
   }
-
-  const { consulta_id, url } = body
-  if (!consulta_id || !url) {
-    return NextResponse.json({ error: 'consulta_id e url são obrigatórios' }, { status: 400 })
-  }
-
-  // Verify ownership
-  const { data: consulta } = await supabase
-    .from('consultas')
-    .select('id')
-    .eq('id', consulta_id)
-    .eq('consultor_id', user.id)
-    .single()
-
-  if (!consulta) {
-    return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
-  }
-
-  // Aceita path (novo) ou URL pública completa (linhas antigas).
-  const pathMatch = caminhoDoObjeto(url, BUCKET)
-  if (pathMatch) {
-    // A RLS de storage.objects amarra o arquivo ao dono da consulta (primeira
-    // pasta do path). Sem checar o erro, uma remoção recusada pela policy
-    // devolvia `success: true` e a foto continuava lá.
-    const { error: removeError } = await supabase.storage.from(BUCKET).remove([pathMatch])
-    if (removeError) {
-      logger.error('Falha ao remover foto do storage', {
-        route: '/api/consultas/fotos', consultaId: consulta_id, error: removeError.message,
-      })
-      return NextResponse.json({ error: 'Não foi possível remover a foto' }, { status: 500 })
-    }
-  }
-
+  // Planta é histórico da análise, não uma foto removível por esta rota.
+  if (path.split('/')[1] === 'bagua-planta') return NextResponse.json({ error: 'Plantas são preservadas no histórico da consulta.' }, { status: 409 })
+  const { data: consulta, error } = await supabase.from('consultas').select('id')
+    .eq('id', body.consulta_id).eq('consultor_id', user.id).maybeSingle()
+  if (error) return NextResponse.json({ error: 'Não foi possível verificar a consulta.' }, { status: 503 })
+  if (!consulta) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 })
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove([path])
+  if (removeError) return NextResponse.json({ error: 'Não foi possível remover a foto.' }, { status: 503 })
   return NextResponse.json({ success: true })
 }

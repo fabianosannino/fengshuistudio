@@ -1,171 +1,78 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
-import { ALLOWED_IMAGE_TYPES, imageExtensionForMime } from '../../../../src/lib/validation'
-import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
+import { validateUUID } from '../../../../src/lib/validation'
 import { BUCKET_CLIENTES, caminhoDoObjeto } from '../../../../src/lib/storage-imagens'
+import { ErroDeImagem, lerFormularioDeImagem, normalizarImagem } from '../../../../src/lib/upload-imagem'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const ROUTE = '/api/clientes/foto'
 
 export async function POST(request: Request) {
-  const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
-  if (!success) {
-    return Response.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    )
+  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 20, windowMs: 60_000 })
+  if (!success) return NextResponse.json({ error: 'Muitas requisições. Tente novamente.' }, { status: 429 })
+  try {
+    const supabase = await createRouteHandlerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const form = await lerFormularioDeImagem(request)
+    const clienteId = form.get('cliente_id')
+    if (typeof clienteId !== 'string' || !validateUUID(clienteId)) return NextResponse.json({ error: 'Cliente inválido.' }, { status: 400 })
+    const { data: cliente, error } = await supabase.from('clientes').select('id, foto_url')
+      .eq('id', clienteId).eq('consultor_id', user.id).maybeSingle()
+    if (error) return NextResponse.json({ error: 'Não foi possível verificar o cliente.' }, { status: 503 })
+    if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
+    const imagem = await normalizarImagem(form.get('foto'))
+    const path = `${user.id}/${clienteId}/${randomUUID()}.${imagem.extensao}`
+    const { error: uploadError } = await supabase.storage.from(BUCKET_CLIENTES)
+      .upload(path, imagem.bytes, { contentType: imagem.mime, upsert: false })
+    if (uploadError) return NextResponse.json({ error: 'Não foi possível enviar a foto.' }, { status: 503 })
+    // Troca condicionada ao valor lido; uma segunda aba não sobrescreve em silêncio.
+    let update = supabase.from('clientes').update({ foto_url: path }).eq('id', clienteId).eq('consultor_id', user.id)
+    update = cliente.foto_url === null ? update.is('foto_url', null) : update.eq('foto_url', cliente.foto_url)
+    const { data: salvo, error: updateError } = await update.select('id').maybeSingle()
+    // Não apagar o objeto novo em falha ambígua: o commit pode ter ocorrido.
+    // O inventário recursivo do titular alcança também versões sem referência.
+    if (updateError) return NextResponse.json({ error: 'Não foi possível confirmar a foto. Recarregue antes de tentar novamente.' }, { status: 503 })
+    if (!salvo) return NextResponse.json({ error: 'O cliente foi alterado. Recarregue antes de trocar a foto.' }, { status: 409 })
+    return NextResponse.json({ foto_url: path })
+  } catch (erro) {
+    if (erro instanceof ErroDeImagem) return NextResponse.json({ error: erro.message }, { status: erro.status })
+    logger.error('Falha no envio da foto do cliente', { route: ROUTE })
+    return NextResponse.json({ error: 'Não foi possível enviar a foto.' }, { status: 503 })
   }
-
-  const supabase = await createRouteHandlerClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-
-  const formData = await request.formData()
-  const file = formData.get('foto') as File | null
-  const clienteId = formData.get('cliente_id') as string | null
-
-  if (!file || !clienteId) {
-    return NextResponse.json({ error: 'Foto e cliente_id são obrigatórios' }, { status: 400 })
-  }
-
-  const ext = imageExtensionForMime(file.type)
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type) || !ext) {
-    return NextResponse.json({ error: 'Formato inválido. Use JPG, PNG ou WEBP.' }, { status: 400 })
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: 'Arquivo muito grande. Máximo 5MB.' }, { status: 400 })
-  }
-
-  // Verify client belongs to user
-  const { data: cliente } = await supabase
-    .from('clientes')
-    .select('id, foto_url')
-    .eq('id', clienteId)
-    .eq('consultor_id', user.id)
-    .single()
-
-  if (!cliente) {
-    return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
-  }
-
-  // Delete old photo if exists. Best-effort declarado: falhar aqui vaza um
-  // arquivo órfão, não corrompe dado — e não deve impedir a troca da foto.
-  if (cliente.foto_url) {
-    const oldPath = caminhoDoObjeto(cliente.foto_url, BUCKET_CLIENTES)
-    if (oldPath) {
-      await escreverBestEffort(
-        supabase.storage.from('clientes-fotos').remove([oldPath]),
-        { rota: '/api/clientes/foto', operacao: 'remove-foto-antiga', userId: user.id }
-      )
-    }
-  }
-
-  // Upload new photo — extensão derivada do MIME validado, não de file.name
-  const filePath = `${user.id}/${clienteId}.${ext}`
-  const buffer = await file.arrayBuffer()
-
-  const { error: uploadError } = await supabase.storage
-    .from('clientes-fotos')
-    .upload(filePath, buffer, {
-      contentType: file.type,
-      upsert: true,
-    })
-
-  if (uploadError) {
-    logger.error('Upload error', { route: '/api/clientes/foto', error: uploadError.message })
-    return NextResponse.json({ error: 'Erro ao fazer upload da foto.' }, { status: 500 })
-  }
-
-  // A coluna continua se chamando `foto_url`, mas passa a guardar o **path**
-  // do objeto: é ele que a tela manda assinar. As linhas antigas seguem com a
-  // URL pública e funcionam pelo mesmo caminho (`caminhoDoObjeto`).
-  const foto_url = filePath
-
-  // Update client record
-  const { error: updateError } = await supabase
-    .from('clientes')
-    .update({ foto_url })
-    .eq('id', clienteId)
-
-  if (updateError) {
-    logger.error('Update error', { route: '/api/clientes/foto', error: updateError.message })
-    return NextResponse.json({ error: 'Erro ao atualizar cliente.' }, { status: 500 })
-  }
-
-  return NextResponse.json({ foto_url })
 }
 
 export async function DELETE(request: Request) {
-  const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
-  if (!success) {
-    return Response.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    )
-  }
-
+  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 20, windowMs: 60_000 })
+  if (!success) return NextResponse.json({ error: 'Muitas requisições. Tente novamente.' }, { status: 429 })
   const supabase = await createRouteHandlerClient()
-
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body.cliente_id !== 'string' || !validateUUID(body.cliente_id)) return NextResponse.json({ error: 'Cliente inválido.' }, { status: 400 })
+  const { data: cliente, error } = await supabase.from('clientes').select('id, foto_url')
+    .eq('id', body.cliente_id).eq('consultor_id', user.id).maybeSingle()
+  if (error) return NextResponse.json({ error: 'Não foi possível verificar o cliente.' }, { status: 503 })
+  if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
+  if (!cliente.foto_url) return NextResponse.json({ success: true })
+  const path = caminhoDoObjeto(cliente.foto_url, BUCKET_CLIENTES)
+  const prefixo = `${user.id}/${cliente.id}`
+  const versao = path?.startsWith(`${prefixo}/`)
+  const legado = path?.startsWith(prefixo) && /^\.(jpg|jpeg|png|webp)$/.test(path.slice(prefixo.length))
+  if (!path || !(versao || legado) || /[%\\\x00-\x1f]/.test(path) || path.split('/').some(p => !p || p === '.' || p === '..')) {
+    return NextResponse.json({ error: 'Não foi possível validar a foto vinculada.' }, { status: 409 })
   }
-
-  let body: { cliente_id?: string }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  // Não remover uma versão que outra aba acabou de vincular.
+  const { data: salvo, error: updateError } = await supabase.from('clientes').update({ foto_url: null })
+    .eq('id', cliente.id).eq('consultor_id', user.id).eq('foto_url', cliente.foto_url).select('id').maybeSingle()
+  if (updateError) return NextResponse.json({ error: 'Não foi possível remover a foto.' }, { status: 503 })
+  if (!salvo) return NextResponse.json({ error: 'A foto foi alterada. Recarregue a página.' }, { status: 409 })
+  const { error: removeError } = await supabase.storage.from(BUCKET_CLIENTES).remove([path])
+  if (removeError) {
+    logger.error('Remoção física da foto pendente', { route: ROUTE })
+    return NextResponse.json({ error: 'A foto saiu do perfil, mas sua remoção do armazenamento não foi confirmada.' }, { status: 503 })
   }
-
-  const { cliente_id } = body
-  if (!cliente_id) {
-    return NextResponse.json({ error: 'cliente_id é obrigatório' }, { status: 400 })
-  }
-
-  const { data: cliente } = await supabase
-    .from('clientes')
-    .select('id, foto_url')
-    .eq('id', cliente_id)
-    .eq('consultor_id', user.id)
-    .single()
-
-  if (!cliente) {
-    return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
-  }
-
-  // Ordem deliberada: primeiro solta a referência, depois apaga o arquivo. O
-  // inverso deixaria o cliente apontando para um arquivo que não existe mais
-  // se o update falhasse — imagem quebrada em vez de foto removida.
-  try {
-    await escreverOuFalhar(
-      supabase
-        .from('clientes')
-        .update({ foto_url: null })
-        .eq('id', cliente_id),
-      { rota: '/api/clientes/foto', operacao: 'limpar-foto-url', userId: user.id }
-    )
-  } catch {
-    // Detalhe já registrado pelo helper.
-    return NextResponse.json({ error: 'Não foi possível remover a foto.' }, { status: 500 })
-  }
-
-  if (cliente.foto_url) {
-    const oldPath = caminhoDoObjeto(cliente.foto_url, BUCKET_CLIENTES)
-    if (oldPath) {
-      await escreverBestEffort(
-        supabase.storage.from('clientes-fotos').remove([oldPath]),
-        { rota: '/api/clientes/foto', operacao: 'remove-foto', userId: user.id }
-      )
-    }
-  }
-
   return NextResponse.json({ success: true })
 }

@@ -1,10 +1,10 @@
 'use client'
 
-import { logger } from '../../../src/lib/logger'
 import { useState, useRef, useMemo } from 'react'
 import type { FotoComodo } from '../../../src/lib/types'
 import { useUrlsAssinadas } from '../../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../../src/lib/storage-imagens'
+import { MAX_BYTES_IMAGEM, MAX_IMAGENS_POR_ENVIO } from '../../../src/lib/upload-imagem-limites'
 
 const COMODOS_PADRAO = [
   'Sala de Estar', 'Sala de Jantar', 'Cozinha', 'Quarto 1',
@@ -13,7 +13,7 @@ const COMODOS_PADRAO = [
 ]
 
 const MAX_FOTOS_COMODO = 10
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+const MAX_FILE_SIZE = MAX_BYTES_IMAGEM
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 interface TabFotosProps {
@@ -51,12 +51,15 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   const { resolver } = useUrlsAssinadas(todasAsFotos, BUCKET_IMOVEIS)
 
   function validateFiles(files: FileList | File[]): string | null {
+    if (files.length > MAX_IMAGENS_POR_ENVIO || Array.from(files).reduce((total, f) => total + f.size, 0) > MAX_BYTES_IMAGEM) {
+      return 'Envie até 10 imagens e 4 MB no total por vez.'
+    }
     for (const file of Array.from(files)) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         return `Formato inválido: ${file.name}. Use JPG, PNG ou WEBP.`
       }
       if (file.size > MAX_FILE_SIZE) {
-        return `Arquivo muito grande: ${file.name}. Máximo 10MB.`
+        return 'Arquivo muito grande. Máximo 4 MB.'
       }
     }
     return null
@@ -76,11 +79,15 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   }
 
   async function deleteFile(url: string) {
-    await fetch('/api/consultas/fotos', {
+    try {
+    const res = await fetch('/api/consultas/fotos', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ consulta_id: consultaId, url }),
     })
+    if (!res.ok) { setMessage('Não foi possível remover a foto. Tente novamente.'); return false }
+    return true
+    } catch { setMessage('Não foi possível remover a foto. Tente novamente.'); return false }
   }
 
   // ── Foto Geral ──────────────────────────────────────────────────────
@@ -93,8 +100,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
     setUploading(true)
     setMessage('')
     try {
-      // Delete old if exists
-      if (fotoGeral) await deleteFile(fotoGeral)
+      // A versão anterior permanece até a retenção da consulta removê-la.
       const [url] = await uploadFiles([file], 'geral')
       onUpdate(url, fotosComodos)
       setMessage('Foto geral atualizada!')
@@ -109,7 +115,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   async function handleGeralRemove() {
     if (!fotoGeral) return
     setUploading(true)
-    await deleteFile(fotoGeral)
+    if (!await deleteFile(fotoGeral)) { setUploading(false); return }
     onUpdate(null, fotosComodos)
     setMessage('Foto geral removida.')
     setTimeout(() => setMessage(''), 3000)
@@ -169,7 +175,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
   async function handleComodoFotoRemove(comodoIdx: number, fotoIdx: number) {
     const url = fotosComodos[comodoIdx].fotos[fotoIdx]
     setUploading(true)
-    await deleteFile(url)
+    if (!await deleteFile(url)) { setUploading(false); return }
     const updated = fotosComodos.map((c, i) =>
       i === comodoIdx ? { ...c, fotos: c.fotos.filter((_, fi) => fi !== fotoIdx) } : c
     )
@@ -177,15 +183,22 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
     setUploading(false)
   }
 
-  function handleRemoveComodo(idx: number) {
-    // Delete all photos in the room (fire-and-forget with error logging)
+  async function handleRemoveComodo(idx: number) {
     const comodo = fotosComodos[idx]
-    Promise.all(comodo.fotos.map(url => deleteFile(url).catch((e: Error) => logger.error('Falha ao excluir foto do cômodo', { route: 'TabFotos', error: e.message }))))
+    setUploading(true)
+    const restantes: string[] = []
+    for (const url of comodo.fotos) if (!await deleteFile(url)) restantes.push(url)
+    if (restantes.length) {
+      onUpdate(fotoGeral, fotosComodos.map((c, i) => i === idx ? { ...c, fotos: restantes } : c))
+      setUploading(false)
+      return
+    }
     const updated = fotosComodos
       .filter((_, i) => i !== idx)
       .map((c, i) => ({ ...c, ordem: i }))
     onUpdate(fotoGeral, updated)
     if (expandedComodo === idx) setExpandedComodo(null)
+    setUploading(false)
   }
 
   // ── Drag & Drop Reorder ─────────────────────────────────────────────
@@ -235,7 +248,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
           Foto Geral do Imóvel
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
-          Foto principal de destaque do imóvel. JPG, PNG ou WEBP. Máx. 10MB.
+          Foto principal de destaque do imóvel. JPG, PNG ou WEBP. Máx. 4 MB no total por envio.
         </p>
 
         {fotoGeral ? (
@@ -279,7 +292,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               {uploading ? 'Enviando...' : 'Clique para adicionar foto geral'}
             </span>
             <span style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px' }}>
-              JPG, PNG ou WEBP · Máx. 10MB
+              JPG, PNG ou WEBP · Máx. 4 MB no total por envio
             </span>
             <input ref={geralInputRef} type="file" accept="image/jpeg,image/png,image/webp"
               onChange={handleGeralUpload} disabled={uploading} style={{ display: 'none' }} />
@@ -490,7 +503,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
           Fotos do Antes
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
-          Registre o estado inicial do imóvel antes das intervenções de Feng Shui. JPG, PNG ou WEBP. Máx. 10MB.
+          Registre o estado inicial do imóvel antes das intervenções de Feng Shui. JPG, PNG ou WEBP. Máx. 4 MB no total por envio.
         </p>
 
         {fotosAntes.length > 0 ? (
@@ -539,7 +552,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               {uploading ? 'Enviando...' : 'Clique para adicionar fotos do antes'}
             </span>
             <span style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px' }}>
-              JPG, PNG ou WEBP · Máx. 10MB · Múltiplas fotos
+              JPG, PNG ou WEBP · Máx. 4 MB no total por envio · Múltiplas fotos
             </span>
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
               disabled={uploading}
@@ -566,7 +579,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
           Fotos do Depois
         </h3>
         <p style={{ color: '#6B7280', fontSize: '13px', margin: '0 0 16px 0' }}>
-          Registre o estado do imóvel após as intervenções de Feng Shui. JPG, PNG ou WEBP. Máx. 10MB.
+          Registre o estado do imóvel após as intervenções de Feng Shui. JPG, PNG ou WEBP. Máx. 4 MB no total por envio.
         </p>
 
         {fotosDepois.length > 0 ? (
@@ -615,7 +628,7 @@ export default function TabFotos({ consultaId, fotoGeral, fotosComodos, onUpdate
               {uploading ? 'Enviando...' : 'Clique para adicionar fotos do depois'}
             </span>
             <span style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>
-              JPG, PNG ou WEBP · Máx. 10MB · Múltiplas fotos
+              JPG, PNG ou WEBP · Máx. 4 MB no total por envio · Múltiplas fotos
             </span>
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
               disabled={uploading}

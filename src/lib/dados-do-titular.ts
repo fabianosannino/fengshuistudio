@@ -41,6 +41,11 @@ import { BUCKET_CLIENTES, BUCKET_IMOVEIS, caminhoDoObjeto, pastaRaiz } from './s
  */
 export const BUCKET_RELATORIOS = 'relatorios'
 
+// Uploads novos preservam versões em clientes-fotos/<titular>/<cliente>/<uuid>
+// e imoveis-fotos/<consulta>/bagua-planta/<uuid>. As colunas de origem continuam
+// as mesmas; removerArquivosDoTitular enumera as raízes recursivamente, incluindo
+// versões substituídas e envios cujo vínculo no banco não foi confirmado.
+
 /**
  * O texto que fica no lugar do que identificava a pessoa.
  *

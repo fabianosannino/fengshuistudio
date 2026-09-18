@@ -965,59 +965,48 @@ function BaguaPlantaContent() {
   // Track upload promise so salvarRascunho can wait for URL before saving
   const uploadPromiseRef = useRef<Promise<string|null>|null>(null)
 
-  function onUpload(e:React.ChangeEvent<HTMLInputElement>){
-    const file=e.target.files?.[0]; if(!file) return
-    // Load image locally first
-    const reader=new FileReader()
-    reader.onload=ev=>{
-      const i=new Image()
-      i.onload=()=>{
-        setImg(i); setRot(0); setStep('metragem')
-        definirLeitura(null); analiseReferenciaRef.current=undefined
-        // Upload to Supabase storage and wait for URL
-        if(consultaId){
-          const fd=new FormData()
-          fd.append('consulta_id',consultaId)
-          fd.append('planta',file)
-          const uploadP = fetch('/api/consultas/bagua-planta',{method:'POST',body:fd})
-            .then(r=>{
-              if(!r.ok) throw new Error(`Upload falhou (${r.status})`)
-              return r.json()
-            })
-            .then(d=>{
-              // A rota passou a devolver o path do objeto (bucket privado, C8);
-              // `planta_url` guarda o path e a exibição assina na hora.
-              if(d.path){
-                setPlantaUrl(d.path)
-                plantaUrlRef.current=d.path
-                // Save initial draft state
-                supabase.from('consultas').update({
-                  bagua_entrada:{planta_url:d.path,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'metragem',rotacao:0,lado:'centro'}
-                }).eq('id',consultaId).then(({error})=>{
-                  if(error){
-                    logger.error('Falha ao salvar rascunho inicial da planta',{action:'uploadPlanta',consultaId,erro:error.message})
-                    setMsg('⚠ A planta foi enviada, mas não foi possível registrá-la na consulta. Recarregue e tente de novo.')
-                    setMsgTipo('erro')
-                  }
-                })
-                return d.path as string
-              }
-              setMsg(d.error||'Erro ao enviar planta. Verifique o storage do Supabase.'); setMsgTipo('erro')
-              return null
-            })
-            .catch(err=>{
-              logger.error('Falha no upload da planta',{action:'uploadPlanta',consultaId,erro:String(err)})
-              setMsg('Erro ao enviar planta para o servidor. Verifique se o bucket de storage existe no Supabase.'); setMsgTipo('erro')
-              return null
-            })
-          uploadPromiseRef.current=uploadP
-        }
-      }
-      i.src=ev.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  }
+  const uploadEmCursoRef = useRef(false)
+  const [enviandoPlanta, setEnviandoPlanta] = useState(false)
 
+  async function onUpload(e:React.ChangeEvent<HTMLInputElement>){
+    const file=e.target.files?.[0]; if(!file || uploadEmCursoRef.current || salvandoTudo) return
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024){
+      setMsg('Use JPG, PNG ou WebP com até 4 MB.'); setMsgTipo('erro'); return
+    }
+    uploadEmCursoRef.current=true; setEnviandoPlanta(true)
+    setMsg('Validando e enviando a planta…'); setMsgTipo('sucesso')
+    const localUrl=URL.createObjectURL(file)
+    try {
+      const imagem=await new Promise<HTMLImageElement>((resolve,reject)=>{
+        const i=new Image(); i.onload=()=>resolve(i); i.onerror=()=>reject(new Error('Não foi possível abrir a imagem.')); i.src=localUrl
+      })
+      if(consultaId){
+        const enviar=async()=>{
+          const fd=new FormData(); fd.append('consulta_id',consultaId); fd.append('planta',file)
+          const response=await fetch('/api/consultas/bagua-planta',{method:'POST',body:fd})
+          const data=await response.json().catch(()=>null)
+          if(!response.ok || typeof data?.path!=='string') throw new Error(data?.error || 'Não foi possível enviar a planta.')
+          const {data:salvo,error}=await supabase.from('consultas').update({
+            bagua_entrada:{planta_url:data.path,planta_nome:file.name,planta_enviada_em:new Date().toISOString(),etapa:'metragem',rotacao:0,lado:'centro'}
+          }).eq('id',consultaId).select('id').maybeSingle()
+          if(error || !salvo) throw new Error('A planta foi enviada, mas seu registro não foi confirmado. Recarregue antes de continuar.')
+          return data.path as string
+        }
+        const pendente=enviar()
+        uploadPromiseRef.current=pendente.catch(()=>null)
+        const path=await pendente
+        setPlantaUrl(path); plantaUrlRef.current=path
+      }
+      // A imagem em edição só muda depois de confirmar o armazenamento e o vínculo.
+      setImg(imagem); setRot(0); setStep('metragem'); definirLeitura(null)
+      analiseReferenciaRef.current=undefined
+      setMsg('Planta carregada.'); setMsgTipo('sucesso')
+    } catch(erro) {
+      setMsg(erro instanceof Error ? erro.message : 'Não foi possível enviar a planta.'); setMsgTipo('erro')
+    } finally {
+      URL.revokeObjectURL(localUrl); uploadEmCursoRef.current=false; setEnviandoPlanta(false)
+    }
+  }
   /**
    * Preenche a declinação a partir da geolocalização do navegador, via
    * `/api/declinacao` (WMM oficial — ver src/lib/declinacao-automatica.ts).
@@ -1059,7 +1048,7 @@ function BaguaPlantaContent() {
 
   // Save analysis state as draft (called on key transitions)
   async function salvarRascunho(overrides?:Partial<{etapa:Step;rotacao:number;bordas:Bounds|null;lhV:number[];lvV:number[];entradaV:{x:number;y:number}|null;ladoV:Lado;setoresV:Setor[]}>){
-    if(!consultaId||restaurandoRef.current) return
+    if(!consultaId||restaurandoRef.current||uploadEmCursoRef.current) return
     // Wait for upload to complete if planta_url is not yet available
     let url = plantaUrlRef.current
     if(!url && uploadPromiseRef.current){
@@ -1377,7 +1366,7 @@ function BaguaPlantaContent() {
   const [salvandoTudo,setSalvandoTudo] = useState(false)
 
   async function finalizarAnalise(){
-    if(!consultaId||setores.length!==9) return
+    if(!consultaId||setores.length!==9||uploadEmCursoRef.current) return
     if(!order){setMsg(AVISO_ORIENTACAO);setMsgTipo('erro');return}
     try {
       const b=boundsRef.current
@@ -1590,7 +1579,7 @@ function BaguaPlantaContent() {
             <div style={{fontSize:'48px',marginBottom:'10px'}}>🏠</div>
             <h3 style={{color:'#0E1B2C',fontSize:'16px',marginBottom:'6px'}}>Upload da planta baixa</h3>
             <p style={{color:'#6B7280',fontSize:'13px',marginBottom:'20px'}}>JPG ou PNG · fundo branco com paredes escuras</p>
-            <input ref={fileRef} type="file" accept="image/*" onChange={onUpload} style={{display:'none'}}/>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" disabled={enviandoPlanta || salvandoTudo} onChange={onUpload} style={{display:'none'}}/>
             <button type="button" onClick={()=>fileRef.current?.click()}
               style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'10px 28px',borderRadius:'8px',fontSize:'14px',fontWeight:'bold',cursor:'pointer'}}>
               Selecionar arquivo

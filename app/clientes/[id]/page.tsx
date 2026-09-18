@@ -178,8 +178,8 @@ export default function ClienteDetalhe() {
       setMessage('Formato inválido. Use JPG, PNG ou WEBP.')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage('Arquivo muito grande. Máximo 5MB.')
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Arquivo muito grande. Máximo 4 MB.')
       return
     }
     setFotoFile(file)
@@ -208,6 +208,9 @@ export default function ClienteDetalhe() {
         setFotoPreview(null)
         setMessage('Foto removida com sucesso!')
         setTimeout(() => setMessage(''), 3000)
+      } else {
+        const data = await res.json().catch(() => null)
+        setMessage(data?.error || 'Não foi possível remover a foto.')
       }
     } catch {
       setMessage('Erro ao remover foto.')
@@ -225,10 +228,20 @@ export default function ClienteDetalhe() {
       const fd = new FormData()
       fd.append('foto', fotoFile)
       fd.append('cliente_id', params.id as string)
+      try {
       const fotoRes = await fetch('/api/clientes/foto', { method: 'POST', body: fd })
       const fotoData = await fotoRes.json()
-      if (fotoRes.ok) {
+      if (!fotoRes.ok) {
+        setMessage(fotoData.error || 'Não foi possível salvar a foto.')
+        setSaving(false)
+        return
+      } else {
         setCliente(prev => prev ? { ...prev, foto_url: fotoData.foto_url } : prev)
+      }
+      } catch {
+        setMessage('Não foi possível confirmar o envio da foto. Recarregue antes de tentar novamente.')
+        setSaving(false)
+        return
       }
     }
 
@@ -646,7 +659,7 @@ export default function ClienteDetalhe() {
                       border: 'none', fontSize: '13px', cursor: 'pointer'
                     }}>Remover</button>
                   )}
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 5MB.</p>
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0 0' }}>JPG, PNG ou WEBP. Máx. 4 MB.</p>
                 </div>
               </div>
 
