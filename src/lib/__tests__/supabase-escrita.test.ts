@@ -63,16 +63,17 @@ describe('escreverOuFalhar', () => {
     const spy = vi.spyOn(console, 'error')
     await escreverOuFalhar(
       respostaDoSupabase({ data: null, error: { message: 'permission denied' } }),
-      { ...CONTEXTO, userId: 'user-1' }
+      { rota: '/api/consultas', operacao: 'update', userId: 'user-1' }
     ).catch(() => {})
 
     expect(spy).toHaveBeenCalledOnce()
     const registro = JSON.parse(spy.mock.calls[0][0] as string)
     expect(registro.level).toBe('error')
-    expect(registro.route).toBe('/api/teste')
-    expect(registro.action).toBe('update-plano')
-    expect(registro.userId).toBe('user-1')
-    expect(registro.error).toBe('permission denied')
+    expect(registro.route).toBe('/api/consultas')
+    expect(registro.action).toBe('update')
+    expect(registro.userId).toBeUndefined()
+    expect(registro.error).toBeUndefined()
+    expect(registro.erro_presente).toBe(true)
   })
 
   it('um try/catch em volta da query crua não capturaria nada — por isso o helper existe', async () => {

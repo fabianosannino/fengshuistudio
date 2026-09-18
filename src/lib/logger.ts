@@ -9,6 +9,8 @@
  * 4. Sentry will automatically capture errors via its own instrumentation
  */
 
+import { contextoDoLog } from './contexto-do-log'
+
 type LogLevel = 'error' | 'warn' | 'info'
 
 interface LogContext {
@@ -20,10 +22,10 @@ interface LogContext {
 
 function log(level: LogLevel, message: string, context?: LogContext) {
   const entry = {
+    ...contextoDoLog(context),
     timestamp: new Date().toISOString(),
     level,
     message,
-    ...context,
   }
   if (level === 'error') {
     console.error(JSON.stringify(entry))
