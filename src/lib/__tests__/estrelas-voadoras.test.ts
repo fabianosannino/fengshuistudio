@@ -19,7 +19,8 @@ describe('periodoDaConstrucao', () => {
 
   it('ano solar: antes do Li Chun (~4 fev) conta o ano anterior', () => {
     expect(periodoDaConstrucao('2024-01-10')).toBe(8) // ainda 2023 solar
-    expect(periodoDaConstrucao('2024-02-04')).toBe(9) // já 2024 solar
+    expect(periodoDaConstrucao('2024-02-06')).toBe(9)
+    expect(periodoDaConstrucao('2024-02-04')).toBeNull() // data civil sem horário na fronteira
   })
 
   it('dado ausente/inválido/anterior a 1864 → null (fail-closed)', () => {

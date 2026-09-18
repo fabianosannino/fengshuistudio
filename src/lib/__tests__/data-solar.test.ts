@@ -16,12 +16,13 @@ describe('dataSolar', () => {
     expect(dataSolar('1990-01-10')).toEqual({ anoCivil: 1990, anoSolar: 1989 })
   })
 
-  it('4 de fevereiro (aproximação de Li Chun usada) já conta o ano civil', () => {
-    expect(dataSolar('1990-02-04')).toEqual({ anoCivil: 1990, anoSolar: 1990 })
+  it('data civil que pode cruzar Li Chun permanece indeterminada', () => {
+    expect(dataSolar('1990-02-04')).toBeNull()
   })
 
-  it('3 de fevereiro ainda conta o ano anterior', () => {
-    expect(dataSolar('1990-02-03')).toEqual({ anoCivil: 1990, anoSolar: 1989 })
+  it('não deduz o fuso pelo computador', () => {
+    expect(dataSolar('1990-02-03')).toBeNull()
+    expect(dataSolar('1990-02-03', 'Asia/Hong_Kong')).toEqual({ anoCivil: 1990, anoSolar: 1989 })
   })
 
   it('aceita Date além de string ISO, com o mesmo resultado', () => {

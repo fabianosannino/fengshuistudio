@@ -77,7 +77,7 @@ export function calcularMingGua(
   const g = normalizarGenero(genero)
   const info = dataSolar(dataNascimento)
   if (!g || !info) return null
-  if (info.anoCivil < 1900 || info.anoCivil > 2099) return null
+  if (info.anoSolar < 1900 || info.anoSolar > 2099) return null
 
   const anoSolar = info.anoSolar
   // X = soma dos dois últimos dígitos do ano solar, reduzida a 1 dígito.

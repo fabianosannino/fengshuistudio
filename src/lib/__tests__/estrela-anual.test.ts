@@ -2,6 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { calcularEstrelaAnual, calcularGradeAnual, estrelaAnualDaData } from '../estrela-anual'
 
 describe('calcularEstrelaAnual', () => {
+  it('preserva o ciclo ao atravessar séculos', () => {
+    expect(calcularEstrelaAnual(1999)).toBe(1)
+    expect(calcularEstrelaAnual(2000)).toBe(9)
+    for (let ano = 1865; ano <= 2100; ano++) {
+      expect(calcularEstrelaAnual(ano)).toBe(calcularEstrelaAnual(ano - 1) === 1 ? 9 : calcularEstrelaAnual(ano - 1) - 1)
+      if (ano + 9 <= 2100) expect(calcularEstrelaAnual(ano + 9)).toBe(calcularEstrelaAnual(ano))
+    }
+  })
+  it.each([NaN, Infinity, 0, -1, 2026.5, 10000])('recusa ano inválido: %s', ano => {
+    expect(() => calcularEstrelaAnual(ano)).toThrow()
+  })
   it('âncoras obrigatórias do documento: 2024→3, 2025→2, 2026→1, 2027→9', () => {
     expect(calcularEstrelaAnual(2024)).toBe(3)
     expect(calcularEstrelaAnual(2025)).toBe(2)

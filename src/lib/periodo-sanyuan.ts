@@ -16,7 +16,8 @@ const ANOS_POR_PERIODO = 20
 /** Período (1-9) do ciclo San Yuan a que pertence um ano solar já calculado. */
 export function periodoDoAnoSolar(anoSolar: number): number {
   const anosDesdeInicio = anoSolar - INICIO_CICLO_SAN_YUAN
-  return (Math.floor(anosDesdeInicio / ANOS_POR_PERIODO) % PERIODOS_NO_CICLO) + 1
+  if (!Number.isSafeInteger(anoSolar) || anoSolar < 1 || anoSolar > 9999) throw new RangeError('Ano solar inválido')
+  return ((Math.floor(anosDesdeInicio / ANOS_POR_PERIODO) % PERIODOS_NO_CICLO + PERIODOS_NO_CICLO) % PERIODOS_NO_CICLO) + 1
 }
 
 /**
@@ -26,11 +27,11 @@ export function periodoDoAnoSolar(anoSolar: number): number {
  */
 export function periodoDaData(data: string | Date | null | undefined): number | null {
   const info = dataSolar(data)
-  if (!info || info.anoCivil < INICIO_CICLO_SAN_YUAN) return null
+  if (!info || info.anoSolar < INICIO_CICLO_SAN_YUAN) return null
   return periodoDoAnoSolar(info.anoSolar)
 }
 
 /** Período (1-9) correspondente a "agora" — aceita uma data de referência para testabilidade. */
-export function periodoAtual(agora: Date = new Date()): number {
-  return periodoDaData(agora)!
+export function periodoAtual(agora: Date = new Date()): number | null {
+  return periodoDaData(agora)
 }

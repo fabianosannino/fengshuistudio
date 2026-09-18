@@ -128,14 +128,12 @@ describe('calcularSetores', () => {
     const setores = calcularSetores(CONTORNO, TERCOS, [0.2, 0.6], [
       marcacao({ tipo: 'falta', x: 0, y: 0, w: 60, h: 100 }),
     ])
-    // O setor 0 mede 60×100 = 6.000 px², mas a referência de área é o nono do
-    // contorno (10.000) — a nota é relativa ao setor médio, não ao próprio.
     expect(setores[0].faltaArea).toBeCloseTo(6000)
+    expect(setores[0].faltaPct).toBeCloseTo(100)
+    expect(setores[0].geo).toBeCloseTo(0)
   })
 
-  it('não divide por zero quando o contorno é degenerado', () => {
-    const setores = calcularSetores({ x: 0, y: 0, w: 0, h: 0 }, TERCOS, TERCOS, [])
-    expect(setores).toHaveLength(SETORES_NO_GRID)
-    expect(setores.every(s => Number.isFinite(s.geo))).toBe(true)
+  it('contorno degenerado não produz uma nota de 100', () => {
+    expect(() => calcularSetores({ x: 0, y: 0, w: 0, h: 0 }, TERCOS, TERCOS, [])).toThrow()
   })
 })

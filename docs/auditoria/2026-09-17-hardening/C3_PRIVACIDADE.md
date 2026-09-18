@@ -30,3 +30,11 @@ Verificação local: 1.479 testes em 114 arquivos e typecheck aprovados; lint
 sem erros (105 avisos anteriores). Build com configuração sintética aprovado.
 Runner PostgreSQL com 32 verificações, sem dados de produção. Exclusão de
 consulta individual também remove suas fotos, preservando as de clientes.
+
+PR #198 integrado em `93bc988d4abe67559e9811cd33a3ea1728c9babd` após CI
+35312697039 verde. Migration remota `20260918055745`. Readback: 13 clientes,
+17 consultas, zero intenções de exclusão e RPC somente service_role; duas
+contas existentes têm vínculo comercial e passam a exigir encerramento
+coordenado. Produção READY `dpl_Hp5GzA5QjKi7CuBi7t1arsvgT6za`, mesmo SHA.
+Advisors mantiveram o ERROR da view pública e dois WARN anteriores, com um
+INFO adicional esperado pela tabela técnica de exclusões sem policy de usuário.

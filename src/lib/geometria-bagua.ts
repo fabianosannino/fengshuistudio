@@ -39,7 +39,7 @@ export interface Marcacao {
 export interface Setor {
   /** Uma posição por critério. `null` = não avaliado (≠ «Neutro»). */
   criterios: (NotaCriterio | null)[]
-  /** 100 − faltaPct − excessoPct. Já é uma nota 0–100. */
+  /** 100 − faltaPct − excessoPct, limitada ao intervalo 0–100. */
   geo: number
   faltaArea: number
   excessoArea: number
@@ -53,9 +53,40 @@ export interface Setor {
 
 /** O Ba Guá é sempre 3×3 — nove setores, incluindo o centro (Tai Ji). */
 export const SETORES_NO_GRID = 9
+export const MAX_MARCACOES_GEOMETRIA = 500
+export const AVISO_GEOMETRIA_INVALIDA = 'Revise os limites da planta, as divisórias e as marcações antes de calcular. Não é possível calcular áreas nulas ou inválidas.'
 const COLUNAS = 3
 /** Um critério por item do checklist físico. */
 const CRITERIOS_POR_SETOR = 8
+
+interface Retangulo { x0: number; y0: number; x1: number; y1: number }
+function validarRetangulo(r: Bounds): void {
+  if (![r.x, r.y, r.w, r.h, r.x + r.w, r.y + r.h, r.w * r.h].every(Number.isFinite)
+    || r.w <= 0 || r.h <= 0 || r.x + r.w <= r.x || r.y + r.h <= r.y) throw new Error(AVISO_GEOMETRIA_INVALIDA)
+}
+function recortar(r: Bounds, area: Retangulo): Retangulo | null {
+  const x0 = Math.max(r.x, area.x0), y0 = Math.max(r.y, area.y0)
+  const x1 = Math.min(r.x + r.w, area.x1), y1 = Math.min(r.y + r.h, area.y1)
+  return x1 > x0 && y1 > y0 ? { x0, y0, x1, y1 } : null
+}
+/** Exact union of axis-aligned rectangles. Overlapping annotations count once. */
+function areaUniao(retangulos: Retangulo[]): number {
+  const xs = [...new Set(retangulos.flatMap(r => [r.x0, r.x1]))].sort((a, b) => a - b)
+  let area = 0
+  for (let i = 1; i < xs.length; i++) {
+    const intervalos = retangulos.filter(r => r.x0 < xs[i] && r.x1 > xs[i - 1]).sort((a, b) => a.y0 - b.y0)
+    let altura = 0, fim = -Infinity
+    for (const r of intervalos) {
+      altura += Math.max(0, r.y1 - Math.max(r.y0, fim))
+      fim = Math.max(fim, r.y1)
+    }
+    area += (xs[i] - xs[i - 1]) * altura
+  }
+  return area
+}
+function areaMarcada(marcacoes: Marcacao[], tipo: Marcacao['tipo'], area: Retangulo): number {
+  return areaUniao(marcacoes.filter(m => m.tipo === tipo).map(m => recortar(m, area)).filter((r): r is Retangulo => r !== null))
+}
 
 /** Área de interseção entre dois retângulos. Zero quando não se tocam. */
 export function areaSobreposta(
@@ -93,40 +124,20 @@ function limitesDoSetor(indice: number, b: Bounds, lh: number[], lv: number[]) {
  * Distribui a área externa de um excesso entre os setores da borda.
  *
  * Uma varanda projetada para fora não pertence a um setor só. Cada setor é
- * estendido para fora do contorno e recebe uma fatia proporcional ao quanto
- * dessa extensão a marcação cobre — quem está mais perto recebe mais.
+ * estendido para fora do contorno pelas suas divisórias e recebe a união
+ * da área externa nessa faixa. Não há peso por distância nem janela finita.
  */
 function distribuirExcessoExterno(marcacoes: Marcacao[], b: Bounds, lh: number[], lv: number[]): number[] {
   const porSetor = new Array<number>(SETORES_NO_GRID).fill(0)
-  const extensao = Math.max(b.w, b.h) * 2
-
-  for (const m of marcacoes) {
-    if (m.tipo !== 'excesso') continue
-    const areaExterna = excessoAreaExterna(m, b)
-    if (areaExterna <= 0) continue
-
-    const pesos = new Array<number>(SETORES_NO_GRID).fill(0)
-    let somaDosPesos = 0
-
-    for (let idx = 0; idx < SETORES_NO_GRID; idx++) {
-      const { linha, coluna, x0, x1, y0, y1 } = limitesDoSetor(idx, b, lh, lv)
-      const exX0 = coluna === 0 ? x0 - extensao : x0
-      const exX1 = coluna === COLUNAS - 1 ? x1 + extensao : x1
-      const exY0 = linha === 0 ? y0 - extensao : y0
-      const exY1 = linha === COLUNAS - 1 ? y1 + extensao : y1
-
-      const naExtensao = areaSobreposta(m, exX0, exY0, exX1 - exX0, exY1 - exY0)
-      const dentroDoSetor = areaSobreposta(m, x0, y0, x1 - x0, y1 - y0)
-      const peso = Math.max(0, naExtensao - dentroDoSetor)
-
-      pesos[idx] = peso
-      somaDosPesos += peso
+  for (let idx = 0; idx < SETORES_NO_GRID; idx++) {
+    const setor = limitesDoSetor(idx, b, lh, lv)
+    const extensao = {
+      x0: setor.coluna === 0 ? -Infinity : setor.x0,
+      x1: setor.coluna === COLUNAS - 1 ? Infinity : setor.x1,
+      y0: setor.linha === 0 ? -Infinity : setor.y0,
+      y1: setor.linha === COLUNAS - 1 ? Infinity : setor.y1,
     }
-
-    if (somaDosPesos <= 0) continue
-    for (let idx = 0; idx < SETORES_NO_GRID; idx++) {
-      porSetor[idx] += areaExterna * (pesos[idx] / somaDosPesos)
-    }
+    porSetor[idx] = Math.max(0, areaMarcada(marcacoes, 'excesso', extensao) - areaMarcada(marcacoes, 'excesso', setor))
   }
 
   return porSetor
@@ -147,25 +158,31 @@ export function calcularSetores(
   lv: number[],
   marcacoes: Marcacao[]
 ): Setor[] {
-  const areaDoSetor = (b.w * b.h) / SETORES_NO_GRID
+  validarRetangulo(b)
+  for (const linhas of [lh, lv]) {
+    if (linhas.length !== 2 || !linhas.every(Number.isFinite) || !(linhas[0] > 0 && linhas[0] < linhas[1] && linhas[1] < 1)) throw new Error(AVISO_GEOMETRIA_INVALIDA)
+  }
+  if (marcacoes.length > MAX_MARCACOES_GEOMETRIA) throw new Error('Quantidade de marcações excede o limite de cálculo')
+  for (const m of marcacoes) {
+    validarRetangulo(m)
+    if (m.tipo !== 'falta' && m.tipo !== 'excesso') throw new Error(AVISO_GEOMETRIA_INVALIDA)
+  }
   const excessoExterno = distribuirExcessoExterno(marcacoes, b, lh, lv)
 
   return Array.from({ length: SETORES_NO_GRID }, (_, idx) => {
     const { x0, x1, y0, y1 } = limitesDoSetor(idx, b, lh, lv)
 
-    let faltaArea = 0
-    for (const m of marcacoes) {
-      if (m.tipo !== 'falta') continue
-      faltaArea += areaSobreposta(m, x0, y0, x1 - x0, y1 - y0)
-    }
-
+    const areaDoSetor = (x1 - x0) * (y1 - y0)
+    if (!Number.isFinite(areaDoSetor) || areaDoSetor <= 0) throw new Error(AVISO_GEOMETRIA_INVALIDA)
+    const faltaArea = areaMarcada(marcacoes, 'falta', { x0, x1, y0, y1 })
     const excessoArea = excessoExterno[idx]
-    const faltaPct = areaDoSetor > 0 ? (faltaArea / areaDoSetor) * 100 : 0
-    const excessoPct = areaDoSetor > 0 ? (excessoArea / areaDoSetor) * 100 : 0
+    const faltaPct = (faltaArea / areaDoSetor) * 100
+    const excessoPct = (excessoArea / areaDoSetor) * 100
+    if (![faltaArea, excessoArea, faltaPct, excessoPct].every(Number.isFinite)) throw new Error(AVISO_GEOMETRIA_INVALIDA)
 
     return {
       criterios: new Array<NotaCriterio | null>(CRITERIOS_POR_SETOR).fill(null),
-      geo: 100 - faltaPct - excessoPct,
+      geo: Math.max(0, Math.min(100, 100 - faltaPct - excessoPct)),
       faltaArea,
       excessoArea,
       faltaPct,

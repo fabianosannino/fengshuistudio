@@ -11,7 +11,8 @@
       "codex/retries-cobranca-b2": false,
       "codex/comunicacao-b3": false,
       "codex/eventos-cobranca-b2": false,
-      "codex/privacidade-c3": false
+      "codex/privacidade-c3": false,
+      "codex/calculos-c1-c2": false
     }
   },
   "crons": [

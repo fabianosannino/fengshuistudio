@@ -52,6 +52,7 @@ describe('análise derivada e relatório', () => {
     expect(impedimentoDaAnalise({ ...be, orientacao_estado: 'nao_confirmada' }, { bagua: true })).toMatch(/Confirme/)
     expect(impedimentoDaAnalise(analisada, { bagua: true })).toBeNull()
     expect(impedimentoDaAnalise({ escola: 'btb' } as BaguaEntrada, { bagua: true })).toBeNull()
+    expect(impedimentoDaAnalise({ escola: 'btb', bordas: { x: 0, y: 0, w: 300, h: 300 } } as BaguaEntrada, { bagua: true })).toMatch(/revisada/)
     expect(impedimentoDaAnalise(be, { fotos: true, introducao: true })).toBeNull()
   })
   it('narrativa acompanha a escola', () => {
