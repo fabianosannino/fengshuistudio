@@ -6,11 +6,11 @@ const m = vi.hoisted(() => ({
   user: '11111111-1111-4111-8111-111111111111' as string | null,
   id: '22222222-2222-4222-8222-222222222222',
   query: vi.fn(), upload: vi.fn(), remove: vi.fn(), filters: [] as unknown[][],
-  updates: [] as unknown[], capability: true,
+  updates: [] as unknown[], capability: true, rate: vi.fn(),
 }))
 vi.mock('server-only', () => ({}))
 vi.mock('../../src/lib/logger', () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
-vi.mock('../../src/lib/rate-limit', () => ({ rateLimit: async () => ({ success: true }), ipDaRequisicao: () => 'fixture' }))
+vi.mock('../../src/lib/rate-limit', () => ({ rateLimit: m.rate, ipDaRequisicao: () => 'fixture' }))
 vi.mock('../../src/lib/guarda-admin', () => ({ exigirCapacidade: async () => ({ ok: m.capability }), respostaDaGuarda: () => Response.json({}, { status: 403 }) }))
 function cliente() {
   return {
@@ -40,6 +40,7 @@ async function request(campo: string, extras: Record<string, string> = {}, inval
 }
 beforeEach(() => {
   vi.clearAllMocks(); m.filters.length = 0; m.updates.length = 0; m.capability = true
+  m.rate.mockResolvedValue({ success: true })
   m.user = '11111111-1111-4111-8111-111111111111'
   m.query.mockResolvedValue({ data: { id: m.id, foto_url: `${m.user}/${m.id}.jpg` }, error: null })
   m.upload.mockResolvedValue({ error: null }); m.remove.mockResolvedValue({ error: null })
@@ -52,6 +53,17 @@ describe('fronteiras de upload com decoder real', () => {
     { nome: 'cliente', rota: fotoCliente, campo: 'foto', parametros: () => ({ cliente_id: m.id }) },
     { nome: 'produto', rota: fotoProduto, campo: 'imagem', parametros: () => ({ produto_id: m.id }) },
   ]
+  it.each(rotas)('$nome recusa falha de proteção antes de ler ou armazenar o arquivo', async ({ rota }) => {
+    m.rate.mockResolvedValue({ success: false, indisponivel: true })
+    const response = await rota(new Request('https://example.invalid', { method: 'POST', body: 'não é multipart' }))
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('30')
+    expect(m.query).not.toHaveBeenCalled()
+    expect(m.upload).not.toHaveBeenCalled()
+    expect(m.remove).not.toHaveBeenCalled()
+    expect(m.updates).toEqual([])
+    expect(m.rate).toHaveBeenCalledWith('fixture', expect.objectContaining({ exigirCompartilhado: true }))
+  })
   it.each(rotas)('$nome recusa bytes falsos sem armazenar', async ({ rota, campo, parametros }) => {
     expect((await rota(await request(campo, parametros(), true))).status).toBe(400)
     expect(m.upload).not.toHaveBeenCalled(); expect(m.updates).toEqual([])

@@ -50,7 +50,8 @@ const MAX_QUANTIDADE = 20
 const QUANTIDADE_DE_DIGITAL = 1
 
 export async function POST(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 15, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 15, windowMs: 60_000, escopo: 'POST:/api/loja/checkout', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

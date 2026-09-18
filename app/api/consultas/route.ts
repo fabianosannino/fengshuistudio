@@ -8,7 +8,8 @@ import { ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../../src/lib/p
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 20, windowMs: 60_000, escopo: 'POST:/api/consultas', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

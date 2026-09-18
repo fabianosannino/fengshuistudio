@@ -52,7 +52,8 @@ const ROUTE = '/api/pedidos/estorno'
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 10, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 10, windowMs: 60_000, escopo: 'POST:/api/pedidos/estorno', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

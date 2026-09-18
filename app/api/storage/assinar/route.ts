@@ -40,7 +40,8 @@ const BUCKETS_PERMITIDOS = [BUCKET_IMOVEIS, BUCKET_CLIENTES]
 const MAX_VALORES = 100
 
 export async function POST(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 120, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 120, windowMs: 60_000, escopo: 'POST:/api/storage/assinar', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },

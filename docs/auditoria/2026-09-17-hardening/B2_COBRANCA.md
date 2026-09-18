@@ -165,4 +165,9 @@ faz a migração inteira falhar. Nenhuma assinatura real foi criada/cancelada.
 Validação: 1.595 testes em 121 arquivos, TypeScript aprovado e 60 verificações
 PostgreSQL, incluindo bypass anterior, rollback do backfill, ACLs, dados
 existentes preservados, concorrência e concessão/vencimento após início da
-transação. Migração será aplicada somente após os gates remotos passarem.
+transação. PR #203 integrado em `ba7cdeb6220fdba7c79c583da5db0087635f07ed`
+após CI 35317381931 verde; migration remota `20260918070348`. Readback:
+13 clientes, 17 consultas, uma assinatura preservada, duas concessões e zero
+divergências entre cache e plano vigente. ACLs conferidas. Produção READY
+`dpl_H3mA8d4pMXePYhgWffm5izuUcjCm`, mesmo SHA. Advisors sem novas classes de
+alertas (view pública deliberada, duas funções existentes e sete INFO).

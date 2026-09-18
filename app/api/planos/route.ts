@@ -12,7 +12,8 @@ const VALID_PLANOS = ['freemium', 'free', 'starter', 'simples', 'pro', 'profissi
 const indisponivel = () => NextResponse.json({ error: 'Não foi possível atualizar seu plano. Tente novamente.' }, { status: 503 })
 
 export async function POST(request: Request) {
-  const { success } = await rateLimit(ipDaRequisicao(request), { limit: 10, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 10, windowMs: 60_000, escopo: 'POST:/api/planos', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
   const supabase = await createRouteHandlerClient()
   const { data: { user } } = await supabase.auth.getUser()

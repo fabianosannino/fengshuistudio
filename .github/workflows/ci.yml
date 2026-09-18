@@ -65,6 +65,8 @@ jobs:
         run: npm run test:webhook-claims
       - name: Verificar exclusao e uploads concorrentes
         run: npm run test:privacy-deletion
+      - name: Verificar limite atomico e expiracao em Redis isolado
+        run: npm run test:rate-limit
 
   quality:
     name: Dependency Security

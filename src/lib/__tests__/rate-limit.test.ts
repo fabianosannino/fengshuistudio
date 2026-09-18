@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { rateLimit, ipDaRequisicao } from '../rate-limit'
+import { SCRIPT_RATE_LIMIT } from '../rate-limit-script'
 
 /**
  * Consolida os dois arquivos que existiam para este módulo (`tests/` e
@@ -51,7 +52,7 @@ describe('rateLimit — contagem', () => {
     await rateLimit('conta-4', opcoes)
     expect((await rateLimit('conta-4', opcoes)).success).toBe(false)
 
-    vi.advanceTimersByTime(11_000)
+    vi.advanceTimersByTime(10_000)
     expect((await rateLimit('conta-4', opcoes)).success).toBe(true)
   })
 
@@ -74,12 +75,13 @@ describe('rateLimit — store compartilhado', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
   it('conta no Redis quando configurado', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
-      JSON.stringify([{ result: 3 }, { result: 1 }]),
+      JSON.stringify({ result: [3, 50_000] }),
       { status: 200 }
     )))
 
@@ -90,26 +92,22 @@ describe('rateLimit — store compartilhado', () => {
 
   it('bloqueia quando o contador do Redis passa do limite', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
-      JSON.stringify([{ result: 11 }, { result: 0 }]),
+      JSON.stringify({ result: [11, 50_000] }),
       { status: 200 }
     )))
 
     expect(await rateLimit('redis-2', { limit: 10 })).toMatchObject({ success: false, compartilhado: true })
   })
 
-  it('fixa a expiração só na criação da chave (EXPIRE ... NX)', async () => {
-    // Sem o NX, cada requisição empurraria a janela para frente e uma rajada
-    // contínua nunca resetaria o contador — janela fixa virando janela infinita.
-    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
-      new Response(JSON.stringify([{ result: 1 }, { result: 1 }]), { status: 200 })
-    )
+  it('envia um comando atômico com chave pseudônima e prazo', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ result: [1, 60_000] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     await rateLimit('redis-3', { limit: 5, windowMs: 60_000 })
 
-    const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(corpo[0]).toEqual(['INCR', 'ratelimit:redis-3:60000'])
-    expect(corpo[1]).toEqual(['EXPIRE', 'ratelimit:redis-3:60000', '60', 'NX'])
+    const corpo = JSON.parse(fetchMock.mock.calls[0][1]!.body as string)
+    expect(corpo).toEqual(['EVAL', SCRIPT_RATE_LIMIT, 1, expect.stringMatching(/^fss:ratelimit:v2:[a-f0-9]{64}$/), 60_000])
+    expect(corpo[3]).not.toContain('redis-3')
   })
 
   it('degrada para a memória quando o Redis falha — não deixa a rota sem limite', async () => {
@@ -118,6 +116,63 @@ describe('rateLimit — store compartilhado', () => {
 
     const resultado = await rateLimit('redis-4', { limit: 2 })
     expect(resultado).toMatchObject({ success: true, compartilhado: false })
+  })
+
+  it.each([{ result: [1, -1] }, { result: [1.5, 100] }, { result: [1] }, { result: [1, 100], error: 'synthetic' }, { result: [0, 100] }])('recusa resposta inválida em operação crítica: %j', async body => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body))))
+    expect(await rateLimit('critico', { exigirCompartilhado: true })).toMatchObject({ success: false, indisponivel: true, compartilhado: false })
+  })
+
+  it('não degrada escrita crítica em produção quando Redis está indisponível', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream private metadata')))
+    expect(await rateLimit('critico-falha', { exigirCompartilhado: true })).toMatchObject({ success: false, indisponivel: true })
+    expect(JSON.stringify(warning.mock.calls)).not.toMatch(/private metadata|critico-falha|token-de-teste/)
+  })
+
+  it('não mistura GET/POST nem operações diferentes do mesmo IP', async () => {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '')
+    const a = { limit: 1, escopo: 'POST:/api/planos' }
+    expect((await rateLimit('same-ip', a)).success).toBe(true)
+    expect((await rateLimit('same-ip', a)).success).toBe(false)
+    expect((await rateLimit('same-ip', { ...a, escopo: 'GET:/api/planos' })).success).toBe(true)
+    expect((await rateLimit('same-ip', { ...a, escopo: 'POST:/api/clientes' })).success).toBe(true)
+  })
+
+  it('ausência de configuração em produção é indisponibilidade em operação crítica', async () => {
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('UPSTASH_REDIS_REST_URL', '')
+    expect(await rateLimit('sem-config', { exigirCompartilhado: true })).toMatchObject({ success: false, indisponivel: true })
+  })
+
+  it('desenvolvimento permite o fallback declarado sem exigir credenciais reais', async () => {
+    vi.stubEnv('NODE_ENV', 'development'); vi.stubEnv('UPSTASH_REDIS_REST_URL', '')
+    expect(await rateLimit('local-fixture', { exigirCompartilhado: true })).toMatchObject({ success: true, compartilhado: false })
+  })
+
+  it.each([{ limit: 0 }, { limit: -1 }, { limit: 1.5 }, { windowMs: 0 }, { windowMs: Infinity }])('rejeita configuração inválida %j', async opcoes => {
+    await expect(rateLimit('config', opcoes)).rejects.toThrow('Configuração')
+  })
+})
+
+describe('rateLimit — pressão sobre memória', () => {
+  it('recusa novas identidades sem devolver cota a contadores vivos e recupera após expiração', async () => {
+    vi.resetModules()
+    vi.useFakeTimers()
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '')
+    try {
+      const { rateLimit: isolado } = await import('../rate-limit')
+      const opcoes = { limit: 1, windowMs: 1_000 }
+      for (let i = 0; i < 10_000; i++) expect((await isolado(`fixture-${i}`, opcoes)).success).toBe(true)
+      expect(await isolado('excedente', opcoes)).toMatchObject({ success: false, indisponivel: true })
+      expect(await isolado('fixture-0', opcoes)).toMatchObject({ success: false, remaining: 0 })
+      vi.advanceTimersByTime(1_000)
+      expect((await isolado('excedente', opcoes)).success).toBe(true)
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllEnvs()
+    }
   })
 })
 

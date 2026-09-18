@@ -46,7 +46,8 @@ function nomeDoProduto(price: Stripe.Price): string {
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success } = await rateLimit(ip, { limit: 15, windowMs: 60_000 })
+  const { success, indisponivel: limiteIndisponivel } = await rateLimit(ip, { limit: 15, windowMs: 60_000, escopo: 'POST:/api/stripe/checkout', exigirCompartilhado: true })
+  if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) {
     return NextResponse.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
