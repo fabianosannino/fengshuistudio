@@ -47,7 +47,8 @@ import {
 import { urlExibivel } from '../components/useUrlsAssinadas'
 import { BUCKET_IMOVEIS } from '../../src/lib/storage-imagens'
 import type { Setor as SetorCompasso } from '../../src/lib/trigramas'
-import { calcularTaiJi, setoresAusentes, setoresExtensao, type Ponto } from '../../src/lib/poligono'
+import { calcularTaiJi, type Ponto } from '../../src/lib/poligono'
+import { analisarContornoNaGrade } from '../../src/lib/contorno-na-grade'
 import EditorPoligonoTaiJi from '../components/EditorPoligonoTaiJi'
 import BussolaDispositivo from '../components/BussolaDispositivo'
 import MapaAlinhamento from '../components/MapaAlinhamento'
@@ -273,10 +274,11 @@ function BaguaPlantaContent() {
 
   function mudarModo(novo:ModoEdicaoPlanta){
     cancelarGesto(); setModo(novo)
+    if(editandoPoligono){setEditandoPoligono(false);void salvarRascunho()}
     if(novo!=='nenhum') setSemSobreposicoes(false)
   }
   function compararPlanta(valor:boolean){
-    cancelarGesto(); setSemSobreposicoes(valor); setModo('nenhum')
+    mudarModo('nenhum'); setSemSobreposicoes(valor)
   }
 
   // Metragem real (m²)
@@ -1604,6 +1606,7 @@ function BaguaPlantaContent() {
                     <button
                       type="button"
                       onClick={()=>{
+                        if(!editandoPoligono){mudarModo('nenhum');setSemSobreposicoes(false)}
                         if(!editandoPoligono&&!poligonoTaiJiRef.current&&bounds){
                           const padrao:Ponto[]=[
                             {x:bounds.x,y:bounds.y},
@@ -1627,8 +1630,9 @@ function BaguaPlantaContent() {
                       {x:bounds.x+bounds.w,y:bounds.y+bounds.h},{x:bounds.x,y:bounds.y+bounds.h},
                     ]:[])
                     const taiJi=calcularTaiJi(pontosResumo)
-                    const ausentes=setoresAusentes(pontosResumo)
-                    const extensoes=setoresExtensao(pontosResumo)
+                    const celulas=analisarContornoNaGrade(pontosResumo,bounds,lh,lv)
+                    const ausentes=celulas.filter(c=>c.ausente)
+                    const extensoes=celulas.filter(c=>c.excessoArea>0)
                     if(!poligonoTaiJi) return (
                       <p style={{margin:'6px 0 0',fontSize:'13px',color:'#245F52'}}>
                         Ainda usando o retângulo das bordas como contorno (sem ganho sobre o bounding box). Desenhe o contorno real para detectar setor ausente/extensão.
@@ -1638,7 +1642,7 @@ function BaguaPlantaContent() {
                       <div style={{margin:'6px 0 0',fontSize:'13px',color:'#245F52'}}>
                         {taiJi?.centroForaDaArea&&<p style={{margin:'0 0 3px',color:'#B4533A',fontWeight:'bold'}}>⚠ O centro (Tai Ji) cai fora da área construída.</p>}
                         {ausentes.length>0&&<p style={{margin:'0 0 3px',color:'#B4533A'}}>Setor ausente: {ausentes.length} célula(s) da grade 3×3.</p>}
-                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#8A6E2F'}}>Extensão: {extensoes.length} célula(s) da grade 3×3.</p>}
+                        {extensoes.length>0&&<p style={{margin:'0 0 3px',color:'#8A6E2F'}}>Extensão externa: {extensoes.length} setor(es) da borda.</p>}
                         {ausentes.length===0&&extensoes.length===0&&<p style={{margin:0}}>Contorno regular — sem setor ausente ou extensão detectados.</p>}
                       </div>
                     )
@@ -1687,10 +1691,11 @@ function BaguaPlantaContent() {
                     altura (fotos em retrato), o canvas fica mais estreito que o container (width:100%),
                     e um overlay preenchendo o container inteiro ficaria desalinhado com a imagem. */}
                 {editandoPoligono&&bounds&&rotRef.current&&cvRef.current&&(
-                  <div style={{position:'absolute',left:0,top:0,width:cvRef.current.style.width,height:cvRef.current.style.height}}>
                     <EditorPoligonoTaiJi
                       largura={rotRef.current.width}
                       altura={rotRef.current.height}
+                      referencia={bounds} lh={lh} lv={lv}
+                      tamanhoExibicao={{largura:cvRef.current.style.width,altura:cvRef.current.style.height}}
                       pontosIniciais={poligonoTaiJi??[
                         {x:bounds.x,y:bounds.y},{x:bounds.x+bounds.w,y:bounds.y},
                         {x:bounds.x+bounds.w,y:bounds.y+bounds.h},{x:bounds.x,y:bounds.y+bounds.h},
@@ -1698,7 +1703,6 @@ function BaguaPlantaContent() {
                       onChange={p=>{setPoligonoTaiJi(p);poligonoTaiJiRef.current=p}}
                       transparente
                     />
-                  </div>
                 )}
               </div>
 
@@ -2052,7 +2056,7 @@ function BaguaPlantaContent() {
                         animation:recalculoPendente?'pulseRecalc 1.5s ease-in-out infinite':'none'}}>
                       🔄 Recalcular{recalculoPendente?' (pendente)':''}
                     </button>
-                    <button type="button" onClick={()=>{cancelarGesto();setFullscreen(true)}}
+                    <button type="button" onClick={()=>{cancelarGesto();if(editandoPoligono)mudarModo('nenhum');setFullscreen(true)}}
                       style={{background:'#2E7D6B',color:'#fff',border:'none',padding:'6px 12px',borderRadius:'6px',fontSize:'13px',fontWeight:'bold',cursor:'pointer'}}>
                       🔍 Tela cheia
                     </button>

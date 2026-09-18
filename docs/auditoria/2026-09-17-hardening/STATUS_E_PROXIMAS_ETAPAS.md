@@ -106,6 +106,16 @@ estado derivado e indicação textual de experimental (não apenas por cor).
 
 ## E–F e dependências complementares
 
+- **E — contorno real e grade fixa:** reprodução adicional pelos pontos
+  brancos/verdes confirmada: a sobreposição do polígono recalculava suas
+  células pelo bounding box dinâmico, embora as bordas salvas fossem outras.
+  Editor/resumo passam a usar as bordas e divisórias da análise; extensão é
+  desenhada fora da referência e não desloca a falta anterior. Restauração,
+  troca de ferramenta e salvar/reabrir têm cenários E-CONT-01–05, ADR 0057.
+  Validação local: 1.841 testes em 134 arquivos, TypeScript aprovado e lint
+  sem erros (94 avisos); build/CI final vinculados no PR.
+  A integração do contorno aos percentuais/scores permanece etapa separada,
+  assim como homologação visual em dispositivo físico e validação de domínio.
 - **E — edição de falta/excesso:** defeito reproduzido: começar um novo desenho
   sobre uma marcação movia a anterior; o editor só tratava eventos de mouse.
   A correção separa criar/editar, compartilha gestos de ponteiro entre bancada
