@@ -26,6 +26,7 @@ import { useCallback, useEffect, useState } from 'react'
 import AppShell from '../components/AppShell'
 import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
+import { ESTORNAVEIS } from '../../src/lib/estorno-da-venda'
 import {
   estadoDoPedido, pedidoRendeuReceita, rotuloDoEstado, prazoDeArrependimento,
   dentroDoPrazoDeArrependimento,
@@ -59,12 +60,9 @@ const CORES_DO_ESTADO: Record<EstadoDoPedido, { fundo: string; texto: string }> 
   reembolsado: { fundo: '#FDECEC', texto: '#A33A3A' },
   contestado: { fundo: '#FDECEC', texto: '#A33A3A' },
   disputa_resolvida: { fundo: '#F3F4F6', texto: '#6B7280' },
+  reembolsado_parcial: { fundo: '#FAF3E0', texto: '#8A6E2F' },
+  revisao_financeira: { fundo: '#FDECEC', texto: '#A33A3A' },
 }
-
-/** Situações em que ainda faz sentido oferecer o botão de estornar. */
-const ESTORNAVEIS: EstadoDoPedido[] = [
-  'pago', 'preparando', 'enviado', 'entregue', 'devolucao_solicitada',
-]
 
 function reais(centavos: number): string {
   return (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -86,7 +84,7 @@ export default function MinhasVendas() {
       .select(`
         id, numero, tipo, criado_em, total_centavos, comprador_email,
         pedido_itens(nome),
-        pedido_eventos(evento, ocorrido_em),
+        pedido_eventos(evento, ocorrido_em, dados),
         pedido_lancamentos(tipo, valor_centavos, pagador, recebedor)
       `)
       .eq('vendedor_perfil_id', user.id)
@@ -209,7 +207,7 @@ export default function MinhasVendas() {
                     const liquido = liquidoDoConsultor(pedido.pedido_lancamentos ?? [])
                     const prazo = prazoDeArrependimento(pedido.tipo, eventos)
                     const noPrazo = dentroDoPrazoDeArrependimento(pedido.tipo, eventos)
-                    const podeEstornar = ESTORNAVEIS.includes(estado)
+                    const podeEstornar = ESTORNAVEIS.has(estado)
 
                     return (
                       <tr key={pedido.id}>
@@ -251,7 +249,7 @@ export default function MinhasVendas() {
                           {confirmando === pedido.id && (
                             <div style={{ textAlign: 'left', background: '#FDECEC', padding: '10px', borderRadius: '8px', minWidth: '240px' }}>
                               <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#0E1B2C' }}>
-                                Devolver <strong>{reais(pedido.total_centavos)}</strong> ao comprador.
+                                Devolver ao comprador o saldo ainda não reembolsado deste pedido.
                               </p>
                               {/* O aviso que evita a surpresa no extrato. */}
                               <p style={{ margin: '0 0 10px', fontSize: '11px', color: '#8A6E2F', lineHeight: 1.4 }}>

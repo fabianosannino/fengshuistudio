@@ -127,6 +127,9 @@ describe('quemEstorna', () => {
 })
 
 describe('ESTORNAVEIS', () => {
+  it('permite devolver o restante após reembolso parcial', () => {
+    expect(ESTORNAVEIS.has('reembolsado_parcial')).toBe(true)
+  })
   it('inclui o estado que o próprio botão do comprador cria', () => {
     // `devolucao_solicitada` é o que a página do comprador grava ao pedir a
     // devolução. Deixá-lo de fora tornaria o pedido inestornável **por ter

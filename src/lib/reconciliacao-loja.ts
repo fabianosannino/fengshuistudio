@@ -49,13 +49,10 @@ export interface PedidoNoBanco {
   vendedor_tipo?: string | null
   /** Derivado dos eventos antes de comparar — aqui já chega pronto. */
   estado: string
-  /**
-   * Os **tipos** já lançados no razão deste pedido.
-   *
-   * Só os tipos, não os valores: completar o razão é responder «o que falta?»,
-   * e carregar o razão inteiro de mil pedidos para uma pergunta de presença
-   * seria pagar caro por uma resposta booleana.
-   */
+  pagamento_registrado?: boolean
+  /** Saldo dos lançamentos de reembolso, incluindo ajustes de conciliação. */
+  reembolso_liquido_centavos?: number
+  /** Tipos já lançados, para detectar a tarifa ausente. */
   lancamentos?: string[]
 }
 
@@ -90,8 +87,10 @@ export interface DivergenciaDaLoja {
 
 /** Estados em que o pedido afirma que o dinheiro entrou. */
 const AFIRMA_PAGAMENTO = new Set([
-  'pago', 'preparando', 'enviado', 'entregue', 'devolucao_solicitada',
+  'pago', 'preparando', 'enviado', 'entregue', 'devolucao_solicitada', 'reembolsado_parcial',
 ])
+
+export const chaveDoPagamento = (intent: string, conta: string | null | undefined): string => `${conta ?? 'plataforma'}:${intent}`
 
 /**
  * Compara os dois lados e devolve o que não bate.
@@ -107,14 +106,15 @@ export function compararVendas(
 
   const porIntent = new Map<string, PedidoNoBanco>()
   for (const pedido of noBanco) {
-    if (pedido.stripe_payment_intent) porIntent.set(pedido.stripe_payment_intent, pedido)
+    if (pedido.stripe_payment_intent) porIntent.set(chaveDoPagamento(pedido.stripe_payment_intent, pedido.stripe_account_id), pedido)
   }
 
   const vistosNoStripe = new Set<string>()
 
   for (const cobranca of noStripe) {
-    vistosNoStripe.add(cobranca.paymentIntentId)
-    const pedido = porIntent.get(cobranca.paymentIntentId)
+    const chave = chaveDoPagamento(cobranca.paymentIntentId, cobranca.contaConectada)
+    vistosNoStripe.add(chave)
+    const pedido = porIntent.get(chave)
 
     if (!pedido) {
       divergencias.push({
@@ -133,17 +133,20 @@ export function compararVendas(
       numero: pedido.numero,
     }
 
-    if (!AFIRMA_PAGAMENTO.has(pedido.estado) && pedido.estado !== 'reembolsado') {
+    if (!(pedido.pagamento_registrado ?? (AFIRMA_PAGAMENTO.has(pedido.estado) || pedido.estado === 'reembolsado'))) {
       divergencias.push({
         ...comum, tipo: 'pagamento_nao_registrado',
-        noStripe: 'pago', noBanco: pedido.estado, corrigivel: true,
+        noStripe: 'pago', noBanco: pedido.estado, corrigivel: cobranca.valorCentavos === pedido.total_centavos,
       })
     }
 
-    if (cobranca.reembolsadoCentavos > 0 && pedido.estado !== 'reembolsado') {
+    // The aggregate is a divergence signal only. The writer fetches every
+    // refund and its current status before confirming any money in the ledger.
+    const devolvido = pedido.reembolso_liquido_centavos ?? (pedido.estado === 'reembolsado' ? pedido.total_centavos : 0)
+    if (cobranca.reembolsadoCentavos !== devolvido) {
       divergencias.push({
         ...comum, tipo: 'reembolso_nao_registrado',
-        noStripe: cobranca.reembolsadoCentavos, noBanco: pedido.estado, corrigivel: true,
+        noStripe: cobranca.reembolsadoCentavos, noBanco: devolvido, corrigivel: true,
       })
     }
 
@@ -163,8 +166,8 @@ export function compararVendas(
    */
   for (const pedido of noBanco) {
     if (!pedido.stripe_payment_intent) continue
-    if (vistosNoStripe.has(pedido.stripe_payment_intent)) continue
-    if (!AFIRMA_PAGAMENTO.has(pedido.estado)) continue
+    if (vistosNoStripe.has(chaveDoPagamento(pedido.stripe_payment_intent, pedido.stripe_account_id))) continue
+    if (!(pedido.pagamento_registrado ?? AFIRMA_PAGAMENTO.has(pedido.estado))) continue
 
     divergencias.push({
       tipo: 'pedido_sem_cobranca',

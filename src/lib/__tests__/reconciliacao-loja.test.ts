@@ -22,6 +22,7 @@ function pedido(over: Partial<PedidoNoBanco> = {}): PedidoNoBanco {
     id: 'pedido-1',
     numero: 'P260813-F0FD73',
     stripe_payment_intent: 'pi_1',
+    stripe_account_id: 'acct_1',
     total_centavos: 500,
     estado: 'pago',
     ...over,
@@ -29,6 +30,31 @@ function pedido(over: Partial<PedidoNoBanco> = {}): PedidoNoBanco {
 }
 
 describe('compararVendas', () => {
+  it('não casa a cobrança de outra conta, mesmo com o mesmo intent', () => {
+    expect(compararVendas([cobranca({ contaConectada: null })], [pedido()]).map(d => d.tipo).sort())
+      .toEqual(['pedido_sem_cobranca', 'venda_ausente_no_banco'])
+  })
+
+  it('não repete divergência de reembolso parcial já conciliado', () => {
+    expect(compararVendas([cobranca({ reembolsadoCentavos: 200 })],
+      [pedido({ estado: 'reembolsado_parcial', reembolso_liquido_centavos: 200 })])).toEqual([])
+  })
+
+  it('detecta valor duplicado apesar do rótulo reembolsado', () => {
+    const resultado = compararVendas([cobranca({ reembolsadoCentavos: 500 })],
+      [pedido({ estado: 'reembolsado', reembolso_liquido_centavos: 700 })])
+    expect(resultado).toMatchObject([{ tipo: 'reembolso_nao_registrado', noStripe: 500, noBanco: 700 }])
+  })
+
+  it('não reinventa pagamento por causa de revisão financeira', () => {
+    expect(compararVendas([cobranca()], [pedido({ estado: 'revisao_financeira', pagamento_registrado: true })])).toEqual([])
+  })
+
+  it('valor incompatível não permite acrescentar pagamento automaticamente', () => {
+    const resultado = compararVendas([cobranca({ valorCentavos: 300 })], [pedido({ estado: 'iniciado', pagamento_registrado: false })])
+    expect(resultado.find(d => d.tipo === 'pagamento_nao_registrado')?.corrigivel).toBe(false)
+  })
+
   it('sem divergência quando os dois lados contam a mesma coisa', () => {
     expect(compararVendas([cobranca()], [pedido()])).toEqual([])
   })

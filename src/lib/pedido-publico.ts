@@ -71,6 +71,7 @@ export interface PedidoParaOComprador {
  */
 const EVENTOS_VISIVEIS = new Set([
   'pago', 'enviado', 'entregue', 'devolucao_solicitada', 'reembolsado', 'cancelado',
+  'reembolso_conferido',
 ])
 
 /**
@@ -91,8 +92,9 @@ export function mascararEmail(email: string | null | undefined): string | null {
 /** Quanto já voltou para o comprador, somado do razão. */
 export function devolvidoAoComprador(lancamentos: Lancamento[]): number {
   return lancamentos
-    .filter(l => l.recebedor === 'comprador' && Number.isFinite(l.valor_centavos))
-    .reduce((soma, l) => soma + l.valor_centavos, 0)
+    .filter(l => Number.isFinite(l.valor_centavos))
+    .reduce((soma, l) => soma + (l.recebedor === 'comprador' ? l.valor_centavos
+      : l.tipo === 'reembolso' && l.pagador === 'comprador' ? -l.valor_centavos : 0), 0)
 }
 
 /**
@@ -152,7 +154,7 @@ export function pedidoParaOComprador(
       .filter(e => EVENTOS_VISIVEIS.has(e.evento))
       .map(e => ({
         evento: e.evento,
-        rotulo: rotuloDoEstado(e.evento as never),
+        rotulo: e.evento === 'reembolso_conferido' ? 'Situação do reembolso atualizada' : rotuloDoEstado(e.evento as never),
         ocorrido_em: e.ocorrido_em ?? null,
       })),
     arrependimento_ate: prazo ? prazo.toISOString() : null,

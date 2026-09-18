@@ -16,7 +16,6 @@
  * log que o razão está incompleto. Lacuna declarada, ADR 0020.
  */
 
-import type Stripe from 'stripe'
 import stripeClient from './stripe'
 import { logger } from './logger'
 import { registrarLancamento, type ParteDoPedido } from './lancamentos-do-pedido'
@@ -214,77 +213,5 @@ async function tarifaDoGateway(
     return Math.max(0, transacao.fee - comissaoDentroDaTarifa)
   } catch (err) {
     return semTarifa(`erro ao consultar o Stripe: ${String(err)}`)
-  }
-}
-
-/**
- * Lançamentos de um reembolso: o que voltou ao comprador e o que a plataforma
- * devolveu de comissão.
- *
- * A tarifa do gateway **não** gera lançamento aqui, e a ausência é o ponto:
- * ela não volta. O `tarifa_gateway` do momento da venda continua de pé, e é
- * por isso que o saldo do consultor fica negativo num pedido devolvido —
- * exatamente o número que ele precisa ver.
- */
-export async function registrarLancamentosDoReembolso(
-  supabase: SupabaseClient,
-  reembolso: {
-    pedidoId: string
-    cobranca: Stripe.Charge
-    /** Quem devolve. Numa venda própria somos nós dos dois lados. */
-    vendedor: VendedorDaVenda
-    referencia: string
-    ocorridoEm: string
-  },
-  origemDoLog: string
-): Promise<void> {
-  const comum = {
-    pedidoId: reembolso.pedidoId,
-    origem: 'webhook_stripe' as const,
-    referencia: reembolso.referencia,
-    ocorridoEm: reembolso.ocorridoEm,
-  }
-
-  await registrarLancamento(supabase, {
-    ...comum, tipo: 'reembolso', valorCentavos: reembolso.cobranca.amount_refunded ?? 0,
-    pagador: reembolso.vendedor, recebedor: 'comprador',
-  }, origemDoLog)
-
-  const devolvida = await comissaoDevolvida(reembolso.cobranca, origemDoLog)
-  if (!devolvida) return
-
-  await registrarLancamento(supabase, {
-    ...comum, tipo: 'estorno_comissao', valorCentavos: devolvida,
-    pagador: 'plataforma', recebedor: reembolso.vendedor,
-    motivo: 'A plataforma não retém comissão de venda desfeita',
-  }, origemDoLog)
-}
-
-/**
- * Quanto da comissão voltou, lido da `application_fee`.
- *
- * É consultado em vez de assumido porque o estorno pode ter sido feito **pelo
- * painel do Stripe**, onde devolver a comissão é uma caixa que alguém marca. A
- * rota do app sempre devolve; o painel, não necessariamente. Registrar o que
- * pedimos, em vez do que aconteceu, faria o razão descrever a intenção.
- */
-async function comissaoDevolvida(
-  cobranca: Stripe.Charge,
-  origemDoLog: string
-): Promise<number> {
-  const taxa = cobranca.application_fee
-  if (!taxa) return 0
-
-  try {
-    const id = typeof taxa === 'string' ? taxa : taxa.id
-    // A `application_fee` vive na **plataforma**, não na conta conectada —
-    // por isso sem `stripeAccount`.
-    const registro = await stripeClient.applicationFees.retrieve(id)
-    return registro.amount_refunded ?? 0
-  } catch (err) {
-    logger.warn('Não foi possível ler o estorno da comissão — razão incompleto', {
-      origem: origemDoLog, error: String(err),
-    })
-    return 0
   }
 }

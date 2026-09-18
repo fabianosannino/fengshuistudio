@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     .from('pedido_itens')
     .select(`
       id, nome, pedido_id, produto_id,
-      pedidos!inner(token_publico, token_expira_em, pedido_eventos(evento, ocorrido_em)),
+      pedidos!inner(token_publico, token_expira_em, pedido_eventos(evento, ocorrido_em, dados)),
       produtos(tipo, arquivo_path, arquivo_nome, arquivo_mime)
     `)
     .eq('id', itemId)

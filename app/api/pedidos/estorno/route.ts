@@ -81,7 +81,7 @@ export async function POST(request: Request) {
    */
   const { data: pedido, error: erroDeLeitura } = await supabase
     .from('pedidos')
-    .select('id, stripe_payment_intent, stripe_account_id, vendedor_tipo, pedido_eventos(evento, ocorrido_em)')
+    .select('id, stripe_payment_intent, stripe_account_id, vendedor_tipo, pedido_eventos(evento, ocorrido_em, dados)')
     .eq('id', pedidoId)
     .maybeSingle()
 

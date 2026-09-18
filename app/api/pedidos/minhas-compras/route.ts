@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     .select(`
       numero, tipo, criado_em, total_centavos, comprador_email, token_publico,
       pedido_itens(nome, quantidade, preco_unitario_centavos),
-      pedido_eventos(evento, ocorrido_em),
+      pedido_eventos(evento, ocorrido_em, dados),
       pedido_lancamentos(tipo, valor_centavos, pagador, recebedor)
     `)
     .eq('comprador_email', user.email)

@@ -21,7 +21,8 @@
       "codex/checkout-duravel-b2": false,
       "codex/assinatura-atomica-b2": false,
       "codex/fatos-cobranca-b2": false,
-      "codex/download-pago-c3": false
+      "codex/download-pago-c3": false,
+      "codex/reembolsos-loja-b2": false
     }
   },
   "crons": [

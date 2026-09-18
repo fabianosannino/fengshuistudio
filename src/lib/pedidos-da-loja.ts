@@ -34,6 +34,7 @@ export type EstadoDoPedido =
   | 'iniciado' | 'pago' | 'cancelado' | 'preparando' | 'enviado'
   | 'entregue' | 'devolucao_solicitada' | 'reembolsado' | 'contestado'
   | 'disputa_resolvida'
+  | 'reembolsado_parcial' | 'revisao_financeira'
 
 export type OrigemDoEvento =
   | 'webhook_stripe' | 'vendedor' | 'comprador' | 'admin' | 'sistema'
@@ -44,6 +45,7 @@ export interface EventoDoPedido {
   origem?: OrigemDoEvento | string
   referencia?: string | null
   motivo?: string | null
+  dados?: Record<string, unknown> | null
 }
 
 /**
@@ -72,6 +74,8 @@ const PRECEDENCIA: Record<EstadoDoPedido, number> = {
   reembolsado: 60,
   contestado: 70,
   disputa_resolvida: 80,
+  reembolsado_parcial: 55,
+  revisao_financeira: 90,
 }
 
 function forcaDe(evento: string): number {
@@ -87,13 +91,40 @@ function forcaDe(evento: string): number {
  * conservador, porque é o estado que não afirma nada sobre dinheiro.
  */
 export function estadoDoPedido(eventos: EventoDoPedido[]): EstadoDoPedido {
+  const reembolso = resumoDoReembolso(eventos)
+  if (reembolso === 'invalido') return 'revisao_financeira'
   let melhor: EstadoDoPedido = 'iniciado'
 
   for (const evento of eventos) {
+    if (reembolso && evento.evento === 'reembolsado') continue
     if (forcaDe(evento.evento) > forcaDe(melhor)) melhor = evento.evento as EstadoDoPedido
   }
 
+  if (reembolso && reembolso.confirmado_centavos > 0) {
+    const estado = reembolso.confirmado_centavos === reembolso.pago_centavos ? 'reembolsado' : 'reembolsado_parcial'
+    if (forcaDe(estado) > forcaDe(melhor)) melhor = estado
+  }
+
   return melhor
+}
+
+type ResumoDoReembolso = { versao: number; pago_centavos: number; confirmado_centavos: number; pendente_centavos: number }
+
+/** Database-issued revision orders complete snapshots; delivery time is irrelevant. */
+export function resumoDoReembolso(eventos: EventoDoPedido[]): ResumoDoReembolso | 'invalido' | null {
+  let atual: ResumoDoReembolso | null = null
+  for (const evento of eventos) {
+    if (evento.evento !== 'reembolso_conferido') continue
+    const d = evento.dados
+    if (!d || ![d.versao, d.pago_centavos, d.confirmado_centavos, d.pendente_centavos].every(Number.isSafeInteger)
+      || Number(d.versao) < 1 || Number(d.pago_centavos) < 1 || Number(d.confirmado_centavos) < 0 || Number(d.pendente_centavos) < 0
+      || Number(d.confirmado_centavos) + Number(d.pendente_centavos) > Number(d.pago_centavos)) return 'invalido'
+    const proximo = d as ResumoDoReembolso
+    if (atual?.versao === proximo.versao && (atual.pago_centavos !== proximo.pago_centavos
+      || atual.confirmado_centavos !== proximo.confirmado_centavos || atual.pendente_centavos !== proximo.pendente_centavos)) return 'invalido'
+    if (!atual || proximo.versao > atual.versao) atual = proximo
+  }
+  return atual
 }
 
 /** Sete dias do CDC art. 49, em milissegundos. */
@@ -179,6 +210,8 @@ export function rotuloDoEstado(estado: EstadoDoPedido): string {
     reembolsado: 'Reembolsado',
     contestado: 'Contestado',
     disputa_resolvida: 'Disputa resolvida',
+    reembolsado_parcial: 'Reembolsado parcialmente',
+    revisao_financeira: 'Verificação financeira pendente',
   }
   return rotulos[estado] ?? estado
 }
@@ -522,7 +555,7 @@ export async function pedidoParaConfirmar(
     .from(PEDIDOS)
     .select(`numero, tipo, comprador_email, total_centavos, token_publico,
              confirmacao_enviada_em,
-             pedido_itens(nome, quantidade), pedido_eventos(evento, ocorrido_em)`)
+             pedido_itens(nome, quantidade), pedido_eventos(evento, ocorrido_em, dados)`)
     .eq('id', pedidoId)
     .maybeSingle()
 

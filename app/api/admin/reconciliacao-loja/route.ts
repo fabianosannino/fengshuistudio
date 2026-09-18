@@ -24,7 +24,7 @@
  * é append-only e essa é a garantia que dá valor à tabela:
  *
  * - **pagamento não registrado** → acrescenta `pago`;
- * - **reembolso não registrado** → acrescenta `reembolsado`;
+ * - **reembolso divergente** → confere todos os reembolsos atuais e ajusta o razão atomicamente;
  * - **sessão paga e pedido em `iniciado`** → confirma pelo mesmo caminho do
  *   webhook (`confirmarVendaDaLoja`), com razão e e-mail.
  *
@@ -60,10 +60,12 @@ import { logger } from '../../../../src/lib/logger'
 import { estadoDoPedido, registrarEvento } from '../../../../src/lib/pedidos-da-loja'
 import { confirmarVendaDaLoja } from '../../../../src/lib/venda-da-loja'
 import { completarTarifaDaVenda } from '../../../../src/lib/lancamentos-da-venda'
+import { sincronizarReembolsosDaLoja } from '../../../../src/lib/reembolsos-da-loja'
+import { devolvidoAoComprador } from '../../../../src/lib/pedido-publico'
 import { origemDaAplicacao } from '../../../../src/lib/auth-rotas'
 import {
   compararVendas, resumirDivergenciasDaLoja, pedidosParaConferirNoStripe, ehCobrancaDaLoja,
-  pedidosComRazaoIncompleto,
+  pedidosComRazaoIncompleto, chaveDoPagamento,
   type CobrancaNoStripe, type PedidoNoBanco, type DivergenciaDaLoja,
 } from '../../../../src/lib/reconciliacao-loja'
 
@@ -152,7 +154,7 @@ async function cobrancasDoStripe(
 
         if (!ehCobrancaDaLoja({
           pedidoIdNoMetadata: carimbo ?? c.metadata?.pedido_id ?? null,
-          temPedidoNoBanco: intentsComPedido.has(intent),
+          temPedidoNoBanco: intentsComPedido.has(chaveDoPagamento(intent, conta)),
         }, conta)) continue
 
         lista.push({
@@ -186,16 +188,16 @@ async function cobrancasDoStripe(
  */
 async function pedidosDoBanco(): Promise<PedidoNoBanco[]> {
   const supabase = createSupabaseAdminClient()
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('pedidos')
     .select(`id, numero, stripe_payment_intent, stripe_session_id, stripe_account_id,
-             total_centavos, vendedor_tipo, pedido_eventos(evento, ocorrido_em),
-             pedido_lancamentos(tipo)`)
+             total_centavos, vendedor_tipo, pedido_eventos(evento, ocorrido_em, dados),
+             pedido_lancamentos(tipo, valor_centavos, pagador, recebedor)`, { count: 'exact' })
     .limit(1000)
 
-  if (error) {
-    logger.error('Falha ao ler pedidos para reconciliação', { route: ROUTE, error: error.message })
-    return []
+  if (error || count === null || count !== data?.length) {
+    logger.error('Falha ao ler pedidos para reconciliação', { route: ROUTE })
+    throw new Error('Pedidos para conciliação indisponíveis')
   }
 
   return (data ?? []).map(p => ({
@@ -207,9 +209,8 @@ async function pedidosDoBanco(): Promise<PedidoNoBanco[]> {
     total_centavos: p.total_centavos,
     vendedor_tipo: p.vendedor_tipo,
     estado: estadoDoPedido(p.pedido_eventos ?? []),
-    // Só os tipos: quem completa o razão precisa saber **o que falta**, não
-    // quanto foi lançado. Trazer os valores aqui seria carregar o razão
-    // inteiro de mil pedidos para responder uma pergunta de presença.
+    pagamento_registrado: (p.pedido_eventos ?? []).some(e => e.evento === 'pago'),
+    reembolso_liquido_centavos: devolvidoAoComprador(p.pedido_lancamentos ?? []),
     lancamentos: (p.pedido_lancamentos ?? []).map((l: { tipo: string }) => l.tipo),
   }))
 }
@@ -304,15 +305,14 @@ async function completarRazoes(
 
 async function contasConectadas(): Promise<string[]> {
   const supabase = createSupabaseAdminClient()
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('profiles')
-    .select('stripe_account_id')
+    .select('stripe_account_id', { count: 'exact' })
     .not('stripe_account_id', 'is', null)
     .limit(LIMITE_DE_CONTAS)
 
-  if (error) {
-    logger.error('Falha ao listar contas conectadas', { route: ROUTE, error: error.message })
-    return []
+  if (error || count === null || count !== data?.length) {
+    throw new Error('Lista de contas conectadas indisponível ou incompleta')
   }
 
   return (data ?? []).map(p => p.stripe_account_id).filter(Boolean)
@@ -325,7 +325,7 @@ async function levantar() {
    */
   const banco = await pedidosDoBanco()
   const intentsComPedido = new Set(
-    banco.map(p => p.stripe_payment_intent).filter((pi): pi is string => Boolean(pi))
+    banco.filter(p => p.stripe_payment_intent).map(p => chaveDoPagamento(p.stripe_payment_intent!, p.stripe_account_id))
   )
 
   const contas = await contasConectadas()
@@ -386,11 +386,18 @@ export async function POST(request: Request) {
   for (const d of relatorio.divergencias) {
     if (!d.corrigivel || !d.pedidoId) continue
 
+    if (d.tipo === 'reembolso_nao_registrado') {
+      const { data: pedido, error } = await supabase.from('pedidos').select('stripe_account_id').eq('id', d.pedidoId).maybeSingle()
+      if (error || !pedido) throw new Error('Pedido para conciliação indisponível')
+      await sincronizarReembolsosDaLoja(supabase, d.pedidoId, pedido.stripe_account_id)
+      corrigidas.push(d)
+      continue
+    }
+
     // Corrigir é **acrescentar** o evento que faltava. A referência amarra o
     // conserto à origem, e o índice de idempotência impede que a execução de
     // amanhã empilhe o mesmo evento de novo.
     const evento = d.tipo === 'pagamento_nao_registrado' ? 'pago'
-      : d.tipo === 'reembolso_nao_registrado' ? 'reembolsado'
       : null
 
     if (!evento) continue

@@ -73,6 +73,8 @@ jobs:
         run: npm run test:subscription-sync
       - name: Verificar faturas, reembolsos e disputas em transacao
         run: npm run test:financial-sync
+      - name: Verificar reembolsos da loja e ajustes no historico imutavel
+        run: npm run test:shop-refunds
 
   quality:
     name: Dependency Security

@@ -93,3 +93,12 @@ existente; esta correção impede novas emissões indevidas.
 
 Validação final do pacote: 1.693 testes em 124 arquivos; TypeScript e build
 aprovados; lint sem erros (103 avisos existentes). Nenhuma migration necessária.
+
+PR #208 integrado em `53805ec53c7a4d3e764cae4f1f987aeabacac16e`, CI
+35325499749 verde. Produção READY `dpl_dHiQZ5YJivFDf31qrFQqSvL5JJcP`,
+mesmo SHA; consulta sem token em `/api/pedidos/arquivo` respondeu 404.
+
+O pacote de reembolsos da loja mantém bloqueio de download em estorno parcial,
+integral e resumo financeiro inválido. Não presume qual item foi reembolsado.
+Cinco cenários de API exercitam o snapshot atual, incluindo pendência e falha,
+sem emitir URL nem registrar entrega quando o acesso é recusado.

@@ -243,3 +243,28 @@ após publicação: invoice_payment.paid e charge.dispute.created/updated/closed
 adicionados aos nove eventos anteriores; total 13, URL/versão preservadas.
 refund.created/updated/failed serão habilitados após corrigir também o caminho
 de reembolsos da loja, para evitar fila conhecida de eventos não conciliáveis.
+
+## Reembolsos da loja e comissão (ADR 0052)
+
+O escritor cumulativo foi removido. Reserva por pedido antecede leitura atual
+da cobrança, reembolsos e estornos de comissão. Conta e valor são conferidos;
+uma transação acrescenta somente a diferença no razão, preservando o histórico.
+Snapshot de revisão monotônica distingue parcial, integral, pendente e falha;
+os leitores e o download usam essa projeção. Eventos separados de comissão
+também chegam à mesma conciliação. A reconciliação casa conta + pagamento e
+recusa leitura incompleta de pedidos ou contas.
+
+Preflight de produção: 13 clientes, 17 consultas, 16 pedidos, 46 eventos,
+42 lançamentos; zero pagamentos duplicados por conta e zero reservas ativas.
+As políticas existentes de eventos/lançamentos concedem somente SELECT ao
+vendedor proprietário. DDL aditivo não modifica os registros históricos.
+
+Validação local: 1.732 testes em 125 arquivos, 41 verificações PostgreSQL,
+TypeScript aprovado e lint sem erros (103 avisos existentes). Runner novo entra
+no gate obrigatório de PostgreSQL. Build e gates remotos devem passar antes
+da integração. Sequência de publicação e reversão está no ADR 0052: código,
+drenagem dos handlers antigos, DDL, readback e extensão dos eventos Stripe.
+
+Homologação com Stripe test mode isolado, ciclo completo de disputa Connect,
+checkout da loja, reconciliação histórica e indicadores contábeis continuam
+pendentes. Nenhuma cobrança, devolução real ou mensagem foi disparada nos testes.

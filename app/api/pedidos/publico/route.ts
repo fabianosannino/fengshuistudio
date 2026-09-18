@@ -36,7 +36,7 @@ const CAMPOS = `
   id, numero, tipo, criado_em, total_centavos, comprador_email, token_expira_em,
   vendedor_perfil_id,
   pedido_itens(id, nome, quantidade, preco_unitario_centavos, produto_id),
-  pedido_eventos(evento, ocorrido_em),
+  pedido_eventos(evento, ocorrido_em, dados),
   pedido_lancamentos(tipo, valor_centavos, pagador, recebedor)
 `
 

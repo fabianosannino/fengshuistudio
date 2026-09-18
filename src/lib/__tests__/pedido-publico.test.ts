@@ -122,6 +122,13 @@ describe('devolvidoAoComprador', () => {
   it('sem devolução é zero', () => {
     expect(devolvidoAoComprador([])).toBe(0)
   })
+  it('compensação de lançamento duplicado reduz o devolvido sem descontar a compra original', () => {
+    expect(devolvidoAoComprador([
+      { tipo: 'produto', valor_centavos: 2000, pagador: 'comprador', recebedor: 'plataforma' },
+      { tipo: 'reembolso', valor_centavos: 1500, pagador: 'plataforma', recebedor: 'comprador' },
+      { tipo: 'reembolso', valor_centavos: 500, pagador: 'comprador', recebedor: 'plataforma' },
+    ])).toBe(1000)
+  })
 })
 
 describe('tokenNoPrazo', () => {
