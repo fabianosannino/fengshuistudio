@@ -209,3 +209,27 @@ Runner PostgreSQL com 48 verificações, incluindo reprodução do defeito
 anterior, rollback e recusa de prazo infinito. Preflight real: 13 clientes,
 17 consultas, uma assinatura, duas concessões, zero checkouts, zero vínculos
 Customer ambíguos e zero concessões de assinatura sem prazo.
+
+PR #206 integrado em `ede0fbb1f2f204c2b815f3b6636396bde3431067`, CI
+35322846566 verde. Migration remota `20260918081041`; contagens preservadas,
+controle vazio, RLS e ACLs conferidos. Produção READY
+`dpl_71FpwnKXqD2W1T4bQQ2FhzyDoULa`, mesmo SHA. Advisors: uma view pública
+deliberada, duas funções existentes e nove INFO de tabelas sem políticas.
+
+## Projeção de faturas, reembolsos e disputas (ADR 0051)
+
+Reservas por recurso antecedem leitura atual do provedor. Fatura, estado de
+cada reembolso, total confirmado e notificação deduplicada usam uma transação.
+Vínculo global impede atribuir o mesmo estorno a duas faturas. Eventos antigos
+não apagam reembolsos nem reabrem disputas por usarem snapshots antigos.
+Pagamentos compartilhados, moeda não suportada, leituras incompletas e falhas
+de persistência não recebem confirmação silenciosa. Preflight: zero faturas
+e zero disputas em produção. Loja, razão completo, configuração de eventos
+refund.* no destino e homologação financeira isolada continuam separados.
+
+Validação local: 1.675 testes da suíte completa, mais dois casos de fronteira
+da loja (53 testes no arquivo de webhooks após o ajuste); 61 verificações
+PostgreSQL, TypeScript e build aprovados, lint sem erros e 103 avisos existentes.
+Leitura do destino Stripe confirmou nove eventos ativos; faltam invoice_payment.paid,
+refund.created/updated/failed e charge.dispute.created/updated/closed. A extensão
+será aplicada somente depois de conferir a publicação do handler corrigido.

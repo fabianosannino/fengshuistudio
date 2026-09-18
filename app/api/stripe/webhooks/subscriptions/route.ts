@@ -21,7 +21,9 @@
  *    customer.subscription.deleted, invoice.paid, invoice.payment_failed,
  *    charge.refunded, checkout.session.completed,
  *    checkout.session.async_payment_succeeded,
- *    checkout.session.async_payment_failed
+ *    checkout.session.async_payment_failed, invoice_payment.paid,
+ *    refund.created, refund.updated, refund.failed,
+ *    charge.dispute.created, charge.dispute.updated, charge.dispute.closed
  * 5. Copy signing secret to STRIPE_SUBSCRIPTION_WEBHOOK_SECRET env var
  *
  * ## Por que a venda de bem próprio entra num endpoint chamado «subscriptions»
@@ -38,7 +40,6 @@
 
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import stripeClient from '../../../../../src/lib/stripe'
 import { createSupabaseAdminClient } from '../../../../../src/lib/supabase-admin'
 import { logger } from '../../../../../src/lib/logger'
@@ -46,6 +47,7 @@ import {
   reivindicarEvento, marcarProcessado, marcarFalha, houveEventoMaisNovo, objetoDoEvento,
 } from '../../../../../src/lib/eventos-stripe'
 import { sincronizarAssinatura } from '../../../../../src/lib/sincronizar-assinatura'
+import { sincronizarFaturaStripe, sincronizarReembolsoDaAssinatura, sincronizarDisputaStripe } from '../../../../../src/lib/sincronizar-financeiro-stripe'
 import {
   acharPedidoDaSessao, acharPedidoDoPagamento, registrarEvento, valoresDoPedido,
 } from '../../../../../src/lib/pedidos-da-loja'
@@ -57,22 +59,6 @@ const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
 const ROUTE = '/api/stripe/webhooks/subscriptions'
 export const maxDuration = 60
-
-/**
- * Executa uma escrita no Supabase e loga falha em vez de engolir o erro.
- * Webhooks não podem falhar silenciosamente: sem isso, um RLS ou schema
- * errado deixaria assinaturas dessincronizadas sem nenhum sinal.
- */
-async function logWrite(
-  operation: string,
-  query: PromiseLike<{ error: { message: string } | null }>
-): Promise<void> {
-  const { error } = await query
-  if (error) {
-    logger.error('Supabase write failed in webhook', { route: ROUTE, operation })
-    throw new Error('Falha de persistência no webhook')
-  }
-}
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -112,8 +98,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    // A read error stays retryable; it cannot silently authorize an old event.
-    if (objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) {
+    // Only the legacy shop flow retains its order guard. Financial resources
+    // are freshly read under their own claim; older events remain retryable facts.
+    if (event.type.startsWith('checkout.session.') && objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) {
       logger.warn('Evento fora de ordem — descartado', {
         route: ROUTE, eventId: event.id, tipo: event.type, objetoId,
       })
@@ -169,36 +156,17 @@ export async function POST(request: Request) {
         break
       }
 
-      // `invoice_payment.paid` é a versão nova do mesmo fato. A partir da
-      // versão de API 2026-03-25 o Stripe passou a emitir os dois, e o
-      // endpoint desta conta está nela — escutar só `invoice.paid` deixaria a
-      // renovação de assinatura passar em branco se um dia o antigo sair.
-      //
-      // O objeto do evento novo é um `invoice_payment`, não uma fatura: traz o
-      // id da fatura, e é preciso buscá-la para ter os campos que gravamos.
       case 'invoice_payment.paid': {
-        const pagamento = event.data.object as { invoice?: string | null }
-        const faturaId = typeof pagamento.invoice === 'string' ? pagamento.invoice : null
-
-        if (!faturaId) {
-          logger.warn('invoice_payment.paid sem id de fatura', { route: ROUTE, eventId: event.id })
-          break
-        }
-
-        const fatura = await stripeClient.invoices.retrieve(faturaId)
-        await registrarFaturaPaga(supabase, fatura as Stripe.Invoice & FaturaExtra)
+        const pagamento = event.data.object as Stripe.InvoicePayment
+        const ref = pagamento.invoice
+        const faturaId = typeof ref === 'string' ? ref : ref?.id
+        if (!faturaId) throw new Error('Pagamento sem fatura')
+        await sincronizarFaturaStripe(supabase, faturaId, ROUTE)
         break
       }
-
-      case 'invoice.paid': {
-        await registrarFaturaPaga(supabase, event.data.object as Stripe.Invoice & FaturaExtra)
-        break
-      }
-
+      case 'invoice.paid':
       case 'invoice.payment_failed': {
-        // A fatura identifica apenas sua assinatura. O estado atual no Stripe
-        // decide; uma falha antiga não rebaixa outra assinatura ou uma cortesia.
-        await reconciliarAssinaturaDaFatura(supabase, event.data.object as Stripe.Invoice & FaturaExtra)
+        await sincronizarFaturaStripe(supabase, (event.data.object as Stripe.Invoice).id, ROUTE)
         break
       }
 
@@ -275,6 +243,7 @@ export async function POST(request: Request) {
         if (paymentIntentDaLoja) {
           const pedidoId = await acharPedidoDoPagamento(supabase, paymentIntentDaLoja, ROUTE)
           if (pedidoId) {
+            if (objetoId && await houveEventoMaisNovo(supabase, objetoId, event.created, event.id)) break
             const ocorridoEm = new Date(event.created * 1000).toISOString()
             await registrarEvento(supabase, {
               pedidoId, evento: 'reembolsado', origem: 'webhook_stripe',
@@ -295,62 +264,23 @@ export async function POST(request: Request) {
           }
         }
 
-        const customerId = typeof charge.customer === 'string'
-          ? charge.customer
-          : (charge.customer as Stripe.Customer)?.id
+        await sincronizarReembolsoDaAssinatura(supabase, charge, ROUTE)
+        break
+      }
 
-        logger.info('Charge refunded', {
-          route: '/api/stripe/webhooks/subscriptions',
-          chargeId: charge.id,
-          customerId: customerId || 'unknown',
-          amountRefunded: charge.amount_refunded,
-        })
-
-        if (!customerId) break
-
-        const profile = await findProfileByCustomerId(supabase, customerId)
-        if (!profile) break
-
-        // Find the invoice linked to this charge's payment_intent
-        const paymentIntentId = typeof charge.payment_intent === 'string'
-          ? charge.payment_intent
-          : (charge.payment_intent as Stripe.PaymentIntent)?.id
-
-        if (paymentIntentId) {
-          // Try to find the Stripe invoice linked to this payment intent
-          try {
-            const invoicesResponse = await stripeClient.invoices.list({
-              customer: customerId,
-              limit: 10,
-            }) as unknown as { data: Array<{ id: string; payment_intent: string | null }> }
-            const matchedInvoice = invoicesResponse.data.find(inv => inv.payment_intent === paymentIntentId)
-
-            if (matchedInvoice) {
-              await logWrite('mark-invoice-refunded', supabase
-                .from('invoices')
-                .update({
-                  status: charge.refunded ? 'refunded' : 'paid',
-                  refunded_at: new Date().toISOString(),
-                  refund_amount: (charge.amount_refunded || 0) / 100,
-                  notes: `Reembolso processado via Stripe. Charge: ${charge.id}`,
-                })
-                .eq('gateway_invoice_id', matchedInvoice.id))
-            }
-          } catch (err) {
-            logger.error('Error finding invoice for refund', { error: String(err) })
-          }
-        }
-
-        // Create notification
-        await logWrite('insert-refund-notification', supabase.from('payment_notifications').upsert({
-          user_id: profile.id,
-          referencia_evento: event.id,
-          type: 'refund_processed',
-          channel: 'in_app',
-          sent_at: new Date().toISOString(),
-          content: `Reembolso de ${((charge.amount_refunded || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} processado com sucesso.`,
-        }, { onConflict: 'user_id,type,referencia_evento', ignoreDuplicates: true }))
-
+      case 'refund.created':
+      case 'refund.updated':
+      case 'refund.failed': {
+        const refund = event.data.object as Stripe.Refund
+        const chargeId = typeof refund.charge === 'string' ? refund.charge : refund.charge?.id
+        if (!chargeId) throw new Error('Reembolso sem cobrança')
+        const charge = await stripeClient.charges.retrieve(chargeId, {}, { timeout: 10_000, maxNetworkRetries: 0 })
+        if (charge.id !== chargeId) throw new Error('Cobrança do reembolso incompatível')
+        const intent = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
+        // Shop ledger is a separate contract. Do not acknowledge a refund we
+        // have not reconciled, and do not run its cumulative legacy writer here.
+        if (intent && await acharPedidoDoPagamento(supabase, intent, ROUTE)) throw new Error('Reembolso da loja requer conciliação específica')
+        await sincronizarReembolsoDaAssinatura(supabase, charge, ROUTE)
         break
       }
 
@@ -359,7 +289,7 @@ export async function POST(request: Request) {
       case 'charge.dispute.created':
       case 'charge.dispute.updated':
       case 'charge.dispute.closed': {
-        await registrarDisputa(supabase, event)
+        await sincronizarDisputaStripe(supabase, (event.data.object as Stripe.Dispute).id, event.id)
         break
       }
 
@@ -376,177 +306,5 @@ export async function POST(request: Request) {
     logger.error('Subscription webhook handler error', { route: ROUTE, eventId: event.id })
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Registra a contestação e o que aconteceu com ela.
- *
- * ## Por que não rebaixa o plano
- *
- * Disputa aberta **não** é venda perdida: pode ser ganha, e tirar o acesso de
- * quem contestou por engano — ou de quem teve o cartão usado por terceiro —
- * seria punir antes do veredito.
- *
- * Disputa **perdida** é dinheiro que foi embora, e aí rebaixar seria
- * defensável. Continua não sendo automático de propósito: é decisão de
- * política comercial, não de código, e o log em nível de erro existe para que
- * ela seja tomada por gente. Quando a política estiver escrita, o gancho é
- * esta função.
- */
-async function registrarDisputa(supabase: SupabaseClient, event: Stripe.Event): Promise<void> {
-  const disputa = event.data.object as Stripe.Dispute
-  const chargeId = typeof disputa.charge === 'string' ? disputa.charge : disputa.charge?.id ?? null
-  const fechada = disputa.status === 'won' || disputa.status === 'lost'
-
-  // A disputa não traz o cliente; quem sabe é o `charge`.
-  let clienteDoStripe: string | null = null
-  if (chargeId) {
-    try {
-      const charge = await stripeClient.charges.retrieve(chargeId)
-      clienteDoStripe = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id ?? null
-    } catch (err) {
-      logger.warn('Não foi possível ler o charge da disputa', { route: ROUTE, chargeId, error: String(err) })
-    }
-  }
-
-  const perfil = clienteDoStripe ? await findProfileByCustomerId(supabase, clienteDoStripe) : null
-
-  // Nível de erro mesmo quando é só abertura: contestação é a classe de evento
-  // que ninguém deve descobrir tarde.
-  logger.error('Contestação de cobrança', {
-    route: ROUTE,
-    disputaId: disputa.id,
-    chargeId,
-    status: disputa.status,
-    motivo: disputa.reason,
-    valor: (disputa.amount || 0) / 100,
-    fechada,
-  })
-
-  await logWrite('upsert-disputa', supabase.from('disputas_stripe').upsert({
-    id: disputa.id,
-    charge_id: chargeId ?? '',
-    customer_id: clienteDoStripe,
-    user_id: perfil?.id ?? null,
-    valor: (disputa.amount || 0) / 100,
-    moeda: disputa.currency || 'brl',
-    status: disputa.status,
-    motivo: disputa.reason ?? null,
-    responder_ate: disputa.evidence_details?.due_by
-      ? new Date(disputa.evidence_details.due_by * 1000).toISOString()
-      : null,
-    aberta_em: new Date((disputa.created || event.created) * 1000).toISOString(),
-    fechada_em: fechada ? new Date(event.created * 1000).toISOString() : null,
-    desfecho: fechada ? disputa.status : null,
-    event_id: event.id,
-    atualizada_em: new Date().toISOString(),
-  }, { onConflict: 'id' }))
-
-  if (perfil && disputa.status === 'lost') {
-    await logWrite('insert-disputa-notification', supabase.from('payment_notifications').upsert({
-      user_id: perfil.id,
-      referencia_evento: disputa.id,
-      type: 'dispute_lost',
-      channel: 'in_app',
-      sent_at: new Date().toISOString(),
-      content: `Uma contestação de ${((disputa.amount || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} foi decidida em favor do portador do cartão.`,
-    }, { onConflict: 'user_id,type,referencia_evento', ignoreDuplicates: true }))
-  }
-}
-
-/** Campos que o tipo do SDK não expõe mas o payload traz. */
-type FaturaExtra = {
-  subscription?: string | null
-  due_date?: number | null
-  attempt_count?: number
-  number?: string | null
-  amount_paid?: number
-}
-
-/**
- * Registra uma fatura paga.
- *
- * Compartilhada por `invoice.paid` e `invoice_payment.paid`: são o mesmo fato
- * em duas versões da API do Stripe, e duas cópias divergiriam.
- *
- * É idempotente — procura pelo `gateway_invoice_id` e atualiza, ou insere.
- */
-async function registrarFaturaPaga(
-  supabase: SupabaseClient,
-  invoice: Stripe.Invoice & FaturaExtra
-): Promise<void> {
-  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
-
-  logger.info('Invoice paid', {
-    route: ROUTE, invoiceId: invoice.id, customerId: customerId || 'unknown', amount: invoice.amount_paid,
-  })
-
-  if (!customerId) return
-
-  const profile = await findProfileByCustomerId(supabase, customerId)
-  if (!profile) return
-
-  const valor = (invoice.amount_paid || 0) / 100
-
-  const { data: existente } = await supabase
-    .from('invoices')
-    .select('id')
-    .eq('gateway_invoice_id', invoice.id)
-    .maybeSingle()
-
-  if (existente) {
-    await logWrite('mark-invoice-paid', supabase
-      .from('invoices')
-      .update({ status: 'paid', paid_at: new Date().toISOString(), amount_paid: valor })
-      .eq('id', existente.id))
-  } else {
-    const vencimento = invoice.due_date ? new Date(invoice.due_date * 1000) : new Date()
-    await logWrite('insert-invoice', supabase.from('invoices').insert({
-      user_id: profile.id,
-      amount: valor,
-      amount_paid: valor,
-      status: 'paid',
-      due_date: vencimento.toISOString().split('T')[0],
-      paid_at: new Date().toISOString(),
-      gateway_invoice_id: invoice.id,
-      description: `Fatura Stripe ${invoice.number || invoice.id}`,
-      billing_cycle: invoice.subscription ? 'recurring' : 'one_time',
-    }))
-  }
-
-  await reconciliarAssinaturaDaFatura(supabase, invoice)
-}
-
-
-async function reconciliarAssinaturaDaFatura(supabase: SupabaseClient, invoice: Stripe.Invoice & FaturaExtra): Promise<void> {
-  const ref = invoice.parent?.subscription_details?.subscription ?? invoice.subscription
-  const id = typeof ref === 'string' ? ref : ref?.id
-  if (!id) return // Fatura avulsa não altera direitos de assinatura.
-  const customerDaFatura = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
-  if (!customerDaFatura) throw new Error('Fatura sem titular')
-  const resultado = await sincronizarAssinatura(supabase, id, ROUTE, customerDaFatura)
-  if (resultado.situacao === 'falhou') throw new Error('Falha ao reconciliar fatura')
-}
-
-
-async function findProfileByCustomerId(
-  supabase: SupabaseClient,
-  customerId: string
-) {
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle()
-
-  if (error) throw new Error('Perfil da cobrança indisponível')
-
-  if (!profile) {
-    logger.warn('No profile found for Stripe customer', { customerId })
-  }
-
-  return profile
 }
 
