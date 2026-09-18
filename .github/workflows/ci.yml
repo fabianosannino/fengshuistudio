@@ -61,6 +61,8 @@ jobs:
         run: npm run test:plan-grants
       - name: Verificar concorrencia e retomada dos webhooks
         run: npm run test:webhook-claims
+      - name: Verificar exclusao e uploads concorrentes
+        run: npm run test:privacy-deletion
 
   quality:
     name: Dependency Security

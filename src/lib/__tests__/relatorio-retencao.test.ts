@@ -38,6 +38,11 @@ beforeEach(() => {
 })
 
 describe('retenção das emissões', () => {
+  it('não confia num caminho de PDF incompatível com a consulta', async () => {
+    linhas.push(linha(1, { pdf_path: 'consulta-alheia/emissoes/1.pdf' }))
+    await expect(excluirEmissoesDoTitular(client, 'dono')).rejects.toThrow('Posse')
+    expect(remove).not.toHaveBeenCalled(); expect(rpc).not.toHaveBeenCalled()
+  })
   it('alcança mais de mil arquivos e apaga todas as revisões numa transação depois do storage', async () => {
     linhas.push(...Array.from({ length: 1001 }, (_, n) => linha(n)))
     rpc.mockImplementation(async () => {

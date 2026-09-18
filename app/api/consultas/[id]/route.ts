@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { excluirEmissoesDoTitular } from '../../../../src/lib/relatorio-retencao'
+import { removerArquivosDoTitular } from '../../../../src/lib/arquivos-do-titular'
 import { idValido } from '../../../../src/lib/relatorio-emissao'
 import { logger } from '../../../../src/lib/logger'
 
@@ -15,7 +16,9 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   if (consulta.error) return NextResponse.json({ error: 'Não foi possível conferir a consulta.' }, { status: 503 })
   if (!consulta.data) return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
   try {
-    await excluirEmissoesDoTitular(createSupabaseAdminClient(), user.id, id)
+    const admin = createSupabaseAdminClient()
+    await excluirEmissoesDoTitular(admin, user.id, id)
+    await removerArquivosDoTitular(admin, user.id, [id], { incluirFotosClientes: false })
     const { error } = await client.from('consultas').delete().eq('id', id).eq('consultor_id', user.id)
     if (error) throw new Error('Exclusão incompleta')
     return NextResponse.json({ ok: true })

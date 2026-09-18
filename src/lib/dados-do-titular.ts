@@ -30,7 +30,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { BUCKET_CLIENTES, BUCKET_IMOVEIS, caminhoDoObjeto } from './storage-imagens'
+import { BUCKET_CLIENTES, BUCKET_IMOVEIS, caminhoDoObjeto, pastaRaiz } from './storage-imagens'
 
 /**
  * O bucket privado dos relatórios em PDF.
@@ -85,11 +85,12 @@ export async function inventariar(
 ): Promise<InventarioDoTitular> {
   const contar = async (tabela: string, coluna: string, valor: string | null) => {
     if (!valor) return 0
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from(tabela)
       .select('id', { count: 'exact', head: true })
       .eq(coluna, valor)
-    return count ?? 0
+    if (error || count === null) throw new Error('Inventário indisponível')
+    return count
   }
 
   const [clientes, consultas, comoComprador, comoVendedor] = await Promise.all([
@@ -218,13 +219,23 @@ export function fotosDaConsulta(
  * tocar em rede.
  */
 export function arquivosParaApagar(
-  porBucket: Record<string, readonly (string | null | undefined)[]>
+  porBucket: Record<string, readonly (string | null | undefined)[]>,
+  posse: { userId: string; consultas: ReadonlySet<string> },
 ): { bucket: string; paths: string[] }[] {
   return Object.entries(porBucket)
     .map(([bucket, valores]) => {
+      if (!(Object.values(BUCKETS_DO_TITULAR) as string[]).includes(bucket)) throw new Error('Bucket não autorizado')
       const paths = valores
         .map((valor) => (valor ? caminhoDoObjeto(valor, bucket) : null))
         .filter((p): p is string => Boolean(p))
+      // Database URLs are editable input, never proof of ownership for service_role.
+      for (const path of paths) {
+        const raiz = pastaRaiz(path)
+        const segmentos = path.split('/')
+        const permitido = raiz !== null && (bucket === BUCKET_CLIENTES ? raiz === posse.userId : posse.consultas.has(raiz))
+        if (!permitido || segmentos.length < 2 || segmentos.some(p => !p || p === '.' || p === '..')
+          || /[\\\u0000-\u001f\u007f%]/.test(path)) throw new Error('Posse do arquivo não comprovada')
+      }
       // `Set` porque a mesma foto pode aparecer em mais de uma linha, e pedir
       // duas vezes a remoção do mesmo objeto faz a segunda parecer falha.
       return { bucket, paths: [...new Set(paths)] }

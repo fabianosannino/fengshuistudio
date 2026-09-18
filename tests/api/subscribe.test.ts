@@ -15,7 +15,7 @@ vi.mock('../../src/lib/supabase-route', () => ({ createRouteHandlerClient: async
   auth: { getUser: async () => ({ data: { user: mocks.user } }) },
   from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { stripe_customer_id: mocks.customerId }, error: mocks.perfilErro ? {} : null }) }) }) }),
 }) }))
-vi.mock('../../src/lib/supabase-admin', () => ({ createSupabaseAdminClient: () => ({ from: () => ({ update: (v: unknown) => ({ eq: () => mocks.update(v) }) }) }) }))
+vi.mock('../../src/lib/supabase-admin', () => ({ createSupabaseAdminClient: () => ({ from: () => ({ update: (v: unknown) => ({ eq: () => ({ select: () => ({ single: () => mocks.update(v) }) }) }) }) }) }))
 import { POST } from '../../app/api/stripe/subscribe/route'
 
 const mensal = { plan_slug: 'profissional', billing_cycle: 'monthly' }
@@ -37,7 +37,7 @@ beforeEach(() => {
   mocks.preco.mockResolvedValue(precoValido())
   mocks.retrieve.mockResolvedValue({ id: 'cus_antigo' })
   mocks.create.mockResolvedValue({ id: 'cus_novo' })
-  mocks.update.mockResolvedValue({ error: null })
+  mocks.update.mockResolvedValue({ data: { id: 'owner' }, error: null })
   mocks.subs.mockResolvedValue({ data: [], has_more: false })
   mocks.checkout.mockResolvedValue({ id: 'cs_fixture', url: 'https://checkout.stripe.com/fixture' })
 })
@@ -83,6 +83,11 @@ describe('checkout de assinatura estrito', () => {
   })
   it('falha ao persistir Customer não abre checkout', async () => {
     mocks.customerId = null; mocks.update.mockResolvedValue({ error: {} })
+    expect((await enviar(mensal)).status).toBe(503)
+    expect(mocks.checkout).not.toHaveBeenCalled()
+  })
+  it('perfil removido durante criação de Customer não abre checkout', async () => {
+    mocks.customerId = null; mocks.update.mockResolvedValue({ data: null, error: null })
     expect((await enviar(mensal)).status).toBe(503)
     expect(mocks.checkout).not.toHaveBeenCalled()
   })

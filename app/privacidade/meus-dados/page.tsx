@@ -36,26 +36,18 @@ export default function MeusDados() {
   const [baixando, setBaixando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [erro, setErro] = useState('')
+  const [erroInventario, setErroInventario] = useState(false)
 
   const carregar = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    // As contagens saem do banco a cada carregamento — nunca de um campo
-    // guardado, que alguém precisaria lembrar de manter em dia.
-    const [clientes, consultas, compras] = await Promise.all([
-      supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('consultor_id', user.id),
-      supabase.from('consultas').select('id', { count: 'exact', head: true }).eq('consultor_id', user.id),
-      user.email
-        ? supabase.from('pedidos').select('id', { count: 'exact', head: true }).eq('comprador_email', user.email)
-        : Promise.resolve({ count: 0 }),
-    ])
-
-    setInventario({
-      clientes: clientes.count ?? 0,
-      consultas: consultas.count ?? 0,
-      compras: compras.count ?? 0,
-    })
+    setErroInventario(false)
+    setInventario(null)
+    try {
+      const response = await fetch(`${ROTA}?resumo=1`, { cache: 'no-store' })
+      if (!response.ok) throw new Error('Inventário indisponível')
+      const dados = await response.json()
+      if (![dados.clientes, dados.consultas, dados.pedidosComoComprador].every(n => Number.isSafeInteger(n) && n >= 0)) throw new Error('Inventário inválido')
+      setInventario({ clientes: dados.clientes, consultas: dados.consultas, compras: dados.pedidosComoComprador })
+    } catch { setErroInventario(true) }
   }, [])
 
   useEffect(() => { void carregar() }, [carregar])
@@ -113,14 +105,14 @@ export default function MeusDados() {
     }
   }
 
-  const podeExcluir = confirmacao.trim().toUpperCase() === PALAVRA_DE_CONFIRMACAO
+  const podeExcluir = inventario !== null && confirmacao.trim().toUpperCase() === PALAVRA_DE_CONFIRMACAO
 
   return (
     <AppShell currentPage="privacidade/meus-dados">
       <div style={{ maxWidth: '680px' }}>
         <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>Seus dados</h1>
         <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: 1.6 }}>
-          Você pode baixar uma cópia de tudo o que guardamos ou pedir a exclusão
+          Você pode exportar os registros da sua conta ou pedir a exclusão
           da sua conta. São direitos seus, e não precisam de justificativa.
         </p>
 
@@ -140,7 +132,9 @@ export default function MeusDados() {
                     <p style={{ fontSize: '26px', color: '#111827' }}>{item.valor}</p>
                   </div>
                 ))
-              : <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Carregando...</p>}
+              : erroInventario
+                ? <div role="alert"><p>Não foi possível consultar o inventário.</p><button type="button" onClick={() => void carregar()}>Tentar novamente</button></div>
+                : <p style={{ color: '#6B7280', fontSize: '14px' }}>Carregando...</p>}
           </div>
         </section>
 
@@ -150,7 +144,8 @@ export default function MeusDados() {
           </h2>
           <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: 1.6, marginTop: '8px' }}>
             Um arquivo JSON com seu perfil, seus clientes, suas consultas,
-            assinaturas, faturas e compras.
+            assinaturas, faturas, compras e registros relacionados. Inclui as
+            referências de fotos e relatórios; os arquivos binários não vêm no JSON.
           </p>
           <button type="button" onClick={() => void baixar()} disabled={baixando} style={{
             marginTop: '14px', padding: '10px 16px', borderRadius: '8px',
@@ -171,18 +166,21 @@ export default function MeusDados() {
 
           <p style={{ color: '#7A3D2C', fontSize: '14px', lineHeight: 1.6, marginTop: '10px' }}>
             <strong>
-              As fichas dos seus {inventario?.clientes ?? 0} clientes e as{' '}
-              {inventario?.consultas ?? 0} consultas são apagadas por completo
+              {inventario
+                ? `As fichas dos seus ${inventario.clientes} clientes e as ${inventario.consultas} consultas serão apagadas`
+                : 'Aguarde a confirmação do inventário antes de excluir seus clientes e consultas'}
             </strong>
-            , junto com as fotos. Essas pessoas não têm conta aqui e não serão
-            avisadas — se você precisa daqueles dados, baixe a cópia antes.
+            , junto com as fotos. Os clientes cadastrados não serão avisados
+            automaticamente. Exporte os registros e baixe os arquivos necessários antes.
           </p>
           <p style={{ color: '#7A3D2C', fontSize: '14px', lineHeight: 1.6, marginTop: '10px' }}>
             Suas compras continuam existindo como registro fiscal, mas seu nome e
             e-mail saem delas. Seu perfil público sai do ar.
           </p>
           <p style={{ color: '#9A6B5C', fontSize: '13px', lineHeight: 1.6, marginTop: '10px' }}>
-            A exclusão é imediata e não pode ser desfeita.
+            Os dados removidos não podem ser recuperados por esta tela. Uma falha
+            pode interromper o processo e exigir nova tentativa. Contas com vínculo
+            de cobrança ou venda precisam de encerramento com o suporte antes da exclusão.
           </p>
 
           <label htmlFor="confirmacao" style={{ display: 'block', fontSize: '13px', color: '#7A3D2C', marginTop: '16px', marginBottom: '6px' }}>
@@ -196,7 +194,7 @@ export default function MeusDados() {
             style={{
               width: '100%', maxWidth: '260px', padding: '10px 14px',
               border: '1px solid #E0A692', borderRadius: '8px', fontSize: '14px',
-              outline: 'none', boxSizing: 'border-box',
+              boxSizing: 'border-box',
             }}
           />
 
