@@ -30,7 +30,8 @@
       "codex/metodos-versionados-d0": false,
       "codex/marcacoes-planta-usabilidade": false,
       "codex/contorno-referencia-fixa": false,
-      "codex/editor-poligonos-mobiliario": false
+      "codex/editor-poligonos-mobiliario": false,
+      "codex/historico-analises-metodos": false
     }
   },
   "crons": [

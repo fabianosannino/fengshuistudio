@@ -60,6 +60,11 @@ beforeEach(() => {
   state.iniciar.mockResolvedValue({ data: 'pronto', error: null }); state.signOut.mockResolvedValue({ error: null })
 })
 describe('portabilidade do titular', () => {
+  it('inclui fontes e resultados históricos somente do titular',async()=>{
+    state.rows.analises_execucoes=[{id:'hist-own',consultor_id:'owner',fonte:{nascimento:'1990-06-01'}},{id:'hist-other',consultor_id:'other',fonte:{nascimento:'1980-01-01'}}]
+    const dados=await (await GET(new Request('https://example.invalid?user_id=other'))).json()
+    expect(dados.analises_execucoes).toEqual([state.rows.analises_execucoes[0]])
+  })
   it('inclui mobiliário e nascimento apenas nas consultas do titular', async () => {
     const proprio={versao:1,revisao:1,itens:[{ambiente:'Cozinha',nascimento:'1980-10-10'}]}
     state.rows.consultas[0].mobiliario=proprio

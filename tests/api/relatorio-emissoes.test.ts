@@ -7,6 +7,9 @@ import { referenciaDaAnalise } from '../../src/lib/analise-bagua'
 import type { BaguaEntrada } from '../../src/lib/types'
 import { MARGEM_MULTIPART } from '../../src/lib/multipart-limitado'
 import { executarMetodos } from '../../src/lib/execucao-metodos'
+import { fonteAnaliseTeste } from '../fixtures/fonte-analise'
+import { calcularResultadoAnalise } from '../../src/lib/calculo-analise'
+import { VERSAO_MOTOR_ANALISE } from '../../src/lib/historico-analises'
 
 vi.mock('server-only', () => ({}))
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -92,6 +95,21 @@ beforeEach(() => {
 })
 
 describe('preparação versionada', () => {
+  it('emite com a fonte histórica escolhida e registra o vínculo, mesmo com consulta atual diferente',async()=>{
+    const salva=fonteAnaliseTeste()
+    registros.push({id:id(40),consulta_id:id(1),consultor_id:id(1),fonte:salva,fonte_sha256:hash(jsonCanonico(salva)),versao_motor:VERSAO_MOTOR_ANALISE,resultado:calcularResultadoAnalise(salva)})
+    source.mockResolvedValue(fonteAnaliseTeste('bussola'))
+    const r=await PREPARAR(preparo({analise_id:id(40),fonte_sha256:hash(jsonCanonico(salva))}))
+    expect(r.status).toBe(201);expect(insercoes[0].analise_id).toBe(id(40))
+    const entrada=(await r.json()).entrada
+    expect(entrada.fonte.consulta.bagua_entrada.escola).toBe('btb');expect(entrada.analise.id).toBe(id(40))
+    expect(source).not.toHaveBeenCalled()
+  })
+  it('recusa relatório de análise alheia antes de criar o cliente privilegiado',async()=>{
+    registros.push({id:id(40),consulta_id:id(2),consultor_id:id(2)})
+    expect((await PREPARAR(preparo({analise_id:id(40)}))).status).toBe(404)
+    expect(adminCriado).not.toHaveBeenCalled()
+  })
   it('bloqueia bússola não confirmada e análise obsoleta antes de usar privilégio', async () => {
     const be = { escola: 'bussola', orientacao_graus: 0, orientacao_estado: 'confirmada', orientacao_referencia: 'magnetico', orientacao_origem: 'manual', orientacao_confirmada_em: new Date().toISOString() } as BaguaEntrada
     for (const bagua of [{ escola: 'bussola', orientacao_graus: 0 }, be, { ...be, analise_referencia: { entrada: 'antiga', versao: 'antiga' } }]) {

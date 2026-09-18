@@ -42,6 +42,7 @@ const TABELAS_DIRETAS = [
   ['consultor_checklist_chi_custom', 'consultor_id'], ['consultor_curas_custom', 'consultor_id'],
   ['payment_notifications', 'user_id'], ['servicos_do_parceiro', 'perfil_id'],
   ['produtos', 'vendedor_perfil_id'], ['relatorio_emissoes', 'consultor_id'],
+  ['analises_execucoes', 'consultor_id'],
 ] as const
 const TABELAS_DAS_CONSULTAS = ['fotos_consulta', 'setores_bagua', 'diagnostico_snapshots', 'cronograma_lunar', 'prescricoes'] as const
 
