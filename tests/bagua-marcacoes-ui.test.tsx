@@ -105,6 +105,20 @@ async function salvo() {
 }
 
 describe('E-POL-03 — fluxo completo da página, confirmações e regressões', () => {
+  it('mantém o resultado dos setores visível durante a edição e amplia os alvos de toque',async()=>{
+    await abrir();const svg=await editar()
+    expect(screen.getByRole('checkbox',{name:'Ver planta sem sobreposições'})).not.toBeChecked()
+    fireEvent.click(screen.getByRole('button',{name:'2. Marcar Falta'}))
+    desenhar(svg,[[300,100],[400,100],[350,180]],'touch')
+    const raio=Number(screen.getByTestId('ponto-0').getAttribute('r'))
+    const larguraImagem=Number(svg.getAttribute('viewBox')!.split(' ')[2])
+    expect(parseFloat(svg.style.width)).toBeGreaterThan(0)
+    expect(raio*2*parseFloat(svg.style.width)/larguraImagem).toBeCloseTo(44)
+    desenho.fillText.mockClear()
+    await confirmar('falta')
+    expect(desenho.fillText).toHaveBeenCalledWith('Falta',expect.any(Number),expect.any(Number))
+    expect(screen.getByLabelText('Editor de polígonos da planta')).toBeInTheDocument()
+  })
   it('orienta sem afirmar detecção automática e deixa revisão de bordas explícita', async () => {
     await abrir(); await editar(false)
     expect(screen.getByRole('button', {name:'2. Marcar Falta'})).toBeDisabled()

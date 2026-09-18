@@ -641,10 +641,10 @@ function BaguaPlantaContent() {
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
       ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
     }
-    for(const m of marcacoes) drawMarcacao(m,s)
+    if(!editandoPlanta||paraExportacao) for(const m of marcacoes) drawMarcacao(m,s)
     desenharContornoAuxiliar(ctx,poligonoTaiJi,s)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[bounds,entrada,lado,escola,grausParaCalculo,lh,lv,setores,ativo,marcacoes,semSobreposicoes,poligonoTaiJi])
+  },[bounds,entrada,lado,escola,grausParaCalculo,lh,lv,setores,ativo,marcacoes,semSobreposicoes,poligonoTaiJi,editandoPlanta])
 
   // redesenha sempre que draw muda (state changes)
   useEffect(()=>{ draw() },[draw])
@@ -658,6 +658,9 @@ function BaguaPlantaContent() {
   useEffect(()=>{
     if(!img) return
     function handleResize(){ resizeCanvas(); draw() }
+    // O canvas só monta após a restauração/etapa. O efeito da imagem pode ter
+    // ocorrido antes disso; inicializar sem depender do primeiro ResizeObserver.
+    handleResize()
     window.addEventListener('resize',handleResize)
 
     // ResizeObserver catches container size changes (sidebar toggle, layout shifts)
@@ -672,7 +675,7 @@ function BaguaPlantaContent() {
       window.removeEventListener('resize',handleResize)
       ro?.disconnect()
     }
-  },[img,resizeCanvas,draw])
+  },[img,step,carregandoPlanta,showRetomar,resizeCanvas,draw])
 
   // ── fullscreen canvas draw ──────────────────────────────────────────────────
   const drawFS = useCallback(()=>{
@@ -793,10 +796,10 @@ function BaguaPlantaContent() {
       ctx.fillStyle=isFalta?'rgba(220,38,38,0.9)':'rgba(245,158,11,0.9)'
       ctx.fillText(label,mx+mw/2,my+mh/2+fs2/3)
     }
-    for(const m of marcacoes) drawMarcacaoFS(m)
+    if(!editandoPlanta) for(const m of marcacoes) drawMarcacaoFS(m)
     desenharContornoAuxiliar(ctx,poligonoTaiJi,s)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fullscreen,bounds,entrada,lado,escola,grausParaCalculo,lh,lv,setores,marcacoes,semSobreposicoes,poligonoTaiJi])
+  },[fullscreen,bounds,entrada,lado,escola,grausParaCalculo,lh,lv,setores,marcacoes,semSobreposicoes,poligonoTaiJi,editandoPlanta])
 
   useEffect(()=>{
     if(!fullscreen) return
@@ -1465,7 +1468,7 @@ function BaguaPlantaContent() {
                   bordas={bounds} marcacoes={marcacoes} largura={rotRef.current.width} altura={rotRef.current.height}
                   tamanho={tamanhoCanvas} lh={lh} lv={lv}
                   confirmadoEm={bordasConfirmadasEm} legado={regraGeometria==='descontos-v1'} aoConfirmar={confirmarGeometria}
-                  aoEditar={v=>{setEditandoPlanta(v);setSemSobreposicoes(v)}} />}
+                  aoEditar={v=>{setEditandoPlanta(v);setSemSobreposicoes(false)}} />}
               </div>
 
               {/* Controles CONFIGURAR */}
@@ -2245,7 +2248,7 @@ const BGS=['#FAEEE9','#FAF3E0','#F9FAFB','#EAF1EE','#D9EBE4']
               {bounds&&rotRef.current&&<EditorMarcacoesPlanta bordas={bounds} marcacoes={marcacoes}
                 largura={rotRef.current.width} altura={rotRef.current.height} tamanho={tamanhoCanvasFS}
                 lh={lh} lv={lv} confirmadoEm={bordasConfirmadasEm} legado={regraGeometria==='descontos-v1'} aoConfirmar={confirmarGeometria}
-                aoEditar={v=>{setEditandoPlanta(v);setSemSobreposicoes(v)}} />}
+                aoEditar={v=>{setEditandoPlanta(v);setSemSobreposicoes(false)}} />}
             </div>
 
             {/* Bottom info */}

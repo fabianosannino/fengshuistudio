@@ -210,9 +210,18 @@ try {
   // D-MOB-03: coluna real JSONB, RPC invoker, dados sintéticos e CAS concorrente.
   sql('alter table public.consultas add column if not exists bagua_entrada jsonb;')
   sql(source('supabase/migrations/20260918135136_mobiliario_consulta.sql'))
-  await eventually(async()=>(await request('consultas?select=mobiliario',1)).status===200)
   const cadastro = {versao:1,revisao:1,referencia_planta:'sintetica',itens:[{ambiente:'Cozinha',tipo:'mesa',nascimento:'1980-10-10'},{ambiente:'Cozinha',tipo:'fogao'}]}
   const salvarMovel = {p_consulta:actor(1),p_revisao:0,p_entrada:null,p_cadastro:cadastro}
+  // A coluna e a RPC entram em momentos diferentes no cache do PostgREST.
+  // Aguardar a própria função com uma chamada sem escrita (outro proprietário).
+  await eventually(async()=>{
+    const r=await request('rpc/salvar_mobiliario_consulta',2,{method:'POST',body:salvarMovel})
+    return r.status===200 && r.data===false
+  })
+  for (const role of ['anon','service_role']) {
+    ok(sql(`select has_function_privilege('${role}','public.salvar_mobiliario_consulta(uuid,integer,jsonb,jsonb)','EXECUTE')`),'f',`mobiliario ${role} cannot execute RPC`)
+  }
+  ok(sql("select prosecdef from pg_proc where oid='public.salvar_mobiliario_consulta(uuid,integer,jsonb,jsonb)'::regprocedure"),'f','mobiliario RPC keeps caller RLS')
   denied(await request('rpc/salvar_mobiliario_consulta',1,{role:'anon',method:'POST',body:salvarMovel}),'mobiliario anonymous RPC denied')
   ok((await request('rpc/salvar_mobiliario_consulta',2,{method:'POST',body:salvarMovel})).data,false,'mobiliario foreign owner cannot write')
   const concorrentes = await Promise.all([1,2].map(()=>request('rpc/salvar_mobiliario_consulta',1,{method:'POST',body:salvarMovel})))

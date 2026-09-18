@@ -136,7 +136,7 @@ export default function EditorMarcacoesPlanta(p: Props) {
   }
   const b = etapa === 'bordas' ? bordas : p.bordas
   const cor = tipo === 'falta' ? '#B4533A' : '#24724F'
-  const raio = 12 * p.largura / Math.max(1, parseFloat(p.tamanho.width) || p.largura)
+  const raio = 22 * p.largura / Math.max(1, parseFloat(p.tamanho.width) || p.largura)
   return <>
     {aberto && <svg ref={svgRef} aria-label="Editor de polígonos da planta" viewBox={`0 0 ${p.largura} ${p.altura}`}
       onPointerDown={iniciar} onPointerMove={mover} onPointerUp={terminar}
@@ -150,8 +150,8 @@ export default function EditorMarcacoesPlanta(p: Props) {
       {p.lh.map((v, i) => <line key={`h${i}`} x1={b.x} x2={b.x + b.w} y1={b.y + b.h * v} y2={b.y + b.h * v} stroke="#102F28" vectorEffect="non-scaling-stroke" />)}
       {p.marcacoes.filter(m => m.id !== selecionada).map(m => <polygon key={m.id} data-testid={`marca-${m.id}`} points={pontosDaMarcacao(m).map(v => `${v.x},${v.y}`).join(' ')} fill={m.tipo === 'falta' ? '#B4533A22' : '#24724F22'} stroke={m.tipo === 'falta' ? '#B4533A' : '#24724F'} vectorEffect="non-scaling-stroke" />)}
       {pontos.length > 0 && <polygon points={pontos.map(v => `${v.x},${v.y}`).join(' ')} fill={`${cor}33`} stroke={cor} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
-      {pontos.map((v, i) => <circle key={i} data-testid={`ponto-${i}`} data-alvo="vertice" data-indice={i} cx={v.x} cy={v.y} r={raio} fill={vertice === i ? cor : '#fff'} stroke={cor} strokeWidth={2} vectorEffect="non-scaling-stroke" />)}
-      {etapa === 'bordas' && [{ x: b.x + b.w / 2, y: b.y }, { x: b.x + b.w, y: b.y + b.h / 2 }, { x: b.x + b.w / 2, y: b.y + b.h }, { x: b.x, y: b.y + b.h / 2 }].map((v, i) => <circle key={i} data-testid={`borda-${i}`} data-alvo="borda" data-indice={i} {...v} cx={v.x} cy={v.y} r={raio} fill="#fff" stroke="#B4533A" strokeWidth={3} vectorEffect="non-scaling-stroke" />)}
+      {pontos.map((v, i) => <g key={i}><circle data-testid={`ponto-${i}`} data-alvo="vertice" data-indice={i} cx={v.x} cy={v.y} r={raio} fill="transparent" /><circle pointerEvents="none" cx={v.x} cy={v.y} r={raio * 0.4} fill={vertice === i ? cor : '#fff'} stroke={cor} strokeWidth={2} vectorEffect="non-scaling-stroke" /></g>)}
+      {etapa === 'bordas' && [{ x: b.x + b.w / 2, y: b.y }, { x: b.x + b.w, y: b.y + b.h / 2 }, { x: b.x + b.w / 2, y: b.y + b.h }, { x: b.x, y: b.y + b.h / 2 }].map((v, i) => <g key={i}><circle data-testid={`borda-${i}`} data-alvo="borda" data-indice={i} cx={v.x} cy={v.y} r={raio} fill="transparent" /><circle pointerEvents="none" cx={v.x} cy={v.y} r={raio * 0.4} fill="#fff" stroke="#B4533A" strokeWidth={3} vectorEffect="non-scaling-stroke" /></g>)}
     </svg>}
     <section aria-label="Etapas de edição da planta" style={{ background: '#fff', color: '#17372F', padding: 12, border: '1px solid #CFE6E0', borderRadius: 8, marginTop: 8 }}>
       <p role="status" style={{ margin: '0 0 8px' }}>{p.confirmadoEm ? `Última confirmação: ${new Date(p.confirmadoEm).toLocaleString('pt-BR')}.` : 'Bordas carregadas como referência; ainda sem confirmação neste fluxo.'} {etapa === 'bordas' ? 'Em revisão: tracejado = antes; linha contínua = proposta. OK aceita a proposta.' : 'As marcações não deslocam os nove setores.'}</p>

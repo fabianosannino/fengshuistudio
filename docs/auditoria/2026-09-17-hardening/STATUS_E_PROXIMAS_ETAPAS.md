@@ -113,6 +113,8 @@ estado derivado e indicação textual de experimental (não apenas por cor).
   itens por setor, gravação independente da geometria, revisão otimista e dados
   pessoais incluídos na portabilidade/exclusão. Pré-requisitos têm caminhos de
   configuração e termos explicados. ADR 0058 e cenários E-POL-01–06/D-MOB-01–06.
+  Revisão do PR #217 inclui resultado visível durante edição, alvos de toque de
+  44 px CSS e inicialização do canvas ao restaurar, sem depender do primeiro resize.
   Validação local: 1.859 testes em 138 arquivos; após a revisão de saldo pequeno
   e seta persistida, os 68 testes afetados passaram novamente. TypeScript
   aprovado; lint sem erros (94 avisos anteriores, removido o aviso novo de teste).
