@@ -30,6 +30,7 @@
  */
 
 import type Stripe from 'stripe'
+import { escolhaPeloPreco } from './catalogo-assinaturas'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from './logger'
 import { planoEfetivo, type PlanoEfetivo } from './plano-utils'
@@ -41,15 +42,15 @@ export function statusDaAssinatura(statusDoStripe: string): string {
     case 'active': return 'active'
     case 'past_due': return 'past_due'
     case 'canceled': return 'cancelled'
+    case 'unpaid': return 'cancelled'
     case 'trialing': return 'trial'
     case 'paused': return 'paused'
     case 'incomplete': return 'past_due'
     case 'incomplete_expired': return 'cancelled'
-    // Status novo do Stripe cai em 'active' por omissão. É o comportamento
-    // anterior, mantido — mas registrado, para não conceder acesso calado.
+    // Status desconhecido não pode conceder acesso pago.
     default:
       logger.warn('Status de assinatura desconhecido no Stripe', { statusDoStripe })
-      return 'active'
+      return 'paused'
   }
 }
 
@@ -63,40 +64,13 @@ export function valorDaAssinatura(assinatura: Stripe.Subscription): number | nul
   return typeof centavos === 'number' ? centavos / 100 : null
 }
 
-/**
- * O plano, a partir da assinatura.
- *
- * A metadata vem primeiro: é o que o checkout gravou, e diz o que o usuário
- * escolheu. O casamento por valor é a segunda tentativa, para assinaturas
- * criadas fora do app — pelo painel do Stripe, por exemplo.
- *
- * `null` quando não dá para saber. Nunca conceder plano por omissão: um
- * palpite aqui entrega recurso pago a quem não comprou.
- */
+/** Resolve pelo Price autenticado. Metadata e valor isolado não concedem direitos. */
 export async function planoDaAssinatura(
-  supabase: SupabaseClient,
   assinatura: Stripe.Subscription
 ): Promise<string | null> {
-  const daMetadata = assinatura.metadata?.plan_slug
-  if (daMetadata) return daMetadata
-
-  const valor = valorDaAssinatura(assinatura)
-  const intervalo = assinatura.items?.data?.[0]?.price?.recurring?.interval
-
-  if (valor !== null) {
-    const { data: planos } = await supabase.from('plans').select('slug, price_monthly, price_yearly')
-    for (const plano of planos ?? []) {
-      const esperado = intervalo === 'year' ? plano.price_yearly : plano.price_monthly
-      // Comparação com tolerância: `numeric` volta como string convertida, e
-      // igualdade exata em ponto flutuante falharia por um centavo.
-      if (typeof esperado === 'number' && Math.abs(esperado - valor) < 0.01) return plano.slug
-    }
-  }
-
-  logger.error('Não foi possível resolver o plano da assinatura', {
-    subscriptionId: assinatura.id, valor, intervalo,
-  })
-  return null
+  if (assinatura.items?.data?.length !== 1 || assinatura.items.data[0].quantity !== 1) return null
+  const escolha = escolhaPeloPreco(assinatura.items.data[0].price, process.env)
+  return escolha?.plan_slug ?? null
 }
 
 export type ResultadoDaSincronizacao =
@@ -133,23 +107,24 @@ export async function sincronizarAssinatura(
 
   if (!customerId) return { situacao: 'sem_perfil', customerId: null }
 
-  const { data: perfil } = await supabase
+  const { data: perfil, error: erroPerfil } = await supabase
     .from('profiles')
     .select('id')
     .eq('stripe_customer_id', customerId)
     .single()
 
+  if (erroPerfil && erroPerfil.code !== 'PGRST116') return { situacao: 'falhou', motivo: 'Falha ao ler perfil' }
   if (!perfil) {
     logger.warn('Assinatura sem perfil correspondente', { origem, customerId, subscriptionId: assinatura.id })
     return { situacao: 'sem_perfil', customerId }
   }
 
-  const slug = await planoDaAssinatura(supabase, assinatura)
+  const slug = await planoDaAssinatura(assinatura)
   const { data: plano } = slug
     ? await supabase.from('plans').select('id, slug').eq('slug', slug).single()
     : { data: null }
 
-  const fimDoPeriodo = instante(assinatura.current_period_end)
+  const fimDoPeriodo = instante(assinatura.items?.data?.[0]?.current_period_end ?? assinatura.current_period_end)
   const campos = {
     user_id: perfil.id,
     plan_id: plano?.id ?? null,
@@ -157,7 +132,7 @@ export async function sincronizarAssinatura(
     status: statusDaAssinatura(assinatura.status),
     price_paid: valorDaAssinatura(assinatura),
     cancel_at_period_end: Boolean(assinatura.cancel_at_period_end),
-    current_period_start: instante(assinatura.current_period_start),
+    current_period_start: instante(assinatura.items?.data?.[0]?.current_period_start ?? assinatura.current_period_start),
     current_period_end: fimDoPeriodo,
     next_billing_date: fimDoPeriodo,
     gateway_subscription_id: assinatura.id,
@@ -165,12 +140,13 @@ export async function sincronizarAssinatura(
 
   // A linha existente manda: atualizar é o caminho da reentrega e da
   // reconciliação; criar é o da primeira vez.
-  const { data: existente } = await supabase
+  const { data: existente, error: erroExistente } = await supabase
     .from('subscriptions')
     .select('id')
     .eq('gateway_subscription_id', assinatura.id)
     .maybeSingle()
 
+  if (erroExistente) return { situacao: 'falhou', motivo: 'Falha ao ler assinatura' }
   if (existente) {
     const { error } = await supabase.from('subscriptions').update(campos).eq('id', existente.id)
     if (error) {
@@ -181,20 +157,8 @@ export async function sincronizarAssinatura(
     return { situacao: 'atualizada', linhaId: existente.id }
   }
 
-  // Uma assinatura nova encerra as anteriores do mesmo usuário: duas ativas ao
-  // mesmo tempo fariam a leitura de plano depender de qual linha vem primeiro.
-  const { error: erroAoEncerrar } = await supabase
-    .from('subscriptions')
-    .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-    .eq('user_id', perfil.id)
-    .in('status', ['active', 'past_due', 'gratuidade'])
-
-  if (erroAoEncerrar) {
-    logger.error('Não foi possível encerrar as assinaturas anteriores', {
-      origem, userId: perfil.id, error: erroAoEncerrar.message,
-    })
-  }
-
+  // Assinaturas distintas e concessões gratuitas coexistem. Um evento novo
+  // não prova que a assinatura vizinha foi cancelada pelo Stripe.
   const { data: criada, error } = await supabase
     .from('subscriptions')
     .insert({ ...campos, started_at: instante(assinatura.start_date) ?? new Date().toISOString() })
@@ -246,7 +210,7 @@ async function aplicarPlanoNoPerfil(
   origem: string
 ): Promise<void> {
   if (statusNoBanco === 'cancelled') {
-    await encerrarConcessao(
+    const encerrou = await encerrarConcessao(
       supabase,
       {
         userId: perfilId,
@@ -256,12 +220,13 @@ async function aplicarPlanoNoPerfil(
       },
       origem
     )
+    if (!encerrou) throw new Error('Falha ao encerrar concessão')
     return
   }
 
-  if (!slug) return
+  if (!slug || !['active', 'trial'].includes(statusNoBanco)) return
 
-  await conceder(
+  const concedeu = await conceder(
     supabase,
     {
       userId: perfilId,
@@ -272,4 +237,5 @@ async function aplicarPlanoNoPerfil(
     },
     origem
   )
+  if (!concedeu) throw new Error('Falha ao conceder plano')
 }

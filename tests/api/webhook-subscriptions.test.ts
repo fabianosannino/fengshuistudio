@@ -13,11 +13,13 @@ import type Stripe from 'stripe'
 
 // ── Mock do Stripe ────────────────────────────────────────────────────────────
 const constructEvent = vi.fn()
+const subscriptionsRetrieve = vi.fn()
 const invoicesList = vi.fn()
 const invoicesRetrieve = vi.fn()
 const chargesRetrieve = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
   default: {
+    subscriptions: { retrieve: (...a: unknown[]) => subscriptionsRetrieve(...a) },
     webhooks: { constructEvent: (...a: unknown[]) => constructEvent(...a) },
     invoices: {
       list: (...a: unknown[]) => invoicesList(...a),
@@ -83,6 +85,8 @@ vi.mock('../../src/lib/supabase-admin', () => ({
 
 // O secret é lido no import do módulo — definir antes do import dinâmico.
 process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET = 'whsec_test'
+process.env.STRIPE_SECRET_KEY = 'rk_test_fixture'
+process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_proMensal'
 const { POST } = await import('../../app/api/stripe/webhooks/subscriptions/route')
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -101,10 +105,10 @@ function subscriptionEvent(type: string, overrides: Record<string, unknown> = {}
       object: {
         id: 'sub_123',
         customer: 'cus_123',
-        status: 'active',
+        status: type === 'customer.subscription.deleted' ? 'canceled' : 'active',
         cancel_at_period_end: false,
         metadata: {},
-        items: { data: [{ price: { unit_amount: 9900, recurring: { interval: 'month' } } }] },
+        items: { data: [{ quantity: 1, price: { id: 'price_proMensal', type: 'recurring', active: true, livemode: false, product: 'prod_pro', currency: 'brl', billing_scheme: 'per_unit', unit_amount: 4990, recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' } } }] },
         start_date: 1750000000,
         current_period_start: 1750000000,
         current_period_end: 1752600000,
@@ -125,7 +129,7 @@ function subscriptionEvent(type: string, overrides: Record<string, unknown> = {}
  */
 function defaultHandler(q: Q): QResult {
   if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
-  if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: { message: 'no rows' } }
+  if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: null }
   if (q.table === 'plans' && q.op === 'select') return { data: { id: 'plan-1', slug: 'pro' } }
   if (q.table === 'concessoes_de_plano' && q.op === 'select') {
     // Duas leituras diferentes: `conceder` procura a concessão existente
@@ -140,10 +144,44 @@ function defaultHandler(q: Q): QResult {
 beforeEach(() => {
   vi.clearAllMocks()
   supabaseMock = makeSupabaseMock(defaultHandler)
+  subscriptionsRetrieve.mockImplementation(async () => constructEvent.mock.results.at(-1)?.value?.data?.object)
 })
 
 // ── Testes ───────────────────────────────────────────────────────────────────
 describe('POST /api/stripe/webhooks/subscriptions', () => {
+  it('metadata de plano não concede direitos se o Price é desconhecido', async () => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created', {
+      metadata: { plan_slug: 'profissional' },
+      items: { data: [{ quantity: 1, price: { id: 'price_desconhecido' } }] },
+    }))
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.some(q => q.table === 'concessoes_de_plano' && q.op === 'insert')).toBe(false)
+  })
+  it.each(['incomplete', 'past_due', 'paused', 'status_novo'])('estado %s não cria uma concessão', async status => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created', { status }))
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.some(q => q.table === 'concessoes_de_plano' && q.op === 'insert')).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'subscriptions' && q.op === 'update')).toBe(false)
+  })
+  it('snapshot ativo atrasado não reativa assinatura atualmente cancelada', async () => {
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.updated'))
+    subscriptionsRetrieve.mockResolvedValue(subscriptionEvent('customer.subscription.deleted').data.object)
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.find(q => q.table === 'subscriptions' && q.op === 'insert')?.values?.status).toBe('cancelled')
+    expect(supabaseMock.queries.some(q => q.table === 'concessoes_de_plano' && q.op === 'insert')).toBe(false)
+  })
+  it('falha de escrita responde erro para o Stripe repetir, sem concluir evento', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'subscriptions' && q.op === 'insert'
+      ? { error: { message: 'falha sintética' } } : defaultHandler(q))
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
+    expect((await POST(req())).status).toBe(500)
+    expect(supabaseMock.queries.some(q => q.table === 'eventos_stripe' && q.op === 'update' && q.values?.processado_em)).toBe(false)
+  })
+  it('fatura avulsa paga não reativa assinaturas do perfil', async () => {
+    constructEvent.mockReturnValue({ type: 'invoice.paid', data: { object: { id: 'in_avulsa', customer: 'cus_123', amount_paid: 2000 } } })
+    expect((await POST(req())).status).toBe(200)
+    expect(supabaseMock.queries.some(q => q.table === 'subscriptions' && q.op === 'update')).toBe(false)
+  })
   it('devolve 400 sem header stripe-signature', async () => {
     const res = await POST(req(false))
     expect(res.status).toBe(400)
@@ -170,7 +208,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
       plan_id: 'plan-1',
       status: 'active',
       billing_cycle: 'monthly',
-      price_paid: 99,
+      price_paid: 49.9,
       gateway_subscription_id: 'sub_123',
     })
 
@@ -234,7 +272,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
   it('preço desconhecido NUNCA concede plano (fail-closed)', async () => {
     supabaseMock = makeSupabaseMock(q => {
       if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
-      if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: { message: 'no rows' } }
+      if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: null }
       if (q.table === 'plans' && q.op === 'select') return { data: [] } // nenhum plano bate com o preço
       return {}
     })
@@ -276,7 +314,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
 
   it('evento sem perfil correspondente não escreve nada', async () => {
     supabaseMock = makeSupabaseMock(q => {
-      if (q.table === 'profiles' && q.op === 'select') return { data: null, error: { message: 'no rows' } }
+      if (q.table === 'profiles' && q.op === 'select') return { data: null, error: null }
       return {}
     })
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
