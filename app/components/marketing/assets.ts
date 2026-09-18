@@ -13,7 +13,7 @@ export const ASSETS = {
 } as const
 
 /* Links internos do app (Next.js) */
-export const REGISTER_URL = "/login?modo=cadastro"
+export const REGISTER_URL = "/login?cadastro=1"
 export const LOGIN_URL = "/login"
 /* Área logada (mesmo domínio no Next.js) */
 export const APP_URL = ""

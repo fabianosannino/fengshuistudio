@@ -65,7 +65,7 @@ const DESCONTO_ANUAL_MINIMO = Math.min(
 
 const planos = (anual: boolean) => [
   {
-    nome: 'Free',
+    id: 'free' as const, nome: 'Free',
     preco: 'R$ 0',
     sufixo: '/mês',
     desc: 'Para experimentar e dar os primeiros passos.',
@@ -74,7 +74,7 @@ const planos = (anual: boolean) => [
     cta: 'Começar grátis',
   },
   {
-    nome: 'Profissional',
+    id: 'profissional' as const, nome: 'Profissional',
     preco: precoPorMes('profissional', anual),
     sufixo: anual ? '/mês no plano anual' : '/mês',
     desc: 'Para consultores que atendem clientes.',
@@ -88,7 +88,7 @@ const planos = (anual: boolean) => [
     cta: 'Assinar Profissional',
   },
   {
-    nome: 'Simples',
+    id: 'simples' as const, nome: 'Simples',
     preco: precoPorMes('simples', anual),
     sufixo: anual ? '/mês no plano anual' : '/mês',
     desc: 'Para uso pessoal, na sua própria casa.',
@@ -117,7 +117,7 @@ const faqCompra = [
   { q: 'Posso cancelar quando quiser?', a: 'Sim. O cancelamento é feito em um clique, sem fidelidade. Você mantém o acesso até o fim do período já pago.' },
   { q: 'Como funciona o plano anual?', a: `No plano anual você paga uma vez e usa doze meses, com ${DESCONTO_ANUAL_MINIMO}% de desconto em relação a pagar mês a mês.` },
   { q: 'Quais formas de pagamento são aceitas?', a: 'Cartão de crédito, processado com segurança pela Stripe. Não armazenamos os dados do seu cartão.' },
-  { q: 'Posso mudar de plano depois?', a: 'Sim, o upgrade ou downgrade é imediato e o valor é ajustado proporcionalmente.' },
+  { q: 'Posso mudar de plano depois?', a: 'Use o portal de cobrança para consultar as opções disponíveis. Confira o valor e a data de vigência antes de confirmar a mudança.' },
   { q: 'Meus dados estão protegidos?', a: 'Sim. Seguimos a LGPD, com criptografia em trânsito e isolamento de dados por conta.' },
 ]
 
@@ -184,6 +184,7 @@ export default function Precos() {
                     <span className="font-display text-4xl text-ink">{p.preco}</span>{' '}
                     <span className="text-sm text-ink/60">{p.sufixo}</span>
                   </p>
+                  {anual && p.id !== 'free' && <p className="mt-2 text-sm text-ink/70">Total: {formatarCentavos(PRECOS_DOS_PLANOS[p.id].anualCentavos)} por ano, em uma cobrança.</p>}
                   <ul className="mt-6 space-y-2.5 flex-1">
                     {p.features.map((f) => (
                       <li key={f} className="flex items-start gap-2.5 text-sm text-ink/80">
@@ -193,7 +194,7 @@ export default function Precos() {
                     ))}
                   </ul>
                   <Link
-                    href={REGISTER_URL}
+                    href={p.id === 'free' ? REGISTER_URL : `${REGISTER_URL}&redirect=${encodeURIComponent(`/planos?plano=${p.id}&ciclo=${anual ? 'yearly' : 'monthly'}`)}`}
                     className={`mt-7 inline-flex justify-center rounded-xl font-semibold px-6 py-3.5 active:scale-[0.97] transition-all duration-200 ${
                       p.destaque
                         ? 'bg-jade text-paper shadow-md hover:brightness-110'

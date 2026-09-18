@@ -5,7 +5,8 @@
       "codex/auditoria-correcoes-20260917": false,
       "codex/validacao-pr189": false,
       "codex/relatorios-imutaveis-b0": false,
-      "codex/orientacao-b1": false
+      "codex/orientacao-b1": false,
+      "codex/cobranca-b2": false
     }
   },
   "crons": [

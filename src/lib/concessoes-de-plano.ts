@@ -200,13 +200,14 @@ export async function conceder(
   }
 
   if (concessao.referencia) {
-    const { data: existente } = await supabase
+    const { data: existente, error: erroLeitura } = await supabase
       .from(TABELA)
       .select('id')
       .eq('origem', concessao.origem)
       .eq('referencia', concessao.referencia)
       .maybeSingle()
 
+    if (erroLeitura) return false
     if (existente) {
       const { error } = await supabase.from(TABELA).update(linha).eq('id', existente.id)
       if (error) {
@@ -215,8 +216,7 @@ export async function conceder(
         })
         return false
       }
-      await recalcularPlanoDoPerfil(supabase, concessao.userId, origemDoLog)
-      return true
+      return (await recalcularPlanoDoPerfil(supabase, concessao.userId, origemDoLog)) !== null
     }
   }
 
@@ -228,8 +228,7 @@ export async function conceder(
     return false
   }
 
-  await recalcularPlanoDoPerfil(supabase, concessao.userId, origemDoLog)
-  return true
+  return (await recalcularPlanoDoPerfil(supabase, concessao.userId, origemDoLog)) !== null
 }
 
 /**
@@ -257,6 +256,5 @@ export async function encerrarConcessao(
     return false
   }
 
-  await recalcularPlanoDoPerfil(supabase, parametros.userId, origemDoLog)
-  return true
+  return (await recalcularPlanoDoPerfil(supabase, parametros.userId, origemDoLog)) !== null
 }

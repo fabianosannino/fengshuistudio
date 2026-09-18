@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../src/lib/supabase'
+import { destinoSeguro, urlCallbackAuth } from '../../src/lib/auth-rotas'
 import { falhaAuth } from '../../src/lib/auth-erros'
 import { MailCheck, ClipboardList, Home as HomeIcon } from 'lucide-react'
 import { OPCOES_DE_PAPEL, metadadosDoPapel, type Papel } from '../../src/lib/papel-do-usuario'
@@ -44,7 +45,7 @@ function LoginForm() {
    * «Entrar» faria ele procurar onde se cadastra logo depois de aceitar o
    * convite — que é onde se perde a maior parte de quem aceitou.
    */
-  const [isSignUp, setIsSignUp] = useState(paramsDaUrl.get('cadastro') === '1')
+  const [isSignUp, setIsSignUp] = useState(paramsDaUrl.get('cadastro') === '1' || paramsDaUrl.get('modo') === 'cadastro')
   const [name, setName] = useState('')
   const [signUpDone, setSignUpDone] = useState(false)
   const [resending, setResending] = useState(false)
@@ -57,7 +58,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const rawRedirect = searchParams.get('redirect') || '/dashboard'
   // Prevent open redirect — only allow relative paths
-  const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') && !rawRedirect.includes('://') ? rawRedirect : '/dashboard'
+  const redirectTo = destinoSeguro(rawRedirect)
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -131,7 +132,7 @@ function LoginForm() {
       password,
       options: {
         data: metadata,
-        emailRedirectTo: `${window.location.origin}/login`
+        emailRedirectTo: urlCallbackAuth(window.location.origin, redirectTo)
       }
     })
     if (error) {
@@ -155,7 +156,7 @@ function LoginForm() {
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
-      options: { emailRedirectTo: `${window.location.origin}/login` }
+      options: { emailRedirectTo: urlCallbackAuth(window.location.origin, redirectTo) }
     })
     if (error) {
       mostrarFalha(error, 'resendConfirmation')

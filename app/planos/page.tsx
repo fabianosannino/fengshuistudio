@@ -8,65 +8,22 @@ import AppShell from '../components/AppShell'
 import type { Profile } from '../../src/lib/types'
 import type { User } from '@supabase/supabase-js'
 import {
-  planoEfetivo, PRECOS_DOS_PLANOS, mensalEquivalenteCentavos, formatarCentavos,
+  planoEfetivo, PRECOS_DOS_PLANOS, mensalEquivalenteCentavos, formatarCentavos, recursosDoPlano, type PlanoEfetivo,
 } from '../../src/lib/plano-utils'
 import { Check, X, KeyRound } from 'lucide-react'
 
 const PLANOS = [
-  {
-    id: 'free', nome: 'Free',
-    descricao: 'Para conhecer a plataforma', cor: '#6B7280', destaque: false,
-    recursos: [
-      { nome: 'Cadastro de imóveis', valor: 'Até 3', disponivel: true },
-      { nome: 'Análise Baguá', valor: '1 por imóvel', disponivel: true },
-      { nome: 'Cadastro de clientes', disponivel: false },
-      { nome: 'Relatório PDF', disponivel: false },
-      { nome: 'Calendário lunar', disponivel: false },
-      { nome: 'Rede de parceiros', disponivel: false },
-      { nome: 'Múltiplas análises', disponivel: false },
-      { nome: 'Histórico de análises', disponivel: false },
-    ]
-  },
-  {
-    id: 'simples', nome: 'Simples',
-    descricao: 'Para uso pessoal', cor: '#059669', destaque: false,
-    recursos: [
-      { nome: 'Cadastro de imóveis', valor: '1 ativo', disponivel: true },
-      { nome: 'Análise Baguá', valor: '1 por imóvel', disponivel: true },
-      { nome: 'Cadastro de clientes', valor: 'Apenas pessoal', disponivel: false },
-      { nome: 'Relatório PDF', valor: 'Com marca d\'água', disponivel: true },
-      { nome: 'Calendário lunar', valor: 'Incluído', disponivel: true },
-      { nome: 'Rede de parceiros', valor: 'Visualizar', disponivel: true },
-      { nome: 'Múltiplas análises', disponivel: false },
-      { nome: 'Histórico de análises', disponivel: false },
-    ]
-  },
-  {
-    id: 'profissional', nome: 'Profissional',
-    descricao: 'Para consultores profissionais', cor: '#2E7D6B', destaque: true,
-    recursos: [
-      { nome: 'Cadastro de imóveis', valor: 'Ilimitados', disponivel: true },
-      { nome: 'Análise Baguá', valor: 'Múltiplas', disponivel: true },
-      { nome: 'Cadastro de clientes', valor: 'Ilimitados', disponivel: true },
-      { nome: 'Relatório PDF', valor: 'Sem marca d\'água', disponivel: true },
-      { nome: 'Calendário lunar', valor: 'Incluído', disponivel: true },
-      { nome: 'Rede de parceiros', valor: 'Completo + serviços', disponivel: true },
-      { nome: 'Múltiplas análises', valor: 'Incluído', disponivel: true },
-      { nome: 'Histórico de análises', valor: 'Incluído', disponivel: true },
-    ]
+  { id: 'free', nome: 'Free', descricao: 'Para conhecer a plataforma', cor: '#6B7280', destaque: false },
+  { id: 'simples', nome: 'Simples', descricao: 'Para até 10 imóveis e 25 clientes', cor: '#059669', destaque: false },
+  { id: 'profissional', nome: 'Profissional', descricao: 'Para consultores profissionais', cor: '#2E7D6B', destaque: true },
+].map(p => ({ ...p, recursos: recursosDoPlano(p.id as PlanoEfetivo) }))
+const FEATURES_TABLE = recursosDoPlano('free').map((recurso, i) => {
+  const valor = (plano: PlanoEfetivo) => {
+    const r = recursosDoPlano(plano)[i]
+    return r.disponivel ? r.valor ?? true : false
   }
-]
-
-const FEATURES_TABLE = [
-  { nome: 'Cadastro de imóveis', free: 'Até 3', simples: '1 ativo', profissional: 'Ilimitado' },
-  { nome: 'Cadastro de clientes', free: false, simples: false, profissional: 'Ilimitado' },
-  { nome: 'Análise Baguá', free: true, simples: true, profissional: true },
-  { nome: 'Relatório PDF', free: false, simples: 'Com marca d\'água', profissional: true },
-  { nome: 'Rede de parceiros', free: false, simples: 'Visualizar', profissional: 'Completo + serviços' },
-  { nome: 'Calendário lunar', free: false, simples: true, profissional: true },
-  { nome: 'Múltiplas análises', free: false, simples: false, profissional: true },
-  { nome: 'Histórico de análises', free: false, simples: false, profissional: true },
-]
+  return { nome: recurso.nome, free: valor('free'), simples: valor('simples'), profissional: valor('profissional') }
+})
 
 function formatCurrency(val: number): string {
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -86,6 +43,13 @@ export default function Planos() {
 
   useEffect(() => {
     async function load() {
+      const escolha = new URLSearchParams(window.location.search)
+      if (escolha.get('ciclo') === 'yearly') setCiclo('yearly')
+      const planoEscolhido = escolha.get('plano')
+      if (planoEscolhido === 'simples' || planoEscolhido === 'profissional') {
+        setSelectedPlanId(planoEscolhido)
+        setMessage(`Confira os benefícios e o total antes de assinar ${planoEscolhido === 'simples' ? 'Simples' : 'Profissional'}.`)
+      }
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { redirecionarParaLogin(); return }
       setUser(user)

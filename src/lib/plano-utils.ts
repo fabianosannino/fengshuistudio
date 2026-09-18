@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 export type PlanoEfetivo = 'free' | 'simples' | 'profissional'
+export const VERSAO_DIREITOS_PLANOS = '2026-09-18.1'
 
 /** Professional user types — used across all pages for consistent detection */
 export const PROF_TYPES = ['consultor', 'arquiteto', 'feng_shui', 'decorador', 'outro_profissional'] as const
@@ -171,6 +172,22 @@ export function limiteImoveis(plano: PlanoEfetivo): number | null {
 /** Max active external clients. `null` = ilimitado, `0` = não incluído. */
 export function limiteClientes(plano: PlanoEfetivo): number | null {
   return REGRAS_DE_PLANO[plano].clientes
+}
+
+/** Projeção de apresentação da mesma matriz aplicada pelas APIs. */
+export function recursosDoPlano(plano: PlanoEfetivo): { nome: string; valor?: string; disponivel: boolean }[] {
+  const r = REGRAS_DE_PLANO[plano]
+  const limite = (n: number | null) => n === null ? 'Ilimitados' : `Até ${n}`
+  return [
+    { nome: 'Cadastro de imóveis', valor: limite(r.imoveis), disponivel: true },
+    { nome: 'Cadastro de clientes', valor: r.clientes === 0 ? undefined : limite(r.clientes), disponivel: r.clientes !== 0 },
+    { nome: 'Análise Baguá', disponivel: true },
+    { nome: 'Relatório PDF', valor: r.pdf === 'limpo' ? 'Sem marca d’água' : r.pdf === 'marca_dagua' ? 'Com marca d’água' : undefined, disponivel: r.pdf !== 'bloqueado' },
+    { nome: 'Rede de parceiros', valor: r.parceiros === 'completo' ? 'Completo + serviços' : r.parceiros === 'visualizar' ? 'Visualizar' : undefined, disponivel: r.parceiros !== 'bloqueado' },
+    { nome: 'Calendário lunar', disponivel: r.calendario },
+    { nome: 'Múltiplas análises', disponivel: r.multiplasAnalises },
+    { nome: 'Histórico de análises', disponivel: r.historico },
+  ]
 }
 
 /** Can register external clients at all? */

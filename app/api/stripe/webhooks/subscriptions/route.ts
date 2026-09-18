@@ -45,9 +45,7 @@ import { logger } from '../../../../../src/lib/logger'
 import {
   reivindicarEvento, marcarProcessado, marcarFalha, houveEventoMaisNovo, objetoDoEvento,
 } from '../../../../../src/lib/eventos-stripe'
-import { enumDoPlano } from '../../../../../src/lib/plano-utils'
 import { sincronizarAssinatura } from '../../../../../src/lib/sincronizar-assinatura'
-import { encerrarConcessao } from '../../../../../src/lib/concessoes-de-plano'
 import {
   acharPedidoDaSessao, acharPedidoDoPagamento, registrarEvento, valoresDoPedido,
 } from '../../../../../src/lib/pedidos-da-loja'
@@ -58,9 +56,6 @@ import { origemDaAplicacao } from '../../../../../src/lib/auth-rotas'
 const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET
 
 const ROUTE = '/api/stripe/webhooks/subscriptions'
-
-// Grace period: after how many days of past_due we downgrade to free
-const GRACE_PERIOD_DAYS = 7
 
 /**
  * Executa uma escrita no Supabase e loga falha em vez de engolir o erro.
@@ -73,7 +68,8 @@ async function logWrite(
 ): Promise<void> {
   const { error } = await query
   if (error) {
-    logger.error('Supabase write failed in webhook', { route: ROUTE, operation, error: error.message })
+    logger.error('Supabase write failed in webhook', { route: ROUTE, operation })
+    throw new Error('Falha de persistência no webhook')
   }
 }
 
@@ -106,6 +102,7 @@ export async function POST(request: Request) {
     id: event.id, type: event.type, created: event.created, endpoint: ROUTE, objetoId,
   })
 
+  if (reivindicacao.situacao === 'sem_garantia') return NextResponse.json({ error: 'Controle de eventos indisponível' }, { status: 503 })
   if (reivindicacao.situacao === 'repetido') {
     logger.info('Evento repetido — descartado', { route: ROUTE, eventId: event.id, tipo: event.type })
     return NextResponse.json({ received: true, repetido: true })
@@ -124,7 +121,7 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case 'customer.subscription.created': {
-        const subscription = event.data.object as Stripe.Subscription & {
+        const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id) as Stripe.Subscription & {
           start_date?: number
           current_period_start?: number
           current_period_end?: number
@@ -134,6 +131,7 @@ export async function POST(request: Request) {
         // com a reconciliação: duas respostas para «como nasce uma assinatura»
         // divergiriam, e a segunda envelheceria calada.
         const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
+        if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar assinatura')
         logger.info('Subscription created', {
           route: ROUTE,
           subscriptionId: subscription.id,
@@ -144,7 +142,7 @@ export async function POST(request: Request) {
       }
 
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription & {
+        const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id) as Stripe.Subscription & {
           current_period_start?: number
           current_period_end?: number
         }
@@ -159,6 +157,7 @@ export async function POST(request: Request) {
         // linha certa. Assinatura que o app não conhece é falha de entrega, e
         // a resposta é registrá-la, não sobrescrever a vizinha.
         const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
+        if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar assinatura')
         logger.info('Subscription updated', {
           route: ROUTE,
           subscriptionId: subscription.id,
@@ -171,54 +170,9 @@ export async function POST(request: Request) {
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription
-        const customerId = resolveCustomerId(subscription.customer)
-
-        logger.info('Subscription deleted', {
-          route: '/api/stripe/webhooks/subscriptions',
-          subscriptionId: subscription.id,
-          customerId,
-        })
-
-        const profile = await findProfileByCustomerId(supabase, customerId)
-        if (!profile) break
-
-        const now = new Date().toISOString()
-
-        // Update by gateway_subscription_id first
-        const { data: existingSub } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('gateway_subscription_id', subscription.id)
-          .single()
-
-        if (existingSub) {
-          await logWrite('cancel-subscription', supabase
-            .from('subscriptions')
-            .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
-            .eq('id', existingSub.id))
-        } else {
-          await logWrite('cancel-subscription-fallback', supabase
-            .from('subscriptions')
-            .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
-            .eq('user_id', profile.id)
-            .in('status', ['active', 'past_due']))
-        }
-
-        // Encerra **a concessão desta assinatura** e recalcula o plano do que
-        // sobrou. Escrever `free` direto aqui foi o defeito de 13/08: apagou
-        // um Profissional que vinha de chave de ativação.
-        await encerrarConcessao(
-          supabase,
-          {
-            userId: profile.id,
-            origem: 'assinatura',
-            referencia: subscription.id,
-            motivo: 'Assinatura removida no Stripe',
-          },
-          ROUTE
-        )
-
+        const subscription = await stripeClient.subscriptions.retrieve((event.data.object as Stripe.Subscription).id)
+        const resultado = await sincronizarAssinatura(supabase, subscription, ROUTE)
+        if (resultado.situacao === 'falhou') throw new Error('Falha ao sincronizar cancelamento')
         break
       }
 
@@ -249,79 +203,9 @@ export async function POST(request: Request) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice & {
-          attempt_count?: number
-        }
-        const customerId = typeof invoice.customer === 'string'
-          ? invoice.customer
-          : invoice.customer?.id
-
-        logger.warn('Invoice payment failed', {
-          route: '/api/stripe/webhooks/subscriptions',
-          invoiceId: invoice.id,
-          customerId: customerId || 'unknown',
-          attemptCount: invoice.attempt_count,
-        })
-
-        if (!customerId) break
-
-        const profile = await findProfileByCustomerId(supabase, customerId)
-        if (!profile) break
-
-        // Mark subscription as past_due
-        await logWrite('mark-subscription-past-due', supabase
-          .from('subscriptions')
-          .update({ status: 'past_due', updated_at: new Date().toISOString() })
-          .eq('user_id', profile.id)
-          .eq('status', 'active'))
-
-        // Create a payment notification for the user
-        await logWrite('insert-payment-failed-notification', supabase.from('payment_notifications').insert({
-          user_id: profile.id,
-          type: 'payment_failed',
-          channel: 'in_app',
-          sent_at: new Date().toISOString(),
-          content: `Falha no pagamento da sua assinatura. Por favor, atualize seu meio de pagamento. Tentativa ${invoice.attempt_count || 1}.`,
-        }))
-
-        // Check if grace period expired — auto-downgrade to free
-        const { data: pastDueSub } = await supabase
-          .from('subscriptions')
-          .select('id, updated_at')
-          .eq('user_id', profile.id)
-          .eq('status', 'past_due')
-          .single()
-
-        if (pastDueSub?.updated_at) {
-          const pastDueSince = new Date(pastDueSub.updated_at)
-          const daysPastDue = (Date.now() - pastDueSince.getTime()) / (1000 * 60 * 60 * 24)
-
-          if (daysPastDue >= GRACE_PERIOD_DAYS) {
-            logger.warn('Grace period expired, downgrading to free', {
-              userId: profile.id,
-              daysPastDue: Math.round(daysPastDue),
-            })
-
-            await logWrite('cancel-subscription-grace-expired', supabase
-              .from('subscriptions')
-              .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-              .eq('id', pastDueSub.id))
-
-            await logWrite('downgrade-profile-free', supabase
-              .from('profiles')
-              .update({ plano: enumDoPlano('free') })
-              .eq('id', profile.id))
-
-            await logWrite('insert-cancelled-notification', supabase.from('payment_notifications').insert({
-              user_id: profile.id,
-              type: 'subscription_cancelled_nonpayment',
-              channel: 'in_app',
-              sent_at: new Date().toISOString(),
-              content: `Sua assinatura foi cancelada por falta de pagamento apos ${GRACE_PERIOD_DAYS} dias. Assine novamente para recuperar o acesso.`,
-            }))
-          }
-        }
-
+        // A fatura identifica apenas sua assinatura. O estado atual no Stripe
+        // decide; uma falha antiga não rebaixa outra assinatura ou uma cortesia.
+        await reconciliarAssinaturaDaFatura(supabase, event.data.object as Stripe.Invoice & FaturaExtra)
         break
       }
 
@@ -637,12 +521,19 @@ async function registrarFaturaPaga(
     }))
   }
 
-  // Fatura paga tira a assinatura de `past_due` — é o fim da inadimplência.
-  await logWrite('reactivate-subscription', supabase
-    .from('subscriptions')
-    .update({ status: 'active', updated_at: new Date().toISOString() })
-    .eq('user_id', profile.id)
-    .eq('status', 'past_due'))
+  await reconciliarAssinaturaDaFatura(supabase, invoice)
+}
+
+
+async function reconciliarAssinaturaDaFatura(supabase: SupabaseClient, invoice: Stripe.Invoice & FaturaExtra): Promise<void> {
+  const ref = invoice.parent?.subscription_details?.subscription ?? invoice.subscription
+  const id = typeof ref === 'string' ? ref : ref?.id
+  if (!id) return // Fatura avulsa não altera direitos de assinatura.
+  const atual = await stripeClient.subscriptions.retrieve(id)
+  const customerDaFatura = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+  if (resolveCustomerId(atual.customer) !== customerDaFatura) throw new Error('Assinatura incompatível com a fatura')
+  const resultado = await sincronizarAssinatura(supabase, atual, ROUTE)
+  if (resultado.situacao === 'falhou') throw new Error('Falha ao reconciliar fatura')
 }
 
 
