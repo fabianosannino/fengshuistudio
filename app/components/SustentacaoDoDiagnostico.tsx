@@ -22,7 +22,7 @@ export default function SustentacaoDoDiagnostico({
   mostrarRessalva?: boolean
 }) {
   const metodos = sustentacaoDoDiagnostico(dados)
-  const temEstrelas = metodos.some(m => m.nome === 'Estrelas Voadoras' && m.disponivel)
+  const temEstrelas = metodos.some(m => m.nome === 'Estrelas Voadoras' && m.estado === 'experimental')
 
   return (
     <div>
@@ -41,11 +41,15 @@ export default function SustentacaoDoDiagnostico({
               : <CircleAlert size={16} strokeWidth={1.75} color="#8A6E2F" style={{ flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />}
             <div style={{ minWidth: 0 }}>
               <span style={{ fontSize: '13px', color: '#0E1B2C' }}>{metodo.nome}</span>
+              {metodo.estado === 'experimental' && <strong style={{ fontSize: '12px', color: '#8A6E2F' }}> · Experimental</strong>}
               {metodo.oQueFalta && (
                 <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#8A6E2F', lineHeight: 1.45 }}>
                   {metodo.oQueFalta}
                 </p>
               )}
+              {metodo.limitacoes.filter(texto => texto !== RESSALVA_XUAN_KONG).map(texto => (
+                <p key={texto} style={{ margin: '2px 0 0', fontSize: '12px', color: '#6B5220', lineHeight: 1.45 }}>{texto}</p>
+              ))}
             </div>
           </div>
         ))}

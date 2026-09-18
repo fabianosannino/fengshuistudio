@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Relatorio from '../app/consultas/[id]/relatorio/page'
 import { MAX_PDF_RELATORIO, VERSOES_RELATORIO } from '../src/lib/relatorio-emissao'
-import type { BaguaEntrada } from '../src/lib/types'
+import type { BaguaEntrada, Consulta } from '../src/lib/types'
+import { referenciaDaAnalise } from '../src/lib/analise-bagua'
 
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn() }, capture: vi.fn(), output: vi.fn(), fetch: vi.fn(), download: vi.fn(),
@@ -26,10 +27,12 @@ let falharHistoricoDepois = false
 let foto: string | null = null
 let leiturasHistorico = 0
 let bagua: Partial<BaguaEntrada> = {}
+let dadosDaConsulta: Partial<Consulta> = {}
 const json = (data: unknown, ok = true) => ({ ok, status: ok ? 200 : 503, json: async () => data })
 beforeEach(() => {
   vi.clearAllMocks(); respostas.preparo.length = 0; respostas.uploads.length = 0
   falharUpload = false; statusFalha = 503; falharHistoricoDepois = false; leiturasHistorico = 0; foto = null; bagua = {}
+  dadosDaConsulta = {}
   mocks.capture.mockResolvedValue({ width: 1000, height: 1000, toDataURL: () => 'data:image/png;base64,fixture' })
   mocks.output.mockReturnValue(new Blob(['%PDF-1.4\nfixture\n%%EOF'], { type: 'application/pdf' }))
   vi.stubGlobal('fetch', mocks.fetch)
@@ -39,7 +42,7 @@ beforeEach(() => {
   Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() })
   mocks.fetch.mockImplementation(async (url: string, options?: RequestInit) => {
     if (url.includes('/entrada?')) return json({
-      fonte: { consulta: { id: '00000000-0000-4000-8000-000000000001', nome_imovel: 'Imóvel sintético', criado_em: '2026-09-01T00:00:00Z', status: 'em_andamento', bagua_entrada: bagua, foto_geral_url: foto }, perfil: { plano: 'profissional', nome_completo: 'Consultor sintético' }, setores: [], evolucao: [], chi_custom: [] },
+      fonte: { consulta: { id: '00000000-0000-4000-8000-000000000001', nome_imovel: 'Imóvel sintético', criado_em: '2026-09-01T00:00:00Z', status: 'em_andamento', bagua_entrada: bagua, foto_geral_url: foto, ...dadosDaConsulta }, perfil: { plano: 'profissional', nome_completo: 'Consultor sintético' }, setores: [], evolucao: [], chi_custom: [] },
       fonte_sha256: 'a'.repeat(64), referencia_temporal: '2026-09-17T12:00:00.000Z',
     })
     if (url.includes('historico=1')) {
@@ -66,13 +69,35 @@ async function emitir() {
 }
 
 describe('emissão pela página', () => {
+  it('D0-02/04 — relatório mostra os resultados por método e a limitação experimental', async () => {
+    bagua = { escola: 'bussola', orientacao_graus: 0, orientacao_referencia: 'magnetico', orientacao_estado: 'confirmada', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T12:00:00Z' }
+    bagua.analise_referencia = referenciaDaAnalise(bagua as BaguaEntrada)
+    dadosDaConsulta = { ano_construcao: 2011, clientes: { nome_completo: 'Cliente sintético', data_nascimento: '1990-06-15', genero: 'masculino' } }
+    render(<Relatorio />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Visualizar Relatório' }))
+    expect(screen.getByText('Kua da Casa 9')).toBeInTheDocument()
+    expect(screen.getByText('Ming Gua 1')).toBeInTheDocument()
+    expect(screen.getByText('· Experimental')).toBeInTheDocument()
+    expect(screen.getByText(/2 de 5 métodos sustentados no escopo atual/)).toBeInTheDocument()
+    expect(screen.getByText(/não decide a recomendação final/)).toBeInTheDocument()
+    expect(screen.queryByText(/Setores que exigem cautela/)).not.toBeInTheDocument()
+  })
   it('não captura prévia nem emite bússola legada com zero presumido', async () => {
     bagua = { escola: 'bussola', orientacao_graus: 0 }
     await emitir()
     expect(screen.getByRole('alert')).toHaveTextContent('Confirme a fachada')
     expect(mocks.capture).not.toHaveBeenCalled()
     expect(respostas.preparo).toHaveLength(0)
-    expect(screen.queryByText(/Kua da Casa/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Kua da Casa \d/)).not.toBeInTheDocument()
+  })
+  it('D0-04 — carta experimental sozinha não aparece como consenso entre escolas', async () => {
+    bagua = { escola: 'bussola', orientacao_graus: 0, orientacao_referencia: 'magnetico', orientacao_estado: 'confirmada', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T12:00:00Z' }
+    bagua.analise_referencia = referenciaDaAnalise(bagua as BaguaEntrada)
+    dadosDaConsulta = { ano_construcao: 2011 }
+    render(<Relatorio />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Visualizar Relatório' }))
+    expect(screen.getByText(/Não há resultado elegível para uma recomendação final/)).toBeInTheDocument()
+    expect(screen.queryByText(/concordam em todos/)).not.toBeInTheDocument()
   })
   it('só baixa e permite concluir a entrega depois de confirmar a persistência', async () => {
     await emitir()

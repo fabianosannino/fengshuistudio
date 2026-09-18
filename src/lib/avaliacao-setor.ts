@@ -44,27 +44,27 @@ export function avaliarSetorFeiXing(
 
   if (natalEhWuHuang && anualEhWuHuang) {
     return {
-      metodo: 'fei-xing',
+      metodo: 'fei-xing', experimental: true,
       veredicto: 'perigoso',
       motivo: 'Estrela 5 (Wu Huang) na carta natal E também como estrela anual — sobreposição agravada neste setor.',
     }
   }
   if (natalEhWuHuang) {
     return {
-      metodo: 'fei-xing',
+      metodo: 'fei-xing', experimental: true,
       veredicto: 'perigoso',
       motivo: 'Estrela 5 (Wu Huang) na carta natal deste setor.',
     }
   }
   if (anualEhWuHuang) {
     return {
-      metodo: 'fei-xing',
+      metodo: 'fei-xing', experimental: true,
       veredicto: 'perigoso',
       motivo: 'Estrela 5 (Wu Huang) como estrela anual deste setor — condição temporária, muda no próximo ano solar.',
     }
   }
   return {
-    metodo: 'fei-xing',
+    metodo: 'fei-xing', experimental: true,
     veredicto: 'neutro',
     motivo: 'Sem Estrela 5 neste setor. As demais combinações de estrelas ainda não são classificadas pelo sistema.',
   }
@@ -99,6 +99,8 @@ export function sintetizarSetor(entrada: EntradaSinteseSetor): ResolucaoConflito
   const avaliacoes: AvaliacaoMetodo[] = []
 
   if (entrada.estrelasNatais != null || entrada.estrelaAnual != null) {
+    // A carta e sua interpretação combinada com a anual ainda são experimentais.
+    // A hierarquia de escolas nunca promove uma implementação incompleta (ADR 0056).
     avaliacoes.push(avaliarSetorFeiXing(entrada.estrelasNatais, entrada.estrelaAnual))
   }
   if (entrada.baZhaiFavoraveis != null) {

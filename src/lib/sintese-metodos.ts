@@ -70,6 +70,8 @@ export interface AvaliacaoMetodo {
   veredicto: Veredicto
   /** Texto curto do porquê, para o relatório. */
   motivo: string
+  /** Um cálculo experimental pode ser comparado, mas não decide a recomendação. */
+  experimental?: boolean
 }
 
 export interface Divergencia {
@@ -115,6 +117,8 @@ function conflita(a: Veredicto, b: Veredicto): boolean {
  */
 export function resolverConflito(avaliacoes: AvaliacaoMetodo[]): ResolucaoConflito {
   const avisos: string[] = []
+  const ressalvaExperimental = 'Resultado experimental: somente para comparação, sem decidir a recomendação final.'
+  if (avaliacoes.some(a => a.experimental)) avisos.push(ressalvaExperimental)
   const naoNeutras = avaliacoes.filter(a => a.veredicto !== 'neutro')
 
   if (naoNeutras.length === 0) {
@@ -136,6 +140,7 @@ export function resolverConflito(avaliacoes: AvaliacaoMetodo[]): ResolucaoConfli
 
   // Elegíveis a DECIDIR (mas todos os não-neutros seguem reportáveis como divergência).
   const elegiveis = naoNeutras.filter(a => {
+    if (a.experimental) return false
     const perfil = PERFIS_METODOS[a.metodo]
     if (!perfil.podeCriarRecomendacao) return false
     if (perfil.isolado && temBussola) return false
@@ -148,7 +153,7 @@ export function resolverConflito(avaliacoes: AvaliacaoMetodo[]): ResolucaoConfli
       motivoFinal: 'Nenhum método elegível a originar recomendação se manifestou neste setor.',
       divergencias: naoNeutras.map(a => ({
         metodo: a.metodo, veredicto: a.veredicto, motivo: a.motivo,
-        razaoDaPerda: PERFIS_METODOS[a.metodo].podeCriarRecomendacao
+        razaoDaPerda: a.experimental ? ressalvaExperimental : PERFIS_METODOS[a.metodo].podeCriarRecomendacao
           ? 'Método isolado (BTB), desconsiderado por haver métodos de bússola na análise.'
           : `${PERFIS_METODOS[a.metodo].nome} não origina recomendação por conta própria — só escolhe entre remédios já validados.`,
       })),
@@ -169,7 +174,9 @@ export function resolverConflito(avaliacoes: AvaliacaoMetodo[]): ResolucaoConfli
     .map(a => {
       const perfil = PERFIS_METODOS[a.metodo]
       let razaoDaPerda: string
-      if (perfil.isolado && temBussola) {
+      if (a.experimental) {
+        razaoDaPerda = ressalvaExperimental
+      } else if (perfil.isolado && temBussola) {
         razaoDaPerda = 'Método isolado (BTB), desconsiderado por haver métodos de bússola na análise.'
       } else if (!perfil.podeCriarRecomendacao) {
         razaoDaPerda = `${perfil.nome} não origina recomendação por conta própria.`

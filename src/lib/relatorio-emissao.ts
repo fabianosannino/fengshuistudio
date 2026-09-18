@@ -2,10 +2,11 @@ import { SECOES, type Secao } from './formato-do-relatorio'
 import type { Consulta, Profile, SetorBagua } from './types'
 import type { SnapshotScore } from './reavaliacao'
 import { lerOrientacao, type Orientacao } from './orientacao'
+import { executarMetodos, type ExecucoesMetodos } from './execucao-metodos'
 
-/** C1/C2 engine; template 2.3 records the current grant-derived plan. */
+/** D0: resultados e limites por método preservados nas novas emissões. */
 export const VERSOES_RELATORIO = {
-  entrada: '2', motor: 'fengshui-2026.09-c1c2', template: 'relatorio-2.3.0',
+  entrada: '3', motor: 'fengshui-2026.09-d0', template: 'relatorio-2.4.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.
@@ -39,6 +40,7 @@ export interface EntradaRelatorio {
   metodo: string
   variante: 'btb-porta' | 'ba-zhai-assento-octantes' | 'nao_informada'
   orientacao: Orientacao
+  execucoes_metodos: ExecucoesMetodos
 }
 export interface EmissaoRelatorio {
   id: string
@@ -101,6 +103,7 @@ export function criarEntradaRelatorio(fonte: FonteRelatorio, edicao: EdicaoRelat
     metodo: bagua?.escola || 'nao_informado',
     variante: bagua?.escola === 'bussola' ? 'ba-zhai-assento-octantes' : bagua?.escola === 'btb' ? 'btb-porta' : 'nao_informada',
     orientacao: lerOrientacao(bagua),
+    execucoes_metodos: executarMetodos(fonte.consulta),
   }
 }
 

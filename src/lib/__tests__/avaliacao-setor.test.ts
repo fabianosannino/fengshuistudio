@@ -13,6 +13,7 @@ describe('avaliarSetorFeiXing', () => {
   it('sem Estrela 5 devolve NEUTRO, nunca favorável (o app não classifica combinações auspiciosas)', () => {
     const a = avaliarSetorFeiXing(palacio())
     expect(a.veredicto).toBe('neutro')
+    expect(a.experimental).toBe(true)
     expect(a.motivo).toContain('ainda não são classificadas')
   })
 
@@ -69,18 +70,20 @@ describe('sintetizarSetor — integração com os cálculos reais', () => {
     expect(r.houveConflito).toBe(false)
   })
 
-  it('CONFLITO CANÔNICO com dados reais: Ba Zhai favorável vs Estrela 5 → Fei Xing vence, divergência preservada', () => {
+  it('D0-04 — Fei Xing experimental não vence Ba Zhai; divergência e limite permanecem visíveis', () => {
     const r = sintetizarSetor({
       setor: 'N',
       estrelasNatais: palacio({ temEstrela5: true }),
       baZhaiFavoraveis: new Set<Setor>(['N']),
     })
-    expect(r.veredictoFinal).toBe('perigoso')
-    expect(r.metodoVencedor).toBe('fei-xing')
+    expect(r.veredictoFinal).toBe('favoravel')
+    expect(r.metodoVencedor).toBe('ba-zhai')
     expect(r.houveConflito).toBe(true)
     expect(r.divergencias).toHaveLength(1)
-    expect(r.divergencias[0].metodo).toBe('ba-zhai')
-    expect(r.divergencias[0].veredicto).toBe('favoravel')
+    expect(r.divergencias[0].metodo).toBe('fei-xing')
+    expect(r.divergencias[0].veredicto).toBe('perigoso')
+    expect(r.divergencias[0].razaoDaPerda).toContain('experimental')
+    expect(r.avisos.join(' ')).toContain('sem decidir')
   })
 
   it('Fei Xing neutro não sobrepõe o Ba Zhai (neutro nunca vence nem conflita)', () => {
@@ -100,8 +103,7 @@ describe('sintetizarSetor — integração com os cálculos reais', () => {
     expect(mapa).not.toBeNull()
     const gradeAnual = calcularGradeAnual(2026)
 
-    // Percorre todos os palácios e confirma que a síntese nunca estoura e sempre
-    // devolve um veredicto coerente com a presença (ou não) da Estrela 5.
+    // Em todos os palácios, nem a Estrela 5 natal nem a anual promovem o experimento.
     for (const p of mapa!.palacios) {
       if (p.palacio === 'C') continue // Centro não é um dos 8 setores do Ba Zhai
       const setor = p.palacio as Setor
@@ -111,19 +113,20 @@ describe('sintetizarSetor — integração com os cálculos reais', () => {
         estrelaAnual: gradeAnual[p.palacio],
         baZhaiFavoraveis: new Set<Setor>(['N', 'E', 'SE', 'S']),
       })
-      const deveSerPerigoso = p.temEstrela5 || gradeAnual[p.palacio] === 5
-      if (deveSerPerigoso) {
-        expect(r.veredictoFinal).toBe('perigoso')
-        expect(r.metodoVencedor).toBe('fei-xing')
-      } else {
-        // Sem Estrela 5, quem decide é o Ba Zhai (Fei Xing devolve neutro).
-        expect(r.metodoVencedor).toBe('ba-zhai')
-      }
+      expect(r.metodoVencedor).toBe('ba-zhai')
+      expect(r.veredictoFinal).not.toBe('perigoso')
+      expect(r.avisos.join(' ')).toContain('experimental')
     }
   })
 
   it('há ao menos um setor com Estrela 5 na carta do Período 8 (o teste acima não é vacuamente verdadeiro)', () => {
     const mapa = calcularEstrelasVoadoras({ facingGraus: 180, periodo: 8 })
     expect(mapa!.palacios.some(p => p.temEstrela5)).toBe(true)
+  })
+  it('D0-04 — apenas Estrelas Voadoras nunca produz uma recomendação final', () => {
+    const r = sintetizarSetor({ setor: 'N', estrelasNatais: palacio({ temEstrela5: true }), estrelaAnual: 5 })
+    expect(r.metodoVencedor).toBeNull()
+    expect(r.veredictoFinal).toBe('neutro')
+    expect(r.divergencias[0].razaoDaPerda).toContain('experimental')
   })
 })

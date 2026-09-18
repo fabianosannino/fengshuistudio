@@ -18,6 +18,7 @@ describe('contrato de emissão', () => {
     expect(entrada.orientacao).toMatchObject({ estado: 'nao_confirmada', graus: 0, origem: 'nao_registrada' })
     expect(entrada.metodo).toBe('bussola')
     expect(entrada.variante).toBe('ba-zhai-assento-octantes')
+    expect(entrada.execucoes_metodos.baZhai).toMatchObject({ estado: 'incompleto', resultado: null, versao: '1.0.0' })
   })
   it('preserva ausência e não inventa método', () => {
     const sem = { ...fonte, consulta: { ...fonte.consulta, bagua_entrada: null } }

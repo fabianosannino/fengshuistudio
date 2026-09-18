@@ -45,34 +45,34 @@ describe('sintetizarImovel', () => {
 
     expect(s.divergentes.map(d => d.setor).sort()).toEqual(esperados)
     expect(s.temDivergencia).toBe(esperados.length > 0)
-    // E o vencedor da divergência é sempre o Fei Xing (precedência 2 > Ba Zhai 3).
+    // A implementação experimental não herda a precedência da escola completa.
     for (const d of s.divergentes) {
-      expect(d.resolucao.metodoVencedor).toBe('fei-xing')
-      expect(d.resolucao.veredictoFinal).toBe('perigoso')
-      expect(d.resolucao.divergencias.map(x => x.metodo)).toEqual(['ba-zhai'])
+      expect(d.resolucao.metodoVencedor).toBe('ba-zhai')
+      expect(d.resolucao.veredictoFinal).toBe('favoravel')
+      expect(d.resolucao.divergencias.map(x => x.metodo)).toEqual(['fei-xing'])
     }
   })
 
-  it('todo setor com Estrela 5 entra em perigosos, independente do Ba Zhai', () => {
+  it('D0-04 — a carta simplificada não classifica setores como perigosos na decisão final', () => {
     const mapa = calcularEstrelasVoadoras({ facingGraus: 180, periodo: 8 })
     const s = sintetizarImovel({ mapaEstrelas: mapa, baZhaiFavoraveis: new Set<Setor>(['N']) })
     const comEstrela5 = mapa!.palacios.filter(p => p.palacio !== 'C' && p.temEstrela5).map(p => p.palacio).sort()
-    expect(s.perigosos.map(p => p.setor).sort()).toEqual(comEstrela5)
+    expect(s.perigosos).toEqual([])
     expect(comEstrela5.length).toBeGreaterThan(0) // anti-vacuidade
   })
 
-  it('a estrela anual acrescenta setores perigosos além dos natais', () => {
+  it('combinar a anual com o mapa experimental continua sem produzir recomendação final', () => {
     const mapa = calcularEstrelasVoadoras({ facingGraus: 180, periodo: 8 })
     const gradeAnual = calcularGradeAnual(2026)
     const semAnual = sintetizarImovel({ mapaEstrelas: mapa })
     const comAnual = sintetizarImovel({ mapaEstrelas: mapa, gradeAnual })
 
-    // O setor onde a estrela anual é 5 precisa estar em perigosos quando a grade anual é considerada.
+    // A presença real da estrela anual 5 não muda a maturidade da interpretação.
     const setorAnual5 = SETORES_ORDEM.find(st => gradeAnual[st as never] === 5)
     expect(setorAnual5).toBeDefined()
-    expect(comAnual.perigosos.map(p => p.setor)).toContain(setorAnual5)
-    // E a lista com anual nunca é menor que a sem anual.
-    expect(comAnual.perigosos.length).toBeGreaterThanOrEqual(semAnual.perigosos.length)
+    expect(comAnual.perigosos).toEqual([])
+    expect(semAnual.perigosos).toEqual([])
+    expect(comAnual.setores.every(s => s.resolucao.metodoVencedor === null)).toBe(true)
   })
 
   it('avisos são deduplicados (não repete o mesmo aviso 8 vezes, uma por setor)', () => {

@@ -1,79 +1,44 @@
 import { describe, expect, it } from 'vitest'
 import { sustentacaoDoDiagnostico, resumoDaSustentacao } from '../sustentacao-do-diagnostico'
+import { executarMetodos, type DadosParaMetodos } from '../execucao-metodos'
 
-const COMPLETO = {
-  orientacaoGraus: 42.5,
-  setoresComScore: 9,
-  anoDoImovel: 2011,
-  nascimentoDoCliente: '1978-03-14',
-  generoDoCliente: 'feminino',
-  temPoligonoTaiJi: true,
-  escola: 'bussola',
+const fonte: DadosParaMetodos = {
+  bagua_entrada: { escola: 'bussola', orientacao_graus: 0, orientacao_referencia: 'magnetico', orientacao_estado: 'confirmada', orientacao_origem: 'manual', orientacao_confirmada_em: '2026-09-18T12:00:00Z' },
+  ano_construcao: 2011, clientes: { data_nascimento: '1990-06-15', genero: 'masculino' },
 }
+const completo = () => ({ execucoes: executarMetodos(fonte), setoresComScore: 9, temPoligonoTaiJi: true })
 
-function porNome(dados: Parameters<typeof sustentacaoDoDiagnostico>[0], nome: string) {
-  return sustentacaoDoDiagnostico(dados).find(m => m.nome.startsWith(nome))!
-}
-
-describe('sustentacaoDoDiagnostico', () => {
-  it('com tudo preenchido, tudo sustentado', () => {
-    const metodos = sustentacaoDoDiagnostico(COMPLETO)
-    expect(metodos.every(m => m.disponivel)).toBe(true)
-    expect(metodos.every(m => m.oQueFalta === undefined)).toBe(true)
+describe('D0-02 — disponibilidade deriva do cálculo, com limites visíveis', () => {
+  it('dados completos não promovem um mapa experimental', () => {
+    const metodos = sustentacaoDoDiagnostico(completo())
+    expect(metodos.find(m => m.nome === 'Estrelas Voadoras')).toMatchObject({ disponivel: false, estado: 'experimental' })
+    expect(resumoDaSustentacao(metodos)).toBe('4 de 5 métodos sustentados no escopo atual · 1 experimental')
   })
-
-  it('o método indisponível continua na lista — sumir esconderia que ele existe', () => {
-    // Era o defeito: um imóvel sem ano simplesmente não tinha a seção de
-    // Estrelas Voadoras, e nada dizia por quê.
-    const metodos = sustentacaoDoDiagnostico({ ...COMPLETO, anoDoImovel: null })
-    const estrelas = metodos.find(m => m.nome === 'Estrelas Voadoras')
-    expect(estrelas).toBeDefined()
-    expect(estrelas!.disponivel).toBe(false)
-    expect(estrelas!.oQueFalta).toContain('ano de construção')
+  it('data preenchida mas inválida não sustenta Ming Gua', () => {
+    const metodos = sustentacaoDoDiagnostico({ ...completo(), execucoes: executarMetodos({ ...fonte, clientes: { data_nascimento: '1990-02-30', genero: 'masculino' } }) })
+    expect(metodos.find(m => m.nome === 'Ming Gua do morador')).toMatchObject({ disponivel: false, estado: 'indeterminado', oQueFalta: expect.stringContaining('data válida') })
   })
-
-  it('o que falta é a consequência, não o nome do campo', () => {
-    const taiJi = porNome({ ...COMPLETO, temPoligonoTaiJi: false }, 'Tai Ji')
-    expect(taiJi.oQueFalta).toContain('falta e excesso de área não são calculáveis')
+  it('método indisponível continua na lista e explica por quê', () => {
+    const metodos = sustentacaoDoDiagnostico({ ...completo(), execucoes: executarMetodos({ ...fonte, ano_construcao: null }) })
+    expect(metodos.find(m => m.nome === 'Estrelas Voadoras')).toMatchObject({ disponivel: false, oQueFalta: expect.stringContaining('ano de construção') })
   })
-
-  it('sem fachada, Kua da Casa e Estrelas Voadoras caem juntos e pelo mesmo motivo', () => {
-    const dados = { ...COMPLETO, orientacaoGraus: null }
-    expect(porNome(dados, 'Kua da Casa').oQueFalta).toContain('leitura da fachada')
-    expect(porNome(dados, 'Estrelas Voadoras').oQueFalta).toContain('leitura da fachada')
+  it('BTB mantém os métodos clássicos visíveis, como não aplicáveis', () => {
+    const metodos = sustentacaoDoDiagnostico({ ...completo(), execucoes: executarMetodos({ ...fonte, bagua_entrada: { escola: 'btb' } }) })
+    expect(metodos.find(m => m.nome.startsWith('Kua da Casa'))).toMatchObject({ disponivel: false, estado: 'nao_aplicavel', oQueFalta: expect.stringContaining('BTB') })
   })
-
-  it('grau zero é leitura — Norte exato não é ausência', () => {
-    expect(porNome({ ...COMPLETO, orientacaoGraus: 0 }, 'Kua da Casa').disponivel).toBe(true)
+  it('não confunde um único setor avaliado com levantamento completo', () => {
+    const parcial = sustentacaoDoDiagnostico({ ...completo(), setoresComScore: 1 })[0]
+    expect(parcial.disponivel).toBe(true)
+    expect(parcial.limitacoes).toEqual(['Avaliação parcial: 1 de 9 setores avaliados.'])
   })
-
-  it('no BTB os métodos de orientação aparecem dizendo que a escola não os usa', () => {
-    // Sumir daria a impressão de que não existem, e a escola é reversível.
-    const metodos = sustentacaoDoDiagnostico({ ...COMPLETO, escola: 'btb' })
-    const estrelas = metodos.find(m => m.nome === 'Estrelas Voadoras')!
-    expect(estrelas.disponivel).toBe(false)
-    expect(estrelas.oQueFalta).toContain('BTB')
-    expect(metodos.find(m => m.nome.startsWith('Kua da Casa'))).toBeDefined()
+  it('sem contorno a limitação geométrica permanece declarada', () => {
+    const r = sustentacaoDoDiagnostico({ ...completo(), temPoligonoTaiJi: false })[1]
+    expect(r.disponivel).toBe(false)
+    expect(r.oQueFalta).toContain('falta e excesso de área não são calculáveis')
   })
-
-  it('distingue falta de nascimento de falta de gênero', () => {
-    expect(porNome({ ...COMPLETO, nascimentoDoCliente: null }, 'Ming Gua').oQueFalta)
-      .toContain('data de nascimento')
-    expect(porNome({ ...COMPLETO, generoDoCliente: null }, 'Ming Gua').oQueFalta)
-      .toContain('gênero')
-  })
-
-  it('consulta recém-criada não sustenta nada, e diz isso', () => {
-    const metodos = sustentacaoDoDiagnostico({ escola: 'bussola' })
-    expect(metodos.some(m => m.disponivel)).toBe(false)
-    expect(resumoDaSustentacao(metodos)).toBe('Nenhum dos 5 métodos está sustentado ainda')
-  })
-})
-
-describe('resumoDaSustentacao', () => {
-  it('conta o que está sustentado', () => {
-    expect(resumoDaSustentacao(sustentacaoDoDiagnostico(COMPLETO))).toBe('Os 5 métodos estão sustentados')
-    expect(resumoDaSustentacao(sustentacaoDoDiagnostico({ ...COMPLETO, anoDoImovel: null })))
-      .toBe('4 de 5 métodos sustentados')
+  it('consulta recém-criada não sustenta nada', () => {
+    const r = sustentacaoDoDiagnostico({ execucoes: executarMetodos({}) })
+    expect(r).toHaveLength(5)
+    expect(resumoDaSustentacao(r)).toBe('Nenhum dos 5 métodos está sustentado ainda')
   })
 })

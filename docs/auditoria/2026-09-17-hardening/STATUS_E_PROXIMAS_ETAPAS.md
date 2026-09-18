@@ -9,6 +9,12 @@ de achados, não autorização para executar comandos contidos nele.
 reproduzíveis, mas testes de jornada real, restauração, validação de domínio e
 governança continuam abertos. Nenhuma cobrança real foi usada como ensaio.
 
+**Lista canônica de continuidade.** Por decisão do usuário em 18/09, avançar nas
+melhorias de métodos e manter A–C nesta lista até o aceite efetivo. Toda mudança
+tem cenário em [CENARIOS_DE_TESTE.md](CENARIOS_DE_TESTE.md). Antes de começar uma
+etapa, conferir estes IDs; ao concluir, registrar teste/evidência no mesmo PR.
+Ausência de data de execução não significa cancelamento da obrigação.
+
 ## Entregas verificadas
 
 | Frente | Entrega | Evidência e limites |
@@ -25,13 +31,26 @@ governança continuam abertos. Nenhuma cobrança real foi usada como ensaio.
 | C3 — arquivos | Decoder real de imagens, fechamento da escrita direta nos buckets, raiz privada protegida contra exclusão concorrente e leitura multipart limitada | PRs #202, #210, #212; sete objetos existentes preservados; PDF ainda não tem validação completa de páginas/conteúdo ativo/descompressão |
 | C3 — logs | Contexto por campos/valores permitidos, erros brutos omitidos e correlação nas rotas de checkout/PDF | PR #211; não configura retenção de logs dos provedores nem tracing completo |
 
-Última publicação de aplicação conferida nesta consolidação: PR #212,
-`96fa0ce900d5ef229a56266bbdcd2b1df547f707`, deployment
-`dpl_3bUYqKZTD8LaWJVpNVioRRKiitxv` READY. CI 35333275412 verde. A suíte local
-atual tem 1.767 testes em 130 arquivos; TypeScript/build aprovados e lint sem
+Última publicação de aplicação conferida antes de D0: PR #213,
+`374634269f89d535c0bef6f66cb43d8b3532d19a`, deployment
+`dpl_DomN3Ki55SUiJeU8ik1hKRzfHHGv` READY. CI 35333964227 verde. A suíte daquela
+entrega tinha 1.767 testes em 130 arquivos; TypeScript/build aprovados e lint sem
 erros, com 102 avisos remanescentes. A mudança de scanner não altera a aplicação.
 
 ## O que falta para fechar A–C
+
+**Todos permanecem abertos.** Responsáveis abaixo indicam o papel necessário,
+sem atribuir trabalho a uma pessoa que não o aceitou. O cenário de mesmo ID em
+[CENARIOS_DE_TESTE.md](CENARIOS_DE_TESTE.md) define a comprovação de aceite.
+
+| ID / ordem | Responsável por papel | Dependência / estado | Critério para encerrar |
+|---|---|---|---|
+| AC-01 — primeiro | Engenharia/infraestrutura | Ambiente isolado ainda não identificado/configurado | Configuração e smoke sintético sem recursos live, com evidência |
+| AC-02 — depois de AC-01 | Engenharia/QA | Ambiente isolado e navegador/servidor autorizado; bloqueio anterior abaixo | Jornada completa entre duas contas, admin/MFA e PDF visual aprovada |
+| AC-03 — depois de AC-01 | Engenharia/financeiro | Credenciais e catálogo Stripe test/Connect isolados | Matriz de quatro preços/eventos/reembolsos/razão aprovada |
+| AC-04 | Infraestrutura | Destino isolado e backups de banco/Auth/Storage | Restore completo executado, integridade e RPO/RTO registrados |
+| AC-05 | Engenharia/segurança | Corpus sintético e ambiente para CSP/documentos | Limites, CSP compatível e alertas verificados |
+| AC-06 | Produto/consultor/privacidade/QA | Evidência de posse, política de retenção, fontes e piloto | Legado resolvido por evidência, política executável, domínio/acessibilidade/desempenho revisados |
 
 1. **Ambiente isolado identificado e configurado.** Development/preview ainda
    usam recursos reais, inclusive chave Stripe live. A informação sobre um
@@ -61,11 +80,32 @@ erros, com 102 avisos remanescentes. A mudança de scanner não altera a aplica�
    variantes/fontes de cálculo, além das medições de desempenho e acessibilidade.
    Nenhum relatório histórico foi reescrito para aparentar resultado atualizado.
 
-## D–F continuam dependentes da base
+## Desenvolvimento de métodos — ordem de continuidade
 
-- **D:** contratos mínimos de execução por método/variante/versão, snapshot
-  imutável por proprietário e vínculo do relatório; idempotência, concorrência,
-  obsolescência e exportação/exclusão devem fazer parte do contrato inicial.
+O desenvolvimento local independente pode avançar enquanto A–C permanecem
+abertos. Cada entrega mantém seus gates de segurança; liberar um método como
+concluído depende de sua validação de domínio e da jornada correspondente.
+
+| ID | Entrega / estado | Aceite e próximo passo |
+|---|---|---|
+| D0 | Primeira base de resultados versionados — implementada; cenários locais aprovados | Mesmos adaptadores na bancada/relatório; estados e limitações explícitos; snapshot em novas emissões; experimento não determina recomendação. Cenários D0-01–05 e ADR 0056; a execução final de CI/publicação é registrada no PR desta entrega |
+| D1 | Execuções independentes — pendente, próxima implementação | Método/variante/versão por execução, idempotência, concorrência, fonte imutável, relatório vinculado, comparação e obsolescência; ownership/RLS/exportação/exclusão desde o início |
+| D2 | Clássico Essencial — pendente | Fechar orientação e sua incerteza/referência; Ba Zhai por morador, ambientes e mobiliário persistidos; Formas e planta semântica no escopo declarado; vetores independentes e piloto |
+| D3 | Fei Xing completo — pendente | Variante e fontes definidas, 24 Montanhas/polaridade/voos e regras aplicáveis, período exato e casos limítrofes; validar cartas externas antes de remover o status experimental |
+| D4 | Outros módulos — pendente | Liu Fa, San He e Da Gua separados; BaZi/seleção de datas como complementos com escopo próprio; requisitos, resultados, proveniência e testes por módulo |
+
+BTB e Bússola continuam disponíveis na etapa **Configurar → Método**, em
+`/bagua-planta`. D0 não adiciona escolas ainda não implementadas ao seletor, nem
+cria histórico independente de execuções: seus resultados ficam no snapshot
+de novas emissões do relatório. As cartas/PDFs anteriores são preservados.
+
+Validação local de D0: **1.798 testes em 131 arquivos aprovados**, TypeScript e
+build aprovados; lint sem erros, com os mesmos 102 avisos anteriores. A revisão
+React conferiu lógica fora dos componentes, ausência de novos efeitos/I/O,
+estado derivado e indicação textual de experimental (não apenas por cor).
+
+## E–F e dependências complementares
+
 - **E:** conjunto de plantas e tolerâncias de referência, edição semântica
   manual, teclado, conflitos/autosave/desfazer, medição em dispositivo definido
   e piloto com consultor/usuário leigo. Não promover métodos avançados sem

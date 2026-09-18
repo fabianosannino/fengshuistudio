@@ -13,9 +13,9 @@ import { calcularGridOrder, guaDaPorta } from '../../src/lib/bagua-grid'
 import { AVISO_ORIENTACAO, lerOrientacao, type OrigemOrientacao } from '../../src/lib/orientacao'
 import { referenciaDaAnalise } from '../../src/lib/analise-bagua'
 import { METODOLOGIAS, METODOLOGIA_PADRAO, type MetodologiaId } from '../../src/lib/metodologias'
-import { calcularKuaDaCasa } from '../../src/lib/oito-mansoes'
-import { calcularEstrelasVoadoras, nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
-import { periodoDoImovel, reformaIncoerente, faixaDoPeriodo, ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../src/lib/periodo-do-imovel'
+import { executarMetodos } from '../../src/lib/execucao-metodos'
+import { nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voadoras'
+import { reformaIncoerente, faixaDoPeriodo, ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../src/lib/periodo-do-imovel'
 import { RESSALVA_XUAN_KONG } from '../../src/lib/sustentacao-do-diagnostico'
 import SustentacaoDoDiagnostico from '../components/SustentacaoDoDiagnostico'
 import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/graus'
@@ -1480,6 +1480,13 @@ function BaguaPlantaContent() {
     }
   }
 
+  const execucoesMetodos = executarMetodos({
+    bagua_entrada: { escola, orientacao_graus: orientacaoGraus, orientacao_referencia: orientacaoReferencia,
+      orientacao_estado: orientacaoConfirmadaEm ? 'confirmada' : 'nao_confirmada',
+      orientacao_origem: orientacaoOrigem, orientacao_confirmada_em: orientacaoConfirmadaEm },
+    ano_construcao: anoParaBanco(anoConstrucao), ano_reforma_estrutural: anoParaBanco(anoReforma),
+    clientes: clienteDaConsulta,
+  })
   const order  = calcularGridOrder(escola,{lado,orientacaoGraus:grausParaCalculo})
   const stepN  = {upload:0,metragem:1,configurar:2,entrada:3,resultado:4}[step]
   const stAtivo= ativo!==null&&order?SETORES[order[ativo]]:null
@@ -2180,8 +2187,8 @@ function BaguaPlantaContent() {
 
                   {/* Kua da Casa (Oito Mansões) — só na Escola da Bússola, que tem orientação real */}
                   {escola==='bussola'&&(()=>{
-                    if(grausParaCalculo===null) return <p role="status">{AVISO_ORIENTACAO}</p>
-                    const casa=calcularKuaDaCasa(grausParaCalculo)
+                    const casa=execucoesMetodos.baZhai.resultado
+                    if(!casa) return <p role="status">{execucoesMetodos.baZhai.motivo}</p>
                     return (
                       <div style={{marginTop:'12px',padding:'9px',background:'#EEF6F3',borderRadius:'7px',border:'1px solid #CFE6E0'}}>
                         <div style={{fontSize:'13px',fontWeight:'bold',color:'#245F52',marginBottom:'4px'}}>
@@ -2196,10 +2203,9 @@ function BaguaPlantaContent() {
 
                   {/* Estrelas Voadoras — só na Bússola com data de construção informada */}
                   {escola==='bussola'&&(()=>{
-                    const doImovel=periodoDoImovel({anoConstrucao:anoParaBanco(anoConstrucao),anoReformaEstrutural:anoParaBanco(anoReforma)})
-                    if(!doImovel) return null
-                    const mapa=calcularEstrelasVoadoras({facingGraus:grausParaCalculo,periodo:doImovel.periodo})
-                    if(!mapa) return null
+                    const resultado=execucoesMetodos.feiXing.resultado
+                    if(!resultado) return null
+                    const { mapa, periodo: doImovel }=resultado
                     const porPalacio=Object.fromEntries(mapa.palacios.map(p=>[p.palacio,p]))
                     const linhas:Palacio[][]=[['SE','S','SW'],['E','C','W'],['NE','N','NW']]
                     const anoSolarAtual=dataSolar(new Date())?.anoSolar
@@ -2261,13 +2267,9 @@ function BaguaPlantaContent() {
                     <SustentacaoDoDiagnostico
                       mostrarRessalva={false}
                       dados={{
-                        orientacaoGraus:grausParaCalculo,
+                        execucoes: execucoesMetodos,
                         setoresComScore: setores.filter(sc => sc.criterios.some(c => c !== null)).length,
-                        anoDoImovel: anoParaBanco(anoConstrucao) ?? anoParaBanco(anoReforma),
-                        nascimentoDoCliente: clienteDaConsulta?.data_nascimento ?? null,
-                        generoDoCliente: clienteDaConsulta?.genero ?? null,
                         temPoligonoTaiJi: !!poligonoTaiJi,
-                        escola,
                       }}
                     />
                   </div>

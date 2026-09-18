@@ -207,7 +207,7 @@ export interface Consulta {
   criado_em: string
   atualizado_em?: string
   /** Joined relation */
-  clientes?: { nome_completo: string } | null
+  clientes?: { nome_completo: string; data_nascimento?: string | null; genero?: string | null } | null
 }
 
 /** Ba Gua sector from the 'setores_bagua' table */

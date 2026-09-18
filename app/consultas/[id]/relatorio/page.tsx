@@ -14,10 +14,11 @@ import { useRouter, useParams } from 'next/navigation'
 import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
 import { comodosDeSetorRow } from '../../../../src/lib/comodo-setor'
-import { calcularMingGua } from '../../../../src/lib/ming-gua'
-import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
-import { calcularEstrelasVoadoras, type Palacio } from '../../../../src/lib/estrelas-voadoras'
-import { periodoDaConsulta, faixaDoPeriodo } from '../../../../src/lib/periodo-do-imovel'
+import { executarMetodos } from '../../../../src/lib/execucao-metodos'
+import { compatibilidadeMoradorCasa } from '../../../../src/lib/oito-mansoes'
+import type { Palacio } from '../../../../src/lib/estrelas-voadoras'
+import { faixaDoPeriodo } from '../../../../src/lib/periodo-do-imovel'
+import SustentacaoDoDiagnostico from '../../../components/SustentacaoDoDiagnostico'
 import { RESSALVA_XUAN_KONG } from '../../../../src/lib/sustentacao-do-diagnostico'
 import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
 import { dataSolar } from '../../../../src/lib/data-solar'
@@ -573,6 +574,7 @@ export default function Relatorio() {
     )
   }
 
+  const execucoesMetodos = executarMetodos(consulta)
   const geral = scoreGeral()
   const geralLevel = scoreLevelLabel(geral)
   const top3 = getTop3()
@@ -992,7 +994,7 @@ export default function Relatorio() {
         {/* ══════ MING GUA DO CLIENTE ══════ */}
         {(() => {
           const cli = consulta.clientes as { nome_completo: string; data_nascimento?: string | null; genero?: string | null } | null
-          const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
+          const mg = execucoesMetodos.mingGua.resultado
           if (!mg) {
             const aviso = avisoAnoSolar(cli?.data_nascimento)
             return aviso ? <p style={{ padding: '0.7rem 1.5rem', color: inkLt }}>Ming Gua indeterminado. {aviso}</p> : null
@@ -1024,9 +1026,9 @@ export default function Relatorio() {
           const be = consulta.bagua_entrada
           const graus = grausConfirmados(be)
           if (be?.escola !== 'bussola' || graus === null) return null
-          const casa = calcularKuaDaCasa(graus)
-          const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
-          const mgCliente = calcularMingGua(cli?.data_nascimento, cli?.genero)
+          const casa = execucoesMetodos.baZhai.resultado
+          if (!casa) return null
+          const mgCliente = execucoesMetodos.mingGua.resultado
           const compat = mgCliente ? compatibilidadeMoradorCasa(mgCliente.kua, casa.kua) : null
           return (
             <div style={{
@@ -1059,14 +1061,9 @@ export default function Relatorio() {
 
         {/* ══════ ESTRELAS VOADORAS — só com Bússola + data de construção ══════ */}
         {(() => {
-          const be = consulta.bagua_entrada
-          if (be?.escola !== 'bussola') return null
-          // Colunas primeiro, `data_construcao` como fallback das consultas
-          // antigas — ver src/lib/periodo-do-imovel.ts.
-          const doImovel = periodoDaConsulta(consulta)
-          if (!doImovel) return null
-          const mapa = calcularEstrelasVoadoras({ facingGraus: grausConfirmados(be), periodo: doImovel.periodo })
-          if (!mapa) return null
+          const resultado = execucoesMetodos.feiXing.resultado
+          if (!resultado) return null
+          const { mapa, periodo: doImovel } = resultado
           const porPalacio = Object.fromEntries(mapa.palacios.map(p => [p.palacio, p]))
           const linhas: Palacio[][] = [['SE', 'S', 'SW'], ['E', 'C', 'W'], ['NE', 'N', 'NW']]
           return (
@@ -1108,6 +1105,14 @@ export default function Relatorio() {
             </div>
           )
         })()}
+
+        <div style={{ padding: '0.9rem 1.5rem', border: `1px solid ${border}`, borderTop: 'none' }}>
+          <SustentacaoDoDiagnostico mostrarRessalva={false} dados={{
+            execucoes: execucoesMetodos,
+            setoresComScore: setores.filter(s => s.score_percentual != null).length,
+            temPoligonoTaiJi: !!consulta.bagua_entrada?.tai_ji_poligono,
+          }} />
+        </div>
 
         {/* ══════ SUMMARY BAR ══════ */}
         {geral !== null && (
@@ -2069,10 +2074,8 @@ export default function Relatorio() {
           const graus = grausConfirmados(be)
           if (be?.escola !== 'bussola' || graus === null) return null
 
-          const doImovel = periodoDaConsulta(consulta)
-          const mapa = doImovel ? calcularEstrelasVoadoras({ facingGraus: graus, periodo: doImovel.periodo }) : null
-          const cli = consulta.clientes as { data_nascimento?: string | null; genero?: string | null } | null
-          const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
+          const mapa = execucoesMetodos.feiXing.resultado?.mapa ?? null
+          const mg = execucoesMetodos.mingGua.resultado
           const favoraveis = mg ? setoresFavoraveis(mg.direcoes) : null
           // Ano SOLAR, não civil: a estrela anual muda no Li Chun (~4/fev), então
           // `getFullYear()` daria a estrela errada em janeiro. Mesmo padrão de bagua-planta.
@@ -2093,8 +2096,8 @@ export default function Relatorio() {
 
               <p style={{ margin: '0 0 0.8rem', fontSize: '11px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
                 Métodos de Feng Shui discordam entre si — isso é normal e esperado. Em vez de esconder a divergência
-                atrás de um número único, este relatório mostra qual método prevaleceu e por quê, seguindo a hierarquia
-                de precedência adotada: Formas → Estrelas Voadoras → Oito Mansões → Liu Fa.
+                atrás de um número único, este relatório mostra qual método prevaleceu e por quê. A comparação
+                experimental de Estrelas Voadoras permanece visível, mas não decide a recomendação final.
               </p>
 
               {sintese.perigosos.length > 0 && (
@@ -2131,7 +2134,11 @@ export default function Relatorio() {
                 ))
               ) : (
                 <p style={{ margin: 0, fontSize: '11px', color: inkLt, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                  Os métodos aplicados concordam em todos os 8 setores — não há divergência a reportar neste imóvel.
+                  {!favoraveis
+                    ? 'Não há resultado elegível para uma recomendação final nesta comparação. Complete os dados do morador; a carta experimental não supre essa ausência.'
+                    : !mapa
+                      ? 'Somente Oito Mansões tem resultado nesta comparação; não é possível afirmar concordância entre escolas.'
+                      : 'Não foi identificada divergência nos critérios comparados. Isso não representa validação completa das escolas.'}
                 </p>
               )}
 
@@ -2142,8 +2149,8 @@ export default function Relatorio() {
               ))}
 
               <p style={{ margin: '0.8rem 0 0', fontSize: '10px', color: inkLt, lineHeight: 1.6, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
-                Escopo desta síntese: participam as Estrelas Voadoras{mapa ? '' : ' (ausentes — falta data de construção)'} e
-                as Oito Mansões{favoraveis ? '' : ' (ausentes — falta data de nascimento/gênero do cliente)'}.
+                Escopo desta síntese: participam as Estrelas Voadoras{mapa ? ' (experimentais)' : ` (indisponíveis: ${execucoesMetodos.feiXing.motivo})`} e
+                as Oito Mansões{favoraveis ? '' : ` (indisponíveis: ${execucoesMetodos.mingGua.motivo})`}.
                 Do mapa experimental considera-se apenas a presença da Estrela 5 (Wu Huang). Essa simplificação não valida uma carta clássica nem deve orientar prescrições isoladamente; as demais combinações não são classificadas automaticamente
                 {mapa && gradeAnual && anoSolarAtual != null && `, e a sobreposição anual usada é a do ano solar ${anoSolarAtual}`}.
                 Escola das Formas, BaZi e
