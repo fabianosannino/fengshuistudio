@@ -15,6 +15,7 @@
     "test:webhook-claims": "node scripts/security/test-webhook-claims.mjs",
     "test:privacy-deletion": "node scripts/security/test-privacy-deletion.mjs",
     "test:rate-limit": "node scripts/security/test-rate-limit.mjs",
+    "test:checkout-intents": "node scripts/security/test-checkout-intents.mjs",
     "test:ephemeris": "node scripts/domain/generate-li-chun.mjs --check"
   },
   "dependencies": {

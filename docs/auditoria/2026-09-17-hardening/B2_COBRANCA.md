@@ -171,3 +171,21 @@ após CI 35317381931 verde; migration remota `20260918070348`. Readback:
 divergências entre cache e plano vigente. ACLs conferidas. Produção READY
 `dpl_H3mA8d4pMXePYhgWffm5izuUcjCm`, mesmo SHA. Advisors sem novas classes de
 alertas (view pública deliberada, duas funções existentes e sete INFO).
+
+## Checkout de assinatura durável (ADR 0049)
+
+Reserva única por titular antes de criar Customer/sessão. Parâmetros e chaves
+estáveis nos retries, vínculo monotônico, reutilização de sessão conhecida e
+expiração confirmada antes de trocar plano/ciclo. Resultado desconhecido com
+23h recusa nova criação até reconciliação. Sessões legadas e assinaturas em
+andamento impedem duplicação; conflito de assinatura oferece portal acionável.
+
+Runner PostgreSQL: 46 verificações reais de concorrência, ACL, replay,
+trabalhadores antigos e exclusão coordenada. Não realizou operações Stripe
+reais. Test mode isolado e coordenação financeira entre webhooks continuam
+pendentes; o pacote não declara B2 encerrado.
+
+Validação local: 1.640 testes em 123 arquivos, typecheck/build aprovados e
+lint sem erros (103 avisos). Preflight de produção: 13 clientes, 17 consultas,
+uma assinatura, duas concessões e nenhuma intenção de exclusão; tabela nova
+ainda inexistente. A migração só será aplicada após os gates remotos passarem.

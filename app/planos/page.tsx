@@ -36,6 +36,7 @@ export default function Planos() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [portalDisponivel, setPortalDisponivel] = useState(false)
   const [ciclo, setCiclo] = useState<'monthly' | 'yearly'>('monthly')
   const [showKeyInput, setShowKeyInput] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState('')
@@ -124,6 +125,7 @@ export default function Planos() {
   async function handleStripeCheckout(planoId: string) {
     setUpgrading(true)
     setMessage('')
+    setPortalDisponivel(false)
     try {
       const res = await fetch('/api/stripe/subscribe', {
         method: 'POST',
@@ -131,10 +133,15 @@ export default function Planos() {
         body: JSON.stringify({ plan_slug: planoId, billing_cycle: ciclo }),
       })
       const data = await res.json()
-      if (!res.ok) { setMessage('Erro: ' + (data.error || 'Erro ao criar checkout')); setUpgrading(false); return }
+      if (!res.ok) {
+        setMessage('Erro: ' + (data.error || 'Erro ao criar checkout'))
+        setPortalDisponivel(res.status === 409 && data.portal === true)
+        setUpgrading(false)
+        return
+      }
       if (data.url) {
         window.location.assign(data.url)
-      }
+      } else { setMessage('Erro ao preparar o pagamento. Tente novamente.'); setUpgrading(false) }
     } catch { setMessage('Erro de conexão.'); setUpgrading(false) }
   }
 
@@ -271,7 +278,14 @@ export default function Planos() {
             background: isError ? '#FAEEE9' : '#F0F6F3',
             border: `1px solid ${isError ? '#EBD3C7' : '#DCEAE4'}`,
             color: isError ? '#B4533A' : '#2E7D6B', fontSize: '14px', textAlign: 'center'
-          }}>{message}</div>
+          }} role="status">{message}
+            {portalDisponivel && <div style={{ marginTop: '12px' }}>
+              <button type="button" onClick={handleManageBilling} disabled={upgrading}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid currentColor', cursor: 'pointer' }}>
+                Abrir portal de cobrança
+              </button>
+            </div>}
+          </div>
         )
       })()}
 
