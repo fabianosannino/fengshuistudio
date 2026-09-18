@@ -113,7 +113,8 @@ export function classificarErroAuth(erro: unknown): FalhaAuth {
 
 /**
  * Classifica **e registra**. Preferir esta às telas: assim é impossível mostrar
- * a mensagem sem deixar o detalhe no log.
+ * a mensagem sem deixar a classificação no log. O logger descarta o detalhe
+ * bruto do provedor, que pode carregar dados pessoais.
  */
 export function falhaAuth(erro: unknown, acao: string): FalhaAuth {
   const falha = classificarErroAuth(erro)

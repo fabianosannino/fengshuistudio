@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
 import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
+import { comCorrelacao } from '../../../../src/lib/correlacao-requisicao'
 import { BUCKET_RELATORIO, idValido, MAX_PDF_RELATORIO, pdfTemAssinatura, PRAZO_PREPARACAO_MS, TABELA_EMISSOES } from '../../../../src/lib/relatorio-emissao'
 import { listarHistoricoRelatorio } from '../../../../src/lib/relatorio-retencao'
 import { sha256 } from '../../../../src/lib/relatorio-fonte'
@@ -15,7 +16,7 @@ function indisponivel() {
 }
 
 /** Confirma uma emissão preparada; nunca escreve no caminho legado ou usa upsert. */
-export async function POST(request: Request) {
+export const POST = comCorrelacao(async (request, correlationId) => {
   const { success, indisponivel: limiteIndisponivel } = await rateLimit(ipDaRequisicao(request), { limit: 20, windowMs: 60_000, escopo: 'POST:/api/consultas/relatorio', exigirCompartilhado: true })
   if (limiteIndisponivel) return Response.json({ error: 'Proteção temporariamente indisponível. Tente novamente em instantes.' }, { status: 503, headers: { 'Retry-After': '30' } })
   if (!success) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429, headers: { 'Retry-After': '60' } })
@@ -63,18 +64,18 @@ export async function POST(request: Request) {
     if (finalizada.error || !finalizada.data) {
       // Não remover o objeto: um timeout pode ter ocorrido APÓS o commit.
       // O caminho pertence à emissão preparada e uma repetição é idempotente.
-      logger.error('Confirmação de emissão pendente', { route: ROUTE, emissaoId: id })
+      logger.error('Confirmação de emissão pendente', { route: ROUTE, correlationId, emissaoId: id })
       return indisponivel()
     }
     return NextResponse.json({ ok: true, emissao_id: id, gerado_em: finalizada.data })
   } catch {
-    logger.error('Falha na persistência de emissão', { route: ROUTE })
+    logger.error('Falha na persistência de emissão', { route: ROUTE, correlationId })
     return indisponivel()
   }
-}
+})
 
 /** Histórico ou download de uma emissão específica. Preparações não são PDFs salvos. */
-export async function GET(request: Request) {
+export const GET = comCorrelacao(async (request, correlationId) => {
   const client = await createRouteHandlerClient()
   const { data: { user } } = await client.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
@@ -100,14 +101,14 @@ export async function GET(request: Request) {
     const arquivo = await bucket.download(emissao.pdf_path)
     if (arquivo.error || !arquivo.data) return indisponivel()
     if (emissao.pdf_sha256 && sha256(new Uint8Array(await arquivo.data.arrayBuffer())) !== emissao.pdf_sha256) {
-      logger.error('Integridade do PDF divergente', { route: ROUTE, emissaoId: emissao.id })
+      logger.error('Integridade do PDF divergente', { route: ROUTE, correlationId, emissaoId: emissao.id })
       return indisponivel()
     }
     const { data: signed, error: signingError } = await bucket.createSignedUrl(emissao.pdf_path, SIGNED_URL_TTL)
     if (signingError || !signed) return indisponivel()
     return NextResponse.json({ url: signed.signedUrl, gerado_em: emissao.concluido_em, emissao_id: emissao.id, legado: emissao.estado === 'legado' }, { headers: { 'Cache-Control': 'no-store' } })
   } catch {
-    logger.error('Falha na leitura de emissão', { route: ROUTE })
+    logger.error('Falha na leitura de emissão', { route: ROUTE, correlationId })
     return indisponivel()
   }
-}
+})

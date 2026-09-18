@@ -125,3 +125,28 @@ Runner PostgreSQL ampliado para 67 verificações; suíte de 1.732 testes aprova
 e dois casos adicionais de remoção por serviço aprovados no arquivo de APIs
 (34 casos). TypeScript e lint sem erros; 103 avisos existentes. Nenhum objeto
 ou registro de negócio foi alterado pelo ensaio.
+
+PR #210 integrado em `e276c2f2ef1e1ebebad932d58c1e3b1256bfe43d`, CI
+35329806341 verde (1.734 testes). Preparação remota `20260918093250`;
+produção READY `dpl_4cTi2MnDKBDweHrBcdFChvZ6YwHq`, mesmo SHA; fechamento
+remoto `20260918093509`. Readback confirmou trigger habilitado e três políticas
+RESTRICTIVE para anon/authenticated. Sete objetos, 13 clientes e 17 consultas
+preservados.
+
+## Minimização de logs (ADR 0054)
+
+Contexto passa por lista explícita de campos/valores. Erros brutos e IDs pessoais
+não são serializados; query strings/fragmentos saem das rotas conhecidas.
+Classificações, contagens e IDs técnicos de eventos/emissões continuam disponíveis.
+Checkout e PDF ganham X-Request-ID aleatório, sem confiar no header do cliente.
+Telas de erro deixam de enviar o Error inteiro ao console. Contrato de código
+recusa mensagens dinâmicas e console sem filtro nos chamadores do produto.
+
+Isto não configura retenção dos provedores nem tracing/alertas completos e não
+declara dados tecnicamente correlacionáveis como anonimizados.
+
+Validação local: 1.743 testes em 128 arquivos, TypeScript/build aprovados e
+lint sem erros (103 avisos existentes). A suíte inclui oito verificações de
+minimização/contrato de código e uma de correlação concorrente. Três expectativas
+antigas de logs foram revisadas porque exigiam texto bruto ou userId, contrariando
+o contrato novo; a classificação e o tratamento das falhas foram preservados.

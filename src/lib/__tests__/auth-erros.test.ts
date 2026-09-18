@@ -98,13 +98,14 @@ describe('a mensagem da tela nunca é a da biblioteca', () => {
 })
 
 describe('falhaAuth registra sempre', () => {
-  it('loga o detalhe e devolve a mesma classificação', () => {
+  it('loga a classificação sem o detalhe bruto do provedor', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const r = falhaAuth(apiError('Invalid API key', 401), 'signInWithPassword')
     expect(r.causa).toBe('servico-indisponivel')
     expect(spy).toHaveBeenCalledOnce()
     const registrado = String(spy.mock.calls[0][0])
-    expect(registrado).toContain('Invalid API key')
+    expect(registrado).not.toContain('Invalid API key')
+    expect(registrado).toContain('servico-indisponivel')
     expect(registrado).toContain('signInWithPassword')
   })
 
@@ -116,6 +117,6 @@ describe('falhaAuth registra sempre', () => {
     falhaAuth(apiError('Invalid login credentials', 400), 'signInWithPassword')
     const entrada = JSON.parse(String(spy.mock.calls[0][0]))
     expect(Object.keys(entrada).sort()).toEqual(
-      ['action', 'causa', 'detalhe', 'level', 'message', 'timestamp'])
+      ['action', 'causa', 'erro_presente', 'level', 'message', 'timestamp'])
   })
 })

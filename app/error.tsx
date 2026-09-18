@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { logger } from '../src/lib/logger'
 
 export default function Error({
   error,
@@ -10,7 +11,7 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[Error Boundary]', error)
+    logger.error('Falha na interface', { route: 'error-boundary', digest: error.digest })
   }, [error])
 
   return (
