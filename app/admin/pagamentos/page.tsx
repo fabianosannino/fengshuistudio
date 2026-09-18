@@ -296,7 +296,7 @@ export default function AdminPagamentos() {
             </div>
 
             {/* Subscription History */}
-            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Assinaturas</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0E1B2C', margin: '0 0 12px 0' }}>Assinaturas e benefícios</h3>
             {(selectedUser.subscriptions || []).length === 0 ? (
               <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Nenhuma assinatura registrada</p>
             ) : (
@@ -310,7 +310,7 @@ export default function AdminPagamentos() {
                         <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', background: badge.bg, color: badge.color }}>{badge.label}</span>
                       </div>
                       <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                        {sub.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}
+                        {sub.status === 'gratuidade' ? 'Sem cobrança recorrente' : sub.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}
                         {sub.current_period_end && ` · até ${fmtDate(sub.current_period_end)}`}
                         {sub.gratuidade_motivo && ` · Motivo: ${sub.gratuidade_motivo}`}
                       </div>
@@ -329,7 +329,7 @@ export default function AdminPagamentos() {
               </button>
               <button type="button" onClick={() => { setActionModal('change_plan'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#EEF6F3', color: '#2E7D6B', border: '1px solid #2E7D6B20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
-                Alterar Plano
+                Ajustar Benefício Manual
               </button>
               <button type="button" onClick={() => { setActionModal('cancel_subscription'); setActionForm({}) }}
                 style={{ padding: '10px', background: '#FAEEE9', color: '#B4533A', border: '1px solid #B4533A20', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -397,15 +397,15 @@ export default function AdminPagamentos() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '480px', width: '100%' }}>
             <h3 style={{ color: '#0E1B2C', fontSize: '18px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-              Alterar Plano — {selectedUser.nome_completo}
+              Ajustar Benefício Manual — {selectedUser.nome_completo}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <label style={{ fontSize: '13px', color: '#374151', fontWeight: 'bold' }}>
-                Novo Plano
+                Benefício manual
                 <select value={actionForm.plan_slug || ''} onChange={e => setActionForm(f => ({ ...f, plan_slug: e.target.value }))}
                   style={{ display: 'block', width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '8px', marginTop: '4px' }}>
                   <option value="">Selecione...</option>
-                  <option value="free">Free</option>
+                  <option value="free">Encerrar benefício manual</option>
                   <option value="simples">Simples</option>
                   <option value="profissional">Profissional</option>
                 </select>
@@ -425,7 +425,7 @@ export default function AdminPagamentos() {
               })} style={{
                 padding: '10px 20px', background: (!actionForm.plan_slug || !actionForm.motivo) ? '#D1D5DB' : '#2E7D6B', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: (!actionForm.plan_slug || !actionForm.motivo) ? 'not-allowed' : 'pointer', fontWeight: 'bold'
-              }}>{actionLoading ? 'Salvando...' : 'Alterar Plano'}</button>
+              }}>{actionLoading ? 'Salvando...' : 'Ajustar Benefício Manual'}</button>
             </div>
           </div>
         </div>

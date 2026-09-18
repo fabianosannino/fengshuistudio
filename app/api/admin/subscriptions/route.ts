@@ -5,6 +5,8 @@ import { exigirCapacidade, respostaDaGuarda } from '../../../../src/lib/guarda-a
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { escreverOuFalhar, escreverBestEffort } from '../../../../src/lib/supabase-escrita'
+import { conceder, encerrarConcessao, concessoesVivas } from '../../../../src/lib/concessoes-de-plano'
+import { sincronizarAssinatura } from '../../../../src/lib/sincronizar-assinatura'
 import stripeClient from '../../../../src/lib/stripe'
 import { enumDoPlano, planoEfetivo, mensalidadeDaAssinatura } from '../../../../src/lib/plano-utils'
 
@@ -76,16 +78,20 @@ export async function GET(request: Request) {
   try {
     // Get metrics
     const [
-      { data: allSubs },
-      { data: allInvoices },
-      { count: totalProfiles },
+      { data: allSubs, error: erroSubs },
+      { data: allInvoices, error: erroInvoices },
+      { count: totalProfiles, error: erroProfiles },
+      { data: allGrants, error: erroGrants },
     ] = await Promise.all([
       supabase.from('subscriptions').select('*, plans(slug, price_monthly, price_yearly)'),
       supabase.from('invoices').select('*').in('status', ['pending', 'overdue', 'paid']),
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('concessoes_de_plano').select('*'),
     ])
 
-    const activeSubs = (allSubs || []).filter(s => s.status === 'active' || s.status === 'gratuidade')
+    if (erroSubs || erroInvoices || erroProfiles || erroGrants) throw new Error('Métricas indisponíveis')
+    const beneficios = concessoesVivas(allGrants ?? []).filter(c => c.origem !== 'assinatura')
+    const activeSubs = (allSubs || []).filter(s => s.status === 'active' && s.gateway_subscription_id)
     const pastDueSubs = (allSubs || []).filter(s => s.status === 'past_due')
     const cancelledThisMonth = (allSubs || []).filter(s => {
       if (s.status !== 'cancelled' || !s.cancelled_at) return false
@@ -93,7 +99,6 @@ export async function GET(request: Request) {
       const cancelled = new Date(s.cancelled_at)
       return cancelled.getMonth() === now.getMonth() && cancelled.getFullYear() === now.getFullYear()
     })
-    const gratuidadeSubs = (allSubs || []).filter(s => s.status === 'gratuidade')
 
     // Calculate MRR
     // Do que foi cobrado, não do preço de tabela — ver `mensalidadeDaAssinatura`.
@@ -119,7 +124,7 @@ export async function GET(request: Request) {
       pastDue: pastDueSubs.length,
       pastDueAmount: Math.round(pastDueAmount * 100) / 100,
       cancelledThisMonth: cancelledThisMonth.length,
-      gratuidades: gratuidadeSubs.length,
+      gratuidades: new Set(beneficios.map(c => c.user_id)).size,
       totalUsers: totalProfiles || 0,
     }
 
@@ -162,7 +167,15 @@ export async function GET(request: Request) {
     }
 
     // If status filter active, filter client-side (since subscription status is in joined table)
-    let filteredUsers = users || []
+    let filteredUsers = (users || []).map(u => ({ ...u, subscriptions: [
+      ...(u.subscriptions || []).filter(s => s.gateway_subscription_id || s.status !== 'gratuidade'),
+      ...beneficios.filter(c => c.user_id === u.id).map(c => ({
+        id: `concessao:${c.id}`, status: 'gratuidade', billing_cycle: 'beneficio', price_paid: 0,
+        current_period_end: c.valido_ate ?? null, next_billing_date: null,
+        gratuidade_motivo: `Origem: ${c.origem}`,
+        plans: { name: c.plano, slug: c.plano, price_monthly: 0, price_yearly: 0 },
+      })),
+    ] }))
     if (statusFilter !== 'all') {
       filteredUsers = filteredUsers.filter(u => {
         const subs = (u.subscriptions || []) as Array<{ status: string }>
@@ -192,6 +205,7 @@ export async function POST(request: Request) {
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   const action = body.action as string
   const targetUserId = body.user_id as string
 
@@ -200,157 +214,53 @@ export async function POST(request: Request) {
   }
 
   // Get target user profile
-  const { data: targetProfile } = await supabase.from('profiles').select('*').eq('id', targetUserId).single()
+  const { data: targetProfile, error: profileError } = await supabase.from('profiles').select('*').eq('id', targetUserId).single()
+  if (profileError) return NextResponse.json({ error: 'Não foi possível consultar o perfil.' }, { status: 503 })
   if (!targetProfile) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
 
   try {
     switch (action) {
-      case 'gratuidade': {
-        const planSlug = (body.plan_slug as string) || 'profissional'
-        const durationMonths = body.duration_months as number | null
-        const motivo = body.motivo as string
-        if (!motivo) return NextResponse.json({ error: 'Motivo é obrigatório' }, { status: 400 })
-
-        // Find plan
-        const { data: plan } = await supabase.from('plans').select('*').eq('slug', planSlug).single()
-        if (!plan) return NextResponse.json({ error: 'Plano não encontrado' }, { status: 404 })
-
-        const now = new Date()
-        const periodEnd = durationMonths
-          ? new Date(now.getTime() + durationMonths * 30 * 24 * 60 * 60 * 1000)
-          : null
-
-        // Cancel existing active subscriptions (both local and Stripe)
-        await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
-
-        // Create gratuidade subscription
-        await escreverOuFalhar(
-          supabase.from('subscriptions').insert({
-            user_id: targetUserId,
-            plan_id: plan.id,
-            billing_cycle: 'monthly',
-            status: 'gratuidade',
-            price_paid: 0,
-            current_period_start: now.toISOString(),
-            current_period_end: periodEnd?.toISOString() || null,
-            gratuidade_motivo: motivo,
-          }),
-          { rota: ROUTE, operacao: 'insert-subscription-gratuidade', userId: targetUserId }
-        )
-
-        // Update profile plan
-        await escreverOuFalhar(
-          supabase.from('profiles').update({ plano: enumDoPlano(planoEfetivo(planSlug)) }).eq('id', targetUserId),
-          { rota: ROUTE, operacao: 'update-profile-plano', userId: targetUserId }
-        )
-
-        const auditoriaOk = await registrarAuditoria(supabase, {
-          action: 'gratuidade',
-          target_type: 'user',
-          target_id: targetUserId,
-          details: {
-            user_nome: targetProfile.nome_completo,
-            user_email: targetProfile.id,
-            plan_slug: planSlug,
-            duration_months: durationMonths,
-            motivo,
-            previous_plan: targetProfile.plano,
-          },
-        }, admin.user.id)
-
-        return respostaDeAcao(`Gratuidade ${planSlug} concedida para ${targetProfile.nome_completo}`, auditoriaOk)
-      }
-
+      case 'gratuidade':
       case 'change_plan': {
-        const newPlan = body.plan_slug as string
-        const motivo = body.motivo as string
-        if (!newPlan || !motivo) return NextResponse.json({ error: 'plan_slug e motivo são obrigatórios' }, { status: 400 })
-
-        const previousPlan = targetProfile.plano
-
-        // Find plan in plans table
-        const { data: plan } = await supabase.from('plans').select('*').eq('slug', newPlan).single()
-        if (!plan) return NextResponse.json({ error: 'Plano não encontrado' }, { status: 404 })
-
-        // Cancel existing subscriptions (both local and Stripe)
-        await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
-
-        if (newPlan !== 'free') {
-          const now = new Date()
-          // Create new subscription
-          await escreverOuFalhar(
-            supabase.from('subscriptions').insert({
-              user_id: targetUserId,
-              plan_id: plan.id,
-              billing_cycle: 'monthly',
-              status: 'active',
-              price_paid: 0,
-              current_period_start: now.toISOString(),
-            }),
-            { rota: ROUTE, operacao: 'insert-subscription-change-plan', userId: targetUserId }
-          )
+        const planSlug = body.plan_slug
+        const motivo = body.motivo
+        const meses = body.duration_months
+        if (typeof planSlug !== 'string' || !['free', 'simples', 'profissional'].includes(planSlug)
+          || typeof motivo !== 'string' || !motivo.trim()
+          || (meses != null && (!Number.isInteger(meses) || Number(meses) < 1 || Number(meses) > 120))) {
+          return NextResponse.json({ error: 'Plano, motivo ou duração inválidos.' }, { status: 400 })
         }
-
-        // Update profile
-        await escreverOuFalhar(
-          supabase.from('profiles').update({ plano: enumDoPlano(planoEfetivo(newPlan)) }).eq('id', targetUserId),
-          { rota: ROUTE, operacao: 'update-profile-plano', userId: targetUserId }
-        )
-
+        const parametros = { userId: targetUserId, origem: 'cortesia' as const,
+          referencia: `admin:${targetUserId}`, motivo }
+        // Calendar months, clamped to the last day of the destination month.
+        const fim = meses ? new Date() : null
+        if (fim) {
+          const dia = fim.getUTCDate()
+          fim.setUTCDate(1)
+          fim.setUTCMonth(fim.getUTCMonth() + Number(meses))
+          const ultimoDia = new Date(Date.UTC(fim.getUTCFullYear(), fim.getUTCMonth() + 1, 0)).getUTCDate()
+          fim.setUTCDate(Math.min(dia, ultimoDia))
+        }
+        const ok = planSlug === 'free'
+          ? await encerrarConcessao(supabase, parametros, ROUTE)
+          : await conceder(supabase, { ...parametros, plano: planoEfetivo(planSlug), validoAte: fim?.toISOString(), criadaPor: admin.user.id }, ROUTE)
+        if (!ok) throw new Error('Falha ao alterar concessão')
         const auditoriaOk = await registrarAuditoria(supabase, {
-          action: 'change_plan',
-          target_type: 'user',
-          target_id: targetUserId,
-          details: { user_nome: targetProfile.nome_completo, previous_plan: previousPlan, new_plan: newPlan, motivo },
+          action, target_type: 'user', target_id: targetUserId,
+          details: { plan_slug: planSlug, duration_months: meses ?? null, motivo },
         }, admin.user.id)
-
-        return respostaDeAcao(`Plano alterado para ${newPlan}`, auditoriaOk)
+        return respostaDeAcao('Benefício manual atualizado. Assinaturas e direitos de outras origens foram preservados.', auditoriaOk)
       }
 
       case 'cancel_subscription': {
-        const immediate = body.immediate as boolean
+        if (typeof body.immediate !== 'boolean') return NextResponse.json({ error: 'Tipo de cancelamento inválido.' }, { status: 400 })
+        const immediate = body.immediate
         const motivo = body.motivo as string
         if (!motivo) return NextResponse.json({ error: 'Motivo é obrigatório' }, { status: 400 })
 
         const now = new Date()
 
-        if (immediate) {
-          // Cancel in Stripe first
-          await cancelExistingSubscriptions(supabase, targetUserId, targetProfile.stripe_customer_id)
-          await escreverOuFalhar(
-            supabase.from('profiles').update({ plano: enumDoPlano('free') }).eq('id', targetUserId),
-            { rota: ROUTE, operacao: 'downgrade-profile-free', userId: targetUserId }
-          )
-        } else {
-          // Cancel at period end — sync with Stripe
-          const { data: activeSubs } = await supabase
-            .from('subscriptions')
-            .select('id, gateway_subscription_id')
-            .eq('user_id', targetUserId)
-            .in('status', ['active', 'gratuidade'])
-
-          for (const sub of activeSubs || []) {
-            if (sub.gateway_subscription_id) {
-              try {
-                await stripeClient.subscriptions.update(sub.gateway_subscription_id, {
-                  cancel_at_period_end: true,
-                })
-              } catch (err) {
-                logger.warn('Failed to set cancel_at_period_end on Stripe', {
-                  subscriptionId: sub.gateway_subscription_id,
-                  error: String(err),
-                })
-              }
-            }
-          }
-
-          await escreverOuFalhar(
-            supabase.from('subscriptions')
-              .update({ cancel_at_period_end: true, updated_at: now.toISOString() })
-              .eq('user_id', targetUserId).in('status', ['active', 'gratuidade']),
-            { rota: ROUTE, operacao: 'update-subscription-cancel-at-period-end', userId: targetUserId }
-          )
-        }
+        await cancelarAssinaturasDoUsuario(supabase, targetProfile.stripe_customer_id, immediate)
 
         const auditoriaOk = await registrarAuditoria(supabase, {
           action: 'cancel_subscription',
@@ -561,45 +471,21 @@ export async function POST(request: Request) {
   }
 }
 
-// ── Helper: Cancel all active subscriptions (local DB + Stripe) ──────────────
-
-async function cancelExistingSubscriptions(
-  supabase: Awaited<ReturnType<typeof createRouteHandlerClient>>,
-  userId: string,
-  stripeCustomerId?: string | null
+/** Updates only subscriptions verified in the provider; benefits are independent. */
+async function cancelarAssinaturasDoUsuario(
+  supabase: ClienteSupabase, customerId: string | null, immediate: boolean
 ) {
-  const now = new Date().toISOString()
-
-  // Get active subscriptions with Stripe IDs
-  const { data: activeSubs } = await supabase
-    .from('subscriptions')
-    .select('id, gateway_subscription_id')
-    .eq('user_id', userId)
-    .in('status', ['active', 'past_due', 'gratuidade', 'trial'])
-
-  // Cancel each in Stripe
-  for (const sub of activeSubs || []) {
-    if (sub.gateway_subscription_id) {
-      try {
-        await stripeClient.subscriptions.cancel(sub.gateway_subscription_id)
-      } catch (err) {
-        // Log but don't fail — subscription may already be cancelled in Stripe
-        logger.warn('Failed to cancel Stripe subscription', {
-          subscriptionId: sub.gateway_subscription_id,
-          error: String(err),
-        })
-      }
-    }
+  if (!customerId) throw new Error('Cliente de cobrança indisponível')
+  const pagina = await stripeClient.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })
+  if (pagina.has_more) throw new Error('Use o portal para gerenciar este cliente')
+  for (const sub of pagina.data) {
+    if (['canceled', 'incomplete_expired'].includes(sub.status)) continue
+    const atual = immediate
+      ? await stripeClient.subscriptions.cancel(sub.id)
+      : await stripeClient.subscriptions.update(sub.id, { cancel_at_period_end: true })
+    const dono = typeof atual.customer === 'string' ? atual.customer : atual.customer.id
+    if (dono !== customerId) throw new Error('Assinatura incompatível')
+    const resultado = await sincronizarAssinatura(supabase, atual, ROUTE)
+    if (resultado.situacao === 'falhou' || resultado.situacao === 'sem_perfil') throw new Error('Falha ao sincronizar cancelamento')
   }
-
-  // Cancel all locally. Falhar aqui deixaria o usuário com assinatura ativa no
-  // banco e cancelada no Stripe — divergência que precisa abortar a ação.
-  await escreverOuFalhar(
-    supabase
-      .from('subscriptions')
-      .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
-      .eq('user_id', userId)
-      .in('status', ['active', 'past_due', 'gratuidade', 'trial']),
-    { rota: ROUTE, operacao: 'cancel-subscriptions-local', userId }
-  )
 }

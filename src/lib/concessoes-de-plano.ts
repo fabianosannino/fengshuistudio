@@ -31,7 +31,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from './logger'
-import { enumDoPlano, type PlanoEfetivo } from './plano-utils'
+import { type PlanoEfetivo } from './plano-utils'
 
 export type OrigemDaConcessao = 'assinatura' | 'chave' | 'cortesia' | 'migracao'
 
@@ -117,8 +117,6 @@ export function concessoesVivas(concessoes: Concessao[], agora: Date = new Date(
 
 // ── Escrita ──────────────────────────────────────────────────────────────────
 
-const TABELA = 'concessoes_de_plano'
-
 /**
  * Recalcula `profiles.plano` a partir das concessões e grava a projeção.
  *
@@ -135,36 +133,12 @@ export async function recalcularPlanoDoPerfil(
   userId: string,
   origem: string
 ): Promise<PlanoEfetivo | null> {
-  const { data, error } = await supabase
-    .from(TABELA)
-    .select('plano, valido_de, valido_ate, encerrada_em')
-    .eq('user_id', userId)
-
-  if (error) {
-    logger.error('Não foi possível ler as concessões para recalcular o plano', {
-      origem, userId, error: error.message,
-    })
+  const { data, error } = await supabase.rpc('recalcular_plano_do_perfil', { p_usuario: userId })
+  if (error || !['free', 'simples', 'profissional'].includes(data)) {
+    logger.error('Falha ao recalcular plano', { origem, code: error?.code })
     return null
   }
-
-  const efetivo = planoDasConcessoes(data ?? [])
-
-  const { error: erroAoGravar } = await supabase
-    .from('profiles')
-    .update({ plano: enumDoPlano(efetivo) })
-    .eq('id', userId)
-
-  if (erroAoGravar) {
-    logger.error('Não foi possível gravar a projeção do plano', {
-      origem, userId, plano: efetivo, error: erroAoGravar.message,
-    })
-    return null
-  }
-
-  logger.info('Plano recalculado a partir das concessões', {
-    origem, userId, plano: efetivo, concessoes: data?.length ?? 0,
-  })
-  return efetivo
+  return data as PlanoEfetivo
 }
 
 /**
@@ -188,47 +162,14 @@ export async function conceder(
   },
   origemDoLog: string
 ): Promise<boolean> {
-  const linha = {
-    user_id: concessao.userId,
-    plano: concessao.plano,
-    origem: concessao.origem,
-    referencia: concessao.referencia ?? null,
-    valido_ate: concessao.validoAte ?? null,
-    motivo: concessao.motivo ?? null,
-    criada_por: concessao.criadaPor ?? null,
-    encerrada_em: null,
-  }
-
-  if (concessao.referencia) {
-    const { data: existente, error: erroLeitura } = await supabase
-      .from(TABELA)
-      .select('id')
-      .eq('origem', concessao.origem)
-      .eq('referencia', concessao.referencia)
-      .maybeSingle()
-
-    if (erroLeitura) return false
-    if (existente) {
-      const { error } = await supabase.from(TABELA).update(linha).eq('id', existente.id)
-      if (error) {
-        logger.error('Não foi possível atualizar a concessão', {
-          origem: origemDoLog, referencia: concessao.referencia, error: error.message,
-        })
-        return false
-      }
-      return (await recalcularPlanoDoPerfil(supabase, concessao.userId, origemDoLog)) !== null
-    }
-  }
-
-  const { error } = await supabase.from(TABELA).insert(linha)
-  if (error) {
-    logger.error('Não foi possível registrar a concessão', {
-      origem: origemDoLog, userId: concessao.userId, error: error.message,
-    })
-    return false
-  }
-
-  return (await recalcularPlanoDoPerfil(supabase, concessao.userId, origemDoLog)) !== null
+  const { error } = await supabase.rpc('alterar_concessao_de_plano', {
+    p_usuario: concessao.userId, p_operacao: 'conceder',
+    p_plano: concessao.plano, p_origem: concessao.origem,
+    p_referencia: concessao.referencia ?? null, p_valido_ate: concessao.validoAte ?? null,
+    p_motivo: concessao.motivo ?? null, p_criada_por: concessao.criadaPor ?? null,
+  })
+  if (error) logger.error('Falha ao conceder plano', { origem: origemDoLog, code: error.code })
+  return !error
 }
 
 /**
@@ -242,19 +183,11 @@ export async function encerrarConcessao(
   parametros: { userId: string; origem: OrigemDaConcessao; referencia: string; motivo?: string },
   origemDoLog: string
 ): Promise<boolean> {
-  const { error } = await supabase
-    .from(TABELA)
-    .update({ encerrada_em: new Date().toISOString(), motivo: parametros.motivo ?? null })
-    .eq('origem', parametros.origem)
-    .eq('referencia', parametros.referencia)
-    .is('encerrada_em', null)
-
-  if (error) {
-    logger.error('Não foi possível encerrar a concessão', {
-      origem: origemDoLog, referencia: parametros.referencia, error: error.message,
-    })
-    return false
-  }
-
-  return (await recalcularPlanoDoPerfil(supabase, parametros.userId, origemDoLog)) !== null
+  const { error } = await supabase.rpc('alterar_concessao_de_plano', {
+    p_usuario: parametros.userId, p_operacao: 'encerrar',
+    p_origem: parametros.origem, p_referencia: parametros.referencia,
+    p_motivo: parametros.motivo ?? null,
+  })
+  if (error) logger.error('Falha ao encerrar concessão', { origem: origemDoLog, code: error.code })
+  return !error
 }

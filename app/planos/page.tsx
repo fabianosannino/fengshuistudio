@@ -87,10 +87,10 @@ export default function Planos() {
       // acesso até o fim do período pago — a rota decide e responde qual foi o
       // caso. Prometer «perderá o acesso» aqui, antes de saber, seria assustar
       // com uma coisa que não vai acontecer.
-      const temAssinatura = Boolean(subscription && subscription.status !== 'cancelled')
+      const temAssinatura = Boolean(subscription && ['active', 'past_due', 'trial'].includes(subscription.status))
       const aviso = temAssinatura
         ? 'Deseja cancelar a assinatura? A cobrança para de se repetir e o acesso continua até o fim do período já pago.'
-        : 'Tem certeza que deseja voltar para o plano Free? Você perderá acesso aos recursos pagos.'
+        : 'Voltar ao Free encerra seus benefícios por chave ou cortesia. Deseja continuar?'
       if (!confirm(aviso)) return
       try {
         const res = await fetch('/api/planos', {
@@ -106,9 +106,9 @@ export default function Planos() {
           setSubscription(prev => prev ? { ...prev, cancel_at_period_end: true } : prev)
           setMessage(data.mensagem || 'Cancelamento agendado para o fim do período.')
         } else {
-          setProfile(prev => prev ? { ...prev, plano: 'free' } : prev)
-          setSubscription(null)
-          setMessage('Plano alterado para Free.')
+          setProfile(prev => prev ? { ...prev, plano: data.plano } : prev)
+          if (data.plano === 'free') setSubscription(null)
+          setMessage(data.mensagem || 'Plano atualizado.')
         }
         setTimeout(() => setMessage(''), 6000)
       } catch { setMessage('Erro de conexão.') }
@@ -150,11 +150,11 @@ export default function Planos() {
       })
       const data = await res.json()
       if (!res.ok) { setMessage(data.error || `Erro ao ativar plano ${planLabel}.`); setUpgrading(false); return }
-      setProfile(prev => prev ? { ...prev, plano: targetPlan } : prev)
+      setProfile(prev => prev ? { ...prev, plano: data.plano } : prev)
       setShowKeyInput(false)
       setSelectedPlanId('')
       setChaveAtivacao('')
-      setMessage(`Parabéns! Seu plano foi atualizado para ${planLabel}!`)
+      setMessage(`Chave ativada. Seu plano efetivo é ${PLANOS.find(p => p.id === data.plano)?.nome || data.plano}.`)
       setTimeout(() => setMessage(''), 5000)
     } catch { setMessage('Erro de conexão.') }
     setUpgrading(false)

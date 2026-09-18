@@ -16,6 +16,7 @@
  */
 
 import Stripe from 'stripe'
+import { ambienteStripePermitido } from './ambiente-stripe'
 
 // ── Create the Stripe client lazily ──────────────────────────────────────────
 // We use a lazy getter so the build doesn't fail when STRIPE_SECRET_KEY
@@ -35,6 +36,10 @@ function getStripeClient(): Stripe {
       '  STRIPE_SECRET_KEY=sk_test_...\n' +
       'Get it from: https://dashboard.stripe.com/apikeys'
     )
+  }
+
+  if (!ambienteStripePermitido(secretKey, process.env.VERCEL_ENV)) {
+    throw new Error('Configuração de cobrança incompatível com o ambiente')
   }
 
   _stripeClient = new Stripe(secretKey, {

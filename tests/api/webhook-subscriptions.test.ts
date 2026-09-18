@@ -32,7 +32,7 @@ vi.mock('../../src/lib/stripe', () => ({
 // ── Mock do Supabase admin (query builder encadeável e "thenable") ──────────
 interface Q {
   table: string
-  op: 'select' | 'insert' | 'update'
+  op: 'select' | 'insert' | 'update' | 'rpc'
   values?: Record<string, unknown>
   filters: Array<[string, unknown]>
   /** Colunas pedidas. Duas leituras da mesma tabela pedem coisas diferentes. */
@@ -75,7 +75,12 @@ function makeSupabaseMock(handler: Handler) {
     })
     return b
   }
-  return { client: { from }, queries }
+  const rpc = async (name: string, values: Record<string, unknown>) => {
+    const q: Q = { table: `rpc:${name}`, op: 'rpc', values, filters: [] }
+    queries.push(q)
+    return { data: 'profissional', error: null, ...handler(q) }
+  }
+  return { client: { from, rpc }, queries }
 }
 
 let supabaseMock = makeSupabaseMock(() => ({}))
@@ -118,15 +123,7 @@ function subscriptionEvent(type: string, overrides: Record<string, unknown> = {}
   } as unknown as Stripe.Event
 }
 
-/**
- * Handler padrão: perfil existe, nenhuma assinatura prévia, plano 'pro' no banco.
- *
- * `concessoes_de_plano` devolve uma concessão viva de Profissional. É o que o
- * banco devolveria depois do `insert` que a própria rota acabou de fazer — o
- * mock não encadeia escrita e leitura, então o estado esperado é declarado
- * aqui. Sem isso, `recalcularPlanoDoPerfil` leria zero concessões e projetaria
- * o gratuito, testando o mock em vez da regra.
- */
+/** Default query results; atomic grant behavior is covered by the database runner. */
 function defaultHandler(q: Q): QResult {
   if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
   if (q.table === 'subscriptions' && q.op === 'select') return { data: null, error: null }
@@ -155,12 +152,12 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
       items: { data: [{ quantity: 1, price: { id: 'price_desconhecido' } }] },
     }))
     expect((await POST(req())).status).toBe(200)
-    expect(supabaseMock.queries.some(q => q.table === 'concessoes_de_plano' && q.op === 'insert')).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')).toBe(false)
   })
   it.each(['incomplete', 'past_due', 'paused', 'status_novo'])('estado %s não cria uma concessão', async status => {
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created', { status }))
     expect((await POST(req())).status).toBe(200)
-    expect(supabaseMock.queries.some(q => q.table === 'concessoes_de_plano' && q.op === 'insert')).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')).toBe(false)
     expect(supabaseMock.queries.some(q => q.table === 'subscriptions' && q.op === 'update')).toBe(false)
   })
   it('snapshot ativo atrasado não reativa assinatura atualmente cancelada', async () => {
@@ -168,7 +165,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     subscriptionsRetrieve.mockResolvedValue(subscriptionEvent('customer.subscription.deleted').data.object)
     expect((await POST(req())).status).toBe(200)
     expect(supabaseMock.queries.find(q => q.table === 'subscriptions' && q.op === 'insert')?.values?.status).toBe('cancelled')
-    expect(supabaseMock.queries.some(q => q.table === 'concessoes_de_plano' && q.op === 'insert')).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')).toBe(false)
   })
   it('falha de escrita responde erro para o Stripe repetir, sem concluir evento', async () => {
     supabaseMock = makeSupabaseMock(q => q.table === 'subscriptions' && q.op === 'insert'
@@ -214,19 +211,16 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
 
     // A assinatura administra a própria concessão, identificada pelo `sub_...`.
     // É o que impede o cancelamento de apagar um plano vindo de outra fonte.
-    const concessao = supabaseMock.queries.find(q => q.table === 'concessoes_de_plano' && q.op === 'insert')
+    const concessao = supabaseMock.queries.find(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'conceder')
     expect(concessao?.values).toMatchObject({
-      user_id: 'user-1',
-      plano: 'profissional',
-      origem: 'assinatura',
-      referencia: 'sub_123',
-      encerrada_em: null,
+      p_usuario: 'user-1',
+      p_plano: 'profissional',
+      p_origem: 'assinatura',
+      p_referencia: 'sub_123',
     })
 
-    // E `profiles.plano` é a projeção do que está vivo, não uma escrita direta.
-    const planoUpdate = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
-    expect(planoUpdate?.values).toEqual({ plano: 'pro' })
-    expect(planoUpdate?.filters).toContainEqual(['id', 'user-1'])
+    // Grant and projection are atomic in the RPC, verified on real PostgreSQL.
+    expect(supabaseMock.queries.some(q => q.table === 'profiles' && q.op === 'update')).toBe(false)
   })
 
   it('subscription.deleted encerra a concessão daquela assinatura, não o plano inteiro', async () => {
@@ -248,20 +242,16 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     expect(res.status).toBe(200)
 
     const encerramento = supabaseMock.queries
-      .find(q => q.table === 'concessoes_de_plano' && q.op === 'update')
-    expect(encerramento?.values?.encerrada_em).toBeTruthy()
-    expect(encerramento?.filters).toContainEqual(['referencia', 'sub_123'])
-
-    // Continua Profissional: a chave não foi tocada.
-    const projecao = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
-    expect(projecao?.values).toEqual({ plano: 'pro' })
+      .find(q => q.table === 'rpc:alterar_concessao_de_plano' && q.values?.p_operacao === 'encerrar')
+    expect(encerramento?.values).toMatchObject({ p_usuario: 'user-1', p_origem: 'assinatura', p_referencia: 'sub_123', p_operacao: 'encerrar' })
+    expect(supabaseMock.queries.some(q => q.table === 'profiles' && q.op === 'update')).toBe(false)
   })
 
   it('subscription.created é idempotente: assinatura já registrada não duplica', async () => {
     supabaseMock = makeSupabaseMock(q => {
       if (q.table === 'profiles' && q.op === 'select') return { data: { id: 'user-1' } }
       if (q.table === 'subscriptions' && q.op === 'select') return { data: { id: 'sub-row-existente' } }
-      return {}
+      return defaultHandler(q)
     })
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
     const res = await POST(req())
@@ -304,12 +294,8 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     expect(cancel?.values).toMatchObject({ status: 'cancelled' })
     expect(cancel?.filters).toContainEqual(['id', 'sub-row-1'])
 
-    const downgrade = supabaseMock.queries.find(q => q.table === 'profiles' && q.op === 'update')
-    // `freemium`, não `free`: a coluna é do enum `plano_tipo`, e gravar o
-    // vocabulário do app derruba a escrita com `invalid input value for enum`.
-    // Este teste afirmava `'free'` — ou seja, afirmava o defeito, e passava
-    // porque o mock não valida enum. Em produção o rebaixamento nunca ocorria.
-    expect(downgrade?.values).toEqual({ plano: 'freemium' })
+    const encerramento = supabaseMock.queries.find(q => q.table === 'rpc:alterar_concessao_de_plano')
+    expect(encerramento?.values).toMatchObject({ p_usuario: 'user-1', p_operacao: 'encerrar', p_referencia: 'sub_123' })
   })
 
   it('evento sem perfil correspondente não escreve nada', async () => {

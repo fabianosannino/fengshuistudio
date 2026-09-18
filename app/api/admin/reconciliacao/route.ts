@@ -115,65 +115,23 @@ async function corrigir(
   divergencias: Divergencia[],
   brutas: Map<string, Stripe.Subscription>
 ): Promise<{ corrigidas: number; falhas: number; recriadas: number }> {
-  let recriadas = 0
-  let falhasAoRecriar = 0
-
-  // Assinatura que existe no Stripe e não aqui: criar a linha pelo mesmo
-  // caminho do webhook, em `sincronizar-assinatura`. É o caso da compra de
-  // 12/08 — paga, e invisível para o app.
-  for (const d of divergencias) {
-    if (d.tipo !== 'ausente_no_banco') continue
-    const bruta = brutas.get(d.gatewaySubscriptionId)
-    if (!bruta) continue
-
-    const r = await sincronizarAssinatura(admin, bruta, ROUTE)
-    if (r.situacao === 'criada' || r.situacao === 'atualizada') {
-      recriadas++
-      logger.info('Assinatura recriada pela reconciliação', {
-        route: ROUTE, subscriptionId: d.gatewaySubscriptionId, situacao: r.situacao,
-      })
-    } else {
-      falhasAoRecriar++
-      logger.error('Reconciliação não conseguiu recriar a assinatura', {
-        route: ROUTE, subscriptionId: d.gatewaySubscriptionId, situacao: r.situacao,
-      })
-    }
-  }
-
-  const porLinha = new Map<string, Record<string, unknown>>()
-
-  for (const d of divergencias) {
-    if (!d.corrigivel || !d.linhaId) continue
-    const campos = porLinha.get(d.linhaId) ?? {}
-
-    if (d.tipo === 'status_diferente') campos.status = d.noStripe
-    if (d.tipo === 'valor_diferente') campos.price_paid = d.noStripe
-    if (d.tipo === 'ciclo_diferente') campos.billing_cycle = d.noStripe
-    if (d.tipo === 'cancelamento_diferente') campos.cancel_at_period_end = d.noStripe
-
-    porLinha.set(d.linhaId, campos)
-  }
-
-  let corrigidas = 0
-  let falhas = 0
-
-  for (const [linhaId, campos] of porLinha) {
-    if (Object.keys(campos).length === 0) continue
-    const { error } = await admin.from('subscriptions').update(campos).eq('id', linhaId)
-    if (error) {
+  let recriadas = 0, corrigidas = 0, falhas = 0
+  const ids = new Set(divergencias.filter(d => d.corrigivel || d.tipo === 'ausente_no_banco').map(d => d.gatewaySubscriptionId))
+  for (const id of ids) {
+    if (!brutas.has(id)) continue
+    try {
+      // A fresh provider read feeds the same grant path as a webhook.
+      const atual = await stripeClient.subscriptions.retrieve(id)
+      const r = await sincronizarAssinatura(admin, atual, ROUTE)
+      if (r.situacao === 'criada') recriadas++
+      else if (r.situacao === 'atualizada') corrigidas++
+      else falhas++
+    } catch {
       falhas++
-      logger.error('Reconciliação não conseguiu corrigir a assinatura', {
-        route: ROUTE, linhaId, error: error.message,
-      })
-      continue
+      logger.error('Falha ao reconciliar assinatura', { route: ROUTE })
     }
-    corrigidas++
-    // A correção é registrada uma a uma: uma linha de dinheiro que muda sem
-    // deixar rastro é indistinguível de uma que mudou sozinha.
-    logger.info('Assinatura reconciliada com o Stripe', { route: ROUTE, linhaId, campos })
   }
-
-  return { corrigidas, falhas: falhas + falhasAoRecriar, recriadas }
+  return { corrigidas, falhas, recriadas }
 }
 
 async function executar(request: Request, aplicar: boolean) {
