@@ -102,3 +102,26 @@ O pacote de reembolsos da loja mantém bloqueio de download em estorno parcial,
 integral e resumo financeiro inválido. Não presume qual item foi reembolsado.
 Cinco cenários de API exercitam o snapshot atual, incluindo pendência e falha,
 sem emitir URL nem registrar entrega quando o acesso é recusado.
+
+## Fronteira de publicação das imagens (ADR 0053)
+
+Os três endpoints de imagens privadas passam a enviar os bytes normalizados
+com cliente de serviço, após autenticação e posse. Escrita/remoção direta nos
+três buckets de imagens é fechada por políticas restritivas; leitura mantém a
+regra anterior. Trigger de metadados protege a raiz privada contra exclusão
+concorrente inclusive em uploads privilegiados e PDFs. Publicação em duas
+migrations, com código entre elas, preserva compatibilidade na transição.
+
+Não é ensaio do protocolo HTTP do Storage nem restauração de arquivos. Essas
+verificações continuam abertas; nenhum objeto pessoal foi usado como fixture.
+
+Preflight: 13 clientes, 17 consultas, sete objetos (seis imagens de imóveis e
+um arquivo digital), zero intenções de exclusão. Duas imagens antigas têm raiz
+sem consulta correspondente; foram preservadas, sem atribuir proprietário ou
+apagar conteúdo por suposição. O trigger protege novas escritas; não reconcilia
+esse legado automaticamente.
+
+Runner PostgreSQL ampliado para 67 verificações; suíte de 1.732 testes aprovada
+e dois casos adicionais de remoção por serviço aprovados no arquivo de APIs
+(34 casos). TypeScript e lint sem erros; 103 avisos existentes. Nenhum objeto
+ou registro de negócio foi alterado pelo ensaio.

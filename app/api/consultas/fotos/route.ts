@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { createRouteHandlerClient } from '../../../../src/lib/supabase-route'
+import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { validateUUID } from '../../../../src/lib/validation'
@@ -40,14 +41,14 @@ export async function POST(request: Request) {
     for (const file of files) imagens.push(await normalizarImagem(file))
     const folder = tipo === 'geral' ? 'geral' : (comodo as string).replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
     const paths: string[] = []
+    const storage = createSupabaseAdminClient().storage.from(BUCKET)
     for (const imagem of imagens) {
       const path = `${consultaId}/${folder}/${randomUUID()}.${imagem.extensao}`
-      const { error: uploadError } = await supabase.storage.from(BUCKET)
-        .upload(path, imagem.bytes, { contentType: imagem.mime, upsert: false })
+      const { error: uploadError } = await storage.upload(path, imagem.bytes, { contentType: imagem.mime, upsert: false })
       if (uploadError) {
         // Somente objetos desta tentativa, que ainda não foram entregues ao cliente.
         if (paths.length) {
-          const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths)
+          const { error: removeError } = await storage.remove(paths)
           if (removeError) logger.error('Limpeza de envio incompleto pendente', { route: ROUTE })
         }
         return NextResponse.json({ error: 'Não foi possível enviar as fotos. Tente novamente.' }, { status: 503 })
@@ -83,7 +84,7 @@ export async function DELETE(request: Request) {
     .eq('id', body.consulta_id).eq('consultor_id', user.id).maybeSingle()
   if (error) return NextResponse.json({ error: 'Não foi possível verificar a consulta.' }, { status: 503 })
   if (!consulta) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 })
-  const { error: removeError } = await supabase.storage.from(BUCKET).remove([path])
+  const { error: removeError } = await createSupabaseAdminClient().storage.from(BUCKET).remove([path])
   if (removeError) return NextResponse.json({ error: 'Não foi possível remover a foto.' }, { status: 503 })
   return NextResponse.json({ success: true })
 }
