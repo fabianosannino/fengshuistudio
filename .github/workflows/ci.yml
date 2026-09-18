@@ -57,8 +57,10 @@ jobs:
         run: npm run test:catalog-migration
       - name: Verificar cotas, reativaÃ§Ã£o e concorrÃªncia no PostgreSQL
         run: npm run test:plan-quotas
-      - name: Verificar consumo atômico de chaves e concessões
+      - name: Verificar consumo atomico de chaves e concessoes
         run: npm run test:plan-grants
+      - name: Verificar concorrencia e retomada dos webhooks
+        run: npm run test:webhook-claims
 
   quality:
     name: Dependency Security

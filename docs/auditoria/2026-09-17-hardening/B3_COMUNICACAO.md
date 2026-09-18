@@ -16,11 +16,17 @@ comissão. Publica links para termos, privacidade e contato já usado pelo
 produto. A entrega da caixa de suporte não foi testada; nenhuma mensagem foi
 enviada. A clareza desses textos não constitui certificação jurídica.
 
-Validação visual e acessibilidade em navegador ainda precisam de evidência.
 Os testes de componente verificam o cálculo e a mudança de ciclo; não medem
-contraste, layout, entrega de e-mail ou a jornada financeira real.
+contraste, entrega de e-mail ou a jornada financeira real.
 
 Verificação local: 1.415 testes em 110 arquivos, typecheck e build aprovados.
 Lint sem erros; removido o import que deixou de ser usado após a substituição
 do banner. A revisão React conferiu estados derivados, rótulos associados aos
 inputs, foco visível e atualização anunciada sem efeitos nem chamadas de rede.
+
+PR #196 integrado após CI verde, commit `2bc239d`. Em navegador real na página
+pública de preços: campos sintéticos 100/20/2 e seleção anual exibiram saldo
+R$ 125,70, equivalente R$ 34,30, total anual R$ 411,60 e link de cadastro
+preservando Profissional/yearly. Captura desktop inspecionada sem sobreposição
+do simulador. Isto não atesta WCAG, responsividade completa nem jornada de
+cobrança autenticada; nenhum checkout foi iniciado.

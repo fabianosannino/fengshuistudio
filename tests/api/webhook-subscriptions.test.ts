@@ -20,7 +20,7 @@ const chargesRetrieve = vi.fn()
 vi.mock('../../src/lib/stripe', () => ({
   default: {
     subscriptions: { retrieve: (...a: unknown[]) => subscriptionsRetrieve(...a) },
-    webhooks: { constructEvent: (...a: unknown[]) => constructEvent(...a) },
+    webhooks: { constructEvent: (...a: unknown[]) => ({ id: 'evt_1', created: 1_786_556_000, ...constructEvent(...a) }) },
     invoices: {
       list: (...a: unknown[]) => invoicesList(...a),
       retrieve: (...a: unknown[]) => invoicesRetrieve(...a),
@@ -78,7 +78,9 @@ function makeSupabaseMock(handler: Handler) {
   const rpc = async (name: string, values: Record<string, unknown>) => {
     const q: Q = { table: `rpc:${name}`, op: 'rpc', values, filters: [] }
     queries.push(q)
-    return { data: 'profissional', error: null, ...handler(q) }
+    const data = name === 'reivindicar_evento_stripe' ? { situacao: 'reivindicado', token: 'attempt-1' }
+      : name === 'finalizar_evento_stripe' ? true : 'profissional'
+    return { data, error: null, ...handler(q) }
   }
   return { client: { from, rpc }, queries }
 }
@@ -146,6 +148,29 @@ beforeEach(() => {
 
 // ── Testes ───────────────────────────────────────────────────────────────────
 describe('POST /api/stripe/webhooks/subscriptions', () => {
+  it.each(['ocupado', 'sem_garantia'])('controle %s não admite processamento', async situacao => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:reivindicar_evento_stripe'
+      ? { data: situacao === 'ocupado' ? { situacao } : null, error: situacao === 'sem_garantia' ? { message: 'falha' } : null } : defaultHandler(q))
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
+    expect((await POST(req())).status).toBe(503)
+    expect(subscriptionsRetrieve).not.toHaveBeenCalled()
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:alterar_concessao_de_plano')).toBe(false)
+  })
+  it('erro ao verificar ordem responde falha e libera apenas a tentativa atual', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'eventos_stripe' ? { error: { message: 'falha' } } : defaultHandler(q))
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
+    expect((await POST(req())).status).toBe(500)
+    expect(subscriptionsRetrieve).not.toHaveBeenCalled()
+    expect(supabaseMock.queries).toEqual(expect.arrayContaining([expect.objectContaining({
+      table: 'rpc:finalizar_evento_stripe', values: { p_event_id: 'evt_1', p_token: 'attempt-1', p_sucesso: false },
+    })]))
+  })
+  it('conclusão não confirmada não responde sucesso', async () => {
+    supabaseMock = makeSupabaseMock(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true
+      ? { data: false } : defaultHandler(q))
+    constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
+    expect((await POST(req())).status).toBe(500)
+  })
   it('metadata de plano não concede direitos se o Price é desconhecido', async () => {
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created', {
       metadata: { plan_slug: 'profissional' },
@@ -172,7 +197,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
       ? { error: { message: 'falha sintética' } } : defaultHandler(q))
     constructEvent.mockReturnValue(subscriptionEvent('customer.subscription.created'))
     expect((await POST(req())).status).toBe(500)
-    expect(supabaseMock.queries.some(q => q.table === 'eventos_stripe' && q.op === 'update' && q.values?.processado_em)).toBe(false)
+    expect(supabaseMock.queries.some(q => q.table === 'rpc:finalizar_evento_stripe' && q.values?.p_sucesso === true)).toBe(false)
   })
   it('fatura avulsa paga não reativa assinaturas do perfil', async () => {
     constructEvent.mockReturnValue({ type: 'invoice.paid', data: { object: { id: 'in_avulsa', customer: 'cus_123', amount_paid: 2000 } } })
@@ -310,7 +335,7 @@ describe('POST /api/stripe/webhooks/subscriptions', () => {
     // são escritas de controle, não de negócio. O que este teste afirma é que
     // nenhuma tabela de assinatura, fatura ou perfil foi tocada.
     const escritasDeNegocio = supabaseMock.queries
-      .filter(q => q.op !== 'select' && q.table !== 'eventos_stripe')
+      .filter(q => q.op !== 'select' && !['eventos_stripe', 'rpc:reivindicar_evento_stripe', 'rpc:finalizar_evento_stripe'].includes(q.table))
     expect(escritasDeNegocio).toHaveLength(0)
   })
 
