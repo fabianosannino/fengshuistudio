@@ -161,7 +161,7 @@ Todos os cálculos de ano (Ming Gua, BaZi, estrela anual, Tai Sui) usam o **ano 
 - Implementação: tabela de efemérides de Li Chun (precisão de minuto) ou biblioteca astronômica. **Nunca** aproximar por "4 de fevereiro" fixo — a diferença chega a ~1 dia.
 - Mesma lógica vale para os 12 meses solares (Jie Qi), usados nas estrelas mensais.
 
-> 🟡 **Débito técnico já conhecido.** `ming-gua.ts` e `estrelas-voadoras.ts` hoje usam a aproximação fixa "antes de 4/fev conta o ano anterior" — exatamente o que este documento diz para nunca fazer. Funciona para a esmagadora maioria dos casos (a data real de Li Chun varia entre 3 e 5 de fevereiro), mas há um punhado de dias por década em que a aproximação erra. Vale registrar como item de precisão futura (tabela de efemérides ou biblioteca astronômica), não bloqueia uso atual.
+> **Atualização 18/09/2026 — ADR 0044.** A data fixa foi substituída por tabela reproduzível de efemérides UTC (1864–2100), gerada por Astronomy Engine 2.1.19. Datas civis sem hora/fuso não ganham meia-noite presumida; na fronteira o resultado é indeterminado. A margem conservadora do modelo é de 30 minutos, sem alegar precisão de minuto para todo o intervalo. Quatro âncoras independentes do HKO foram conferidas. A coleta persistente de hora/fuso do nascimento e a revisão de domínio permanecem pendentes.
 
 ### 1.7 Determinação do centro (Tai Ji) e forma do imóvel
 
@@ -556,17 +556,18 @@ Para cada estrela (montanha e água), localize no Di Pan **em qual montanha das 
 
 ### Estrelas anuais e mensais (紫白 Zi Bai)
 
-**Estrela anual (século XXI):**
+**Estrela anual (ciclo contínuo):**
 ```
 soma = reduzir_a_um_digito(ano)
 estrela_anual = 11 − soma   (se > 9, −9)
 ```
 Verificação: 2024 → 8 → 3 ✔ | 2025 → 9 → 2 ✔ | 2026 → 1 → 10 → **1** ✔ | 2027 → 2 → 9 ✔
-(Para o século XX a constante é 10 em vez de 11.)
+Não se troca a constante na virada do século: isso repetia 9 em 1999/2000.
+O ciclo decrescente contínuo resulta em 1999 → 1 e 2000 → 9.
 
 A estrela anual vai ao centro e voa **sempre para frente**.
 
-> ✅ **Fórmula conferida e consistente** — ao contrário da fórmula de Ming Gua acima, esta usa a soma de todos os dígitos do ano (não dos últimos dois), e a conferi de forma independente pela propriedade "a estrela anual decresce 1 a cada ano, com wrap 9→1" — as quatro verificações do próprio documento (2024→3, 2025→2, 2026→1, 2027→9) são mutuamente consistentes com essa propriedade. Diferente da Ming Gua, aqui a fórmula do ano completo parece correta — são convenções de sub-sistemas distintos, não uma inconsistência do documento. ⚪ **Não implementado no código** — `estrelas-voadoras.ts` hoje só calcula a carta natal (período), não a estrela anual/mensal.
+> **Implementado em `estrela-anual.ts`; corrigido em 18/09/2026.** As âncoras modernas permanecem, e o teste percorre os séculos sem quebra do ciclo de nove anos. Essa verificação aritmética não substitui revisão independente da variante tradicional. Estrela mensal continua fora deste pacote.
 
 **Estrela mensal:** depende do ramo terrestre do ano solar:
 | Grupo do ramo do ano | Estrela do 1º mês (Yin, ~4/fev) |
@@ -873,7 +874,7 @@ Esse último bloco é o que transforma um relatório genérico em consultoria. O
 | 1.3 Trajetória de voo Lo Shu | ✅ Implementado e testado contra carta publicada — canonicamente em `src/lib/lo-shu.ts` (shared kernel P0), reaproveitado por `estrelas-voadoras.ts` |
 | 1.4 24 Montanhas / Kong Wang | 🟡 Tabela de montanhas (faixa/setor/Yuan Long/polaridade) implementada em `src/lib/montanhas.ts` (shared kernel P0); Kong Wang **não** implementado — segue pendente de verificação de fonte primária |
 | 1.5 Períodos San Yuan | ✅ Implementado como fórmula cíclica — canonicamente em `src/lib/periodo-sanyuan.ts` (shared kernel P0), `estrelas-voadoras.ts` reexporta `periodoDaConstrucao` |
-| 1.6 Ano solar / Li Chun | 🟡 Implementado com aproximação (4/fev fixo), agora consolidado numa única fonte (`src/lib/data-solar.ts`, shared kernel P0) em vez de duplicado; precisão real (efeméride) pendente — ver ADR 0007 |
+| 1.6 Ano solar / Li Chun | Efeméride versionada e datas civis estritas; fronteiras sem hora/fuso permanecem indeterminadas. Ver ADR 0044 para cobertura, margem e validação pendente. |
 | 1.7 Tai Ji / centróide / regra do terço | ✅ Completo e conectado à UI: centróide geométrico real (`calcularTaiJi`), setor ausente (`setoresAusentes`) e extensão (`setoresExtensao`) em `src/lib/poligono.ts`, com editor de contorno (`EditorPoligonoTaiJi`) integrado como overlay sobre a foto real em `app/bagua-planta/page.tsx` (persistido em `bagua_entrada.tai_ji_poligono`) — ver ADR 0009/0010 |
 | 2.1–2.5 Captura de orientação | 🟡 Os três modos implementados em `app/bagua-planta/page.tsx`: Modo A (grau decimal, Montanha ao vivo, 3 leituras), Modo B (bússola virtual, ADR 0011) e Modo C (mapa/satélite, ADR 0012). Referência de Norte explícita + conversão magnético↔verdadeiro implementadas (ADR 0014), com a **declinação informada pelo consultor** — o modelo WMM/IGRF em si é deliberadamente não implementado, por falta de fonte primária dos coeficientes. Questionário de determinação de facing (§2.5) implementado com hipóteses concorrentes (ADR 0016). Ainda faltam: cálculo automático da declinação (depende da tabela oficial WMM), detecção de Kong Wang (idem, fonte primária), detecção de interferência magnética por magnitude de campo (suporte de navegador insuficiente, ADR 0011) |
 | Método 1 — Formas | 🟡 Sha interno em boa parte coberto pelo checklist Fluxo de Chi; Sha externo e classificação por escala não |

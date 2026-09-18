@@ -22,11 +22,13 @@ import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/gr
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
 import { dataSolar } from '../../src/lib/data-solar'
+import { avisoAnoSolar } from '../../src/lib/ano-solar'
 import { zhengShenLingShen } from '../../src/lib/liu-fa'
 import { calcularMingGua, normalizarGenero } from '../../src/lib/ming-gua'
 import { avaliarPosicionamento } from '../../src/lib/posicionamento-mobiliario'
 import {
   calcularSetores,
+  AVISO_GEOMETRIA_INVALIDA,
   type Bounds,
   type Marcacao,
   type Setor,
@@ -414,7 +416,13 @@ function BaguaPlantaContent() {
           const bRestored={x:be.bordas.x,y:be.bordas.y,w:be.bordas.w,h:be.bordas.h}
           const lhRestored=be.lh||[1/3,2/3]
           const lvRestored=be.lv||[1/3,2/3]
-          const novos=calcularSetores(bRestored,lhRestored,lvRestored,savedMarcacoes)
+          let novos:Setor[]
+          try { novos=calcularSetores(bRestored,lhRestored,lvRestored,savedMarcacoes) }
+          catch {
+            setSetores([]); setStep('configurar'); setMsg(AVISO_GEOMETRIA_INVALIDA); setMsgTipo('erro')
+            setCarregandoPlanta(false); restaurandoRef.current=false
+            return
+          }
           // Merge saved sector data (criterios, ajustes) with recalculated geometry
           const setoresRasc=be.setores_rascunho
           setSetores(novos.map((n,idx)=>{
@@ -1159,7 +1167,9 @@ function BaguaPlantaContent() {
     setBounds(b); boundsRef.current=b
     setLh([1/3,2/3]); lhRef.current=[1/3,2/3]
     setLv([1/3,2/3]); lvRef.current=[1/3,2/3]
-    const novosSetores=calcularSetores(b,[1/3,2/3],[1/3,2/3],marcacoesRef.current)
+    let novosSetores:Setor[]
+    try { novosSetores=calcularSetores(b,[1/3,2/3],[1/3,2/3],marcacoesRef.current) }
+    catch { setMsg(AVISO_GEOMETRIA_INVALIDA); setMsgTipo('erro'); return }
     setSetores(novosSetores)
     setStep('resultado'); setModo('nenhum')
     setBordaModificada(false)
@@ -1173,7 +1183,9 @@ function BaguaPlantaContent() {
     const curLh=lhRef.current
     const curLv=lvRef.current
     if(!b) return
-    const novos=calcularSetores(b,curLh,curLv,marcacoesRef.current)
+    let novos:Setor[]
+    try { novos=calcularSetores(b,curLh,curLv,marcacoesRef.current) }
+    catch { setMsg(AVISO_GEOMETRIA_INVALIDA); setMsgTipo('erro'); return }
     setSetores(prev=>{
       const merged=novos.map((n,i)=>({...n,criterios:prev[i]?.criterios??n.criterios,
         ajusteManual:prev[i]?.ajusteManual??null,ajusteTipo:prev[i]?.ajusteTipo??null,obs:prev[i]?.obs??''}))
@@ -1367,6 +1379,12 @@ function BaguaPlantaContent() {
   async function finalizarAnalise(){
     if(!consultaId||setores.length!==9) return
     if(!order){setMsg(AVISO_ORIENTACAO);setMsgTipo('erro');return}
+    try {
+      const b=boundsRef.current
+      if(!b||recalculoPendente||bordaModificada) throw new Error('Geometria pendente')
+      const atuais=calcularSetores(b,lhRef.current,lvRef.current,marcacoesRef.current)
+      if(setores.some((s,i)=>s.faltaArea!==atuais[i].faltaArea||s.excessoArea!==atuais[i].excessoArea||s.geo!==atuais[i].geo)) throw new Error('Geometria mudou')
+    } catch { setMsg('Revise os limites e recalcule a geometria antes de finalizar a análise.');setMsgTipo('erro');return }
     setSalvandoTudo(true)
     try{
       const nomes=['Limpeza e organização','Iluminação adequada','Ventilação e ar fresco','Cores harmônicas','Mobiliário posicionado','Plantas e elementos naturais','Ausência de objetos quebrados','Fluxo de energia livre']
@@ -2275,11 +2293,13 @@ function BaguaPlantaContent() {
                       {mobiliarioAberto&&(()=>{
                         const genero=normalizarGenero(mobiliarioGenero)
                         const mingGua=calcularMingGua(mobiliarioDataNascimento||null,genero)
+                        const avisoNascimento=avisoAnoSolar(mobiliarioDataNascimento)
                         const octante=Math.round(((mobiliarioDirecaoGraus%360)+360)%360/45)%8
                         const direcaoSetor=(['N','NE','E','SE','S','SW','W','NW'] as SetorCompasso[])[octante]
                         const avaliacao=mingGua?avaliarPosicionamento(mingGua.direcoes,mobiliarioLocalizacao,direcaoSetor):null
                         return (
                           <div style={{marginTop:'8px'}}>
+                            {avisoNascimento ? <p role="status" style={{fontSize:'12px',color:'#7A3D2C'}}>{avisoNascimento}</p> : null}
                             <p style={{margin:'0 0 8px',fontSize:'12px',color:'#4C1D95'}}>
                               Regra 坐凶向吉 (&ldquo;sentar no mal, olhar para o bem&rdquo;): o corpo do objeto pode estar num setor
                               desfavorável — é onde essas coisas normalmente já estão — mas a direção para a qual ele

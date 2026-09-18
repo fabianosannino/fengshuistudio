@@ -3,7 +3,7 @@ import { grausConfirmados } from './orientacao'
 import { jsonCanonico } from './relatorio-emissao'
 import type { Secao } from './formato-do-relatorio'
 
-export const VERSAO_ANALISE_BAGUA = 'bagua-2.0.0'
+export const VERSAO_ANALISE_BAGUA = 'bagua-3.0.0'
 
 /** Só entradas que mudam a associação espacial; não timestamps ou UI. */
 export function referenciaDaAnalise(be: BaguaEntrada): { versao: string; entrada: string } {
@@ -28,7 +28,7 @@ export function impedimentoDaAnalise(be: BaguaEntrada | null | undefined, secoes
   if (!dependentes.some(secao => secoes[secao])) return null
   if (be?.escola === 'bussola' && grausConfirmados(be) === null) return 'Confirme a fachada e a referência de Norte na planta antes de emitir as seções de análise.'
   const estado = estadoDaAnalise(be)
-  if (estado === 'desatualizada' || (be?.escola === 'bussola' && estado === 'legado')) {
+  if (estado === 'desatualizada' || (estado === 'legado' && (be?.escola === 'bussola' || !!be?.bordas))) {
     return 'A análise da planta precisa ser revisada e finalizada com o método atual. Os relatórios anteriores continuam disponíveis no histórico.'
   }
   return null

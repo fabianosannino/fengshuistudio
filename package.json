@@ -13,7 +13,8 @@
     "test:plan-quotas": "node scripts/security/test-plan-quotas.mjs",
     "test:plan-grants": "node scripts/security/test-plan-grants.mjs",
     "test:webhook-claims": "node scripts/security/test-webhook-claims.mjs",
-    "test:privacy-deletion": "node scripts/security/test-privacy-deletion.mjs"
+    "test:privacy-deletion": "node scripts/security/test-privacy-deletion.mjs",
+    "test:ephemeris": "node scripts/domain/generate-li-chun.mjs --check"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -38,6 +39,7 @@
     "@types/react-dom": "^19",
     "@types/recharts": "^1.8.29",
     "@vitejs/plugin-react": "^6.0.1",
+    "astronomy-engine": "2.1.19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "jsdom": "^29.0.0",

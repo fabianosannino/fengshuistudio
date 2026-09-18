@@ -12,6 +12,7 @@ import Skeleton from '../../components/Skeleton'
 import type { Cliente, Consulta } from '../../../src/lib/types'
 import Link from 'next/link'
 import { calcularMingGua } from '../../../src/lib/ming-gua'
+import { avisoAnoSolar } from '../../../src/lib/ano-solar'
 import { calcularKuaDaCasa, compatibilidadeMoradorCasa } from '../../../src/lib/oito-mansoes'
 import { montanhaDoGrau } from '../../../src/lib/montanhas'
 import { formatarData } from '../../../src/lib/formato'
@@ -570,8 +571,7 @@ export default function ClienteDetalhe() {
                     // Sem data ou sem gênero não há Ming Gua. Dizer qual dos dois
                     // falta é o que transforma o campo vazio em algo acionável.
                     <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5 }}>
-                      Sem {!cliente.data_nascimento ? 'data de nascimento' : 'gênero informado'}, o Ming Gua não
-                      é calculável — e sem ele o relatório sai sem as direções favoráveis do morador.
+                      {avisoAnoSolar(cliente.data_nascimento) ?? `O Ming Gua depende de data de nascimento, gênero informado e ano solar entre 1900 e 2099. Sem esses dados, o relatório não atribui direções favoráveis ao morador.`}
                     </p>
                   )}
 

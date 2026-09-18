@@ -21,6 +21,7 @@ import { periodoDaConsulta, faixaDoPeriodo } from '../../../../src/lib/periodo-d
 import { RESSALVA_XUAN_KONG } from '../../../../src/lib/sustentacao-do-diagnostico'
 import { calcularGradeAnual } from '../../../../src/lib/estrela-anual'
 import { dataSolar } from '../../../../src/lib/data-solar'
+import { avisoAnoSolar } from '../../../../src/lib/ano-solar'
 import { setoresFavoraveis } from '../../../../src/lib/posicionamento-mobiliario'
 import { sintetizarImovel } from '../../../../src/lib/sintese-imovel'
 import { PERFIS_METODOS, ordenarRemedios, type Remedio } from '../../../../src/lib/sintese-metodos'
@@ -992,7 +993,10 @@ export default function Relatorio() {
         {(() => {
           const cli = consulta.clientes as { nome_completo: string; data_nascimento?: string | null; genero?: string | null } | null
           const mg = calcularMingGua(cli?.data_nascimento, cli?.genero)
-          if (!mg) return null
+          if (!mg) {
+            const aviso = avisoAnoSolar(cli?.data_nascimento)
+            return aviso ? <p style={{ padding: '0.7rem 1.5rem', color: inkLt }}>Ming Gua indeterminado. {aviso}</p> : null
+          }
           return (
             <div style={{
               display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',

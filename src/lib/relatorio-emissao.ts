@@ -3,9 +3,9 @@ import type { Consulta, Profile, SetorBagua } from './types'
 import type { SnapshotScore } from './reavaliacao'
 import { lerOrientacao, type Orientacao } from './orientacao'
 
-/** B1 corrige Ba Zhai por assento e exige orientação com procedência. */
+/** C1/C2: solar-year ephemeris, continuous annual cycle and geometric unions. */
 export const VERSOES_RELATORIO = {
-  entrada: '2', motor: 'fengshui-2026.09-b1', template: 'relatorio-2.1.0',
+  entrada: '2', motor: 'fengshui-2026.09-c1c2', template: 'relatorio-2.2.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.

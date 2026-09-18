@@ -55,7 +55,8 @@ describe('calcularMingGua — fórmula clássica', () => {
     // 10/01/1990 → ano solar 1989: 8+9=17→8; 10−8=2
     expect(calcularMingGua('1990-01-10', 'masculino')!.kua).toBe(2)
     // 04/02/1990 (Li Chun) já conta como 1990 → Kua 1
-    expect(calcularMingGua('1990-02-04', 'masculino')!.kua).toBe(1)
+    expect(calcularMingGua('1990-02-06', 'masculino')!.kua).toBe(1)
+    expect(calcularMingGua('1990-02-04', 'masculino')).toBeNull()
   })
 
   it('masculino 1900 → 10−0=10→1 (redução dupla)', () => {
