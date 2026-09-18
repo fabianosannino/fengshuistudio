@@ -20,8 +20,8 @@ export default function Footer() {
               O estúdio digital do consultor de Feng Shui. Do diagnóstico ao relatório, com a harmonia que o seu trabalho merece.
             </p>
             <div className="flex items-center gap-4 mt-6 text-paper/50 text-xs">
-              <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> SSL</span>
-              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> LGPD</span>
+              <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> HTTPS</span>
+              <Link href="/privacidade" className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> Privacidade</Link>
               <span className="inline-flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /> Stripe</span>
             </div>
           </div>
@@ -46,15 +46,22 @@ export default function Footer() {
           <nav aria-label="Empresa">
             <h3 className="font-sans text-sm font-semibold text-gold uppercase tracking-widest mb-4">Empresa</h3>
             <ul className="space-y-2.5 text-sm">
+              <li><Link href="/termos" className="hover:text-gold transition-colors">Termos de uso</Link></li>
+              <li><Link href="/privacidade" className="hover:text-gold transition-colors">Privacidade</Link></li>
               <li><Link href="/sobre" className="hover:text-gold transition-colors">Sobre & Contato</Link></li>
               <li><Link href={LOGIN_URL} className="hover:text-gold transition-colors">Entrar</Link></li>
               <li><Link href={REGISTER_URL} className="hover:text-gold transition-colors">Criar conta grátis</Link></li>
             </ul>
           </nav>
         </div>
+        <p className="mt-8 max-w-3xl text-sm text-paper/70">
+          A assinatura dá acesso às ferramentas do FengShui Studio. Produtos e serviços da loja são contratados separadamente,
+          com o vendedor identificado na oferta. Em indicações de parceiros, a compra acontece no site do vendedor externo;
+          pode haver comissão de afiliado. Uma recomendação de Feng Shui não exige compra.
+        </p>
         <div className="border-t border-paper/10 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-paper/50">
           <p>© {new Date().getFullYear()} FengShui Studio. Todos os direitos reservados.</p>
-          <p>suporte@fengshuistudio.com.br</p>
+          <a href="mailto:suporte@fengshuistudio.com.br">suporte@fengshuistudio.com.br</a>
         </div>
       </div>
     </footer>

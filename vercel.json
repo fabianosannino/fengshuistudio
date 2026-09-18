@@ -8,7 +8,8 @@
       "codex/orientacao-b1": false,
       "codex/cobranca-b2": false,
       "codex/cotas-b2": false,
-      "codex/retries-cobranca-b2": false
+      "codex/retries-cobranca-b2": false,
+      "codex/comunicacao-b3": false
     }
   },
   "crons": [

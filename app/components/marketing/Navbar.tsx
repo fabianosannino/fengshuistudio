@@ -146,7 +146,7 @@ export default function Navbar() {
             <Link href={LOGIN_URL} className="rounded-xl border border-border text-center font-medium px-5 py-3 text-ink">
               Entrar
             </Link>
-            <p className="text-center text-xs text-muted-foreground">Sem cartão · Plano Free para sempre</p>
+            <p className="text-center text-xs text-muted-foreground">Sem cartão · Plano gratuito</p>
           </div>
         </nav>
       )}

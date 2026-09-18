@@ -46,7 +46,7 @@ export default function MinhaCasa() {
                 <Link href={REGISTER_URL} className="inline-flex justify-center items-center rounded-xl bg-jade text-paper font-semibold px-8 py-4 shadow-md hover:brightness-110 active:scale-[0.97] transition-all duration-200">
                   Testar grátis
                 </Link>
-                <p className="text-sm text-ink/55">Plano Free para sempre</p>
+                <p className="text-sm text-ink/55">Plano gratuito</p>
               </div>
             </FadeUp>
             <FadeUp delay={130}>

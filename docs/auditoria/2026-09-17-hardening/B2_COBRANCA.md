@@ -107,3 +107,10 @@ com configuração sintética aprovados. Lint sem erros (105 avisos). Runner
 PostgreSQL com 31 verificações. Não houve execução financeira live nem
 ativação de chave de produção. A revisão React manteve os estados derivados e
 o retorno do servidor como fonte da confirmação de plano.
+
+PR #195 integrado em `c20ee91a52936d89390248c7d61c6e155996a0d4`, após os três
+checks de CI aprovados. Migration aplicada como `20260918050106` no Supabase.
+Readback: 13 clientes, 17 consultas, uma concessão e seis chaves disponíveis;
+RPC de ativação autorizada somente para `service_role`, negada a `anon` e
+`authenticated`. Nenhuma chave de produção foi ativada.
+Vercel `dpl_B6vq9kXs8Po34N84GayY6ntLLcPj` READY no mesmo SHA.
