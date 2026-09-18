@@ -7,7 +7,7 @@ import type { AnaliseSalva } from './historico-analises'
 
 /** D0: resultados e limites por método preservados nas novas emissões. */
 export const VERSOES_RELATORIO = {
-  entrada: '5', motor: 'fengshui-2026.09-historico-1', template: 'relatorio-2.6.0',
+  entrada: '6', motor: 'fengshui-2026.09-historico-1', template: 'relatorio-2.7.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.

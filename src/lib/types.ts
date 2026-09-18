@@ -1,3 +1,4 @@
+import type { MedicaoFachada } from './medicao-fachada'
 import type { ChecklistChi } from './fluxo-chi'
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -127,6 +128,7 @@ export interface BaguaEntrada {
   orientacao_estado?: 'ausente' | 'nao_confirmada' | 'confirmada'
   orientacao_origem?: string
   orientacao_confirmada_em?: string | null
+  orientacao_medicao?: MedicaoFachada | null
   /** Referência das entradas no último fechamento; divergência pede revisão. */
   analise_referencia?: { versao: string; entrada: string }
   /**

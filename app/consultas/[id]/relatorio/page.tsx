@@ -1,4 +1,6 @@
 'use client'
+
+import ResumoMedicaoFachada from '../../../components/ResumoMedicaoFachada'
 import Link from 'next/link'
 
 import { grausConfirmados } from '../../../../src/lib/orientacao'
@@ -710,7 +712,7 @@ function RelatorioContent() {
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <fieldset disabled={downloading} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
-      {analiseId&&<p role="status" className="no-print" style={{padding:16,background:'#EAF1EE',color:'#17372F'}}>Relatório da análise preservada {analiseId}. Os dados desta prévia pertencem à versão selecionada. <Link href={`/consultas/${id}/analises`}>Voltar ao histórico de análises</Link></p>}
+      {analiseId&&<p role="status" className="no-print" style={{padding:16,background:'#EAF1EE',color:'#17372F'}}>Relatório da análise preservada {analiseId}. A planta e os resultados preservados pertencem à versão selecionada. A sobreposição anual e as datas do plano de ação usam a data de referência desta nova emissão. <Link href={`/consultas/${id}/analises`}>Voltar ao histórico de análises</Link></p>}
       <div className="no-print barra-do-relatorio" style={{ background: '#0E1B2C' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => router.push(`/consultas/${id}`)}>☯</span>
@@ -1183,6 +1185,10 @@ function RelatorioContent() {
             rows={4} style={{ width: '100%', padding: '10px 12px', border: '1px dashed #D1D5DB', borderRadius: '8px', fontSize: '13px', color: '#374151', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FFFDF6', fontFamily: 'Helvetica Neue, Arial, sans-serif', lineHeight: '1.6' }} />
           <div className="print-only" style={{ fontSize: '12px', color: '#374151', lineHeight: 1.7, fontFamily: 'Helvetica Neue, Arial, sans-serif', whiteSpace: 'pre-wrap' }}>{textoIntroducao}</div>
         </div>
+        )}
+
+        {(selectedSections.completo || selectedSections.bagua) && consulta.bagua_entrada?.escola === 'bussola' && (
+          <div style={{padding:'0 1.5rem',fontSize:12}}><ResumoMedicaoFachada valor={consulta.bagua_entrada.orientacao_medicao} origem={consulta.bagua_entrada.orientacao_origem}/></div>
         )}
 
         {/* ══════ CHARTS ROW: Baguá Lo Shu + Roda da Vida ══════ */}

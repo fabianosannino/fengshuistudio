@@ -31,7 +31,8 @@
       "codex/marcacoes-planta-usabilidade": false,
       "codex/contorno-referencia-fixa": false,
       "codex/editor-poligonos-mobiliario": false,
-      "codex/historico-analises-metodos": false
+      "codex/historico-analises-metodos": false,
+      "codex/leituras-originais-fachada": false
     }
   },
   "crons": [

@@ -27,3 +27,8 @@
   continua pendente em AC-06; este inventário não substitui seu aceite.
 - Evidência: D1-03/05/06; CI descartável PostgreSQL/PostgREST comprova permissões
   reais. Jornada Auth/Storage real permanece em AC-02/AC-04.
+
+Atualização ADR 0060: a orientação pode incluir três leituras originais, referência,
+instante do registro e conversão aplicada. Esses campos acompanham `bagua_entrada`
+na fonte histórica/relatório e nos fluxos existentes de exportação/exclusão; não
+criam origem de arquivo, GPS, identificador de dispositivo ou novo dado de morador.

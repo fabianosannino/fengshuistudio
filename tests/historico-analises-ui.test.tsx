@@ -114,6 +114,13 @@ const abrir = async () => {
   await screen.findByRole('button', { name: 'Atualizar lista' })
 }
 describe('D1 — histórico real React com I/O simulado', () => {
+  it('D2-ORI — abre as medições da versão histórica sem usar dados atuais',async()=>{
+    const antiga=salva(35)
+    antiga.fonte.consulta.bagua_entrada!.orientacao_medicao={versao:1,leituras:[358,0,2],referencia:'magnetico',registrada_em:'2026-09-18T12:00:00Z'}
+    registros=[antiga];await abrir()
+    fireEvent.change(screen.getByLabelText('Versão A'),{target:{value:id(35)}})
+    expect(await screen.findByLabelText('Registro das medições de fachada')).toHaveTextContent('358° · 0° · 2° em Norte magnético')
+  })
   it('salva BTB, muda para Bússola, reabre e compara fontes preservadas', async () => {
     await abrir()
     fireEvent.click(

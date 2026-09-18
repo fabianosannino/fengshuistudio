@@ -7,6 +7,8 @@ import { supabase } from '../../src/lib/supabase'
 import { logger } from '../../src/lib/logger'
 import FlowLayout from '../components/FlowLayout'
 import EditorMarcacoesPlanta from '../components/EditorMarcacoesPlanta'
+import ResumoMedicaoFachada from '../components/ResumoMedicaoFachada'
+import { avaliarTresLeituras, converterMedicaoFachada, lerMedicaoFachada, resumirMedicaoFachada, type MedicaoFachada } from '../../src/lib/medicao-fachada'
 import { pontosDaMarcacao } from '../../src/lib/marcacoes-poligonais'
 import { CRITERIOS } from '../../src/lib/constants'
 import { gerarRecomendacoes } from '../../src/lib/recomendacoes'
@@ -20,7 +22,7 @@ import { nomeElementoDoNumero, type Palacio } from '../../src/lib/estrelas-voado
 import { reformaIncoerente, faixaDoPeriodo, ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../src/lib/periodo-do-imovel'
 import { RESSALVA_XUAN_KONG } from '../../src/lib/sustentacao-do-diagnostico'
 import SustentacaoDoDiagnostico from '../components/SustentacaoDoDiagnostico'
-import { normalizarGraus, mediaCircular, desvioCircular } from '../../src/lib/graus'
+import { normalizarGraus } from '../../src/lib/graus'
 import { montanhaDoGrau } from '../../src/lib/montanhas'
 import { calcularGradeAnual } from '../../src/lib/estrela-anual'
 import { dataSolar } from '../../src/lib/data-solar'
@@ -96,9 +98,6 @@ const SETORES = [
 
 // Cálculo de qual setor cai em qual célula: src/lib/bagua-grid.ts (calcularGridOrder).
 
-// Assistente de 3 leituras (Modo A de orientação, fengshui-metodos-referencia.md §2.2):
-// acima deste desvio entre as 3 leituras, a medição não é confiável.
-const DESVIO_ALERTA_GRAUS = 3
 /**
  * Arredonda um grau para 1 decimal, para exibição e armazenamento.
  * A média circular (`mediaCircular`) e o arraste da rosa dos ventos produzem
@@ -153,9 +152,12 @@ function BaguaPlantaContent() {
   const [orientacaoGraus, setOrientacaoGraus] = useState<number | null>(null)
   const [orientacaoConfirmadaEm, setOrientacaoConfirmadaEm] = useState<string | null>(null)
   const [orientacaoOrigem, setOrientacaoOrigem] = useState<OrigemOrientacao>('manual')
+  const [medicaoFachada, setMedicaoFachada] = useState<MedicaoFachada | null>(null)
   const analiseReferenciaRef = useRef<BaguaEntrada['analise_referencia']>(undefined)
   const grausParaCalculo = orientacaoConfirmadaEm ? orientacaoGraus : null
-  function definirLeitura(graus: number | null, origem: OrigemOrientacao = 'manual') {
+  function definirLeitura(graus: number | null, origem: OrigemOrientacao = 'manual', medicao: MedicaoFachada | null = null) {
+    setMedicaoFachada(medicao)
+    if(graus===null)setLeituras(['','',''])
     setOrientacaoGraus(typeof graus === 'number' && Number.isFinite(graus) ? normalizarGraus(graus) : null)
     setOrientacaoOrigem(origem)
     setOrientacaoConfirmadaEm(null)
@@ -164,6 +166,10 @@ function BaguaPlantaContent() {
     regraGeometriaRef.current=be.geometria_regra==='saldo-v2'?'saldo-v2':'descontos-v1'
     setRegraGeometria(regraGeometriaRef.current)
     setBordasConfirmadasEm(be.bordas_confirmadas_em);bordasConfirmadasRef.current=be.bordas_confirmadas_em
+    const medicao = lerMedicaoFachada(be.orientacao_medicao)
+    setMedicaoFachada(medicao)
+    setReferenciaLeituras(medicao?.referencia ?? (be.orientacao_referencia==='verdadeiro'?'verdadeiro':'magnetico'))
+    setLeituras(medicao ? medicao.leituras.map(String) as [string, string, string] : ['', '', ''])
     const leitura = lerOrientacao(be)
     setOrientacaoGraus(leitura.graus)
     setOrientacaoConfirmadaEm(leitura.confirmadaEm)
@@ -188,8 +194,9 @@ function BaguaPlantaContent() {
   // Nascimento e gênero do cliente decidem se o Ming Gua entra no diagnóstico —
   // é o que o painel «o que já sustenta» precisa saber.
   const [clienteDaConsulta, setClienteDaConsulta] = useState<{ data_nascimento: string | null; genero: string | null } | null>(null)
-  // Assistente de 3 leituras (Modo A) — estado local, não persistido (só a média final vira orientacaoGraus).
+  // Campos são rascunho até Usar esta média; os três valores aceitos são preservados.
   const [leituras, setLeituras] = useState<[string, string, string]>(['', '', ''])
+  const [referenciaLeituras, setReferenciaLeituras] = useState<ReferenciaNorte>('magnetico')
   const [leiturasAbertas, setLeiturasAbertas] = useState(false)
   // Bússola virtual (Modo B) — estado local, não persistido (só o resultado aceito vira orientacaoGraus).
   const [bussolaVirtualAberta, setBussolaVirtualAberta] = useState(false)
@@ -924,6 +931,7 @@ function BaguaPlantaContent() {
       orientacao_estado:orientacaoGraus === null ? 'ausente' : orientacaoConfirmadaEm ? 'confirmada' : 'nao_confirmada',
       orientacao_origem:orientacaoOrigem,
       orientacao_confirmada_em:orientacaoConfirmadaEm,
+      orientacao_medicao:medicaoFachada,
       analise_referencia:analiseReferenciaRef.current,
       orientacao_referencia:orientacaoReferencia,
       declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
@@ -1152,6 +1160,7 @@ function BaguaPlantaContent() {
         orientacao_estado:orientacaoGraus === null ? 'ausente' : orientacaoConfirmadaEm ? 'confirmada' : 'nao_confirmada',
         orientacao_origem:orientacaoOrigem,
         orientacao_confirmada_em:orientacaoConfirmadaEm,
+        orientacao_medicao:medicaoFachada,
         orientacao_referencia:orientacaoReferencia,
         declinacao_magnetica:declinacao.trim()===''?null:Number(declinacao),
           bordas:b?{x:b.x,y:b.y,w:b.w,h:b.h}:null,
@@ -1534,7 +1543,7 @@ function BaguaPlantaContent() {
                             </span>
                             <div style={{display:'flex',gap:'4px',marginBottom:'5px'}}>
                               {([['magnetico','Magnético (Luo Pan)'],['verdadeiro','Verdadeiro (mapa)']] as [ReferenciaNorte,string][]).map(([id,lbl])=>(
-                                <button key={id} type="button" onClick={()=>{setOrientacaoReferencia(id);setOrientacaoConfirmadaEm(null)}} style={{
+                                <button key={id} type="button" onClick={()=>{if(id!==orientacaoReferencia){setOrientacaoReferencia(id);setOrientacaoConfirmadaEm(null);setMedicaoFachada(null);setOrientacaoOrigem('manual');setLeituras(['','','']);setReferenciaLeituras(id)}}} style={{
                                   flex:1,padding:'4px 2px',fontSize:'12px',fontWeight:'bold',borderRadius:'5px',cursor:'pointer',border:'1px solid',
                                   borderColor:orientacaoReferencia===id?'#2E7D6B':'#D1D5DB',
                                   background:orientacaoReferencia===id?'#E6F2EF':'#fff',
@@ -1593,7 +1602,8 @@ function BaguaPlantaContent() {
                                 </p>
                               )
                               const destino:ReferenciaNorte=orientacaoReferencia==='magnetico'?'verdadeiro':'magnetico'
-                              const convertida=converterLeitura({graus:orientacaoGraus,referencia:orientacaoReferencia,declinacao:valor},destino)
+                              const medicaoConvertida=medicaoFachada?converterMedicaoFachada(medicaoFachada,destino,valor):null
+                              const convertida=medicaoConvertida?{graus:resumirMedicaoFachada(medicaoConvertida).atual.aplicada}:converterLeitura({graus:orientacaoGraus,referencia:orientacaoReferencia,declinacao:valor},destino)
                               if(!convertida) return null
                               const mConv=montanhaDoGrau(convertida.graus)
                               const mAtual=montanhaDoGrau(orientacaoGraus)
@@ -1607,7 +1617,7 @@ function BaguaPlantaContent() {
                                       ⚠ As duas referências caem em Montanhas diferentes ({mAtual.pinyin} vs {mConv.pinyin}). Confirme qual referência sua medição usou antes de fechar a carta.
                                     </p>
                                   )}
-                                  <button type="button" onClick={()=>{definirLeitura(convertida.graus,orientacaoOrigem);setOrientacaoReferencia(destino)}}
+                                  <button type="button" onClick={()=>{definirLeitura(convertida.graus,orientacaoOrigem,medicaoConvertida);setOrientacaoReferencia(destino)}}
                                     style={{marginTop:'4px',padding:'3px 9px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                                     Converter para Norte {rotuloReferencia(destino)}
                                   </button>
@@ -1624,32 +1634,31 @@ function BaguaPlantaContent() {
                               </p>
                             )
                           })()}
-                          <button type="button" onClick={()=>setLeiturasAbertas(v=>!v)}
+                          <button type="button" aria-expanded={leiturasAbertas} onClick={()=>{if(!leiturasAbertas&&!medicaoFachada)setReferenciaLeituras(orientacaoReferencia);setLeiturasAbertas(v=>!v)}}
                             style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline'}}>
                             {leiturasAbertas?'▾':'▸'} Assistente de 3 leituras (bússola/Luo Pan físico)
                           </button>
                           {leiturasAbertas&&(()=>{
-                            const numeros=leituras.map(l=>l.trim()===''?null:Number(l)).filter((n):n is number=>n!==null&&!isNaN(n))
-                            const media=numeros.length===3?mediaCircular(numeros):null
-                            const desvio=numeros.length===3?desvioCircular(numeros):null
+                            const numeros=leituras.map(l=>l.trim()===''?NaN:Number(l))
+                            const resumo=avaliarTresLeituras(numeros)
                             return (
                               <div style={{marginTop:'6px',padding:'7px',background:'#fff',borderRadius:'5px',border:'1px solid #E5E7EB'}}>
-                                <p style={{margin:'0 0 5px',fontSize:'12px',color:'#6B7280'}}>Informe 3 leituras feitas em pontos distintos da fachada com a bússola/Luo Pan.</p>
+                                <p style={{margin:'0 0 5px',fontSize:'12px',color:'#6B7280'}}>Informe 3 leituras feitas em pontos distintos da fachada com a bússola/Luo Pan. Usar esta média substitui a leitura atual e exige nova confirmação.</p>
+                                <label>Referência das três leituras <select value={referenciaLeituras} onChange={e=>setReferenciaLeituras(e.target.value as ReferenciaNorte)} style={{minHeight:44}}><option value="magnetico">Norte magnético</option><option value="verdadeiro">Norte verdadeiro</option></select></label>
                                 <div style={{display:'flex',gap:'5px'}}>
                                   {leituras.map((l,i)=>(
-                                    <input key={i} type="number" min={0} max={359.9} step={0.1} value={l} placeholder={`Leitura ${i+1}`}
+                                    <input key={i} aria-label={`Leitura ${i+1} da fachada`} type="number" min={0} step="any" value={l} placeholder={`Leitura ${i+1}`}
                                       onChange={e=>setLeituras(prev=>{const next=[...prev] as [string,string,string]; next[i]=e.target.value; return next})}
-                                      style={{width:'62px',padding:'4px 6px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
+                                      style={{minHeight:44,width:'80px',padding:'4px 6px',border:'1px solid #D1D5DB',borderRadius:'5px',fontSize:'13px'}}/>
                                   ))}
                                 </div>
-                                {media!==null&&desvio!==null&&(
+                                {leituras.every(l=>l.trim()!=='')&&!resumo&&<p role="alert">Informe três valores entre 0° e menos de 360°. Leituras sem direção média definida precisam ser refeitas.</p>}
+                                {resumo&&(
                                   <div style={{marginTop:'6px'}}>
-                                    <p style={{margin:0,fontSize:'12px',color:desvio>DESVIO_ALERTA_GRAUS?'#B4533A':'#2E7D6B'}}>
-                                      Média circular: <strong>{media.toFixed(1)}°</strong> · desvio: <strong>{desvio.toFixed(1)}°</strong>
-                                      {desvio>DESVIO_ALERTA_GRAUS&&' — desvio alto, repita a medição'}
-                                    </p>
-                                    <button type="button" onClick={()=>definirLeitura(arredondarGrau(media),'tres_leituras')}
-                                      style={{marginTop:'4px',padding:'4px 10px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
+                                    <p style={{margin:0,fontSize:'12px'}}>Média circular: <strong>{resumo.media.toFixed(2)}°</strong> · dispersão máxima: <strong>{resumo.dispersao.toFixed(2)}°</strong>. Direção a adotar: {resumo.aplicada.toFixed(1)}°.</p>
+                                    {resumo.repetir&&<p>Dispersão acima de 3°: repita a medição e verifique interferências.</p>}
+                                    <button type="button" onClick={()=>{definirLeitura(resumo.aplicada,'tres_leituras',{versao:1,leituras:[...numeros] as [number,number,number],referencia:referenciaLeituras,registrada_em:new Date().toISOString()});setOrientacaoReferencia(referenciaLeituras)}}
+                                      style={{marginTop:'4px',minHeight:44,padding:'4px 10px',background:'#2E7D6B',color:'#fff',border:'none',borderRadius:'5px',fontSize:'12px',fontWeight:'bold',cursor:'pointer'}}>
                                       Usar esta média
                                     </button>
                                   </div>
@@ -1657,6 +1666,7 @@ function BaguaPlantaContent() {
                               </div>
                             )
                           })()}
+                          <ResumoMedicaoFachada valor={medicaoFachada} origem={orientacaoOrigem}/>
                           <button type="button" onClick={()=>setBussolaVirtualAberta(v=>!v)}
                             style={{marginTop:'7px',background:'none',border:'none',padding:0,color:'#2E7D6B',fontSize:'12px',fontWeight:'bold',cursor:'pointer',textDecoration:'underline',display:'block'}}>
                             {bussolaVirtualAberta?'▾':'▸'} Bússola virtual (sensor do celular, experimental)

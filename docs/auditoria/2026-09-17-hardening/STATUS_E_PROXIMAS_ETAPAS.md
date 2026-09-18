@@ -89,8 +89,8 @@ concluído depende de sua validação de domínio e da jornada correspondente.
 | ID | Entrega / estado | Aceite e próximo passo |
 |---|---|---|
 | D0 | Primeira base de resultados versionados — publicada no PR #214 | Mesmos adaptadores na bancada/relatório; estados e limitações explícitos; snapshot em novas emissões; experimento não determina recomendação. Cenários D0-01–05 e ADR 0056; CI 35339415046/35339673192 verde, deployment `dpl_DPf2jjNW6dkrkTKtcTFaq3ovxqyN` READY para `4cbd344` |
-| D1 | Execuções independentes — implementadas, validação/publicação nesta entrega | Fontes/resultados imutáveis por método, registro idempotente, comparação, relatório vinculado e estado derivado. Ownership/RLS/exportação/exclusão incluídos; ADR 0059 e D1-01–07. Homologação visual continua em AC-02 |
-| D2 | Clássico Essencial — em desenvolvimento; cadastro de mobiliário nesta entrega | Tela própria com múltiplos móveis/ambientes, dados pessoais opcionais, direção numérica/na planta, referências e persistência com RLS/CAS. Restam orientação/incerteza completa, cadastro independente de moradores, Formas, variantes, vetores de domínio e piloto; D-MOB-01–06 não encerram D2 |
+| D1 | Execuções independentes — publicadas no PR #218 | Fontes/resultados imutáveis por método, registro idempotente, comparação, relatório vinculado e estado derivado. Ownership/RLS/exportação/exclusão incluídos; ADR 0059 e D1-01–07. Homologação visual continua em AC-02 |
+| D2 | Clássico Essencial — em desenvolvimento; mobiliário no PR #217 e originais de orientação nesta entrega | Três leituras preservadas com referência/conversão, dispersão e alertas de fronteira/arredondamento. Restam incerteza instrumental e condições de campo, captura dos demais modos, cadastro independente de moradores, Formas, variantes, vetores de domínio e piloto; D-MOB-01–06 e D2-ORI-01–07 não encerram D2 |
 | D3 | Fei Xing completo — pendente | Variante e fontes definidas, 24 Montanhas/polaridade/voos e regras aplicáveis, período exato e casos limítrofes; validar cartas externas antes de remover o status experimental |
 | D4 | Outros módulos — pendente | Liu Fa, San He e Da Gua separados; BaZi/seleção de datas como complementos com escopo próprio; requisitos, resultados, proveniência e testes por módulo |
 
@@ -103,12 +103,21 @@ As cartas/PDFs anteriores são preservados.
 
 Publicação anterior conferida: PR #217, merge `d50ec4c`, deployment
 `dpl_FVSr4HYSLnhFroTdb5u9Q7azG9X8` READY; 1.863 testes e 168 verificações SQL.
-D1 local: 1.882 testes em 141 arquivos aprovados; TypeScript aprovado. Revisão
-final, três gates remotos e publicação devem ser vinculados ao PR desta entrega.
+D1: 1.882 testes em 141 arquivos, TypeScript/build aprovados e lint sem erros
+(94 avisos preexistentes). CI do PR 35381626358 e master 35381948122 verdes;
+195 verificações no runner de autorização PostgreSQL/PostgREST, além dos outros
+runners de segurança. Merge `0bf94ada763caa65306d78eb8b90fee1c4e2a603`, deployment
+`dpl_4Tjqjg9UnCTV9bopoUiiRoYqFxoZ` READY com domínio de produção conferido.
+Migration aplicada, RLS/grants conferidos, histórico inicialmente vazio, 17
+consultas/13 clientes preservados e mesmas categorias/achados do advisor.
+Smoke anônimo: home 200, API do histórico 401, página do histórico 307 para login.
 Supabase ainda sem ambiente/branch de teste e Docker local sem daemon em 18/09;
-integração SQL será executada no CI descartável. Isso não encerra AC-01 nem
-contorna o bloqueio anterior do servidor local. Próxima etapa independente:
-preservar as leituras originais de orientação e explicitar dispersão/limites em D2.
+integração SQL executada no CI descartável. Isso não encerra AC-01 nem
+contorna o bloqueio anterior do servidor local. Em D2, originais/dispersão possuem
+implementação e testes nesta entrega (ADR 0060): 1.905 testes/142 arquivos,
+TypeScript aprovado e lint sem erros (94 avisos preexistentes). Entrada/template de relatório
+6/2.7.0; mesmo motor de resultados. Próxima etapa funcional: moradores independentes
+vinculados aos móveis, com privacidade, conflitos e testes desde o início.
 
 Validação local de D0: **1.798 testes em 131 arquivos aprovados**, TypeScript e
 build aprovados; lint sem erros, com os mesmos 102 avisos anteriores. A revisão
