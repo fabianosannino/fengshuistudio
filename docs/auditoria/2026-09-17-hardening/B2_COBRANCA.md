@@ -126,3 +126,11 @@ notificação. RLS ativo em ambas as tabelas. O pacote não é uma transação �
 dos efeitos do webhook; limites e continuação estão no ADR 0042.
 Verificação local do quarto pacote: 1.431 testes em 110 arquivos, typecheck,
 build e lint aprovados (zero erros, 105 avisos existentes).
+
+O primeiro CI do quarto pacote identificou uma corrida no relógio da projeção
+de concessões, descrita no ADR 0042. A ordem foi reproduzida de forma controlada
+e corrigida numa migration adicional; runner agora tem 34 verificações. Não
+houve merge com check vermelho. Leitura agregada de produção encontrou um
+perfil Pro sem concessão vigente e outro Pro coerente; não foi feito recálculo
+em massa nem retirada de direito legado. A origem do perfil divergente precisa
+ser reconciliada antes de abandonar a projeção nas leituras de autorização.

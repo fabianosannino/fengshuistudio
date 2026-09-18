@@ -48,3 +48,16 @@ Migration aditiva; não exige remover dados para rollback da aplicação.
 
 Fontes: [Stripe — webhooks](https://docs.stripe.com/webhooks) e
 [requisições idempotentes](https://docs.stripe.com/api/idempotent_requests).
+
+## Correção encontrada pelo CI
+
+O ensaio de concessões falhou numa ordem rara: a transação Simples começava
+antes, mas adquiria o lock depois da transação Profissional. `now()` retém o
+início da transação; por isso excluía uma concessão já confirmada cujo início
+era posterior àquele relógio. Uma nova migration captura `clock_timestamp()`
+depois do lock e usa esse instante único para avaliar validade.
+
+O teste passou a controlar explicitamente essa ordem, reproduzindo a projeção
+incorreta antes da migration e a preservação do maior plano depois dela.
+Runner de concessões: 34 verificações. Não se alterou a migration já aplicada.
+Referência: [PostgreSQL 17 — relógios de transação e execução](https://www.postgresql.org/docs/17/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT).
