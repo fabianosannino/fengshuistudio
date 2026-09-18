@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -257,21 +259,15 @@ export default function AppShell({
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser(user)
-        const { data } = await supabase
+        const { data } = await carregarPerfilComPlano<Profile>(supabase, supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single()
+          .single())
         if (data) {
           setProfile(data)
         } else {
-          // Fallback to user metadata if profile not found
-          setProfile({
-            nome_completo: user.user_metadata?.nome_completo,
-            tipo_usuario: user.user_metadata?.tipo_usuario,
-            role: user.user_metadata?.role,
-            plano: 'freemium',
-          })
+          setProfile(null)
         }
 
       }
@@ -421,7 +417,7 @@ export default function AppShell({
               color: (isProfessional || plano === 'profissional') ? '#8FD8C4' : plano === 'simples' ? '#8FD8C4' : '#EEDFB4',
               padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
             }}>
-              {isProfessional ? 'Profissional' : planoLabel(profile?.plano)}
+              {profile ? planoLabel(profile.plano) : 'Plano indisponível'}
             </span>
           </div>
         )}

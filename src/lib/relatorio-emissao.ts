@@ -3,9 +3,9 @@ import type { Consulta, Profile, SetorBagua } from './types'
 import type { SnapshotScore } from './reavaliacao'
 import { lerOrientacao, type Orientacao } from './orientacao'
 
-/** C1/C2: solar-year ephemeris, continuous annual cycle and geometric unions. */
+/** C1/C2 engine; template 2.3 records the current grant-derived plan. */
 export const VERSOES_RELATORIO = {
-  entrada: '2', motor: 'fengshui-2026.09-c1c2', template: 'relatorio-2.2.0',
+  entrada: '2', motor: 'fengshui-2026.09-c1c2', template: 'relatorio-2.3.0',
 } as const
 // Vercel aceita 4,5 MB por request; 4 MiB deixam margem para multipart.
 // O bucket mantém 20 MiB para preservar arquivos legados maiores.

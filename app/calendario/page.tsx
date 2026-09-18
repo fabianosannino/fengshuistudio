@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../src/lib/supabase'
@@ -93,7 +95,7 @@ export default function Calendario() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { redirecionarParaLogin(); return }
       setUser(user)
-      const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
+      const { data: prof } = await carregarPerfilComPlano(supabase, supabase.from('profiles').select('plano').eq('id', user.id).single())
       setProfile(prof)
       const inicioMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-01`
       const fimMes = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-${new Date(anoAtual, mesAtual + 1, 0).getDate()}`
@@ -191,6 +193,10 @@ export default function Calendario() {
   const rituaisPendentes = rituais.filter(r => r.status === 'pendente').length
 
   const _plano = planoEfetivo(profile?.plano)
+  if (!profile) return <AppShell currentPage="calendario"><div role="alert">
+    <p>Não foi possível verificar seu plano. Recarregue para acessar o calendário.</p>
+    <button type="button" onClick={() => window.location.reload()}>Tentar novamente</button>
+  </div></AppShell>
   const _isFree = !podeCalendario(_plano)
   if (_isFree) {
     return (

@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { logger } from '../../src/lib/logger'
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
@@ -65,7 +67,8 @@ export default function Parceiros() {
       if (!user) { redirecionarParaLogin(); return }
 
       // Get user plan
-      const { data: prof } = await supabase.from('profiles').select('plano').eq('id', user.id).single()
+      const { data: prof } = await carregarPerfilComPlano(supabase, supabase.from('profiles').select('plano').eq('id', user.id).single())
+      if (!prof) { setFalhouAoCarregar(true); setLoading(false); return }
       setUserPlano(prof?.plano || '')
 
       // Fetch profiles that opted to be visible as partners (paginated)

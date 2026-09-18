@@ -50,3 +50,7 @@ Terceiro pacote: validação e reencode de imagens nas quatro rotas do app,
 limites reais de multipart e pixels, remoção de metadados e troca de arquivos
 sem apagar a versão anterior. ADR 0046 registra a fronteira ainda pendente
 com a API direta de Storage e a retenção de versões. Não fecha C3 integralmente.
+
+PR #202 integrado em `be665b0f6d44a8fc80a0f92cf6ba00360578c8fa`, CI
+35316239827 verde, 1.585 testes em 120 arquivos. Produção READY
+`dpl_79StutQhzf3taBHSam6NMXc9EwM1`, mesmo SHA.

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import NovaConsulta from '../app/consultas/nova/page'
 
 const mocks = vi.hoisted(() => ({
-  plano: 'starter', tipo: 'consultor', ativos: 1,
+  plano: 'starter', planoVigente: 'simples', tipo: 'consultor', ativos: 1,
   profileError: null as null | { code: string },
   not: vi.fn(), rpc: vi.fn(), fetch: vi.fn(),
 }))
@@ -28,12 +28,19 @@ vi.mock('../src/lib/supabase', () => ({ supabase: {
 } }))
 
 beforeEach(() => {
-  mocks.plano = 'starter'; mocks.tipo = 'consultor'; mocks.ativos = 1; mocks.profileError = null
+  mocks.plano = 'starter'; mocks.planoVigente = 'simples'; mocks.tipo = 'consultor'; mocks.ativos = 1; mocks.profileError = null
   mocks.not.mockClear(); mocks.rpc.mockReset(); mocks.fetch.mockReset()
+  mocks.rpc.mockImplementation(async (nome: string) => ({ data: nome === 'obter_meu_plano' ? mocks.planoVigente : 'own-client', error: null }))
   vi.stubGlobal('fetch', mocks.fetch)
 })
 
 describe('nova consulta respeita os direitos efetivos', () => {
+  it('Pro vencido no cache mostra a cota Free vigente', async () => {
+    mocks.plano = 'pro'; mocks.planoVigente = 'free'; mocks.ativos = 3
+    render(<NovaConsulta />)
+    expect(await screen.findByText(/limite de 3 imóveis ativos/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Criar consulta|Iniciar diagnóstico/ })).not.toBeInTheDocument()
+  })
   it('Simples com um imóvel ainda pode criar e selecionar seu cliente', async () => {
     render(<NovaConsulta />)
     expect(await screen.findByRole('button', { name: 'Criar consulta' })).not.toBeDisabled()
@@ -49,8 +56,7 @@ describe('nova consulta respeita os direitos efetivos', () => {
     expect(screen.getByRole('link', { name: 'Gerenciar imóveis' })).toHaveAttribute('href', '/consultas')
   })
   it('Free prepara o titular por RPC sem enviar identidade ou criar cliente no navegador', async () => {
-    mocks.plano = 'freemium'; mocks.tipo = 'pessoal'; mocks.ativos = 2
-    mocks.rpc.mockResolvedValue({ data: 'own-client', error: null })
+    mocks.plano = 'freemium'; mocks.planoVigente = 'free'; mocks.tipo = 'pessoal'; mocks.ativos = 2
     mocks.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: 'Falha de teste' }) })
     render(<NovaConsulta />)
     fireEvent.click(await screen.findByRole('button', { name: 'Iniciar diagnóstico' }))

@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../src/lib/plano-vigente'
+
 import { redirecionarParaLogin } from '../../src/lib/auth-rotas'
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -115,11 +117,11 @@ export default function Relatorios() {
       setUser(user)
 
       // Profile (loaded first -- needed for plan checks)
-      const { data: profile } = await supabase
+      const { data: profile } = await carregarPerfilComPlano<Profile>(supabase, supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .single())
       setProfile(profile)
 
       // Date constants for agenda queries
@@ -499,7 +501,7 @@ export default function Relatorios() {
           { label: 'Consultas ativas', value: String(totalConsultas), icon: ClipboardList, color: '#C9A227', link: '/consultas' },
           { label: 'Relatórios entregues', value: String(relatoriosEntregues), icon: FileText, color: '#2E7D6B', link: '/consultas' },
           { label: 'Rituais pendentes', value: String(totalRituais), icon: Moon, color: '#1C3A52', link: '/calendario' },
-          { label: 'Plano atual', value: isProfissional(profile) ? 'Profissional' : planoLabel(profile?.plano), icon: Star, color: '#C9A227', link: '/planos' },
+          { label: 'Plano atual', value: profile ? (isProfissional(profile) ? 'Profissional' : planoLabel(profile.plano)) : 'Indisponível', icon: Star, color: '#C9A227', link: '/planos' },
         ].map((kpi, i) => (
           // `<a>` em vez de `<div onClick>`: é navegação, então precisa de
           // teclado, foco e menu de contexto — WCAG 2.1.1.
@@ -739,7 +741,7 @@ export default function Relatorios() {
       )}
 
       {/* Banner upgrade */}
-      {planoUsuario(profile) !== 'profissional' && (
+      {profile && planoUsuario(profile) !== 'profissional' && (
         <div style={{
           background: 'linear-gradient(135deg, #2E7D6B, #0E1B2C)',
           borderRadius: '12px', padding: '24px 32px',

@@ -15,7 +15,8 @@
       "codex/calculos-c1-c2": false,
       "codex/pipeline-a2": false,
       "codex/contencao-financeira-privacidade": false,
-      "codex/uploads-validados": false
+      "codex/uploads-validados": false,
+      "codex/plano-vigente-b2": false
     }
   },
   "crons": [

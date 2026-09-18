@@ -1,5 +1,7 @@
 'use client'
 
+import { carregarPerfilComPlano } from '../../../src/lib/plano-vigente'
+
 import CamposAnoDoImovel from '../../components/CamposAnoDoImovel'
 import { calcularMingGua } from '../../../src/lib/ming-gua'
 import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
@@ -52,11 +54,11 @@ function NovaConsultaContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { redirecionarParaLogin(); return }
 
-      const { data: prof, error: profileError } = await supabase
+      const { data: prof, error: profileError } = await carregarPerfilComPlano<Profile>(supabase, supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .single())
       if (profileError || !prof) { setMessage('Não foi possível carregar seu plano. Recarregue a página.'); setLoading(false); return }
       setProfile(prof)
 

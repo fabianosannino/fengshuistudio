@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
 import { planoEfetivo } from '../../../src/lib/plano-utils'
+import { obterMeuPlano } from '../../../src/lib/plano-vigente'
 import stripeClient from '../../../src/lib/stripe'
 
 const ROUTE = '/api/planos'
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
 
   const { data: profile, error } = await supabase.from('profiles').select('plano,stripe_customer_id').eq('id', user.id).single()
   if (error || !profile) return indisponivel()
-  const atual = planoEfetivo(profile.plano), alvo = planoEfetivo(plano)
+  const atual = await obterMeuPlano(supabase), alvo = planoEfetivo(plano)
+  if (atual === null) return indisponivel()
   const admin = createSupabaseAdminClient()
 
   if (alvo !== 'free') {
