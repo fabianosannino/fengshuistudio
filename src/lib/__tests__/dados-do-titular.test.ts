@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   fotosDaConsulta, arquivosParaApagar, emailAnonimo,
   COLUNAS_DE_IMAGEM_DA_CONSULTA, COLUNAS_DE_RELATORIO_DA_CONSULTA,
-  BUCKETS_DO_TITULAR, MARCA_DE_ANONIMIZACAO,
+  BUCKETS_DO_TITULAR, MARCA_DE_ANONIMIZACAO, ORIGEM_DOS_PDFS_VERSIONADOS,
 } from '../dados-do-titular'
 
 /**
@@ -104,6 +104,9 @@ describe('fotosDaConsulta', () => {
 })
 
 describe('arquivosParaApagar', () => {
+  it('inclui o histórico versionado no inventário de arquivos', () => {
+    expect(ORIGEM_DOS_PDFS_VERSIONADOS).toEqual({ tabela: 'relatorio_emissoes', coluna: 'pdf_path', bucket: BUCKETS_DO_TITULAR.relatorios })
+  })
   it('separa por bucket', () => {
     const grupos = arquivosParaApagar({
       [BUCKETS_DO_TITULAR.clientes]: ['consultor-1/cliente-a.jpg'],

@@ -93,12 +93,16 @@ export default function Consultas() {
   }
 
   async function handleDelete(id: string) {
-    const { error } = await supabase.from('consultas').delete().eq('id', id)
-    if (error) {
-      setMessage('Erro ao excluir: ' + error.message)
-    } else {
-      // Reload current page after deletion
-      await loadData(currentPage)
+    try {
+      const res = await fetch(`/api/consultas/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        setMessage(data.error || 'Não foi possível excluir a consulta.')
+      } else {
+        await loadData(currentPage)
+      }
+    } catch {
+      setMessage('Não foi possível excluir a consulta. Tente novamente.')
     }
     setDeleteTarget(null)
   }

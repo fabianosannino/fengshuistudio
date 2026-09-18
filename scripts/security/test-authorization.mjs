@@ -159,6 +159,52 @@ try {
   // SQL with missing JWT must not acquire the former COALESCE(service_role) bypass.
   assert.throws(()=>sql(`set role authenticated; set request.jwt.claims = '{"sub":"${actor(1)}"}'; update profiles set plano='starter' where id='${actor(1)}';`))
   checks++
+  // B0: real migration and Data API, with synthetic Storage metadata only.
+  sql(`create schema storage;
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
+    grant usage on schema storage to service_role;
+    grant select,insert,delete on storage.objects to service_role;
+    alter table consultas add column relatorio_pdf_path text, add column relatorio_gerado_em timestamptz;
+    update consultas set relatorio_pdf_path='${actor(1)}/relatorio.pdf' where id='${actor(1)}';
+    insert into storage.objects(bucket_id,name) values('relatorios','${actor(1)}/relatorio.pdf');`)
+  sql(source('supabase/migrations/20260918021029_immutable_report_emissions.sql'))
+  sql("notify pgrst, 'reload schema';")
+  await eventually(async()=>(await request('relatorio_emissoes',1)).status===200)
+  const legacy = (await request('relatorio_emissoes',1)).data[0]
+  ok(legacy.estado,'legado','legacy PDF registered without inventing inputs')
+  ok(legacy.entrada,null,'legacy inputs remain unknown')
+  ok((await request('relatorio_emissoes',2)).data,[],'report history is isolated by owner')
+  denied(await request('relatorio_emissoes',1,{role:'anon'}),'anonymous report history denied')
+  const report = n => ({id:actor(n+10),consulta_id:actor(n),consultor_id:actor(n),estado:'preparada',
+    pdf_path:`${actor(n)}/emissoes/${actor(n+10)}.pdf`,entrada:{synthetic:true},entrada_sha256:'a'.repeat(64),
+    versao_entrada:'1',versao_motor:'fixture-v1',versao_template:'fixture-v1'})
+  const first = {...report(1),revisao_de:legacy.id}
+  for(const method of ['POST','PATCH','DELETE']) {
+    denied(await request('relatorio_emissoes',1,{method,body:method==='DELETE'?undefined:first}),`client cannot ${method} report history`)
+  }
+  ok((await request('relatorio_emissoes',1,{role:'service_role',method:'POST',body:first})).status,201,'trusted preparation')
+  ok((await request('relatorio_emissoes',2,{role:'service_role',method:'POST',body:{...report(2),revisao_de:legacy.id}})).status,409,'revision cannot refer to another consultation')
+  const finishBody = {p_id:first.id,p_consultor:actor(1),p_sha256:'b'.repeat(64),p_bytes:100}
+  denied(await request('rpc/concluir_emissao_relatorio',1,{method:'POST',body:finishBody}),'client cannot confirm report')
+  ok((await request('rpc/concluir_emissao_relatorio',1,{role:'service_role',method:'POST',body:finishBody})).status,400,'missing upload cannot complete')
+  ok(sql(`select estado from relatorio_emissoes where id='${first.id}'`),'preparada','failed confirmation remains pending')
+  sql(`insert into storage.objects(bucket_id,name) values('relatorios','${first.pdf_path}');`)
+  const confirmed = await request('rpc/concluir_emissao_relatorio',1,{role:'service_role',method:'POST',body:finishBody})
+  ok(confirmed.status,200,'uploaded file can complete')
+  ok((await request('rpc/concluir_emissao_relatorio',1,{role:'service_role',method:'POST',body:finishBody})).data,confirmed.data,'same confirmation is idempotent')
+  ok((await request('rpc/concluir_emissao_relatorio',1,{role:'service_role',method:'POST',body:{...finishBody,p_sha256:'c'.repeat(64)}})).status,400,'different PDF rejected after completion')
+  denied(await request(`relatorio_emissoes?id=eq.${first.id}`,1,{role:'service_role',method:'PATCH',body:{entrada:{changed:true}}}),'even service cannot rewrite a completed snapshot')
+  ok((await request(`consultas?id=eq.${actor(1)}`,1,{method:'DELETE'})).status,409,'consultation deletion cannot orphan report files')
+  const purge = {p_consultor:actor(1),p_ids:[legacy.id,first.id]}
+  denied(await request('rpc/excluir_emissoes_relatorio',1,{method:'POST',body:purge}),'client cannot purge report history directly')
+  ok((await request('rpc/excluir_emissoes_relatorio',1,{role:'service_role',method:'POST',body:purge})).status,400,'storage must be removed before metadata')
+  sql("delete from storage.objects where bucket_id='relatorios';")
+  ok((await request('rpc/excluir_emissoes_relatorio',1,{role:'service_role',method:'POST',body:purge})).status,204,'explicit retention deletion removes revision chain together')
+  ok(sql('select count(*) from relatorio_emissoes'),'0','report cleanup leaves no metadata orphan')
+  for(const role of ['anon','authenticated']) {
+    ok(sql(`select has_table_privilege('${role}','relatorio_emissoes','TRUNCATE') or has_table_privilege('${role}','relatorio_emissoes','MAINTAIN')`),'f',`${role}: cannot bypass history using table-wide privileges`)
+  }
+
   // Restore rehearsal of this disposable schema/data, never a production backup.
   const dump = execFileSync('docker',['exec',db,'pg_dump','-U','postgres','--no-owner'],{encoding:'utf8'})
   sql('create database restore_check;')

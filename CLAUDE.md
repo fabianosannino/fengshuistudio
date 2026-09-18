@@ -262,10 +262,12 @@ teste está medindo o próprio andaime.
 `app/consultas/[id]/relatorio/page.tsx` tem **dois** caminhos, e eles falham
 por motivos diferentes:
 
-- **«Imprimir / Salvar PDF»** — diálogo do navegador. Texto selecionável,
-  respeita `@media print`. É o caminho principal.
-- **«Baixar como imagem»** — `html2canvas` + `jsPDF`. Fotografa a tela. Só ele
-  passa por `src/lib/cores-canvas.ts`.
+- **«Imprimir prévia (sem histórico)»** — diálogo do navegador. Texto
+  selecionável, respeita `@media print`, não confirma uma emissão.
+- **«Emitir e salvar PDF»** — `html2canvas` + `jsPDF`. Fotografa a tela,
+  preserva entradas e PDF por UUID e só baixa após confirmar o salvamento
+  (ADR 0037). Só ele passa por `src/lib/cores-canvas.ts`. Qualquer mudança
+  de motor/template/entrada exige atualizar `VERSOES_RELATORIO`.
 
 A paleta do app é declarada em **`oklch()`** (32 custom properties no `:root`
 de `app/globals.css`), e o html2canvas 1.4.1 — último release, de 2022 — não
