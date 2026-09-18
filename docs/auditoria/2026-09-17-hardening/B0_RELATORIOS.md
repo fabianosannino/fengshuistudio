@@ -17,10 +17,10 @@ Escopo: preservar entradas/versões/PDF antes das correções de domínio B1/C1.
 
 ## Evidência local
 
-- 59 testes direcionados passaram: contrato, API, retenção, inventário e tela.
+- 60 testes direcionados: contrato, API, retenção, inventário e tela.
 - Runner PostgreSQL/PostgREST: 156 verificações passaram; sete falhas antigas
   reproduzidas antes das correções; restore em banco descartável aprovado.
-- Typecheck aprovado; suíte completa com 1.292 testes em 100 arquivos aprovada.
+- Typecheck aprovado; suíte completa com 1.293 testes em 100 arquivos.
   Lint: zero erros e 115 avisos. Catálogo: 31 verificações aprovadas.
   Build de produção aprovado com variáveis fictícias, sem credenciais reais.
 - Este registro antecede a publicação. Resultado final de CI, migração e deploy:

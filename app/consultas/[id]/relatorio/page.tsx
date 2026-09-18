@@ -278,6 +278,14 @@ export default function Relatorio() {
     form.append('consulta_id', id)
     form.append('emissao_id', arquivo.id)
     const res = await fetch('/api/consultas/relatorio', { method: 'POST', body: form })
+    if (res.status === 400 || res.status === 409) {
+      // Expiração/conflito não melhora repetindo o mesmo envio. Libera a
+      // geração de uma revisão sem declarar sucesso nem apagar o histórico.
+      const data = await res.json()
+      pendente.current = null
+      setErroEmissao(data.error || 'Recarregue a página e gere uma nova emissão.')
+      return
+    }
     if (!res.ok) throw new Error('O PDF ainda não foi confirmado como salvo. Tente salvar novamente sem fechar esta página.')
     const data = await res.json()
     setSavedRelatorioEm(data.gerado_em)

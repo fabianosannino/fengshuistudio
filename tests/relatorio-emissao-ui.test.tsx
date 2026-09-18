@@ -20,13 +20,14 @@ vi.mock('jspdf', () => ({ jsPDF: class {
 
 const respostas: { preparo: Record<string, unknown>[]; uploads: FormData[] } = { preparo: [], uploads: [] }
 let falharUpload = false
+let statusFalha = 503
 let falharHistoricoDepois = false
 let foto: string | null = null
 let leiturasHistorico = 0
 const json = (data: unknown, ok = true) => ({ ok, status: ok ? 200 : 503, json: async () => data })
 beforeEach(() => {
   vi.clearAllMocks(); respostas.preparo.length = 0; respostas.uploads.length = 0
-  falharUpload = false; falharHistoricoDepois = false; leiturasHistorico = 0; foto = null
+  falharUpload = false; statusFalha = 503; falharHistoricoDepois = false; leiturasHistorico = 0; foto = null
   mocks.capture.mockResolvedValue({ width: 1000, height: 1000, toDataURL: () => 'data:image/png;base64,fixture' })
   mocks.output.mockReturnValue(new Blob(['%PDF-1.4\nfixture\n%%EOF'], { type: 'application/pdf' }))
   vi.stubGlobal('fetch', mocks.fetch)
@@ -50,7 +51,7 @@ beforeEach(() => {
     }
     if (options?.method === 'POST') {
       respostas.uploads.push(options.body as FormData)
-      return json({ gerado_em: '2026-09-17T12:30:00.000Z' }, !falharUpload)
+      return { ...json({ gerado_em: '2026-09-17T12:30:00.000Z' }, !falharUpload), status: falharUpload ? statusFalha : 200 }
     }
     throw new Error(`URL inesperada: ${url}`)
   })
@@ -92,6 +93,14 @@ describe('emissão pela página', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('O PDF foi salvo')
     expect(mocks.download).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Tentar salvar novamente' })).not.toBeInTheDocument()
+  })
+  it('preparação expirada não prende o usuário num retry impossível', async () => {
+    falharUpload = true; statusFalha = 409
+    await emitir()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Recarregue a página e gere uma nova emissão')
+    expect(screen.queryByRole('button', { name: 'Tentar salvar novamente' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Emitir e salvar PDF' })).toBeEnabled()
+    expect(mocks.download).not.toHaveBeenCalled()
   })
   it('barra PDF excessivo antes do envio e permite alterar as seções', async () => {
     mocks.output.mockReturnValue(new Blob([new Uint8Array(MAX_PDF_RELATORIO + 1)], { type: 'application/pdf' }))
