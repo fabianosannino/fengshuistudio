@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "codex/auditoria-correcoes-20260917": false,
-      "codex/validacao-pr189": false
+      "codex/validacao-pr189": false,
+      "codex/relatorios-imutaveis-b0": false
     }
   },
   "crons": [

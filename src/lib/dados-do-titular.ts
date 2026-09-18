@@ -160,6 +160,11 @@ export const COLUNAS_DE_RELATORIO_DA_CONSULTA = ['relatorio_pdf_path'] as const
  */
 export const TABELA_DE_FOTOS_DA_CONSULTA = 'fotos_consulta'
 
+/** Todas as versões, inclusive uploads cuja confirmação falhou. */
+export const ORIGEM_DOS_PDFS_VERSIONADOS = {
+  tabela: 'relatorio_emissoes', coluna: 'pdf_path', bucket: BUCKET_RELATORIOS,
+} as const
+
 export const CHAVES_DE_IMAGEM_ANINHADAS = ['fotos', 'url', 'path', 'planta_url'] as const
 
 /**

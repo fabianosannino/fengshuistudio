@@ -2,10 +2,11 @@
 
 import { redirecionarParaLogin } from '../../../../src/lib/auth-rotas'
 import { Fragment, useEffect, useState, useRef } from 'react'
+import { flushSync } from 'react-dom'
+import { AVISO_PDF_EXCESSIVO, MAX_PDF_RELATORIO, VERSOES_RELATORIO, type EmissaoRelatorio, type FonteRelatorio } from '../../../../src/lib/relatorio-emissao'
 import { CORTE_URGENTE, CORTE_ATENCAO } from '../../../../src/lib/modelos-pontuacao'
 import { supabase } from '../../../../src/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
-import FlowLayout from '../../../components/FlowLayout'
 // jsPDF and html2canvas are lazy-loaded in handleDownloadPDF() to reduce initial bundle size
 import { AREA_META, LOSHU_ORDER, RODA_AREAS } from '../../../../src/lib/constants'
 import { gerarRecomendacoes, criteriosPorNomeParaArray } from '../../../../src/lib/recomendacoes'
@@ -96,10 +97,20 @@ async function waitForImages(el: HTMLElement): Promise<void> {
   await Promise.all(
     imgs.map((img) => {
       if (img.complete && img.naturalWidth > 0) return Promise.resolve()
-      return new Promise<void>((resolve) => {
-        const done = () => resolve()
-        img.addEventListener('load', done, { once: true })
-        img.addEventListener('error', done, { once: true })
+      return new Promise<void>((resolve, reject) => {
+        const finish = (ok: boolean) => {
+          clearTimeout(timer)
+          img.removeEventListener('load', loaded)
+          img.removeEventListener('error', failed)
+          if (ok) resolve()
+          else reject(new Error('Uma imagem do relatório não pôde ser carregada.'))
+        }
+        const loaded = () => finish(img.naturalWidth > 0)
+        const failed = () => finish(false)
+        const timer = setTimeout(failed, 15_000)
+        if (img.complete) { failed(); return }
+        img.addEventListener('load', loaded, { once: true })
+        img.addEventListener('error', failed, { once: true })
       })
     })
   )
@@ -117,6 +128,12 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [savedRelatorioEm, setSavedRelatorioEm] = useState<string | null>(null)
+  const [historico, setHistorico] = useState<EmissaoRelatorio[]>([])
+  const [fonteHash, setFonteHash] = useState('')
+  const [referenciaTemporal, setReferenciaTemporal] = useState('')
+  const [emissaoAtual, setEmissaoAtual] = useState<string | null>(null)
+  const [erroEmissao, setErroEmissao] = useState<string | null>(null)
+  const pendente = useRef<{ id: string; blob: Blob; nome: string } | null>(null)
   const [snapshots, setSnapshots] = useState<Array<{ tipo: string; scores: SnapshotScore[]; criado_em: string }>>([])
   // Nudge para marcar a consulta (entrega) como concluída após gerar o relatório.
   const [showConcluirNudge, setShowConcluirNudge] = useState(false)
@@ -166,54 +183,36 @@ export default function Relatorio() {
   const needsWatermark = isSimples
 
   useEffect(() => {
+    let cancelado = false
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { redirecionarParaLogin(); return }
-
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setProfile(prof)
-
-      const { data: consulta } = await supabase
-        .from('consultas')
-        .select('*, clientes(nome_completo, email, telefone, cidade, estado, data_nascimento, genero)')
-        .eq('id', id)
-        .single()
-      if (!consulta) { router.push('/consultas'); return }
-      setConsulta(consulta)
-      setSavedRelatorioEm(consulta.relatorio_gerado_em ?? null)
-
-      const { data: setoresData } = await supabase
-        .from('setores_bagua')
-        .select('*, diagnostico_criterios(*)')
-        .eq('consulta_id', id)
-        .order('numero')
-      setSetores(setoresData || [])
-
-      // Snapshots do diagnóstico (evolução antes/depois)
-      const { data: snapsData } = await supabase
-        .from('diagnostico_snapshots')
-        .select('tipo, scores, criado_em')
-        .eq('consulta_id', id)
-        .order('criado_em', { ascending: true })
-      setSnapshots(snapsData || [])
-
-      // Pontos personalizados do checklist de Chi. Viviam em `localStorage` e
-      // por isso nunca chegavam ao relatório — que é o entregável ao cliente.
-      const { data: custom, error: erroCustom } = await supabase
-        .from('consultor_checklist_chi_custom')
-        .select('item_id, label')
-        .order('criado_em', { ascending: true })
-      if (erroCustom) {
-        logger.error('Falha ao carregar pontos personalizados do Chi no relatório', {
-          route: 'relatorio', action: 'load-chi-custom', error: erroCustom.message,
-        })
-      } else {
-        setChiCustom((custom ?? []).map(r => ({ id: r.item_id as string, label: r.label as string })))
+      try {
+        const [res, hist] = await Promise.all([
+          fetch(`/api/consultas/relatorio/entrada?consulta_id=${id}`),
+          fetch(`/api/consultas/relatorio?consulta_id=${id}&historico=1`),
+        ])
+        if (res.status === 401) { redirecionarParaLogin(); return }
+        if (res.status === 404) { router.push('/consultas'); return }
+        if (!res.ok || !hist.ok) throw new Error('Não foi possível carregar o relatório. Recarregue a página.')
+        const data = await res.json() as { fonte: FonteRelatorio; fonte_sha256: string; referencia_temporal: string }
+        const versoes = (await hist.json()).emissoes as EmissaoRelatorio[]
+        if (cancelado) return
+        setProfile(data.fonte.perfil)
+        setConsulta(data.fonte.consulta)
+        setSetores(data.fonte.setores)
+        setSnapshots(data.fonte.evolucao)
+        setChiCustom(data.fonte.chi_custom)
+        setFonteHash(data.fonte_sha256)
+        setReferenciaTemporal(data.referencia_temporal)
+        setHistorico(versoes)
+        setSavedRelatorioEm(versoes.find(v => v.estado !== 'preparada')?.concluido_em ?? null)
+      } catch {
+        if (!cancelado) setErroEmissao('Não foi possível carregar as entradas do relatório. Recarregue a página.')
+      } finally {
+        if (!cancelado) setLoading(false)
       }
-
-      setLoading(false)
     }
     load()
+    return () => { cancelado = true }
   }, [id, router])
 
   function scoreGeral() {
@@ -251,7 +250,7 @@ export default function Relatorio() {
   function getProximasFasesLunares() {
     // O cálculo vem de `src/lib/lunar.ts`. Estava copiado aqui e no calendário,
     // com a mesma constante de lunação — e duas cópias divergem cedo ou tarde.
-    const hoje = new Date()
+    const hoje = new Date(referenciaTemporal)
     const fases: { data: Date; fase: string; emoji: string; sugestao: string }[] = []
     for (let d = 0; d < 30 && fases.length < 3; d++) {
       const date = new Date(hoje.getTime() + d * 86400000)
@@ -271,13 +270,76 @@ export default function Relatorio() {
 
   function handlePrint() { window.print() }
 
-  async function handleDownloadPDF() {
-    if (!printRef.current) return
+  async function salvarEmissaoPendente() {
+    const arquivo = pendente.current
+    if (!arquivo) return
+    const form = new FormData()
+    form.append('pdf', arquivo.blob, arquivo.nome)
+    form.append('consulta_id', id)
+    form.append('emissao_id', arquivo.id)
+    const res = await fetch('/api/consultas/relatorio', { method: 'POST', body: form })
+    if (res.status === 400 || res.status === 409) {
+      // Expiração/conflito não melhora repetindo o mesmo envio. Libera a
+      // geração de uma revisão sem declarar sucesso nem apagar o histórico.
+      const data = await res.json()
+      pendente.current = null
+      setErroEmissao(data.error || 'Recarregue a página e gere uma nova emissão.')
+      return
+    }
+    if (!res.ok) throw new Error('O PDF ainda não foi confirmado como salvo. Tente salvar novamente sem fechar esta página.')
+    const data = await res.json()
+    setSavedRelatorioEm(data.gerado_em)
+    const url = URL.createObjectURL(arquivo.blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = arquivo.nome
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 30_000)
+    pendente.current = null
+    setErroEmissao(null)
+    if (consulta?.status !== 'finalizada') setShowConcluirNudge(true)
+    // O PDF já foi confirmado. Falha de atualização da lista não desfaz o sucesso.
+    try {
+      const hist = await fetch(`/api/consultas/relatorio?consulta_id=${id}&historico=1`)
+      if (!hist.ok) throw new Error('Histórico indisponível')
+      setHistorico((await hist.json()).emissoes)
+    } catch {
+      setErroEmissao('O PDF foi salvo. Recarregue a página para atualizar o histórico.')
+    }
+  }
+
+  async function repetirSalvamento() {
     setDownloading(true)
+    try { await salvarEmissaoPendente() } catch {
+      setErroEmissao('O salvamento ainda não foi confirmado. Tente novamente sem fechar esta página.')
+    } finally { setDownloading(false) }
+  }
+
+  async function handleDownloadPDF() {
+    if (!printRef.current || pendente.current || downloading) return
+    if (selectedSections.fotos && fotosDoImovel.some(valor => valor && !resolverFoto(valor))) {
+      setErroEmissao('Uma foto não pôde ser carregada. Recarregue a página antes de emitir o relatório.')
+      return
+    }
+    setDownloading(true)
+    setErroEmissao(null)
     // A geração tem seis etapas e qualquer uma pode falhar. Sem saber qual,
     // «Erro ao gerar PDF» manda o consultor adivinhar e não dá o que investigar.
     let etapa = 'preparar'
     try {
+      const emissaoId = crypto.randomUUID()
+      const preparo = await fetch('/api/consultas/relatorio/preparar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: emissaoId, consulta_id: id, fonte_sha256: fonteHash, referencia_temporal: referenciaTemporal, versoes: VERSOES_RELATORIO,
+          fuso: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          edicao: { secoes: selectedSections, textos: { introducao: textoIntroducao, curas: textoCuras, chi: textoChi, conclusao: textoConclusao }, recomendacoes: recsAdicionais },
+        }),
+      })
+      const preparado = await preparo.json()
+      if (!preparo.ok) throw new Error(preparado.error || 'Não foi possível preparar a emissão.')
+      flushSync(() => setEmissaoAtual(emissaoId))
+      await document.fonts.ready
       etapa = 'aguardar imagens'
       await waitForImages(printRef.current)
       etapa = 'carregar bibliotecas'
@@ -374,7 +436,7 @@ export default function Relatorio() {
       const imgWidth = 210
       const pageHeight = 297
       const imgHeight = (canvas.height * imgWidth) / canvas.width
-      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true })
       let heightLeft = imgHeight
       let position = 0
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
@@ -404,25 +466,15 @@ export default function Relatorio() {
         pdf.setTextColor(170, 170, 170)
         pdf.text(`Página ${i} de ${totalPages}`, 105, 290, { align: 'center' })
       }
-      etapa = 'salvar o arquivo'
+      etapa = 'confirmar o salvamento'
       const nomeArquivo = `relatorio-${consulta!.nome_imovel?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'consulta'}.pdf`
-      pdf.save(nomeArquivo)
-
-      // Relat\u00f3rio entregue \u2192 sugere concluir a consulta (s\u00f3 nudge; n\u00e3o trava nada).
-      if (consulta!.status !== 'finalizada') setShowConcluirNudge(true)
-
-      // Persiste no servidor (best-effort — o download acima já ocorreu)
-      try {
-        const blob = pdf.output('blob')
-        const fd = new FormData()
-        fd.append('pdf', blob, nomeArquivo)
-        fd.append('consulta_id', id)
-        const res = await fetch('/api/consultas/relatorio', { method: 'POST', body: fd })
-        if (res.ok) {
-          const data = await res.json()
-          setSavedRelatorioEm(data.gerado_em ?? new Date().toISOString())
-        }
-      } catch { /* persistência é best-effort; não atrapalha o download */ }
+      const blob = pdf.output('blob')
+      if (blob.size > MAX_PDF_RELATORIO) {
+        setErroEmissao(AVISO_PDF_EXCESSIVO)
+        return
+      }
+      pendente.current = { id: emissaoId, blob, nome: nomeArquivo }
+      await salvarEmissaoPendente()
     } catch (err) {
       // Detalhe técnico na tela de propósito: quem vê isto é o consultor, dono
       // da consulta, e é ele quem vai reportar. Mensagem genérica aqui esconde
@@ -433,21 +485,23 @@ export default function Relatorio() {
       logger.error('Falha ao gerar PDF do relatório', {
         route: 'relatorio', action: etapa, consultaId: id, error: `${nome}: ${detalhe}`,
       })
-      alert(
-        `Erro ao gerar o PDF na etapa «${etapa}».\n\n${nome}: ${detalhe}\n\n` +
-        'Use a opção Imprimir enquanto isso, e envie esta mensagem para o suporte.'
-      )
+      setErroEmissao(etapa === 'preparar' ? detalhe : `Não foi possível concluir a etapa «${etapa}». ${pendente.current ? 'Tente salvar novamente sem fechar esta página.' : 'Tente gerar o PDF novamente.'}`)
     } finally {
       setDownloading(false)
+      setEmissaoAtual(null)
     }
   }
 
-  async function baixarVersaoSalva() {
-    const res = await fetch(`/api/consultas/relatorio?consulta_id=${id}`)
-    if (!res.ok) { alert('Não foi possível abrir o relatório salvo.'); return }
-    const data = await res.json()
-    if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
-    else alert('Nenhuma versão salva ainda. Gere o PDF primeiro.')
+  async function baixarVersaoSalva(emissaoId?: string) {
+    try {
+      const res = await fetch(`/api/consultas/relatorio?consulta_id=${id}${emissaoId ? `&emissao_id=${emissaoId}` : ''}`)
+      if (!res.ok) throw new Error('Download indisponível')
+      const data = await res.json()
+      if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
+      else setErroEmissao('Nenhuma versão salva ainda. Emita o PDF primeiro.')
+    } catch {
+      setErroEmissao('Não foi possível abrir o relatório salvo. Tente novamente.')
+    }
   }
 
   /** Marca a consulta (a entrega ao cliente) como concluída. Não altera o Ba Guá. */
@@ -473,6 +527,7 @@ export default function Relatorio() {
   ]
   const { resolver: resolverFoto, carregando: assinandoImagens } = useUrlsAssinadas(fotosDoImovel, BUCKET_IMOVEIS)
 
+  if (!loading && !consulta && erroEmissao) return <p role="alert">{erroEmissao}</p>
   if (loading || !consulta) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', fontFamily: 'var(--font-figtree), sans-serif' }}>
@@ -635,10 +690,11 @@ export default function Relatorio() {
           diagnóstico e de quando ele é. Invisível na tela. */}
       <div className="rodape-impressao print-only" aria-hidden="true">
         <span>{profile?.nome_completo || 'FengShui Studio'}{profile?.nome_empresa ? ` · ${profile.nome_empresa}` : ''}</span>
-        <span>{consulta?.nome_imovel || ''} · {new Date().toLocaleDateString('pt-BR')}</span>
+        <span>{consulta?.nome_imovel || ''} · Prévia sem emissão salva</span>
       </div>
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <fieldset disabled={downloading} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
       <div className="no-print barra-do-relatorio" style={{ background: '#0E1B2C' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '24px', cursor: 'pointer' }} onClick={() => router.push(`/consultas/${id}`)}>☯</span>
@@ -660,30 +716,27 @@ export default function Relatorio() {
             background: 'transparent', border: '1px solid rgba(184,134,11,0.5)',
             color: '#C9A227', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
           }}>Curas</button>
-          {/* Impressão do navegador é o caminho principal: gera texto
-              selecionável, respeita as quebras do CSS de impressão e não
-              depende de o html2canvas entender a função de cor da vez.
-              «Salvar como PDF» no diálogo produz o arquivo. */}
+          {/* Impressão do navegador é uma prévia; não confirma emissão. */}
           <button type="button" onClick={handlePrint} title="Abre o diálogo de impressão — escolha «Salvar como PDF»" style={{
-            background: gold, border: 'none', color: '#0E1B2C',
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.7)',
             padding: '6px 20px', borderRadius: '6px',
             cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-          }}>Imprimir / Salvar PDF</button>
+          }} disabled={downloading}>Imprimir prévia (sem histórico)</button>
           {/* O caminho antigo continua, e agora diz o que é: fotografa a tela e
               recorta em páginas. Texto vira imagem — não dá para copiar nem
               buscar —, mas sai sem passar pelo diálogo do navegador. */}
-          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens}
-            title="Gera o arquivo direto, mas o texto vira imagem"
+          <button type="button" onClick={handleDownloadPDF} disabled={downloading || assinandoImagens || !!pendente.current || showSelector}
+            title="Preserva as entradas e uma versão do PDF no histórico"
             style={{
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: (downloading || assinandoImagens) ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.7)',
+              background: gold,
+              border: 'none', fontWeight: 600,
+              color: '#0E1B2C',
               padding: '6px 14px', borderRadius: '6px',
               cursor: (downloading || assinandoImagens) ? 'not-allowed' : 'pointer', fontSize: '14px',
-            }}>{downloading ? 'Gerando…' : assinandoImagens ? 'Carregando fotos…' : 'Baixar como imagem'}</button>
+            }}>{downloading ? 'Salvando emissão…' : assinandoImagens ? 'Carregando fotos…' : 'Emitir e salvar PDF'}</button>
           {savedRelatorioEm && (
             <button type="button"
-              onClick={baixarVersaoSalva}
+              onClick={() => baixarVersaoSalva()}
               className="no-print"
               title={`Última versão salva em ${new Date(savedRelatorioEm).toLocaleString('pt-BR')}`}
               style={{
@@ -695,6 +748,19 @@ export default function Relatorio() {
           )}
         </div>
       </div>
+
+      {erroEmissao && <div className="no-print" role="alert" style={{ padding: 16, color: '#8F3F2C', background: '#FAEEE9' }}>
+        {erroEmissao}
+        {pendente.current && <button type="button" disabled={downloading} onClick={repetirSalvamento} style={{ marginLeft: 12 }}>Tentar salvar novamente</button>}
+      </div>}
+      {historico.length > 0 && <details className="no-print" style={{ padding: '16px 32px', background: '#fff' }}>
+        <summary>Histórico de relatórios</summary>
+        <ul>{historico.map(v => <li key={v.id} style={{ marginTop: 10 }}>
+          {v.estado === 'preparada' ? 'Preparação — salvamento não concluído' : v.estado === 'legado' ? 'Legado — entradas e versões desconhecidas' : `Emitido em ${new Date(v.concluido_em!).toLocaleString('pt-BR')}`}
+          {v.revisao_de && <span> · Revisão de {v.revisao_de.slice(0, 8)}</span>}
+          {v.estado !== 'preparada' && <button type="button" onClick={() => baixarVersaoSalva(v.id)} style={{ marginLeft: 12 }}>Baixar esta versão</button>}
+        </li>)}</ul>
+      </details>}
 
       {/* ── Nudge: concluir a consulta após gerar o relatório ───────────── */}
       {showConcluirNudge && (
@@ -1453,7 +1519,7 @@ export default function Relatorio() {
           // Ano SOLAR (Li Chun), não civil: em janeiro o ano solar ainda é o
           // anterior, e usar getFullYear() apontaria a estrela errada.
           const beRem = consulta.bagua_entrada
-          const anoSolarAtual = dataSolar(new Date())?.anoSolar
+          const anoSolarAtual = dataSolar(new Date(referenciaTemporal))?.anoSolar
           const remedios = setores.flatMap(s => {
             // As dicas de texto livre que já se aplicam a este setor. Só as que
             // têm proveniência (fonte nomeada + citação) viram linha aqui — as 8
@@ -1996,7 +2062,7 @@ export default function Relatorio() {
           const favoraveis = mg ? setoresFavoraveis(mg.direcoes) : null
           // Ano SOLAR, não civil: a estrela anual muda no Li Chun (~4/fev), então
           // `getFullYear()` daria a estrela errada em janeiro. Mesmo padrão de bagua-planta.
-          const anoSolarAtual = dataSolar(new Date())?.anoSolar
+          const anoSolarAtual = dataSolar(new Date(referenciaTemporal))?.anoSolar
           const gradeAnual = anoSolarAtual != null ? calcularGradeAnual(anoSolarAtual) : null
 
           // Sem nenhuma das duas fontes não há o que sintetizar.
@@ -2107,7 +2173,7 @@ export default function Relatorio() {
               {profile?.telefone && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{profile.telefone}</div>}
               {profile?.site && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{profile.site}</div>}
               {profile?.instagram && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>@{profile.instagram.replace('@', '')}</div>}
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Gerado em {new Date().toLocaleDateString('pt-BR')}</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Referência: {new Date(referenciaTemporal).toLocaleDateString('pt-BR')}</div>
             </div>
           </div>
         </div>
@@ -2122,10 +2188,15 @@ export default function Relatorio() {
           Relatório Feng Shui · Escola Budista da Seita Negra ·
           {profile?.nome_completo && ` Consultor(a): ${profile.nome_completo}`}
           {profile?.registro_profissional && ` · ${profile.registro_profissional}`}
-          {' '} · Gerado em: {new Date().toLocaleDateString('pt-BR')}
+          {' '} · Referência: {new Date(referenciaTemporal).toLocaleDateString('pt-BR')}
+          <div style={{ marginTop: 6 }}>
+            {emissaoAtual ? `Emissão ${emissaoAtual}` : 'Prévia — sem emissão salva'}
+            {` · Modelo ${VERSOES_RELATORIO.template} · Cálculos ${VERSOES_RELATORIO.motor}`}
+          </div>
         </div>
 
       </div>}
+      </fieldset>
     </>
   )
 }

@@ -33,6 +33,7 @@ import { createSupabaseAdminClient } from '../../../../src/lib/supabase-admin'
 import { rateLimit, ipDaRequisicao } from '../../../../src/lib/rate-limit'
 import { logger } from '../../../../src/lib/logger'
 import { escreverBestEffort } from '../../../../src/lib/supabase-escrita'
+import { excluirEmissoesDoTitular, listarEmissoesDoTitular } from '../../../../src/lib/relatorio-retencao'
 import {
   MARCA_DE_ANONIMIZACAO, PALAVRA_DE_CONFIRMACAO, emailAnonimo,
   arquivosParaApagar, fotosDaConsulta, inventariar, BUCKETS_DO_TITULAR,
@@ -52,6 +53,11 @@ export async function GET(request: Request) {
   const supabase = await createRouteHandlerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  let emissoes
+  try { emissoes = await listarEmissoesDoTitular(supabase, user.id) } catch {
+    return NextResponse.json({ error: 'Não foi possível incluir o histórico de relatórios. Tente novamente.' }, { status: 503 })
+  }
 
   // Cada consulta usa a sessão do titular: o RLS é a garantia de que ele só
   // leva o que é dele, e não uma condição `eq()` que alguém pode esquecer.
@@ -78,6 +84,7 @@ export async function GET(request: Request) {
     // portabilidade sem eles entregaria metade do que ele construiu aqui.
     clientes: clientes.data ?? [],
     consultas: consultas.data ?? [],
+    relatorio_emissoes: emissoes,
     assinaturas: assinaturas.data ?? [],
     faturas: faturas.data ?? [],
     concessoes_de_plano: concessoes.data ?? [],
@@ -107,6 +114,13 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient()
   const resumo: ResumoDaExclusao = {
     clientesApagados: 0, consultasApagadas: 0, arquivosApagados: 0, pedidosAnonimizados: 0,
+  }
+
+  try {
+    resumo.arquivosApagados += await excluirEmissoesDoTitular(admin, user.id)
+  } catch {
+    logger.error('Exclusão interrompida para preservar o inventário de PDFs', { rota: ROTA })
+    return NextResponse.json({ error: 'Não foi possível remover os relatórios. Se há uma emissão em preparação, aguarde até 30 minutos e tente novamente.' }, { status: 503 })
   }
 
   // ── 1. Os arquivos, antes das linhas ──────────────────────────────────
