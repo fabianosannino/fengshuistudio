@@ -21,6 +21,50 @@ responsabilidades e limitações conferidos. O PR registra a execução remota d
 commit final. Homologação de navegador permanece em AC-02; estes cenários não
 a encerram. Suíte local final: 1.798 testes aprovados em 131 arquivos.
 
+## E — criação e edição de marcações da planta
+
+Relato de 18/09/2026, confirmado pelo usuário com mouse e toque: desenhar falta
+ou excesso parecia exigir mudar o retângulo-base, perdendo a referência visual.
+Reprodução anterior à correção, na página real com I/O simulado: criar em espaço
+livre passou; começar dentro da marca existente falhou (esperadas duas marcas,
+obtida uma). O handler priorizava mover/redimensionar a marca anterior e não
+tratava toque. O canto superior direito também dividia espaço com a exclusão.
+
+Fixture sintética: imagem 1.000 × 800 px, bordas `(100,100,600,600)`, falta
+original `(150,150,300,300)`, BTB, 90 m². Nenhuma consulta real é alterada.
+
+| ID / mudança | Dado / quando | Então | Verificação |
+|---|---|---|---|
+| E-MARC-01 — nova marca independente | Com a fixture, desenhar outra falta em espaço livre e sobre a existente | Duas marcas; a anterior, `planta_url` e as bordas ficam iguais | `tests/bagua-marcacoes-ui.test.tsx`; a segunda ação reproduziu a falha antes da correção |
+| E-MARC-02 — mouse/toque/caneta | Desenhar excesso cruzando a borda, inverter o sentido, soltar sem evento intermediário, mudar escala/posição CSS e usar tela cheia | Coordenadas da imagem preservadas, só 10.000 px² externos contam como excesso no exemplo; liberar o ponteiro conclui uma marca | Mesmo teste de página; usa eventos PointerEvent sintéticos, não dispositivo físico |
+| E-MARC-03 — interrupção | Cancelar pelo sistema, Esc ou perda de captura; sair do canvas durante o arraste; enviar outro ponteiro | Cancelamento descarta o gesto; sair não conclui antecipadamente; outro ponteiro não move/finaliza; nenhum salvamento parcial | Mesmo teste de página; captura nativa continua pendente |
+| E-MARC-04 — edição explícita | Selecionar/mover, redimensionar pelo canto superior direito, cruzar a âncora, cancelar, selecionar uma marca coberta e excluir pelo botão; ajustar Bordas | Só o alvo muda, cancelamento restaura, não há dimensão negativa/colapso, exclusão não disputa o canto; somente Bordas muda a referência | Teste de página e `src/lib/__tests__/edicao-marcacoes.test.ts`; seleção por lista mantém acesso às sobrepostas |
+| E-MARC-05 — comparação e salvamento | Ocultar/reexibir as sobreposições; salvar a análise enquanto a comparação está ligada | Imagem e bordas permanecem; marcas continuam nos dados; snapshot da análise inclui sobreposições e a comparação volta após a captura | Teste de página verifica chamadas de desenho e payload; não verifica pixels reais ou PDF no navegador |
+| E-MARC-06 — interpretação e continuidade | Marcar excesso totalmente interno; revisar controles, instruções, configuração de preview e roadmap | Aviso de efeito zero, sem modificar limites automaticamente; cenários e pendências permanecem explícitos; preview desta branch desativada | Teste de página para aviso/limites; revisão manual de textos, IDs e `vercel.json` |
+
+Implementação usa [Pointer Events](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events)
+e [captura de ponteiro](https://developer.mozilla.org/en-US/docs/Web/API/Element/setPointerCapture).
+Controles com texto, estado pressionado, seleção por lista e exclusão explícita
+não dependem apenas da cor. A fórmula de união geométrica, o formato persistido
+e o motor/template do relatório não mudam; nenhuma emissão anterior é reescrita.
+
+Evidência local em 18/09/2026: **1.827 testes em 133 arquivos aprovados**,
+incluindo 29 casos novos; execução final `npm test -- --maxWorkers=2` em 181 s,
+sem aumentar timeouts ou remover asserções. Duas repetições com paralelismo
+padrão excederam o limite de 5 s no primeiro caso de duas páginas; a execução
+com dois workers passou integralmente. TypeScript e build aprovados; lint sem
+erros, com 94 avisos (antes 102). E-MARC-06 também revisado documentalmente.
+CI do commit final é obrigatório e fica vinculado no PR.
+
+**Homologação manual pendente:** no ambiente autorizado, com uma planta sintética
+contendo recuo e extensão, repetir criação sobre outra marca, edição, exclusão,
+cancelamento, comparação, Recalcular, salvar/reabrir e comparar a imagem salva.
+Executar com mouse no desktop e toque no celular/tablet, em bancada/tela cheia,
+inclusive rolagem, redimensionamento da janela e arraste para fora do canvas.
+Registrar navegador, dispositivo e resultado visual. O bloqueio anterior do
+servidor local descrito em AC-02 não foi contornado. Automação de jsdom não
+encerra esse aceite nem AC-02/AC-06.
+
 ## A–C — pendências de aceite que não podem ser esquecidas
 
 Todos os cenários abaixo permanecem **pendentes de execução completa**. Usar
