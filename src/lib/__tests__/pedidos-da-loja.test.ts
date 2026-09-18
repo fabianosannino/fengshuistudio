@@ -55,6 +55,14 @@ describe('pedidoRendeuReceita', () => {
     expect(pedidoRendeuReceita([ev('iniciado')])).toBe(false)
   })
 
+  it.each(['preparando', 'enviado', 'entregue', 'devolucao_solicitada'])('evento operacional %s sem pagamento não comprova receita', estado => {
+    expect(pedidoRendeuReceita([ev('iniciado'), ev(estado)])).toBe(false)
+  })
+
+  it.each([['cancelado'], ['pago', 'cancelado'], ['cancelado', 'pago']])('cancelamento nunca autoriza entrega %j', (...eventos) => {
+    expect(pedidoRendeuReceita(eventos.map(e => ev(e)))).toBe(false)
+  })
+
   it('reembolsado e contestado saem da conta', () => {
     // Um painel que diz «R$ 400 de receita» somando uma venda estornada é
     // pior do que painel nenhum, porque parece confiável.

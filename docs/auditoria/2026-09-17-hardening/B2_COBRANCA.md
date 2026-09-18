@@ -233,3 +233,13 @@ PostgreSQL, TypeScript e build aprovados, lint sem erros e 103 avisos existentes
 Leitura do destino Stripe confirmou nove eventos ativos; faltam invoice_payment.paid,
 refund.created/updated/failed e charge.dispute.created/updated/closed. A extensão
 será aplicada somente depois de conferir a publicação do handler corrigido.
+
+PR #207 integrado em `64fd43c4fa1bc83d10f2b052a63f43d9cdfa48b2`, CI
+35324703197 verde (1.677 testes). Migration remota `20260918083227`:
+zero faturas, disputas, vínculos e controles novos, com contagens anteriores
+preservadas e ACL/RLS conferidos. Produção READY
+`dpl_QqvvnoZqWYdGyrF1xN8RfVzJYaEM`, mesmo SHA. Destino Stripe conferido
+após publicação: invoice_payment.paid e charge.dispute.created/updated/closed
+adicionados aos nove eventos anteriores; total 13, URL/versão preservadas.
+refund.created/updated/failed serão habilitados após corrigir também o caminho
+de reembolsos da loja, para evitar fila conhecida de eventos não conciliáveis.

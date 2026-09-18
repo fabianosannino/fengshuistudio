@@ -153,6 +153,11 @@ describe('itens baixáveis (fase 2)', () => {
     expect(visao.itens[0].id).toBe('item-1')
   })
 
+  it.each(['cancelado', 'entregue'])('%s sem fato de pagamento não mostra download ao comprador', evento => {
+    const visao = pedidoParaOComprador(pedido({ ...DIGITAL, pedido_eventos: [{ evento }] }), AGORA)
+    expect(visao.itens[0].baixavel).toBe(false)
+  })
+
   it('serviço nunca é baixável, mesmo pago', () => {
     // Não há arquivo do outro lado. Mostrar o botão prometeria uma entrega
     // que não existe — e o clique cairia num 404 sem explicação.

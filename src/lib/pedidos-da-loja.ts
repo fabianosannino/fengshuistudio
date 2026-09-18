@@ -158,10 +158,12 @@ export function dentroDoPrazoDeArrependimento(
   return prazo !== null && prazo.getTime() > agora.getTime()
 }
 
-/** `true` quando o dinheiro entrou e não voltou. */
+/** A lifecycle rank is not proof of payment or permission to download. */
 export function pedidoRendeuReceita(eventos: EventoDoPedido[]): boolean {
+  if (!eventos.some(evento => evento.evento === 'pago')) return false
   const estado = estadoDoPedido(eventos)
-  return forcaDe(estado) >= PRECEDENCIA.pago && forcaDe(estado) < PRECEDENCIA.reembolsado
+  return estado === 'pago' || estado === 'preparando' || estado === 'enviado'
+    || estado === 'entregue' || estado === 'devolucao_solicitada'
 }
 
 /** Rótulo em português para a tela do vendedor. */
