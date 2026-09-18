@@ -44,6 +44,22 @@ preservadas. A projeção `plans.features` ainda diverge da matriz efetiva.
 - Ensaio financeiro no modo teste e jornada autenticada real. Testes locais
   com mocks e leitura live não são equivalentes a esses ensaios.
 
+## Cotas — segundo pacote
+
+Migration aditiva com projeção versionada dos direitos e admissão atômica no
+banco. Cobre criação, reativação, chamadas diretas ao Supabase e concorrência.
+Acima da cota legada, mantém consulta/edição e impede apenas novas admissões.
+Cadastro próprio é identificado separadamente e preparado por RPC sem IDs
+informados pelo navegador. Referência a cliente de outro proprietário é recusada.
+
+A tela de nova consulta ainda usava 1 imóvel no Simples e total histórico no
+Free; agora usa 10/3 imóveis ativos e permite seleção de clientes ao consultor
+no Simples. Falha ao ler perfil/contagem impede criação, sem assumir plano Free.
+
+PR #193 está integrado em `bd1cbd8af99eccf542c3ce72a63a09919ed8149e` e produção
+READY em `dpl_DoyZPfmHMiYe7RAQAHkEvyFc2cPa`. A aplicação desse primeiro pacote
+não encerra a coordenação durável de checkout/webhook nem o ensaio financeiro.
+
 ## B1 após deploy
 
 PR #192 integrado em `c014cba940ac18ab4089428ba57c3e6186d24316`.
@@ -51,3 +67,9 @@ Vercel `dpl_FPpbmV5DNZavsNL6jV4tu4oQq2XS` READY, produção no mesmo SHA.
 Smoke anônimo: catálogo 200 (`produtos: []`), entrada de relatório 401 e
 preparação 401. Inventário sem dados pessoais: 17 consultas, 3 de bússola com
 orientação legada e nenhuma confirmação retroativa. Não foram reemitidas.
+
+Verificação do segundo pacote: 1.374 testes em 106 arquivos, typecheck e build
+aprovados, lint com zero erros e 106 avisos anteriores. Runner PostgreSQL:
+37 verificações, incluindo reprodução da corrida e RPC concorrente. Antes da
+migration, inventário real: 13 clientes, 17 consultas e zero referências a
+cliente de outro proprietário. Nenhum dado de teste foi criado em produção.

@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '../../../src/lib/supabase-route'
 import { rateLimit, ipDaRequisicao } from '../../../src/lib/rate-limit'
 import { logger } from '../../../src/lib/logger'
-import { planoEfetivo, podeClientes, isProfissional as isProfissionalFn, planoUsuario,
+import { planoUsuario,
          limiteImoveis, mensagemLimiteImoveis, STATUS_LIBERAM_VAGA } from '../../../src/lib/plano-utils'
 import { ANO_MINIMO_CONSTRUCAO, ANO_MAXIMO_CONSTRUCAO } from '../../../src/lib/periodo-do-imovel'
-const MAX_CONSULTAS_MES_FREE = 3
 
 export async function POST(request: Request) {
   const ip = ipDaRequisicao(request)
-  const { success, remaining } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
+  const { success } = await rateLimit(ip, { limit: 20, windowMs: 60_000 })
   if (!success) {
     return Response.json(
       { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
@@ -25,13 +24,16 @@ export async function POST(request: Request) {
   }
 
   // Check profile and plan
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  const isProfessional = isProfissionalFn(profile)
+  if (profileError || !profile) {
+    return NextResponse.json({ error: 'Não foi possível verificar seu plano.' }, { status: 503 })
+  }
+
   const plano = planoUsuario(profile)
 
   // A regra e a mensagem vêm de `plano-utils`, não daqui: quando cada rota
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
 
     if (erroContagem) {
       logger.error('Falha ao contar imóveis do consultor', {
-        route: '/api/consultas', userId: user.id, error: erroContagem.message,
+        route: '/api/consultas', code: erroContagem.code,
       })
       return NextResponse.json({ error: 'Não foi possível verificar seu limite de imóveis.' }, { status: 500 })
     }
@@ -97,7 +99,10 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) {
-    logger.error('Consulta insert error', { route: '/api/consultas', error: error.message })
+    if (error.code === 'P0001' && error.message === 'cota_imoveis_excedida') {
+      return NextResponse.json({ error: mensagemLimiteImoveis(plano) }, { status: 403 })
+    }
+    logger.error('Consulta insert error', { route: '/api/consultas', code: error.code })
     return NextResponse.json({ error: 'Erro ao criar consulta. Tente novamente.' }, { status: 400 })
   }
 

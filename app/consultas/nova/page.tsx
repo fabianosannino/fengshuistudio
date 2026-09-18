@@ -3,6 +3,7 @@
 import CamposAnoDoImovel from '../../components/CamposAnoDoImovel'
 import { calcularMingGua } from '../../../src/lib/ming-gua'
 import { redirecionarParaLogin } from '../../../src/lib/auth-rotas'
+import { papelDoUsuario } from '../../../src/lib/papel-do-usuario'
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -10,8 +11,7 @@ import { supabase } from '../../../src/lib/supabase'
 import FlowLayout from '../../components/FlowLayout'
 import Skeleton from '../../components/Skeleton'
 import type { Profile, Cliente } from '../../../src/lib/types'
-import type { User } from '@supabase/supabase-js'
-import { planoEfetivo, limiteImoveis, podeClientes, planoLabel, isProfissional as isProfissionalFn, planoUsuario, PROF_TYPES, mensagemLimiteImoveis } from '../../../src/lib/plano-utils'
+import { limiteImoveis, podeClientes, planoUsuario, STATUS_LIBERAM_VAGA, mensagemLimiteImoveis } from '../../../src/lib/plano-utils'
 
 function NovaConsultaContent() {
   const searchParams = useSearchParams()
@@ -20,13 +20,11 @@ function NovaConsultaContent() {
   // já é enviado, e o antigo segue aceito para não quebrar link salvo.
   const preSelectedClientId = searchParams.get('cliente_id') ?? searchParams.get('clienteId')
 
-  const [user, setUser] = useState<User | null>(null)
   const [clientes, setClientes] = useState<Pick<Cliente, 'id' | 'nome_completo' | 'cidade' | 'estado' | 'data_nascimento' | 'genero'>[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [profile, setProfile] = useState<Pick<Profile, 'plano' | 'tipo_usuario' | 'role' | 'nome_completo'> | null>(null)
-  const [totalConsultas, setTotalConsultas] = useState(0)
   const [consultasAtivas, setConsultasAtivas] = useState(0)
 
   // `clienteId` vem da query string e já está disponível no primeiro render:
@@ -46,26 +44,27 @@ function NovaConsultaContent() {
     dados_adicionais: '',
   })
 
-  const isProfessional = isProfissionalFn(profile)
+  const plano = planoUsuario(profile)
+  const isProfessional = papelDoUsuario(profile) === 'consultor' && podeClientes(plano)
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { redirecionarParaLogin(); return }
-      setUser(user)
 
-      const { data: prof } = await supabase
+      const { data: prof, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
+      if (profileError || !prof) { setMessage('Não foi possível carregar seu plano. Recarregue a página.'); setLoading(false); return }
       setProfile(prof)
 
-      const userIsProfessional = isProfissionalFn(prof)
+      const userIsProfessional = papelDoUsuario(prof) === 'consultor' && podeClientes(planoUsuario(prof))
 
       if (userIsProfessional) {
         // Professional: load clients list
-        const { data } = await supabase
+        const { data, error: clientesError } = await supabase
           .from('clientes')
           // Cidade, nascimento e gênero entram no bloco de contexto do cliente:
           // é o que permite mostrar o Ming Gua sem uma segunda ida ao banco.
@@ -73,23 +72,17 @@ function NovaConsultaContent() {
           .eq('consultor_id', user.id)
           .eq('ativo', true)
           .order('nome_completo')
+        if (clientesError) { setMessage('Não foi possível carregar seus clientes.'); setProfile(null); setLoading(false); return }
         setClientes(data || [])
       }
 
-      // Count total consultations
-      const { count: countTotal } = await supabase
+      const { count, error: countError } = await supabase
         .from('consultas')
         .select('*', { count: 'exact', head: true })
         .eq('consultor_id', user.id)
-      setTotalConsultas(countTotal || 0)
-
-      // Count active (non-archived) consultations (for Simples plan limit)
-      const { count: countAtivas } = await supabase
-        .from('consultas')
-        .select('*', { count: 'exact', head: true })
-        .eq('consultor_id', user.id)
-        .neq('status', 'arquivada')
-      setConsultasAtivas(countAtivas || 0)
+        .not('status', 'in', `(${STATUS_LIBERAM_VAGA.join(',')})`)
+      if (countError) { setMessage('Não foi possível verificar o limite de imóveis.'); setProfile(null) }
+      setConsultasAtivas(count ?? 0)
 
       setLoading(false)
     }
@@ -108,38 +101,15 @@ function NovaConsultaContent() {
     try {
       let clienteId = form.cliente_id
 
-      // Personal users: auto-create or reuse self client
+      // The RPC derives ownership and serializes repeated own-house requests.
       if (!isProfessional) {
-        // Check if self-client already exists
-        const { data: existingClients } = await supabase
-          .from('clientes')
-          .select('id')
-          .eq('consultor_id', user!.id)
-          .eq('email', user!.email!)
-          .limit(1)
-
-        if (existingClients && existingClients.length > 0) {
-          clienteId = existingClients[0].id
-        } else {
-          // Create self as client
-          const { data: newClient, error: clientError } = await supabase
-            .from('clientes')
-            .insert({
-              consultor_id: user!.id,
-              nome_completo: profile?.nome_completo || user!.email,
-              email: user!.email,
-              ativo: true,
-            })
-            .select('id')
-            .single()
-
-          if (clientError) {
-            setMessage('Erro ao preparar cadastro: ' + clientError.message)
-            setSaving(false)
-            return
-          }
-          clienteId = newClient.id
+        const { data: titularId, error } = await supabase.rpc('obter_cliente_titular')
+        if (error || !titularId) {
+          setMessage('Não foi possível preparar seu cadastro. Tente novamente.')
+          setSaving(false)
+          return
         }
+        clienteId = titularId
       }
 
       const res = await fetch('/api/consultas', {
@@ -186,14 +156,8 @@ function NovaConsultaContent() {
     )
   }
 
-  const plano = isProfessional ? 'profissional' as const : planoEfetivo(profile?.plano)
   const limite = limiteImoveis(plano)
-  // Professional users: never limited
-  // Free: max 3 total
-  const freeLimitReached = !isProfessional && plano === 'free' && totalConsultas >= 3
-  // Simples: max 1 active (non-archived)
-  const simplesLimitReached = !isProfessional && plano === 'simples' && consultasAtivas >= 1
-  const limitReached = freeLimitReached || simplesLimitReached
+  const limitReached = limite !== null && consultasAtivas >= limite
 
   /**
    * O cliente do contexto é o do **formulário**, não o da query string: depois
@@ -223,68 +187,15 @@ function NovaConsultaContent() {
           </p>
         </div>
 
-        {/* Free plan: 3 property limit */}
-        {freeLimitReached && (
-          <div style={{
-            marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
-            background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '14px'
-          }}>
-            <p style={{ margin: '0 0 12px 0' }}>
-              {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
-            </p>
-            <a href="/planos" style={{
-              display: 'inline-block', padding: '8px 20px', background: '#2E7D6B',
-              color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
-              textDecoration: 'none'
-            }}>Ver planos</a>
+        {limitReached && (
+          <div role="status" style={{ marginBottom: 20, padding: 20, background: '#FAF3E0', borderRadius: 12 }}>
+            <p>{mensagemLimiteImoveis(plano)}</p>
+            <Link href="/consultas">Gerenciar imóveis</Link>{' · '}
+            <Link href="/planos">Ver planos</Link>
           </div>
         )}
-
-        {/* Simples plan: 1 active property limit */}
-        {simplesLimitReached && (
-          <div style={{
-            marginBottom: '20px', padding: '16px 20px', borderRadius: '12px',
-            background: '#FAF3E0', border: '1px solid #EEDFB4', color: '#8A6E2F', fontSize: '14px'
-          }}>
-            <p style={{ margin: '0 0 12px 0' }}>
-              {mensagemLimiteImoveis(planoEfetivo(profile?.plano))}
-            </p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <Link href="/consultas" style={{
-                display: 'inline-block', padding: '8px 20px', background: '#8A6E2F',
-                color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
-                textDecoration: 'none'
-              }}>Arquivar imóvel atual</Link>
-              <Link href="/planos" style={{
-                display: 'inline-block', padding: '8px 20px', background: '#2E7D6B',
-                color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold',
-                textDecoration: 'none'
-              }}>Ver planos</Link>
-            </div>
-          </div>
-        )}
-
-        {/* Property counter for limited plans */}
-        {plano === 'free' && !freeLimitReached && (
-          <div style={{
-            marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#EAF4F1', border: '1px solid #DCEFE9', color: '#0E1B2C', fontSize: '13px'
-          }}>
-            {/* O limite vem de `plano-utils`, não escrito à mão: os dois
-                contadores desta tela tinham o número fixo, e o do Simples
-                continuou dizendo «/1» depois de o limite virar 10. */}
-            Plano {planoLabel(profile?.plano)}: {totalConsultas}/{limite ?? '∞'} imóveis cadastrados.
-          </div>
-        )}
-
-        {/* Simples plan counter */}
-        {plano === 'simples' && !simplesLimitReached && (
-          <div style={{
-            marginBottom: '20px', padding: '8px 16px', borderRadius: '8px',
-            background: '#F0F6F3', border: '1px solid #DCEAE4', color: '#245F52', fontSize: '13px'
-          }}>
-            Plano Simples: {consultasAtivas}/{limite ?? '∞'} {limite === 1 ? 'imóvel ativo' : 'imóveis ativos'}.
-          </div>
+        {profile && limite !== null && !limitReached && (
+          <p>{consultasAtivas}/{limite} imóveis ativos. Arquivados e excluídos não ocupam vaga.</p>
         )}
 
         {message && (
@@ -294,7 +205,7 @@ function NovaConsultaContent() {
           }}>{message}</div>
         )}
 
-        {!limitReached && (
+        {profile && !limitReached && (
           <div style={{ background: '#ffffff', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <form onSubmit={handleStep1}>
 

@@ -55,6 +55,8 @@ jobs:
         run: npm run test:security
       - name: Verificar migração do catálogo e isolamento dos buckets
         run: npm run test:catalog-migration
+      - name: Verificar cotas, reativação e concorrência no PostgreSQL
+        run: npm run test:plan-quotas
 
   quality:
     name: Dependency Security

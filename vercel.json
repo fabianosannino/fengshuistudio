@@ -6,7 +6,8 @@
       "codex/validacao-pr189": false,
       "codex/relatorios-imutaveis-b0": false,
       "codex/orientacao-b1": false,
-      "codex/cobranca-b2": false
+      "codex/cobranca-b2": false,
+      "codex/cotas-b2": false
     }
   },
   "crons": [
