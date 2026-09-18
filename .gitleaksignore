@@ -1,0 +1,4 @@
+# Exemplo truncado de chave ANON na documentação: só cabeçalho JWT + reticências,
+# sem payload nem assinatura. Exceções por ocorrência, nunca por chave/arquivo.
+7c75cc5e8476da890c4821795946d9014b3dce9e:docs/DOCUMENTACAO_SISTEMA.md:generic-api-key:898
+22d0f14ac071420e39c0840bbfea922a2f810e9e:docs/DOCUMENTACAO_SISTEMA.md:generic-api-key:898
